@@ -541,6 +541,13 @@
                         </li>
 
                         <li class="nav-item">
+                            <a href="{{ route('pages.Schedual.yield_policy.index') }}" class="nav-link {{ str_contains(url()->current(), 'yield_policy') ? 'active' : '' }}">
+                                <i class="far fa-circle nav-icon text-warning"></i>
+                                <p>Chính Sách Sản Lượng</p>
+                            </a>
+                        </li>
+
+                        <li class="nav-item">
                             <a href="{{ route('pages.Schedual.audit.index') }}" class="nav-link">
                                 <i class="far fa-circle nav-icon"></i>
                                 <p>Lịch Sử Thay Đổi Lịch</p>

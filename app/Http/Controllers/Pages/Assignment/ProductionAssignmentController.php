@@ -405,6 +405,12 @@ class ProductionAssignmentController extends Controller
             ->where('deparment_code', $production_code)
             ->get();
 
+        $isOvertimeApproved = DB::table('overtime_approvals')
+            ->where('reported_date', $reportedDate)
+            ->where('production_code', $production_code)
+            ->where('group_code', $active_group_code ?? '')
+            ->exists();
+
         return view('pages.assignment.production.index', [
             'tasks' => $tasks,
             'reportedDate' => $reportedDate,
@@ -417,8 +423,35 @@ class ProductionAssignmentController extends Controller
             'rooms' => $rooms,
             'allRooms' => $allRooms,
             'dbAssignments' => $dbAssignments,
-            'suggestions' => $suggestions
+            'suggestions' => $suggestions,
+            'isOvertimeApproved' => $isOvertimeApproved
         ]);
+    }
+
+    public function approveOvertime(Request $request)
+    {
+        $reportedDate = $request->reportedDate;
+        $production_code = $request->production_code;
+        $group_code = $request->group_code ?? '';
+
+        if (!$reportedDate || !$production_code) {
+            return response()->json(['success' => false, 'message' => 'Thiếu thông tin bắt buộc']);
+        }
+
+        DB::table('overtime_approvals')->updateOrInsert(
+            [
+                'reported_date' => Carbon::parse($reportedDate)->format('Y-m-d'),
+                'production_code' => $production_code,
+                'group_code' => $group_code,
+            ],
+            [
+                'approved_by' => session('user')['fullName'] ?? 'System',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]
+        );
+
+        return response()->json(['success' => true]);
     }
 
     public function getPersonnelShifts(Request $request)

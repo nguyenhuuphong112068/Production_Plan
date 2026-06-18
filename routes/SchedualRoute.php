@@ -14,6 +14,7 @@ use App\Http\Controllers\Pages\Schedual\SchedualStepController;
 use App\Http\Controllers\Pages\Schedual\SchedualViewController;
 use App\Http\Controllers\Pages\MaintenanceSchedual\MaintenanceSchedualController;
 use App\Http\Controllers\Pages\Schedual\ShedualYieldController;
+use App\Http\Controllers\Pages\Schedual\YieldPolicyController;
 use App\Http\Middleware\CheckLogin;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Pages\Schedual\AutoSchedualController;
@@ -163,6 +164,15 @@ Route::prefix('/Schedual')
                         ->name('yield.')
                         ->group(function () {
                                 Route::get('', 'index')->name('index');
+                        });
+
+                Route::prefix('/yield_policy')
+                        ->controller(YieldPolicyController::class)
+                        ->name('yield_policy.')
+                        ->group(function () {
+                                Route::get('',        'index')->name('index');
+                                Route::post('store',  'store')->name('store');
+                                Route::post('daily',  'storeDaily')->name('daily');
                         });
 
                 Route::prefix('/audit')

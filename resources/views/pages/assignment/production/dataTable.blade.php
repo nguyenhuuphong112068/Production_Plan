@@ -3,32 +3,47 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 <link href="{{ asset('assets/plugins/nouislider/nouislider.min.css') }}" rel="stylesheet" />
 <style>
-/* Slider Styling */
-.time-slider .noUi-handle {
-    width: 14px !important;
-    height: 14px !important;
-    right: -7px !important;
-    top: -5px !important;
-    border-radius: 50% !important;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.4) !important;
-    border: 2px solid #fff !important;
-    background: #555 !important;
-    cursor: grab;
-}
-.time-slider .noUi-handle:active {
-    cursor: grabbing;
-}
-.time-slider .noUi-handle::before, .time-slider .noUi-handle::after { display: none !important; }
-.time-slider {
-    border: none !important;
-    background: #e9ecef !important;
-    height: 4px !important;
-    box-shadow: inset 0 1px 2px rgba(0,0,0,0.1) !important;
-    margin-top: 5px;
-}
-.shift-1-slider .noUi-connect { background: #007bff !important; }
-.shift-2-slider .noUi-connect { background: #28a745 !important; }
-.shift-3-slider .noUi-connect { background: #dc3545 !important; }
+    /* Slider Styling */
+    .time-slider .noUi-handle {
+        width: 14px !important;
+        height: 14px !important;
+        right: -7px !important;
+        top: -5px !important;
+        border-radius: 50% !important;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4) !important;
+        border: 2px solid #fff !important;
+        background: #555 !important;
+        cursor: grab;
+    }
+
+    .time-slider .noUi-handle:active {
+        cursor: grabbing;
+    }
+
+    .time-slider .noUi-handle::before,
+    .time-slider .noUi-handle::after {
+        display: none !important;
+    }
+
+    .time-slider {
+        border: none !important;
+        background: #e9ecef !important;
+        height: 4px !important;
+        box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1) !important;
+        margin-top: 5px;
+    }
+
+    .shift-1-slider .noUi-connect {
+        background: #007bff !important;
+    }
+
+    .shift-2-slider .noUi-connect {
+        background: #28a745 !important;
+    }
+
+    .shift-3-slider .noUi-connect {
+        background: #dc3545 !important;
+    }
 </style>
 
 <style>
@@ -400,6 +415,7 @@
     .theory-col {
         display: none;
     }
+
     .overlap-warning .select2-container--default .select2-selection--single {
         border-color: #dc3545 !important;
         background-color: #ffe6e6 !important;
@@ -411,6 +427,7 @@
     $todayObj = \Carbon\Carbon::today();
     $isPastDate = $reportedDateObj->lt($todayObj);
     $hasEditPermission = user_has_permission(session('user')['userId'], 'production_assignment', 'boolean');
+    $hasAuthorizeOvertime = user_has_permission(session('user')['userId'], 'Authorize_overtime', 'boolean');
     $canEdit = $hasEditPermission && !$isPastDate && (!empty($group_code) || $production_code != 'PXV1');
 @endphp
 
@@ -436,6 +453,12 @@
             </form>
 
             <div class="d-flex align-items-center">
+                @if ($hasAuthorizeOvertime && !$isOvertimeApproved)
+                    <button class="btn btn-sm btn-warning shadow-sm ml-2" id="btn-approve-overtime"
+                        title="Chấp Nhân Vượt Trần Chính Sách Tăng ca ">
+                        <i class="fas fa-check-circle"></i> Chấp Nhân Vượt Trần Tăng ca
+                    </button>
+                @endif
                 <button class="btn btn-sm btn-secondary shadow-sm ml-2" id="btn-view-report"
                     title="Xem báo cáo tình hình nhân sự hiện tại">
                     <i class="fas fa-chart-bar"></i> Xem báo cáo
@@ -457,13 +480,16 @@
                     title="Ẩn/Hiện cột Lịch Lý Thuyết">
                     <i class="fas fa-eye"></i>
                 </button>
+
                 <button class="btn btn-sm btn-dark shadow-sm ml-2" id="btn-print-schedule" title="In lịch công tác"
                     data-url="{{ route('pages.assignment.production.public') }}?production_code={{ $production_code }}&group_code={{ $group_code }}&reportedDate={{ $reportedDate }}&print=1">
                     <i class="fas fa-print"></i> In Lịch
                 </button>
             </div>
         </div>
-        <div id="overtimePolicyBadgeContainer" style="display:none; padding: 4px 12px 4px 12px; background: #fff3cd; border-top: 1px solid #ffc107; flex-wrap: wrap; gap: 4px; margin-top: 5px;"></div>
+        <div id="overtimePolicyBadgeContainer"
+            style="display:none; padding: 4px 12px 4px 12px; background: #fff3cd; border-top: 1px solid #ffc107; flex-wrap: wrap; gap: 4px; margin-top: 5px;">
+        </div>
     </div>
 
     <div class="main-content-layout">
@@ -624,54 +650,60 @@
                                                 <td class="p-0" style="width: 350px">
                                                     <div class="personnel-container">
                                                         @foreach ($assignment->personnel_data as $p_info)
-                                                            <div
-                                                                class="personnel-row d-flex flex-column p-1 border-bottom" data-p-start="{{ $p_info->start ?? '' }}" data-p-end="{{ $p_info->end ?? '' }}">
+                                                            <div class="personnel-row d-flex flex-column p-1 border-bottom"
+                                                                data-p-start="{{ $p_info->start ?? '' }}"
+                                                                data-p-end="{{ $p_info->end ?? '' }}">
                                                                 <div class="d-flex align-items-center w-100">
-                                                                <div class="personnel-label">
-                                                                    {{ chr(65 + $loop->index) }}
-                                                                </div>
-                                                                <div style="flex: 1"
-                                                                    class="d-flex align-items-center">
-                                                                    <select
-                                                                        class="form-control form-control-sm person-select"
-                                                                        style="width: 40%"
-                                                                        data-selected="{{ $p_info->personnel_id }}"
-                                                                        data-op-type="{{ $p_info->operation_type ?? 'thủ công' }}"
-                                                                        {{ !$canEdit || ($assignment->is_foreign ?? false) ? 'disabled' : '' }}>
-                                                                        <option value="">-- Chọn người --
-                                                                        </option>
-                                                                    </select>
-                                                                    @if (strtolower($p_info->operation_type ?? 'thủ công') == 'tự động')
-                                                                        <i class="fas fa-robot text-info ml-1 op-icon"
-                                                                            title="Sắp tự động"
-                                                                            style="font-size: 0.8rem;"></i>
-                                                                    @elseif(strtolower($p_info->operation_type ?? 'thủ công') == 'nhân bản')
-                                                                        <i class="fas fa-copy text-success ml-1 op-icon"
-                                                                            title="Nhân bản"
-                                                                            style="font-size: 0.8rem;"></i>
-                                                                    @else
-                                                                        <i class="fas fa-hand-paper text-secondary ml-1 op-icon"
-                                                                            title="Sắp thủ công"
-                                                                            style="font-size: 0.8rem;"></i>
-                                                                    @endif
-                                                                    <input type="text"
-                                                                        class="form-control form-control-sm person-notif ml-1"
-                                                                        style="width: 50%; font-size: 0.7rem; height: 28px; padding: 2px 5px;"
-                                                                        value="{{ $p_info->notification ?? '' }}"
-                                                                        placeholder="Lưu ý (nếu có)..."
-                                                                        {{ !$canEdit || ($assignment->is_foreign ?? false) ? 'disabled' : '' }}>
-                                                                </div>
+                                                                    <div class="personnel-label">
+                                                                        {{ chr(65 + $loop->index) }}
+                                                                    </div>
+                                                                    <div style="flex: 1"
+                                                                        class="d-flex align-items-center">
+                                                                        <select
+                                                                            class="form-control form-control-sm person-select"
+                                                                            style="width: 40%"
+                                                                            data-selected="{{ $p_info->personnel_id }}"
+                                                                            data-op-type="{{ $p_info->operation_type ?? 'thủ công' }}"
+                                                                            {{ !$canEdit || ($assignment->is_foreign ?? false) ? 'disabled' : '' }}>
+                                                                            <option value="">-- Chọn người --
+                                                                            </option>
+                                                                        </select>
+                                                                        @if (strtolower($p_info->operation_type ?? 'thủ công') == 'tự động')
+                                                                            <i class="fas fa-robot text-info ml-1 op-icon"
+                                                                                title="Sắp tự động"
+                                                                                style="font-size: 0.8rem;"></i>
+                                                                        @elseif(strtolower($p_info->operation_type ?? 'thủ công') == 'nhân bản')
+                                                                            <i class="fas fa-copy text-success ml-1 op-icon"
+                                                                                title="Nhân bản"
+                                                                                style="font-size: 0.8rem;"></i>
+                                                                        @else
+                                                                            <i class="fas fa-hand-paper text-secondary ml-1 op-icon"
+                                                                                title="Sắp thủ công"
+                                                                                style="font-size: 0.8rem;"></i>
+                                                                        @endif
+                                                                        <input type="text"
+                                                                            class="form-control form-control-sm person-notif ml-1"
+                                                                            style="width: 50%; font-size: 0.7rem; height: 28px; padding: 2px 5px;"
+                                                                            value="{{ $p_info->notification ?? '' }}"
+                                                                            placeholder="Lưu ý (nếu có)..."
+                                                                            {{ !$canEdit || ($assignment->is_foreign ?? false) ? 'disabled' : '' }}>
+                                                                    </div>
 
-                                                                @if ($canEdit && !($assignment->is_foreign ?? false))
-                                                                    <i
-                                                                        class="fas fa-times text-danger ml-1 btn-remove-person cursor-pointer"></i>
-                                                                @endif
+                                                                    @if ($canEdit && !($assignment->is_foreign ?? false))
+                                                                        <i
+                                                                            class="fas fa-times text-danger ml-1 btn-remove-person cursor-pointer"></i>
+                                                                    @endif
                                                                 </div>
-                                                                <div class="d-flex align-items-center w-100 pl-4 pr-2 mt-1 mb-1 time-slider-container" style="{{ !$canEdit || ($assignment->is_foreign ?? false) ? 'opacity: 0.6; pointer-events: none;' : '' }}">
+                                                                <div class="d-flex align-items-center w-100 pl-4 pr-2 mt-1 mb-1 time-slider-container"
+                                                                    style="{{ !$canEdit || ($assignment->is_foreign ?? false) ? 'opacity: 0.6; pointer-events: none;' : '' }}">
                                                                     <div class="time-slider flex-grow-1"></div>
-                                                                    <div class="time-display ml-2 font-weight-bold" style="font-size: 0.7rem; width: 140px; text-align: right; line-height: 1.4; flex-shrink: 0;"></div>
-                                                                    <input type="hidden" class="p-start-input" value="{{ $p_info->start ? \Carbon\Carbon::parse($p_info->start)->format('H:i') : '' }}">
-                                                                    <input type="hidden" class="p-end-input" value="{{ $p_info->end ? \Carbon\Carbon::parse($p_info->end)->format('H:i') : '' }}">
+                                                                    <div class="time-display ml-2 font-weight-bold"
+                                                                        style="font-size: 0.7rem; width: 140px; text-align: right; line-height: 1.4; flex-shrink: 0;">
+                                                                    </div>
+                                                                    <input type="hidden" class="p-start-input"
+                                                                        value="{{ $p_info->start ? \Carbon\Carbon::parse($p_info->start)->format('H:i') : '' }}">
+                                                                    <input type="hidden" class="p-end-input"
+                                                                        value="{{ $p_info->end ? \Carbon\Carbon::parse($p_info->end)->format('H:i') : '' }}">
                                                                 </div>
                                                             </div>
                                                         @endforeach
@@ -786,33 +818,40 @@
                                                         <div
                                                             class="personnel-row d-flex flex-column p-1 border-bottom">
                                                             <div class="d-flex align-items-center w-100">
-                                                            <div class="personnel-label">A</div>
-                                                            <div style="flex: 1" class="d-flex align-items-center">
-                                                                <select
-                                                                    class="form-control form-control-sm person-select"
-                                                                    style="width: 40%" data-op-type="thủ công"
-                                                                    {{ !$canEdit ? 'disabled' : '' }}>
-                                                                    <option value="">-- Chọn người --</option>
-                                                                </select>
-                                                                <i class="fas fa-hand-paper text-secondary ml-1 op-icon"
-                                                                    title="Sắp thủ công"
-                                                                    style="font-size: 0.8rem;"></i>
-                                                                <input type="text"
-                                                                    class="form-control form-control-sm person-notif ml-1"
-                                                                    style="width: 50%; font-size: 0.7rem; height: 28px; padding: 2px 5px;"
-                                                                    placeholder="Lưu ý (nếu có)..."
-                                                                    {{ !$canEdit ? 'disabled' : '' }}>
+                                                                <div class="personnel-label">A</div>
+                                                                <div style="flex: 1"
+                                                                    class="d-flex align-items-center">
+                                                                    <select
+                                                                        class="form-control form-control-sm person-select"
+                                                                        style="width: 40%" data-op-type="thủ công"
+                                                                        {{ !$canEdit ? 'disabled' : '' }}>
+                                                                        <option value="">-- Chọn người --
+                                                                        </option>
+                                                                    </select>
+                                                                    <i class="fas fa-hand-paper text-secondary ml-1 op-icon"
+                                                                        title="Sắp thủ công"
+                                                                        style="font-size: 0.8rem;"></i>
+                                                                    <input type="text"
+                                                                        class="form-control form-control-sm person-notif ml-1"
+                                                                        style="width: 50%; font-size: 0.7rem; height: 28px; padding: 2px 5px;"
+                                                                        placeholder="Lưu ý (nếu có)..."
+                                                                        {{ !$canEdit ? 'disabled' : '' }}>
+                                                                </div>
+                                                                @if ($canEdit)
+                                                                    <i
+                                                                        class="fas fa-times text-danger ml-1 btn-remove-person cursor-pointer"></i>
+                                                                @endif
                                                             </div>
-                                                            @if ($canEdit)
-                                                                <i
-                                                                    class="fas fa-times text-danger ml-1 btn-remove-person cursor-pointer"></i>
-                                                            @endif
-                                                            </div>
-                                                            <div class="d-flex align-items-center w-100 pl-4 pr-2 mt-1 mb-1 time-slider-container" style="{{ !$canEdit ? 'opacity: 0.6; pointer-events: none;' : '' }}">
+                                                            <div class="d-flex align-items-center w-100 pl-4 pr-2 mt-1 mb-1 time-slider-container"
+                                                                style="{{ !$canEdit ? 'opacity: 0.6; pointer-events: none;' : '' }}">
                                                                 <div class="time-slider flex-grow-1"></div>
-                                                                <div class="time-display ml-2 font-weight-bold" style="font-size: 0.7rem; width: 140px; text-align: right; line-height: 1.4; flex-shrink: 0;"></div>
-                                                                <input type="hidden" class="p-start-input" value="">
-                                                                <input type="hidden" class="p-end-input" value="">
+                                                                <div class="time-display ml-2 font-weight-bold"
+                                                                    style="font-size: 0.7rem; width: 140px; text-align: right; line-height: 1.4; flex-shrink: 0;">
+                                                                </div>
+                                                                <input type="hidden" class="p-start-input"
+                                                                    value="">
+                                                                <input type="hidden" class="p-end-input"
+                                                                    value="">
                                                             </div>
                                                         </div>
                                                     </div>
@@ -1185,7 +1224,8 @@
                 if (personCode) {
                     const personData = currentSidebarData.find(p => (p.employeeId || p.code) == personCode);
                     if (personData) {
-                        const personShift = (personData.days && personData.days[dayKey]) ? (personData.days[dayKey]?.shift ?? personData.days[dayKey]).toString().toUpperCase() : 'HC';
+                        const personShift = (personData.days && personData.days[dayKey]) ? (personData.days[
+                            dayKey]?.shift ?? personData.days[dayKey]).toString().toUpperCase() : 'HC';
                         if (shiftName !== 'Khác' && personShift !== 'P' && personShift !== shiftName) {
                             isDiscrepancy = true;
                         }
@@ -1259,8 +1299,10 @@
                         } else {
                             roomCode = roomRow.find('.room-name-cell b').text().trim() || 'NA';
                         }
-                        const start = foundPersonRow.find('.p-start-input').val() || $item.find('.start-time-input').val() || '';
-                        const end = foundPersonRow.find('.p-end-input').val() || $item.find('.end-time-input').val() || '';
+                        const start = foundPersonRow.find('.p-start-input').val() || $item.find(
+                            '.start-time-input').val() || '';
+                        const end = foundPersonRow.find('.p-end-input').val() || $item.find(
+                            '.end-time-input').val() || '';
 
                         if (start || end) {
                             assignments.push({
@@ -1353,18 +1395,19 @@
             const startStr = $item.find('.start-time-input').val();
             const endStr = $item.find('.end-time-input').val();
             if (!startStr || !endStr) return;
-            
+
             const sOffset = timeToOffset(startStr);
             let eOffset = timeToOffset(endStr);
             if (eOffset <= sOffset) {
                 eOffset += 24.0;
             }
-            
+
             $item.find('.personnel-row').each(function() {
                 const $row = $(this);
                 const pid = $row.find('.person-select').val();
                 if (pid) {
-                    const roomCode = $item.closest('.room-row').find('.room-name-cell b').text().trim() || 'Khác';
+                    const roomCode = $item.closest('.room-row').find('.room-name-cell b').text()
+                        .trim() || 'Khác';
                     personnelData.push({
                         pid: pid.toString(),
                         start: sOffset,
@@ -1385,22 +1428,24 @@
                 if (p1.pid === p2.pid) {
                     if (p1.start < p2.end && p2.start < p1.end) {
                         overlapExists = true;
-                        
+
                         p1.$row.addClass('overlap-warning');
                         if (p1.$row.find('.overlap-badge').length === 0) {
                             let headerRow1 = p1.$row.find('.d-flex.align-items-center.w-100').first();
-                            let badgeHtml1 = `<span class="badge badge-danger overlap-badge ml-1 cursor-pointer" title="Trùng lịch với ca khác (${p2.startStr}-${p2.endStr} tại ${p2.room})" style="font-size:0.7rem;"><i class="fas fa-exclamation-triangle mr-1"></i>Trùng</span>`;
+                            let badgeHtml1 =
+                                `<span class="badge badge-danger overlap-badge ml-1 cursor-pointer" title="Trùng lịch với ca khác (${p2.startStr}-${p2.endStr} tại ${p2.room})" style="font-size:0.7rem;"><i class="fas fa-exclamation-triangle mr-1"></i>Trùng</span>`;
                             if (headerRow1.find('.btn-remove-person').length > 0) {
                                 $(badgeHtml1).insertBefore(headerRow1.find('.btn-remove-person'));
                             } else {
                                 headerRow1.append(badgeHtml1);
                             }
                         }
-                        
+
                         p2.$row.addClass('overlap-warning');
                         if (p2.$row.find('.overlap-badge').length === 0) {
                             let headerRow2 = p2.$row.find('.d-flex.align-items-center.w-100').first();
-                            let badgeHtml2 = `<span class="badge badge-danger overlap-badge ml-1 cursor-pointer" title="Trùng lịch với ca khác (${p1.startStr}-${p1.endStr} tại ${p1.room})" style="font-size:0.7rem;"><i class="fas fa-exclamation-triangle mr-1"></i>Trùng</span>`;
+                            let badgeHtml2 =
+                                `<span class="badge badge-danger overlap-badge ml-1 cursor-pointer" title="Trùng lịch với ca khác (${p1.startStr}-${p1.endStr} tại ${p1.room})" style="font-size:0.7rem;"><i class="fas fa-exclamation-triangle mr-1"></i>Trùng</span>`;
                             if (headerRow2.find('.btn-remove-person').length > 0) {
                                 $(badgeHtml2).insertBefore(headerRow2.find('.btn-remove-person'));
                             } else {
@@ -2065,10 +2110,11 @@
             // 2. Scan DB assignments
             const dbList = dbAssignments[personId.toString()] || [];
             const currentFilterGroup = $('select[name="group_code"]').val() || '';
-            
+
             for (const dbAss of dbList) {
                 // Chỉ bật cảnh báo liên quan đến tổ đang chọn (bỏ qua nếu dbAss khác tổ)
-                if (currentFilterGroup !== '' && dbAss.group_id && dbAss.group_id.toString() !== currentFilterGroup.toString()) {
+                if (currentFilterGroup !== '' && dbAss.group_id && dbAss.group_id.toString() !==
+                    currentFilterGroup.toString()) {
                     continue;
                 }
 
@@ -2214,13 +2260,13 @@
             const container = $(this).closest('.personnel-container');
             const item = $(this).closest('.assignment-item');
             const row = $(this).closest('.room-row');
-            
+
             $(this).closest('.personnel-row').remove();
 
             if (container.find('.personnel-row').length === 0) {
                 const $target = item.find('.job-desc');
                 $target.empty();
-                
+
                 const planItems = row.find('.theory-cell .plan-item');
                 planItems.each(function() {
                     const planStart = $(this).data('start');
@@ -2229,18 +2275,19 @@
                         $target.append(planHtml);
                     }
                 });
-                
+
                 const items = $target.find('.plan-item').get();
                 items.sort(function(a, b) {
                     const startA = $(a).data('start');
                     const startB = $(b).data('start');
                     return startA < startB ? -1 : (startA > startB ? 1 : 0);
                 });
-                
+
                 $target.empty();
                 $.each(items, function(i, itm) {
                     const $itm = $(itm).clone();
-                    $itm.removeClass('hover-show-btn position-relative mb-1 pb-1 border-bottom');
+                    $itm.removeClass(
+                        'hover-show-btn position-relative mb-1 pb-1 border-bottom');
                     $itm.css({
                         'margin-bottom': '2px',
                         'padding-bottom': '0',
@@ -2685,7 +2732,8 @@
                         if (pid) p_list.push({
                             personnel_id: pid,
                             notification: $(this).find('.person-notif').val(),
-                            operation_type: $(this).find('.person-select').attr('data-op-type') || 'thủ công',
+                            operation_type: $(this).find('.person-select').attr(
+                                'data-op-type') || 'thủ công',
                             start: pStart,
                             end: pEnd
                         });
@@ -2771,10 +2819,7 @@
 
         $(document).on('click', '.btn-save-room', async function() {
             let checkPol = checkOvertimePolicyBeforeSave();
-            if(!checkPol.valid) {
-                Swal.fire({icon: 'error', title: 'Lỗi Chính Sách', html: checkPol.message});
-                return;
-            }
+            // Đã bỏ chặn lưu khi có lỗi chính sách theo yêu cầu, chỉ cảnh báo ở UI
             if (validateAllOverlaps()) {
                 const result = await Swal.fire({
                     title: 'Cảnh báo',
@@ -2793,10 +2838,7 @@
 
         $(document).on('click', '#btn-save-all', async function() {
             let checkPol = checkOvertimePolicyBeforeSave();
-            if(!checkPol.valid) {
-                Swal.fire({icon: 'error', title: 'Lỗi Chính Sách', html: checkPol.message});
-                return;
-            }
+            // Đã bỏ chặn lưu khi có lỗi chính sách theo yêu cầu, chỉ cảnh báo ở UI
             if (validateAllOverlaps()) {
                 const result = await Swal.fire({
                     title: 'Cảnh báo',
@@ -2810,7 +2852,7 @@
                 });
                 if (!result.isConfirmed) return;
             }
-            
+
             const rows = $('.room-row');
             let successCount = 0;
             let totalProcessed = 0;
@@ -2902,7 +2944,63 @@
             }
         });
 
+        let isOvertimeApproved = {{ $isOvertimeApproved ? 'true' : 'false' }};
+
+        $(document).on('click', '#btn-approve-overtime', function() {
+            Swal.fire({
+                title: 'Xác nhận Phê duyệt',
+                text: 'Bạn có chắc chắn muốn phê duyệt vượt mức trần tăng ca cho ngày này? (Sẽ cho phép in lịch)',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Có, phê duyệt!',
+                cancelButtonText: 'Hủy'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: '{{ route('pages.assignment.production.approve_overtime') }}',
+                        type: 'POST',
+                        data: {
+                            _token: '{{ csrf_token() }}',
+                            reportedDate: '{{ $reportedDate }}',
+                            production_code: '{{ $production_code }}',
+                            group_code: '{{ $group_code ?? '' }}'
+                        },
+                        success: function(res) {
+                            if (res.success) {
+                                isOvertimeApproved = true;
+                                Swal.fire('Thành công',
+                                    'Đã phê duyệt vượt mức trần tăng ca. Bạn đã có thể in lịch.',
+                                    'success');
+                                $('#btn-approve-overtime').hide();
+                            } else {
+                                Swal.fire('Lỗi', res.message ||
+                                    'Không thể phê duyệt', 'error');
+                            }
+                        },
+                        error: function() {
+                            Swal.fire('Lỗi',
+                                'Đã xảy ra lỗi khi kết nối với máy chủ', 'error'
+                            );
+                        }
+                    });
+                }
+            });
+        });
+
         $(document).on('click', '#btn-print-schedule', function() {
+            let checkPol = checkOvertimePolicyBeforeSave();
+            if (!checkPol.valid && !isOvertimeApproved) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Không thể In',
+                    html: 'Có cảnh báo vượt mức trần tăng ca. Vui lòng bấm <b>Phê duyệt Tăng ca</b> trước khi in.<br><br>' +
+                        checkPol.message
+                });
+                return;
+            }
+
             const url = $(this).attr('data-url');
 
             // Hiện thông báo đang chuẩn bị trang in
@@ -2944,14 +3042,15 @@
                 $(this).find('.personnel-row').each(function() {
                     const pid = $(this).find('.person-select').val();
                     let pStart = $(this).find('.p-start-input').val() || '';
-                        let pEnd = $(this).find('.p-end-input').val() || '';
-                        if (pid) p_list.push({
-                            personnel_id: pid,
-                            notification: $(this).find('.person-notif').val(),
-                            operation_type: $(this).find('.person-select').attr('data-op-type') || 'thủ công',
-                            start: pStart,
-                            end: pEnd
-                        });
+                    let pEnd = $(this).find('.p-end-input').val() || '';
+                    if (pid) p_list.push({
+                        personnel_id: pid,
+                        notification: $(this).find('.person-notif').val(),
+                        operation_type: $(this).find('.person-select').attr(
+                            'data-op-type') || 'thủ công',
+                        start: pStart,
+                        end: pEnd
+                    });
                 });
 
                 if (p_list.length === 0) return true;
@@ -3308,7 +3407,8 @@
 
                 currentSidebarData.forEach(person => {
                     const dayKey = 'day' + currentSidebarDay;
-                    const shiftCode = (person.days && person.days[dayKey]) ? (person.days[dayKey]?.shift ?? person.days[dayKey]).toString().toUpperCase() : 'HC';
+                    const shiftCode = (person.days && person.days[dayKey]) ? (person.days[dayKey]
+                        ?.shift ?? person.days[dayKey]).toString().toUpperCase() : 'HC';
                     const personCode = person.employeeId || person.code || '';
                     const personId = employeeCodeToId[personCode];
 
@@ -3408,50 +3508,59 @@
                     const pool = [...pools[shiftKey]];
 
                     // --- GIAI ĐOẠN 0: ƯU TIÊN GÁN NHÂN SỰ KHO (WH) (MỖI PHÒNG 1 NGƯỜI) ---
-                    const activeGroupCode = $('select[name="group_code"]').val() || '{!! $group_code ?? "" !!}';
+                    const activeGroupCode = $('select[name="group_code"]').val() ||
+                        '{!! $group_code ?? '' !!}';
                     if (activeGroupCode == '1' && productionCode === 'PXV1') {
                         // Lọc các nhân sự kho (mã hoặc tên chứa WH)
                         const whPool = pool.filter(pid => {
-                            const person = currentSidebarData.find(p => (employeeCodeToId[p.employeeId || p.code] == pid));
-                            const pName = person ? (person.employeeName || person.fullName || '') : '';
-                            return person && ((person.employeeId || person.code || '').includes('WH') || pName.includes('WH'));
+                            const person = currentSidebarData.find(p => (employeeCodeToId[p
+                                .employeeId || p.code] == pid));
+                            const pName = person ? (person.employeeName || person
+                                .fullName || '') : '';
+                            return person && ((person.employeeId || person.code || '')
+                                .includes('WH') || pName.includes('WH'));
                         });
 
                         const whPoolMutable = [...whPool];
                         let phase0Continue = true;
-                        
+
                         while (phase0Continue && whPoolMutable.length > 0) {
                             phase0Continue = false;
                             for (const task of shiftTasks) {
                                 if (whPoolMutable.length === 0) break;
                                 if (task.assigned.length >= task.required) continue;
-                                
+
                                 // Đảm bảo mỗi phòng chỉ nhận 1 nhân sự WH
-                                const hasWhAssigned = task.assigned.some(aPid => whPool.includes(parseInt(aPid)));
+                                const hasWhAssigned = task.assigned.some(aPid => whPool.includes(
+                                    parseInt(aPid)));
                                 if (hasWhAssigned) continue;
-                                
-                                let bestPid = null, bestLevel = -1, bestPriority = 9999, bestIdx = -1;
+
+                                let bestPid = null,
+                                    bestLevel = -1,
+                                    bestPriority = 9999,
+                                    bestIdx = -1;
                                 for (let i = 0; i < whPoolMutable.length; i++) {
                                     const pid = whPoolMutable[i];
                                     if (task.assigned.includes(pid.toString())) continue;
-                                    
+
                                     const lv = getPersonLevel(pid, task.roomId);
                                     const prio = getPersonPriority(pid, task.roomId);
-                                    if (lv > bestLevel || (lv === bestLevel && prio < bestPriority)) {
+                                    if (lv > bestLevel || (lv === bestLevel && prio <
+                                            bestPriority)) {
                                         bestLevel = lv;
                                         bestPriority = prio;
                                         bestPid = pid;
                                         bestIdx = i;
                                     }
                                 }
-                                
+
                                 if (bestPid !== null) {
                                     task.assigned.push(bestPid.toString());
                                     whPoolMutable.splice(bestIdx, 1);
-                                    
+
                                     const globalIdx = pool.indexOf(bestPid);
                                     if (globalIdx >= 0) pool.splice(globalIdx, 1);
-                                    
+
                                     phase0Continue = true;
                                 }
                             }
@@ -3488,7 +3597,8 @@
                                 if (task.assigned.includes(pid.toString())) continue;
                                 const lv = getPersonLevel(pid, task.roomId);
                                 const prio = getPersonPriority(pid, task.roomId);
-                                if (lv >= 3 && (lv > bestLevel || (lv === bestLevel && prio < bestPriority))) {
+                                if (lv >= 3 && (lv > bestLevel || (lv === bestLevel && prio <
+                                        bestPriority))) {
                                     bestLevel = lv;
                                     bestPriority = prio;
                                     bestPid = pid;
@@ -3527,7 +3637,8 @@
                                     const level = getPersonLevel(pid, task.roomId);
                                     const prio = getPersonPriority(pid, task.roomId);
 
-                                    if (level > 0 && (level > bestLevel || (level === bestLevel && prio < bestPriority))) {
+                                    if (level > 0 && (level > bestLevel || (level === bestLevel &&
+                                            prio < bestPriority))) {
                                         bestLevel = level;
                                         bestPriority = prio;
                                         bestPersonId = pid;
@@ -3657,7 +3768,8 @@
                 };
                 currentSidebarData.forEach(person => {
                     const dayKey = 'day' + currentSidebarDay;
-                    const shiftCode = (person.days && person.days[dayKey]) ? (person.days[dayKey]?.shift ?? person.days[dayKey]).toString().toUpperCase() : 'HC';
+                    const shiftCode = (person.days && person.days[dayKey]) ? (person.days[dayKey]
+                        ?.shift ?? person.days[dayKey]).toString().toUpperCase() : 'HC';
                     const personCode = person.employeeId || person.code || '';
                     const personId = employeeCodeToId[personCode];
                     if (!personId || shiftCode === 'P') return;
@@ -3956,7 +4068,8 @@
 
             data.forEach(person => {
                 const dayKey = 'day' + currentDay;
-                let shiftCode = (person.days && person.days[dayKey]) ? (person.days[dayKey]?.shift ?? person.days[dayKey]).toString().toUpperCase() : 'HC';
+                let shiftCode = (person.days && person.days[dayKey]) ? (person.days[dayKey]?.shift ??
+                    person.days[dayKey]).toString().toUpperCase() : 'HC';
 
                 const personName = person.employeeName || person.name || '';
                 const personCode = person.employeeId || person.code || '';
@@ -3976,7 +4089,8 @@
 
                 const dayData = person.days && person.days[dayKey];
                 const overtime = (dayData && typeof dayData === 'object') ? (dayData.overtime || 0) : 0;
-                const regularHours = (dayData && typeof dayData === 'object') ? (dayData.regular_working_Hours ?? 8) : 8;
+                const regularHours = (dayData && typeof dayData === 'object') ? (dayData
+                    .regular_working_Hours ?? 8) : 8;
 
                 const personInfo = {
                     name: personName,
@@ -4024,8 +4138,12 @@
                     `;
                     const isLeave = key === 'P';
                     shifts[key].forEach(p => {
-                        const otBadge = p.overtime > 0 ? `<span class="badge badge-warning text-white ml-1" style="font-size:0.6rem; padding:1px 3px;" title="Làm thêm ${p.overtime}h">TC:${p.overtime}h</span>` : '';
-                        const lowHoursBadge = (p.regularHours > 0 && p.regularHours < 8) ? `<span class="badge badge-secondary ml-1" style="font-size:0.6rem; padding:1px 3px;" title="${p.regularHours}h thường">${p.regularHours}h</span>` : '';
+                        const otBadge = p.overtime > 0 ?
+                            `<span class="badge badge-warning text-white ml-1" style="font-size:0.6rem; padding:1px 3px;" title="Làm thêm ${p.overtime}h">TC:${p.overtime}h</span>` :
+                            '';
+                        const lowHoursBadge = (p.regularHours > 0 && p.regularHours < 8) ?
+                            `<span class="badge badge-secondary ml-1" style="font-size:0.6rem; padding:1px 3px;" title="${p.regularHours}h thường">${p.regularHours}h</span>` :
+                            '';
                         html += `
                             <div class="list-group-item py-1 pl-5 small draggable-person ${isLeave ? 'person-on-leave text-muted' : ''}" 
                                  draggable="${isLeave ? 'false' : 'true'}" 
@@ -4407,7 +4525,7 @@
                             pData.forEach(p => {
                                 const opType = p.operation_type || 'thủ công';
                                 const newRow = addPersonRow($pContainer, p.personnel_id,
-                                opType);
+                                    opType);
                                 if (newRow && p.notification) {
                                     newRow.find('.person-notif').val(p.notification);
                                 }
@@ -4437,343 +4555,369 @@
 
     });
 
-        
-        function initTimeSlider(row) {
-            const sliderEl = row.find('.time-slider')[0];
-            const displayEl = row.find('.time-display');
-            
-            if (!sliderEl || sliderEl.noUiSlider) return;
 
-            let assignItem = row.closest('.assignment-item');
-            if (assignItem.length === 0) assignItem = row.closest('tr');
-            
-            let assignStartStr = assignItem.find('.start-time-input').val() || assignItem.find('.assign-start').val() || '06:00';
-            let assignEndStr = assignItem.find('.end-time-input').val() || assignItem.find('.assign-end').val() || '14:00';
-            
-            let shiftVal = assignItem.find('.shift-select').val() || '1';
-            sliderEl.classList.add('shift-' + shiftVal + '-slider');
-            
-            function timeToMinutes(t) {
-                if(t === undefined || t === null || t === '') return 0;
-                if(typeof t === 'number') return t;
-                t = String(t);
-                if(t.indexOf(':') === -1) return parseFloat(t) || 0;
-                let parts = t.split(':');
-                let h = parseInt(parts[0], 10) || 0;
-                let m = parseInt(parts[1], 10) || 0;
-                return h * 60 + m;
-            }
-            function minutesToTime(m) {
-                if (m < 0) m += 24 * 60;
-                let h = Math.floor(m / 60) % 24;
-                let mins = Math.floor(m % 60);
-                return String(h).padStart(2, '0') + ':' + String(mins).padStart(2, '0');
-            }
+    function initTimeSlider(row) {
+        const sliderEl = row.find('.time-slider')[0];
+        const displayEl = row.find('.time-display');
 
-            let pStart = row.find('.p-start-input').val();
-            let pEnd = row.find('.p-end-input').val();
+        if (!sliderEl || sliderEl.noUiSlider) return;
 
-            if(pStart && pStart.length > 10) pStart = pStart.substring(11, 16);
-            if(pEnd && pEnd.length > 10) pEnd = pEnd.substring(11, 16);
+        let assignItem = row.closest('.assignment-item');
+        if (assignItem.length === 0) assignItem = row.closest('tr');
 
-            let shiftStart = timeToMinutes(assignStartStr);
-            let shiftEnd = timeToMinutes(assignEndStr);
-            if (shiftEnd <= shiftStart) shiftEnd += 24 * 60;
+        let assignStartStr = assignItem.find('.start-time-input').val() || assignItem.find('.assign-start').val() ||
+            '06:00';
+        let assignEndStr = assignItem.find('.end-time-input').val() || assignItem.find('.assign-end').val() || '14:00';
 
-            let valStart = pStart ? timeToMinutes(pStart) : shiftStart;
-            let valEnd = pEnd ? timeToMinutes(pEnd) : shiftEnd;
+        let shiftVal = assignItem.find('.shift-select').val() || '1';
+        sliderEl.classList.add('shift-' + shiftVal + '-slider');
 
-            if (valStart < shiftStart - 240 && valStart < 12 * 60) valStart += 24 * 60;
-            if (valEnd < valStart) valEnd += 24 * 60;
-            
-            let minRange = shiftStart - 60;
-            let maxRange = shiftEnd + 60;
-            if (minRange > valStart) minRange = valStart - 60;
-            if (maxRange < valEnd) maxRange = valEnd + 60;
-            
-            // Đảm bảo minRange là bội số của 15 để step luôn nhảy đúng mốc 15 phút (00, 15, 30, 45)
-            minRange = Math.floor(minRange / 15) * 15;
+        function timeToMinutes(t) {
+            if (t === undefined || t === null || t === '') return 0;
+            if (typeof t === 'number') return t;
+            t = String(t);
+            if (t.indexOf(':') === -1) return parseFloat(t) || 0;
+            let parts = t.split(':');
+            let h = parseInt(parts[0], 10) || 0;
+            let m = parseInt(parts[1], 10) || 0;
+            return h * 60 + m;
+        }
 
-            noUiSlider.create(sliderEl, {
-                start: [valStart, valEnd],
-                connect: true,
-                range: {
-                    'min': minRange,
-                    'max': maxRange
+        function minutesToTime(m) {
+            if (m < 0) m += 24 * 60;
+            let h = Math.floor(m / 60) % 24;
+            let mins = Math.floor(m % 60);
+            return String(h).padStart(2, '0') + ':' + String(mins).padStart(2, '0');
+        }
+
+        let pStart = row.find('.p-start-input').val();
+        let pEnd = row.find('.p-end-input').val();
+
+        if (pStart && pStart.length > 10) pStart = pStart.substring(11, 16);
+        if (pEnd && pEnd.length > 10) pEnd = pEnd.substring(11, 16);
+
+        let shiftStart = timeToMinutes(assignStartStr);
+        let shiftEnd = timeToMinutes(assignEndStr);
+        if (shiftEnd <= shiftStart) shiftEnd += 24 * 60;
+
+        let valStart = pStart ? timeToMinutes(pStart) : shiftStart;
+        let valEnd = pEnd ? timeToMinutes(pEnd) : shiftEnd;
+
+        if (valStart < shiftStart - 240 && valStart < 12 * 60) valStart += 24 * 60;
+        if (valEnd < valStart) valEnd += 24 * 60;
+
+        let minRange = shiftStart - 60;
+        let maxRange = shiftEnd + 60;
+        if (minRange > valStart) minRange = valStart - 60;
+        if (maxRange < valEnd) maxRange = valEnd + 60;
+
+        // Đảm bảo minRange là bội số của 15 để step luôn nhảy đúng mốc 15 phút (00, 15, 30, 45)
+        minRange = Math.floor(minRange / 15) * 15;
+
+        noUiSlider.create(sliderEl, {
+            start: [valStart, valEnd],
+            connect: true,
+            range: {
+                'min': minRange,
+                'max': maxRange
+            },
+            step: 15,
+            format: {
+                to: function(v) {
+                    return minutesToTime(v);
                 },
-                step: 15,
-                format: {
-                    to: function(v) { return minutesToTime(v); },
-                    from: function(v) { return timeToMinutes(v); }
+                from: function(v) {
+                    return timeToMinutes(v);
                 }
-            });
+            }
+        });
 
-            sliderEl.noUiSlider.on('update', function(values) {
-                // Tính số giờ từ start -> end
-                let sMin = timeToMinutes(values[0]);
-                let eMin = timeToMinutes(values[1]);
-                if (eMin <= sMin) eMin += 24 * 60;
-                let totalMins = eMin - sMin;
-                let totalHrs = (totalMins / 60).toFixed(1);
-                let tc = parseFloat(Math.max(0, (totalMins / 60) - 8).toFixed(1));
+        sliderEl.noUiSlider.on('update', function(values) {
+            // Tính số giờ từ start -> end
+            let sMin = timeToMinutes(values[0]);
+            let eMin = timeToMinutes(values[1]);
+            if (eMin <= sMin) eMin += 24 * 60;
+            let totalMins = eMin - sMin;
+            let totalHrs = (totalMins / 60).toFixed(1);
+            let tc = parseFloat(Math.max(0, (totalMins / 60) - 8).toFixed(1));
 
-                // Gộp tất cả trên 1 dòng
-                displayEl.html(
-                    `<span style="color:#555;">${values[0]}-${values[1]}</span> ` +
-                    `<span style="color:#007bff;font-weight:bold;">=${totalHrs}h</span>` +
-                    (tc > 0 ? ` <span style="color:#dc3545;font-weight:bold;">TC:${tc}h</span>` : '')
-                );
+            // Gộp tất cả trên 1 dòng
+            displayEl.html(
+                `<span style="color:#555;">${values[0]}-${values[1]}</span> ` +
+                `<span style="color:#007bff;font-weight:bold;">=${totalHrs}h</span>` +
+                (tc > 0 ? ` <span style="color:#dc3545;font-weight:bold;">TC:${tc}h</span>` : '')
+            );
 
-                row.find('.p-start-input').val(values[0]);
-                row.find('.p-end-input').val(values[1]);
+            row.find('.p-start-input').val(values[0]);
+            row.find('.p-end-input').val(values[1]);
 
-                // Cập nhật badge cảnh báo tăng ca realtime
-                if (typeof renderOvertimeBadge === 'function') {
-                    clearTimeout(window._overtimeBadgeTimer);
-                    window._overtimeBadgeTimer = setTimeout(renderOvertimeBadge, 300);
-                }
-            });
+            // Cập nhật badge cảnh báo tăng ca realtime
+            if (typeof renderOvertimeBadge === 'function') {
+                clearTimeout(window._overtimeBadgeTimer);
+                window._overtimeBadgeTimer = setTimeout(renderOvertimeBadge, 300);
+            }
+        });
 
-            sliderEl.noUiSlider.on('set', function(values) {
-                let assignmentItem = row.closest('.assignment-item');
-                let assignmentId = assignmentItem.attr('data-id');
-                let personnelId = row.find('.person-select').val();
-                let reportedDate = $('#reportedDate').val() || '';
-                
-                if (assignmentId && personnelId && !assignmentItem.hasClass('foreign-assignment')) {
-                    $.ajax({
-                        url: '{{ route('pages.assignment.production.update_personnel_time') }}',
-                        type: 'POST',
-                        data: {
-                            _token: '{{ csrf_token() }}',
-                            assignment_id: assignmentId,
-                            personnel_id: personnelId,
-                            start: values[0],
-                            end: values[1],
-                            reportedDate: reportedDate
-                        },
-                        success: function(res) {
-                            if(res.success) {
-                                // Auto refresh sidebar to show new time
-                                if (!$('.sidebar-right').hasClass('collapsed')) {
-                                    if (typeof fetchPersonnelShifts === 'function') {
-                                        fetchPersonnelShifts();
-                                    } else {
-                                        updateSidebarPersonnelTimes();
-                                    }
+        sliderEl.noUiSlider.on('set', function(values) {
+            let assignmentItem = row.closest('.assignment-item');
+            let assignmentId = assignmentItem.attr('data-id');
+            let personnelId = row.find('.person-select').val();
+            let reportedDate = $('#reportedDate').val() || '';
+
+            if (assignmentId && personnelId && !assignmentItem.hasClass('foreign-assignment')) {
+                $.ajax({
+                    url: '{{ route('pages.assignment.production.update_personnel_time') }}',
+                    type: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}',
+                        assignment_id: assignmentId,
+                        personnel_id: personnelId,
+                        start: values[0],
+                        end: values[1],
+                        reportedDate: reportedDate
+                    },
+                    success: function(res) {
+                        if (res.success) {
+                            // Auto refresh sidebar to show new time
+                            if (!$('.sidebar-right').hasClass('collapsed')) {
+                                if (typeof fetchPersonnelShifts === 'function') {
+                                    fetchPersonnelShifts();
                                 } else {
                                     updateSidebarPersonnelTimes();
                                 }
+                            } else {
+                                updateSidebarPersonnelTimes();
                             }
                         }
-                    });
-                }
-            });
-        }
-
-        $(document).ready(function() {
-            setTimeout(() => {
-                $('.personnel-row').each(function() {
-                    initTimeSlider($(this));
-                });
-            }, 500);
-
-            // Fetch overtime policy
-            fetch(`/assignemnt/overtime-policy?production_code={{ $production_code }}`)
-                .then(res => res.json())
-                .then(res => {
-                    if(res.success && res.data.length > 0) {
-                        currentOvertimePolicies = res.data;
-                        renderOvertimeBadge();
                     }
                 });
+            }
         });
+    }
 
-        let currentOvertimePolicies = [];
-        const currentGroupCode = '{{ $group_code ?? '' }}';
+    $(document).ready(function() {
+        setTimeout(() => {
+            $('.personnel-row').each(function() {
+                initTimeSlider($(this));
+            });
+        }, 500);
 
-        // Chuyển chuỗi HH:MM thành số phút
-        function timeStrToMins(t) {
-            if (!t) return 0;
-            t = t.toString().trim();
-            if (t.length > 5) t = t.substring(11, 16); // Handle datetime strings
-            const parts = t.split(':');
-            return (parseInt(parts[0]) || 0) * 60 + (parseInt(parts[1]) || 0);
-        }
+        // Fetch overtime policy
+        fetch(`/assignemnt/overtime-policy?production_code={{ $production_code }}`)
+            .then(res => res.json())
+            .then(res => {
+                if (res.success && res.data.length > 0) {
+                    currentOvertimePolicies = res.data;
+                    renderOvertimeBadge();
+                }
+            });
+    });
 
-        function calculateTotalOvertime() {
-            // Đọc trực tiếp từ bảng lịch phân công trong DOM
-            let personData = {}; // pid → { totalMins, groupCodes: Set }
+    let currentOvertimePolicies = [];
+    const currentGroupCode = '{{ $group_code ?? '' }}';
 
-            $('.room-row').each(function() {
-                const $roomRow = $(this);
-                // data-group-code = code của tổ (khớp với stage_groups.code = pol.group_code_value)
-                const groupCode = ($roomRow.attr('data-group-code') || '').toString();
+    // Chuyển chuỗi HH:MM thành số phút
+    function timeStrToMins(t) {
+        if (!t) return 0;
+        t = t.toString().trim();
+        if (t.length > 5) t = t.substring(11, 16); // Handle datetime strings
+        const parts = t.split(':');
+        return (parseInt(parts[0]) || 0) * 60 + (parseInt(parts[1]) || 0);
+    }
 
-                $roomRow.find('.assignment-item:not(.foreign-assignment)').each(function() {
-                    const $item = $(this);
-                    const startStr = $item.find('.start-time-input').val();
-                    const endStr   = $item.find('.end-time-input').val();
-                    if (!startStr || !endStr) return;
+    function calculateTotalOvertime() {
+        // Đọc trực tiếp từ bảng lịch phân công trong DOM
+        let personData = {}; // pid → { totalMins, groupCodes: Set }
 
-                    let shiftStart = timeStrToMins(startStr);
-                    let shiftEnd   = timeStrToMins(endStr);
-                    if (shiftEnd <= shiftStart) shiftEnd += 24 * 60;
+        $('.room-row').each(function() {
+            const $roomRow = $(this);
+            // data-group-code = code của tổ (khớp với stage_groups.code = pol.group_code_value)
+            const groupCode = ($roomRow.attr('data-group-code') || '').toString();
 
-                    $item.find('.personnel-row').each(function() {
-                        const pid = $(this).find('.person-select').val();
-                        if (!pid) return;
+            $roomRow.find('.assignment-item:not(.foreign-assignment)').each(function() {
+                const $item = $(this);
+                const startStr = $item.find('.start-time-input').val();
+                const endStr = $item.find('.end-time-input').val();
+                if (!startStr || !endStr) return;
 
-                        // Ưu tiên dùng giờ riêng của nhân sự (slider), fallback về giờ ca
-                        const pStartStr = $(this).find('.p-start-input').val();
-                        const pEndStr   = $(this).find('.p-end-input').val();
+                let shiftStart = timeStrToMins(startStr);
+                let shiftEnd = timeStrToMins(endStr);
+                if (shiftEnd <= shiftStart) shiftEnd += 24 * 60;
 
-                        let personMins = shiftEnd - shiftStart;
-                        if (pStartStr && pEndStr) {
-                            let pS = timeStrToMins(pStartStr);
-                            let pE = timeStrToMins(pEndStr);
-                            if (pE <= pS) pE += 24 * 60;
-                            personMins = pE - pS;
-                        }
+                $item.find('.personnel-row').each(function() {
+                    const pid = $(this).find('.person-select').val();
+                    if (!pid) return;
 
-                        if (!personData[pid]) {
-                            personData[pid] = { totalMins: 0, groupCodes: new Set() };
-                        }
-                        personData[pid].totalMins += personMins;
-                        if (groupCode) personData[pid].groupCodes.add(groupCode);
-                    });
+                    // Ưu tiên dùng giờ riêng của nhân sự (slider), fallback về giờ ca
+                    const pStartStr = $(this).find('.p-start-input').val();
+                    const pEndStr = $(this).find('.p-end-input').val();
+
+                    let personMins = shiftEnd - shiftStart;
+                    if (pStartStr && pEndStr) {
+                        let pS = timeStrToMins(pStartStr);
+                        let pE = timeStrToMins(pEndStr);
+                        if (pE <= pS) pE += 24 * 60;
+                        personMins = pE - pS;
+                    }
+
+                    if (!personData[pid]) {
+                        personData[pid] = {
+                            totalMins: 0,
+                            groupCodes: new Set()
+                        };
+                    }
+                    personData[pid].totalMins += personMins;
+                    if (groupCode) personData[pid].groupCodes.add(groupCode);
                 });
             });
+        });
 
-            // Tổng hợp tăng ca
-            let totalHoursByGroup  = {}; // group_code → giờ TC
-            let totalPersonsByGroup = {}; // group_code → số người TC
-            let totalHoursDept  = 0;
-            let totalPersonsDept = 0;
+        // Tổng hợp tăng ca
+        let totalHoursByGroup = {}; // group_code → giờ TC
+        let totalPersonsByGroup = {}; // group_code → số người TC
+        let totalHoursDept = 0;
+        let totalPersonsDept = 0;
 
-            for (let pid in personData) {
-                const p = personData[pid];
-                const totalHrs = p.totalMins / 60;
-                if (totalHrs > 8) {
-                    const otHrs = parseFloat((totalHrs - 8).toFixed(2));
-                    totalHoursDept  += otHrs;
-                    totalPersonsDept++;
+        for (let pid in personData) {
+            const p = personData[pid];
+            const totalHrs = p.totalMins / 60;
+            if (totalHrs > 8) {
+                const otHrs = parseFloat((totalHrs - 8).toFixed(2));
+                totalHoursDept += otHrs;
+                totalPersonsDept++;
 
-                    p.groupCodes.forEach(gc => {
-                        if (!totalHoursByGroup[gc])  totalHoursByGroup[gc]  = 0;
-                        if (!totalPersonsByGroup[gc]) totalPersonsByGroup[gc] = 0;
-                        totalHoursByGroup[gc]  += otHrs;
-                        totalPersonsByGroup[gc]++;
-                    });
+                p.groupCodes.forEach(gc => {
+                    if (!totalHoursByGroup[gc]) totalHoursByGroup[gc] = 0;
+                    if (!totalPersonsByGroup[gc]) totalPersonsByGroup[gc] = 0;
+                    totalHoursByGroup[gc] += otHrs;
+                    totalPersonsByGroup[gc]++;
+                });
+            }
+        }
+
+        return {
+            dept: {
+                hours: parseFloat(totalHoursDept.toFixed(2)),
+                persons: totalPersonsDept
+            },
+            groups: {
+                hours: totalHoursByGroup,
+                persons: totalPersonsByGroup
+            }
+        };
+    }
+
+    function renderOvertimeBadge() {
+        if (currentOvertimePolicies.length === 0) return;
+
+        let otData = calculateTotalOvertime();
+        let badgeHtml = '';
+
+        currentOvertimePolicies.forEach(pol => {
+            let maxP = pol.max_personnel_per_day;
+            let maxH = pol.max_hours_per_day;
+            if (maxP == 0 && maxH == 0) return;
+
+            // Khi đã chọn tổ cụ thể: chỉ hiện badge toàn xưởng và badge của tổ đó
+            if (currentGroupCode !== '') {
+                if (pol.group_id !== null && pol.group_id !== undefined && pol.group_id !== '') {
+                    if (pol.group_code_value !== null && pol.group_code_value !== undefined && pol
+                        .group_code_value.toString() !== currentGroupCode.toString()) {
+                        return; // bỏ qua badge của tổ khác
+                    }
                 }
             }
 
-            return {
-                dept:   { hours: parseFloat(totalHoursDept.toFixed(2)), persons: totalPersonsDept },
-                groups: { hours: totalHoursByGroup, persons: totalPersonsByGroup }
-            };
-        }
+            let curP = 0;
+            let curH = 0;
+            let title = '';
 
-        function renderOvertimeBadge() {
-            if(currentOvertimePolicies.length === 0) return;
-            
-            let otData = calculateTotalOvertime();
-            let badgeHtml = '';
-            
-            currentOvertimePolicies.forEach(pol => {
-                let maxP = pol.max_personnel_per_day;
-                let maxH = pol.max_hours_per_day;
-                if(maxP == 0 && maxH == 0) return;
+            if (!pol.group_id) {
+                curP = otData.dept.persons;
+                curH = otData.dept.hours;
+                title = 'Toàn phân xưởng';
+            } else {
+                // Dùng group_code_value (stage_groups.code) làm key — khớp với data-group-code trên room-row
+                const gCode = pol.group_code_value !== null && pol.group_code_value !== undefined ?
+                    pol.group_code_value.toString() : '';
+                curP = otData.groups.persons[gCode] || 0;
+                curH = parseFloat((otData.groups.hours[gCode] || 0).toFixed(1));
+                title = `Tổ ${gCode}`;
+            }
 
-                // Khi đã chọn tổ cụ thể: chỉ hiện badge toàn xưởng và badge của tổ đó
-                if(currentGroupCode !== '') {
-                    if(pol.group_id !== null && pol.group_id !== undefined && pol.group_id !== '') {
-                        if(pol.group_code_value !== null && pol.group_code_value !== undefined && pol.group_code_value.toString() !== currentGroupCode.toString()) {
-                            return; // bỏ qua badge của tổ khác
-                        }
-                    }
-                }
+            let isExceeded = (maxP > 0 && curP > maxP) || (maxH > 0 && curH > maxH);
+            let colorClass = isExceeded ? 'badge-danger' : 'badge-primary';
 
-                let curP = 0;
-                let curH = 0;
-                let title = '';
-
-                if(!pol.group_id) {
-                    curP = otData.dept.persons;
-                    curH = otData.dept.hours;
-                    title = 'Toàn phân xưởng';
-                } else {
-                    // Dùng group_code_value (stage_groups.code) làm key — khớp với data-group-code trên room-row
-                    const gCode = pol.group_code_value !== null && pol.group_code_value !== undefined
-                        ? pol.group_code_value.toString() : '';
-                    curP = otData.groups.persons[gCode] || 0;
-                    curH = parseFloat((otData.groups.hours[gCode] || 0).toFixed(1));
-                    title = `Tổ ${gCode}`;
-                }
-
-                let isExceeded = (maxP > 0 && curP > maxP) || (maxH > 0 && curH > maxH);
-                let colorClass = isExceeded ? 'badge-danger' : 'badge-primary';
-
-                badgeHtml += `<span class="badge ${colorClass} mr-2 shadow-sm" style="font-size:0.9rem; padding: 6px 10px;">
+            badgeHtml += `<span class="badge ${colorClass} mr-2 shadow-sm" style="font-size:0.9rem; padding: 6px 10px;">
                     <i class="fas ${isExceeded ? 'fa-exclamation-triangle' : 'fa-check-circle'}"></i> Mức trần ${title}: 
                     ${maxP > 0 ? `<b>${curP}/${maxP}</b> người ` : ''} 
                     ${maxH > 0 ? `<b>${curH.toFixed(1)}/${maxH}</b> giờ` : ''}
                 </span>`;
-            });
+        });
 
-            if(badgeHtml) {
-                $('#overtimePolicyBadgeContainer').css('display', 'flex').html(badgeHtml);
-            } else {
-                $('#overtimePolicyBadgeContainer').hide();
-            }
+        if (badgeHtml) {
+            $('#overtimePolicyBadgeContainer').css('display', 'flex').html(badgeHtml);
+        } else {
+            $('#overtimePolicyBadgeContainer').hide();
+        }
+    }
+
+    function checkOvertimePolicyBeforeSave() {
+        if (currentOvertimePolicies.length === 0) return {
+            valid: true
+        };
+
+        // force update sidebar times just in case
+        if (typeof updateSidebarPersonnelTimes === 'function') {
+            updateSidebarPersonnelTimes();
         }
 
-        function checkOvertimePolicyBeforeSave() {
-            if(currentOvertimePolicies.length === 0) return { valid: true };
-            
-            // force update sidebar times just in case
-            if(typeof updateSidebarPersonnelTimes === 'function') {
-                updateSidebarPersonnelTimes();
-            }
+        let otData = calculateTotalOvertime();
 
-            let otData = calculateTotalOvertime();
-            
-            for(let i=0; i<currentOvertimePolicies.length; i++) {
-                let pol = currentOvertimePolicies[i];
-                let maxP = pol.max_personnel_per_day;
-                let maxH = pol.max_hours_per_day;
+        for (let i = 0; i < currentOvertimePolicies.length; i++) {
+            let pol = currentOvertimePolicies[i];
+            let maxP = pol.max_personnel_per_day;
+            let maxH = pol.max_hours_per_day;
 
-                // Khi đã chọn tổ cụ thể: chỉ kiểm tra policy toàn xưởng và policy của tổ đang chọn
-                if(currentGroupCode !== '') {
-                    if(pol.group_id !== null && pol.group_id !== undefined && pol.group_id !== '') {
-                        if(pol.group_code_value !== null && pol.group_code_value !== undefined && pol.group_code_value.toString() !== currentGroupCode.toString()) {
-                            continue; // bỏ qua policy của tổ khác
-                        }
+            // Khi đã chọn tổ cụ thể: chỉ kiểm tra policy toàn xưởng và policy của tổ đang chọn
+            if (currentGroupCode !== '') {
+                if (pol.group_id !== null && pol.group_id !== undefined && pol.group_id !== '') {
+                    if (pol.group_code_value !== null && pol.group_code_value !== undefined && pol.group_code_value
+                        .toString() !== currentGroupCode.toString()) {
+                        continue; // bỏ qua policy của tổ khác
                     }
                 }
-
-                let curP = 0;
-                let curH = 0;
-                let title = '';
-
-                if(!pol.group_id) {
-                    curP = otData.dept.persons;
-                    curH = otData.dept.hours;
-                    title = 'Toàn phân xưởng';
-                } else {
-                    curP = otData.groups.persons[pol.group_id] || 0;
-                    curH = otData.groups.hours[pol.group_id] || 0;
-                    title = `Tổ ${pol.group_code_value || pol.group_id}`;
-                }
-
-                if(maxP > 0 && curP > maxP) {
-                    return { valid: false, message: `Vượt mức trần tăng ca của <b>${title}</b>!<br>Tối đa <b>${maxP}</b> người, nhưng hiện tại là <b>${curP}</b> người.` };
-                }
-                if(maxH > 0 && curH > maxH) {
-                    return { valid: false, message: `Vượt mức trần tăng ca của <b>${title}</b>!<br>Tối đa <b>${maxH}</b> giờ, nhưng hiện tại là <b>${curH}</b> giờ.` };
-                }
             }
-            return { valid: true };
-        }
 
+            let curP = 0;
+            let curH = 0;
+            let title = '';
+
+            if (!pol.group_id) {
+                curP = otData.dept.persons;
+                curH = otData.dept.hours;
+                title = 'Toàn phân xưởng';
+            } else {
+                curP = otData.groups.persons[pol.group_id] || 0;
+                curH = otData.groups.hours[pol.group_id] || 0;
+                title = `Tổ ${pol.group_code_value || pol.group_id}`;
+            }
+
+            if (maxP > 0 && curP > maxP) {
+                return {
+                    valid: false,
+                    message: `Vượt mức trần tăng ca của <b>${title}</b>!<br>Tối đa <b>${maxP}</b> người, nhưng hiện tại là <b>${curP}</b> người.`
+                };
+            }
+            if (maxH > 0 && curH > maxH) {
+                return {
+                    valid: false,
+                    message: `Vượt mức trần tăng ca của <b>${title}</b>!<br>Tối đa <b>${maxH}</b> giờ, nhưng hiện tại là <b>${curH}</b> giờ.`
+                };
+            }
+        }
+        return {
+            valid: true
+        };
+    }
 </script>
