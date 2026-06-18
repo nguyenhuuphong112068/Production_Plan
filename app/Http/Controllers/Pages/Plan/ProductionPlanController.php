@@ -2451,9 +2451,20 @@ class ProductionPlanController extends Controller
                 $maxStageFinished = DB::table('stage_plan')
                         ->whereIn('stage_plan.plan_list_id', $plan_list_id)
                         ->where('finished', 1)
+                        ->where('stage_code', '!=', 8)
                         ->select(
                                 'plan_master_id',
                                 DB::raw('MAX(stage_code) as max_stage_code')
+                        )
+                        ->groupBy('plan_master_id');
+
+                $maxPossibleStage = DB::table('stage_plan')
+                        ->whereIn('stage_plan.plan_list_id', $plan_list_id)
+                        ->where('active', 1)
+                        ->where('stage_code', '!=', 8)
+                        ->select(
+                                'plan_master_id',
+                                DB::raw('MAX(stage_code) as max_possible_stage_code')
                         )
                         ->groupBy('plan_master_id');
 
@@ -2551,6 +2562,9 @@ class ProductionPlanController extends Controller
                         ->leftJoinSub($maxStageFinished, 'sp_max', function ($join) {
                                 $join->on('plan_master.id', '=', 'sp_max.plan_master_id');
                         })
+                        ->leftJoinSub($maxPossibleStage, 'sp_possible', function ($join) {
+                                $join->on('plan_master.id', '=', 'sp_possible.plan_master_id');
+                        })
                         ->leftJoin('stage_plan', function ($join) {
                                 $join->on('plan_master.id', '=', 'stage_plan.plan_master_id')
                                         ->on('stage_plan.stage_code', '=', 'sp_max.max_stage_code');
@@ -2559,11 +2573,11 @@ class ProductionPlanController extends Controller
                         ->where('plan_master.active', 1)
                         ->where('pl.type', 1);
 
-                if ($month == -1) {
+                if ($year > 2035) {
                         $query->where('plan_master.cancel', 0)
                                 ->where(function ($q) {
-                                        $q->where('sp_max.max_stage_code', '<', 7)
-                                                ->orWhereNull('sp_max.max_stage_code');
+                                        $q->whereNull('sp_max.max_stage_code')
+                                                ->orWhereRaw('sp_max.max_stage_code < sp_possible.max_possible_stage_code');
                                 });
                 }
 
