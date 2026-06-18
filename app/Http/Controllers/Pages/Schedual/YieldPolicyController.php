@@ -75,6 +75,7 @@ class YieldPolicyController extends Controller
             'month'            => 'required|integer|min:1|max:12',
             'target_month_dvl' => 'nullable|numeric|min:0',
             'target_daily_dvl' => 'nullable|numeric|min:0',
+            'min_submit_pct'   => 'nullable|numeric|min:0|max:100',
         ]);
 
         $productionCode = session('user')['production_code'];
@@ -89,6 +90,7 @@ class YieldPolicyController extends Controller
             [
                 'target_month_dvl' => $request->target_month_dvl ?: null,
                 'target_daily_dvl' => $request->target_daily_dvl ?: null,
+                'min_submit_pct'   => $request->min_submit_pct !== null && $request->min_submit_pct !== '' ? (float)$request->min_submit_pct : 100,
                 'note'             => $request->note,
                 'updated_by'       => $user,
                 'created_by'       => $user,
@@ -153,6 +155,94 @@ class YieldPolicyController extends Controller
     }
 
     /**
+     * Kiểm tra sản lượng lý thuyết so với chính sách trước khi submit lịch
+     */
+    public function checkYieldPolicy(Request $request)
+    {
+        $year  = (int)($request->year  ?? now()->year);
+        $month = (int)($request->month ?? now()->month);
+        $productionCode = session('user')['production_code'];
+
+        // Lấy chính sách tháng
+        $policy = DB::table('yield_policies')
+            ->where('production_code', $productionCode)
+            ->where('year',  $year)
+            ->where('month', $month)
+            ->first();
+
+        // Ngưỡng submit: lấy từ policy, mặc định 100%
+        $minPct = (float)($policy->min_submit_pct ?? 100);
+
+        // Nếu chưa cài chính sách => cho phép submit
+        if (!$policy || (!$policy->target_daily_dvl && !$policy->target_month_dvl)) {
+            return response()->json([
+                'can_submit'    => true,
+                'min_submit_pct'=> $minPct,
+                'message'       => 'Chưa thiết lập chính sách sản lượng, cho phép submit.',
+            ]);
+        }
+
+        // Lấy override từng ngày
+        $dailyOverrides = DB::table('yield_policy_daily_overrides')
+            ->where('policy_id', $policy->id)
+            ->get()
+            ->keyBy('target_date');
+
+        // Tính sản lượng lý thuyết
+        $startDate = Carbon::create($year, $month, 1)->setTime(6, 0, 0);
+        $endDate   = $startDate->copy()->endOfMonth()->addDay()->setTime(6, 0, 0);
+        $dailyYield = $this->getDailyYieldTheory($startDate, $endDate, $productionCode);
+
+        $violations = []; // Danh sách ngày không đạt
+
+        foreach ($dailyYield as $day) {
+            if ($day['is_off_day']) continue; // Bỏ qua ngày nghỉ
+
+            $override   = $dailyOverrides[$day['date']] ?? null;
+            $targetDvl  = $override?->target_qty_dvl ?? $policy->target_daily_dvl ?? null;
+
+            if (!$targetDvl || $targetDvl <= 0) continue; // Không có target => bỏ qua
+
+            $pct = $day['theory_dvl'] / $targetDvl * 100;
+            if ($pct < $minPct) {
+                $violations[] = [
+                    'date'       => $day['date'],
+                    'theory_dvl' => round($day['theory_dvl'], 0),
+                    'target_dvl' => $targetDvl,
+                    'pct'        => round($pct, 1),
+                ];
+            }
+        }
+
+        // Kiểm tra tổng tháng — luôn yêu cầu đạt 100% (cứng)
+        $totalTheory  = collect($dailyYield)->sum('theory_dvl');
+        $targetMonth  = $policy->target_month_dvl ?? null;
+        $monthOk      = !$targetMonth || ($totalTheory / $targetMonth * 100 >= 100);
+        $monthPct     = $targetMonth ? round($totalTheory / $targetMonth * 100, 1) : null;
+
+        if (count($violations) > 0 || !$monthOk) {
+            return response()->json([
+                'can_submit'      => false,
+                'violations'      => $violations,
+                'month_ok'        => $monthOk,
+                'month_pct'       => $monthPct,
+                'total_theory'    => round($totalTheory, 0),
+                'target_month'    => $targetMonth,
+                'min_submit_pct'  => $minPct,
+                'message'         => 'Sản lượng lý thuyết chưa đáp ứng chính sách.',
+            ]);
+        }
+
+        return response()->json([
+            'can_submit'     => true,
+            'month_pct'      => $monthPct,
+            'total_theory'   => round($totalTheory, 0),
+            'min_submit_pct' => $minPct,
+            'message'        => 'Sản lượng lý thuyết đáp ứng chính sách.',
+        ]);
+    }
+
+    /**
      * Tính sản lượng lý thuyết từng ngày trong tháng
      */
     private function getDailyYieldTheory(Carbon $startDate, Carbon $endDate, string $productionCode): array
@@ -209,13 +299,16 @@ class YieldPolicyController extends Controller
      */
     private function buildSummary(array $dailyYield, $policy, array $dailyOverrides): array
     {
-        $totalDays   = count($dailyYield);
+        $workingDays = collect($dailyYield)->where('is_off_day', false)->all();
+        $totalDays   = count($workingDays);
         $daysOk      = 0;
         $daysWarn    = 0;
         $daysFail    = 0;
         $daysNoTarget = 0;
 
-        foreach ($dailyYield as $day) {
+        $minPct = (float)($policy->min_submit_pct ?? 100);
+
+        foreach ($workingDays as $day) {
             $override = $dailyOverrides[$day['date']] ?? null;
             $targetDvl = $override?->target_qty_dvl ?? $policy?->target_daily_dvl ?? null;
 
@@ -226,7 +319,7 @@ class YieldPolicyController extends Controller
 
             $pct = $day['theory_dvl'] / $targetDvl * 100;
             if ($pct >= 100)       $daysOk++;
-            elseif ($pct >= 80)    $daysWarn++;
+            elseif ($pct >= $minPct) $daysWarn++;
             else                   $daysFail++;
         }
 

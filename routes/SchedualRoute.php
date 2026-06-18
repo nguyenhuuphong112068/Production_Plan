@@ -173,6 +173,7 @@ Route::prefix('/Schedual')
                                 Route::get('',        'index')->name('index');
                                 Route::post('store',  'store')->name('store');
                                 Route::post('daily',  'storeDaily')->name('daily');
+                                Route::post('check',  'checkYieldPolicy')->name('check');
                         });
 
                 Route::prefix('/audit')

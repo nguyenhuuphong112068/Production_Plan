@@ -4627,11 +4627,79 @@ const ScheduleTest = () => {
     setShowNoteModal(!showNoteModal)
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
 
     if (!authorization) return;
-
     e.stopPropagation();
+
+    // 🔹 Lấy tháng/năm hiện tại từ calendar
+    const api = calendarRef.current?.getApi();
+    const activeStart = api?.view?.activeStart;
+    const calYear  = activeStart ? new Date(activeStart).getFullYear() : new Date().getFullYear();
+    const calMonth = activeStart ? new Date(activeStart).getMonth() + 1 : new Date().getMonth() + 1;
+
+    // 🔹 Gọi API kiểm tra sản lượng lý thuyết
+    let checkResult = null;
+    try {
+      const res = await axios.post('/Schedual/yield_policy/check', { year: calYear, month: calMonth });
+      checkResult = res.data;
+    } catch (err) {
+      console.warn('Không thể kiểm tra chính sách sản lượng:', err);
+      // Nếu API lỗi => vẫn cho phép submit
+    }
+
+    // 🔹 Nếu không đạt => hiện cảnh báo và chặn
+    if (checkResult && checkResult.can_submit === false) {
+      const minPct = checkResult.min_submit_pct ?? 100;
+      const violationRows = (checkResult.violations || [])
+        .map(v => `<tr>
+          <td style="padding:4px 10px;border-bottom:1px solid #f1f5f9;">${v.date}</td>
+          <td style="padding:4px 10px;border-bottom:1px solid #f1f5f9;text-align:right;">${Number(v.theory_dvl).toLocaleString()}</td>
+          <td style="padding:4px 10px;border-bottom:1px solid #f1f5f9;text-align:right;">${Number(v.target_dvl).toLocaleString()}</td>
+          <td style="padding:4px 10px;border-bottom:1px solid #f1f5f9;text-align:center;color:#dc2626;font-weight:700;">${v.pct}%</td>
+        </tr>`)
+        .join('');
+
+      const monthRow = checkResult.month_pct !== null && !checkResult.month_ok
+        ? `<div style="margin-top:12px;padding:8px 12px;background:#fef2f2;border-radius:6px;border:1px solid #fecaca;">
+            <i class="fas fa-calendar-alt" style="color:#dc2626;"></i>
+            <strong>Target cả tháng chưa đạt 100%:</strong>
+            ${Number(checkResult.total_theory).toLocaleString()} / ${Number(checkResult.target_month).toLocaleString()} ĐVL
+            <strong style="color:#dc2626;">(${checkResult.month_pct}%)</strong>
+          </div>`
+        : '';
+
+      const dailySection = violationRows
+        ? `<div style="margin-top:10px;">
+            <p style="color:#475569;margin-bottom:6px;font-size:.85rem;">
+              <i class="fas fa-calendar-day" style="color:#7c3aed;"></i>
+              Các ngày làm việc chưa đạt ngưỡng <strong>${minPct}%</strong> target/ngày:
+            </p>
+            <div style="max-height:240px;overflow-y:auto;">
+              <table style="width:100%;border-collapse:collapse;font-size:.84rem;">
+                <thead><tr style="background:#f8fafc;">
+                  <th style="padding:6px 10px;text-align:left;">Ngày</th>
+                  <th style="padding:6px 10px;text-align:right;">SL LT (ĐVL)</th>
+                  <th style="padding:6px 10px;text-align:right;">Target (ĐVL)</th>
+                  <th style="padding:6px 10px;text-align:center;">% Đạt</th>
+                </tr></thead>
+                <tbody>${violationRows}</tbody>
+              </table>
+            </div>
+          </div>`
+        : '';
+
+      Swal.fire({
+        title: `❌ Không thể Submit — Tháng ${calMonth}/${calYear}`,
+        html: `${dailySection}${monthRow}`,
+        icon: 'error',
+        confirmButtonText: 'Đóng',
+        confirmButtonColor: '#3085d6',
+        width: '620px',
+      });
+      return;
+    }
+
     Swal.fire({
       title: 'Bạn muốn submit toàn bộ lịch đã sắp?',
       icon: 'warning',

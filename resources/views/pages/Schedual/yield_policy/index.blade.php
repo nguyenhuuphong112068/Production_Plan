@@ -218,6 +218,22 @@
                 margin: 4px 0 2px;
             }
 
+            .yp-stat-card.blue .value {
+                color: #2563eb;
+            }
+
+            .yp-stat-card.green .value {
+                color: #16a34a;
+            }
+
+            .yp-stat-card.warn .value {
+                color: #d97706;
+            }
+
+            .yp-stat-card.red .value {
+                color: #dc2626;
+            }
+
             .yp-stat-card .sub {
                 font-size: .78rem;
                 color: var(--yp-muted);
@@ -432,7 +448,7 @@
 
             /* inline target input */
             .target-inline {
-                width: 90px;
+                width: 120px;
                 border: 1.5px solid var(--yp-border);
                 border-radius: 6px;
                 padding: 5px 8px;
@@ -593,8 +609,18 @@
             </form>
 
             {{-- ── Summary Cards ────────────────────────────────── --}}
+            @php
+                $theoryCardColor = 'blue';
+                if ($policy && $policy->target_month_dvl) {
+                    if ($totalTheoryDvl >= $policy->target_month_dvl) {
+                        $theoryCardColor = 'green';
+                    } else {
+                        $theoryCardColor = 'red';
+                    }
+                }
+            @endphp
             <div class="yp-summary-row">
-                <div class="yp-stat-card blue">
+                <div class="yp-stat-card {{ $theoryCardColor }}">
                     <div class="label">Tổng SL Lý Thuyết (ĐVL)</div>
                     <div class="value">{{ number_format($totalTheoryDvl, 0, '.', ',') }}</div>
                     <div class="sub">Đơn vị lớn nhất</div>
@@ -639,9 +665,11 @@
                         Chính Sách Tháng {{ $month }}/{{ $year }}
                     </h5>
 
-                    <div style="background:#f8fafc;border-radius:6px;padding:10px;margin-bottom:15px;font-size:0.85rem;border:1px solid #e2e8f0;color:#475569;">
+                    <div
+                        style="background:#f8fafc;border-radius:6px;padding:10px;margin-bottom:15px;font-size:0.85rem;border:1px solid #e2e8f0;color:#475569;">
                         <i class="fas fa-calendar-alt" style="color:#64748b;margin-right:5px;"></i>
-                        Tháng này có <strong style="color:#2563eb;">{{ $totalWorkingDays ?? 0 }}</strong> ngày làm việc và <strong style="color:#dc2626;">{{ $totalOffDays ?? 0 }}</strong> ngày nghỉ.
+                        Tháng này có <strong style="color:#2563eb;">{{ $totalWorkingDays ?? 0 }}</strong> ngày làm việc và
+                        <strong style="color:#dc2626;">{{ $totalOffDays ?? 0 }}</strong> ngày nghỉ.
                     </div>
 
                     <div class="yp-field-group">
@@ -662,6 +690,32 @@
                             <input type="number" id="pol_daily_dvl" step="1" min="0"
                                 value="{{ $policy->target_daily_dvl ?? '' }}" placeholder="Nhập target/ngày ĐVL...">
                             <span class="unit-badge">ĐVL/ngày</span>
+                        </div>
+                    </div>
+
+                    <hr class="yp-divider">
+
+                    {{-- Ngưỡng đáp ứng submit --}}
+                    <div class="yp-field-group">
+                        <label style="display:flex;align-items:center;gap:6px;">
+                            <i class="fas fa-shield-alt" style="color:#7c3aed;font-size:.85rem;"></i>
+                            Ngưỡng đáp ứng mỗi ngày để Submit lịch
+                            <span style="font-size:.75rem;color:#94a3b8;font-weight:400;">(% SL lý thuyết / target ngày)</span>
+                        </label>
+                        <div class="input-wrap">
+                            <input type="number" id="pol_min_submit_pct" step="0.1" min="0" max="100"
+                                value="{{ $policy->min_submit_pct ?? 100 }}"
+                                placeholder="100"
+                                style="font-weight:700;color:#7c3aed;">
+                            <span class="unit-badge" style="color:#7c3aed;background:#f5f3ff;">%</span>
+                        </div>
+                        <div style="font-size:.76rem;color:#64748b;margin-top:4px;padding:8px 10px;background:#f8fafc;border-radius:6px;border:1px solid #e2e8f0;line-height:1.6;">
+                            <div><i class="fas fa-calendar-day" style="color:#7c3aed;width:14px;"></i>
+                                <strong>Mỗi ngày làm việc</strong> phải đạt ≥ <strong id="pct-preview">{{ $policy->min_submit_pct ?? 100 }}%</strong> target/ngày (bỏ qua ngày nghỉ)
+                            </div>
+                            <div style="margin-top:4px;"><i class="fas fa-calendar-alt" style="color:#dc2626;width:14px;"></i>
+                                <strong>Target cả tháng</strong> luôn yêu cầu đạt <strong style="color:#dc2626;">100%</strong> (cố định)
+                            </div>
                         </div>
                     </div>
 
@@ -689,12 +743,12 @@
                 </div>
 
                 {{-- Chart Card --}}
-                <div class="yp-chart-card">
+                <div class="yp-chart-card" style="display:flex; flex-direction:column;">
                     <h5>
                         <span><i class="fas fa-chart-bar" style="color:#7c3aed;margin-right:8px;"></i>Biểu Đồ SL Lý Thuyết
                             vs Target (ĐVL)</span>
                     </h5>
-                    <div style="position:relative;height:300px;">
+                    <div style="position:relative;flex:1;min-height:300px;">
                         <canvas id="yieldChart"></canvas>
                     </div>
                     <div style="display:flex;gap:20px;margin-top:12px;font-size:.78rem;">
@@ -715,9 +769,10 @@
                     <h5><i class="fas fa-table" style="margin-right:8px;"></i>Chi Tiết Sản Lượng Theo Ngày</h5>
                     <div style="display:flex;gap:10px;">
                         <span style="font-size:.8rem;color:#94a3b8;align-self:center;" id="unsavedCount"></span>
-                        <button class="yp-btn" style="color:#fff; border: 1px solid rgba(255,255,255,0.4); background: transparent;"
-                            onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='transparent'"
-                            onclick="applyDefaultTargetAll()">
+                        <button class="yp-btn"
+                            style="color:#fff; border: 1px solid rgba(255,255,255,0.4); background: transparent;"
+                            onmouseover="this.style.background='rgba(255,255,255,0.1)'"
+                            onmouseout="this.style.background='transparent'" onclick="applyDefaultTargetAll()">
                             <i class="fas fa-magic"></i> Áp Dụng Target Mặc Định
                         </button>
                         <button class="yp-btn yp-btn-success" onclick="saveAllDailyOverrides()">
@@ -742,7 +797,12 @@
                             @foreach ($dailyYield as $day)
                                 @php
                                     $override = $dailyOverrides[$day['date']] ?? null;
-                                    $tDvl = $override ? $override->target_qty_dvl : $policy->target_daily_dvl ?? null;
+                                    $isOffDay = $day['is_off_day'] ?? false;
+                                    $tDvl = $override
+                                        ? $override->target_qty_dvl
+                                        : ($isOffDay
+                                            ? 0
+                                            : $policy->target_daily_dvl ?? null);
                                     $theoryDvl = $day['theory_dvl'];
 
                                     if ($tDvl > 0) {
@@ -750,7 +810,7 @@
                                         if ($pct >= 100) {
                                             $badge = 'ok';
                                             $badgeText = "✅ Đạt ({$pct}%)";
-                                        } elseif ($pct >= 80) {
+                                        } elseif ($pct >= 90) {
                                             $badge = 'warn';
                                             $badgeText = "⚠️ Cần chú ý ({$pct}%)";
                                         } else {
@@ -762,13 +822,14 @@
                                         $badge = 'none';
                                         $badgeText = '—';
                                     }
-                                    $isOverride = $override && ($override->target_qty_dvl);
+                                    $isOverride = $override && $override->target_qty_dvl !== null;
                                     $isToday = $day['date'] === now()->format('Y-m-d');
-                                    $isOffDay = $day['is_off_day'] ?? false;
                                 @endphp
-                                <tr id="row-{{ $day['date'] }}" class="{{ $isToday ? 'today-row' : '' }}" style="{{ $isOffDay ? 'background-color:#fef2f2;' : '' }}">
+                                <tr id="row-{{ $day['date'] }}" class="{{ $isToday ? 'today-row' : '' }}"
+                                    style="{{ $isOffDay ? 'background-color:#fef2f2;' : '' }}">
                                     <td>
-                                        <span style="font-weight:700;{{ $isToday ? 'color:#2563eb;' : '' }}{{ $isOffDay ? 'color:#dc2626;' : '' }}">
+                                        <span
+                                            style="font-weight:700;{{ $isToday ? 'color:#2563eb;' : '' }}{{ $isOffDay ? 'color:#dc2626;' : '' }}">
                                             {{ \Carbon\Carbon::parse($day['date'])->format('d/m/Y') }}
                                         </span>
                                         @if ($isToday)
@@ -777,7 +838,8 @@
                                                 NAY</span>
                                         @endif
                                         @if ($isOffDay)
-                                            <span style="background:#fee2e2;color:#dc2626;border-radius:4px;padding:1px 6px;font-size:.7rem;margin-left:4px;">Nghỉ</span>
+                                            <span
+                                                style="background:#fee2e2;color:#dc2626;border-radius:4px;padding:1px 6px;font-size:.7rem;margin-left:4px;">Nghỉ</span>
                                         @endif
                                     </td>
                                     <td style="color:#64748b;font-size:.82rem;">{{ $day['dow'] }}</td>
@@ -798,8 +860,7 @@
                                             class="target-inline target-dvl {{ $isOverride ? 'saved' : '' }}"
                                             data-date="{{ $day['date'] }}" data-type="dvl" value="{{ $tDvl ?? '' }}"
                                             placeholder="{{ $policy->target_daily_dvl ?? '—' }}"
-                                            data-is-off="{{ $isOffDay ? '1' : '0' }}"
-                                            oninput="markEdited(this)">
+                                            data-is-off="{{ $isOffDay ? '1' : '0' }}" oninput="markEdited(this)">
                                     </td>
                                     <td>
                                         @if ($pct !== null)
@@ -830,287 +891,298 @@
         {{-- Toast --}}
         <div id="yp-toast"></div>
 
-        @section('script')
-            <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-            <script>
-                // ──────────────────────────────────────────────────────
-                // DATA từ PHP
-                // ──────────────────────────────────────────────────────
-                const DAILY_YIELD = @json($dailyYield);
-                const POLICY = @json($policy);
-                const YEAR = {{ $year }};
-                const MONTH = {{ $month }};
-                const CSRF = '{{ csrf_token() }}';
-                const ROUTE_STORE = '{{ route('pages.Schedual.yield_policy.store') }}';
-                const ROUTE_DAILY = '{{ route('pages.Schedual.yield_policy.daily') }}';
+    @section('script')
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+        <script>
+            // ──────────────────────────────────────────────────────
+            // DATA từ PHP
+            // ──────────────────────────────────────────────────────
+            const DAILY_YIELD = @json($dailyYield);
+            const POLICY = @json($policy);
+            const YEAR = {{ $year }};
+            const MONTH = {{ $month }};
+            const CSRF = '{{ csrf_token() }}';
+            const ROUTE_STORE = '{{ route('pages.Schedual.yield_policy.store') }}';
+            const ROUTE_DAILY = '{{ route('pages.Schedual.yield_policy.daily') }}';
 
-                // ──────────────────────────────────────────────────────
-                // CHART
-                // ──────────────────────────────────────────────────────
-                let chartInstance = null;
+            // ──────────────────────────────────────────────────────
+            // CHART
+            // ──────────────────────────────────────────────────────
+            let chartInstance = null;
 
-                function buildChartData() {
-                    const labels = DAILY_YIELD.map(d => d.date_label);
-                    const theory = DAILY_YIELD.map(d => d.theory_dvl);
-                    const target = parseFloat(document.getElementById('pol_daily_dvl').value) || (POLICY?.target_daily_dvl ?? 0);
+            function buildChartData() {
+                const labels = DAILY_YIELD.map(d => d.date_label);
+                const theory = DAILY_YIELD.map(d => d.theory_dvl);
+                const target = parseFloat(document.getElementById('pol_daily_dvl').value) || (POLICY?.target_daily_dvl ?? 0);
 
-                    const barColors = theory.map((v, i) => {
-                        const tRow = getDailyTarget(DAILY_YIELD[i].date);
-                        const t2 = tRow || target;
-                        if (!t2 || t2 <= 0) return 'rgba(99,102,241,.6)';
-                        const pct = v / t2 * 100;
-                        if (pct >= 100) return 'rgba(22,163,74,.75)';
-                        if (pct >= 80) return 'rgba(217,119,6,.75)';
-                        return 'rgba(220,38,38,.75)';
-                    });
-
-                    return {
-                        labels,
-                        theory,
-                        target,
-                        barColors
-                    };
-                }
-
-                function getDailyTarget(date) {
-                    const inp = document.querySelector(`.target-dvl[data-date="${date}"]`);
-                    return parseFloat(inp?.value) || null;
-                }
-
-                function renderChart() {
-                    const {
-                        labels,
-                        theory,
-                        target,
-                        barColors
-                    } = buildChartData();
-                    const ctx = document.getElementById('yieldChart').getContext('2d');
-                    if (chartInstance) chartInstance.destroy();
-
-                    chartInstance = new Chart(ctx, {
-                        type: 'bar',
-                        data: {
-                            labels,
-                            datasets: [{
-                                    type: 'bar',
-                                    label: `SL Lý Thuyết (ĐVL)`,
-                                    data: theory,
-                                    backgroundColor: barColors,
-                                    borderRadius: 5,
-                                    order: 2,
-                                },
-                                ...(target > 0 ? [{
-                                    type: 'line',
-                                    label: `Target/ngày`,
-                                    data: Array(labels.length).fill(target),
-                                    borderColor: '#f59e0b',
-                                    borderWidth: 2,
-                                    borderDash: [6, 4],
-                                    pointRadius: 0,
-                                    fill: false,
-                                    order: 1,
-                                    tension: 0,
-                                }] : []),
-                            ]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            plugins: {
-                                legend: {
-                                    display: false
-                                },
-                                tooltip: {
-                                    callbacks: {
-                                        label: ctx => {
-                                            return ` ${ctx.dataset.label}: ${ctx.parsed.y?.toLocaleString('vi-VN')} ĐVL`;
-                                        }
-                                    }
-                                }
-                            },
-                            scales: {
-                                x: {
-                                    grid: {
-                                        display: false
-                                    },
-                                    ticks: {
-                                        font: {
-                                            size: 10
-                                        }
-                                    }
-                                },
-                                y: {
-                                    beginAtZero: true,
-                                    grid: {
-                                        color: '#f1f5f9'
-                                    },
-                                    ticks: {
-                                        callback: v => v >= 1000 ? (v / 1000).toFixed(1) + 'k' : v,
-                                        font: {
-                                            size: 10
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    });
-                }
-
-                document.getElementById('pol_daily_dvl').addEventListener('input', () => {
-                    renderChart();
+                const barColors = theory.map((v, i) => {
+                    const tRow = getDailyTarget(DAILY_YIELD[i].date);
+                    const t2 = tRow || target;
+                    if (!t2 || t2 <= 0) return 'rgba(99,102,241,.6)';
+                    const pct = v / t2 * 100;
+                    if (pct >= 100) return 'rgba(22,163,74,.75)';
+                    if (pct >= 90) return 'rgba(217,119,6,.75)';
+                    return 'rgba(220,38,38,.75)';
                 });
 
-                // ──────────────────────────────────────────────────────
-                // TOAST
-                // ──────────────────────────────────────────────────────
-                function showToast(msg, type = 'success') {
-                    const t = document.getElementById('yp-toast');
-                    t.className = type;
-                    t.innerHTML = `<i class="fas fa-${type==='success'?'check-circle':'times-circle'}"></i> ${msg}`;
-                    t.style.display = 'block';
-                    clearTimeout(t._timer);
-                    t._timer = setTimeout(() => t.style.display = 'none', 3500);
-                }
+                return {
+                    labels,
+                    theory,
+                    target,
+                    barColors
+                };
+            }
 
-                // ──────────────────────────────────────────────────────
-                // SAVE POLICY
-                // ──────────────────────────────────────────────────────
-                function savePolicy() {
-                    const payload = {
-                        year: YEAR,
-                        month: MONTH,
-                        target_month_dvl: document.getElementById('pol_month_dvl').value || null,
-                        target_daily_dvl: document.getElementById('pol_daily_dvl').value || null,
-                        note: document.getElementById('pol_note').value,
-                        _token: CSRF,
-                    };
+            function getDailyTarget(date) {
+                const inp = document.querySelector(`.target-dvl[data-date="${date}"]`);
+                return parseFloat(inp?.value) || null;
+            }
 
-                    fetch(ROUTE_STORE, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': CSRF
+            function renderChart() {
+                const {
+                    labels,
+                    theory,
+                    target,
+                    barColors
+                } = buildChartData();
+                const ctx = document.getElementById('yieldChart').getContext('2d');
+                if (chartInstance) chartInstance.destroy();
+
+                chartInstance = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels,
+                        datasets: [{
+                                type: 'bar',
+                                label: `SL Lý Thuyết (ĐVL)`,
+                                data: theory,
+                                backgroundColor: barColors,
+                                borderRadius: 5,
+                                order: 2,
                             },
-                            body: JSON.stringify(payload),
-                        })
-                        .then(r => r.json())
-                        .then(d => {
-                            if (d.success) {
-                                showToast(d.message, 'success');
-                                renderChart();
-                                setTimeout(() => location.reload(), 1200);
-                            } else {
-                                showToast(d.message || 'Lỗi lưu chính sách!', 'error');
+                            ...(target > 0 ? [{
+                                type: 'line',
+                                label: `Target/ngày`,
+                                data: Array(labels.length).fill(target),
+                                borderColor: '#f59e0b',
+                                borderWidth: 2,
+                                borderDash: [6, 4],
+                                pointRadius: 0,
+                                fill: false,
+                                order: 1,
+                                tension: 0,
+                            }] : []),
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: ctx => {
+                                        return ` ${ctx.dataset.label}: ${ctx.parsed.y?.toLocaleString('vi-VN')} ĐVL`;
+                                    }
+                                }
                             }
-                        })
-                        .catch(() => showToast('Lỗi kết nối!', 'error'));
-                }
-
-                // ──────────────────────────────────────────────────────
-                // DAILY OVERRIDE — đánh dấu đã sửa
-                // ──────────────────────────────────────────────────────
-                let editedDates = new Set();
-
-                function markEdited(el) {
-                    el.classList.remove('saved');
-                    el.classList.add('edited');
-                    editedDates.add(el.dataset.date);
-                    document.getElementById('unsavedCount').textContent =
-                        editedDates.size > 0 ? `⚠ ${editedDates.size} ngày chưa lưu` : '';
-                }
-
-                function saveSingleDay(date, btnEl) {
-                    const dvlInp = document.querySelector(`.target-dvl[data-date="${date}"]`);
-
-                    fetch(ROUTE_DAILY, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': CSRF
+                        },
+                        scales: {
+                            x: {
+                                grid: {
+                                    display: false
+                                },
+                                ticks: {
+                                    font: {
+                                        size: 10
+                                    }
+                                }
                             },
-                            body: JSON.stringify({
-                                year: YEAR,
-                                month: MONTH,
-                                target_date: date,
-                                target_qty_dvl: dvlInp?.value || null,
-                                _token: CSRF,
-                            }),
-                        })
-                        .then(r => r.json())
-                        .then(d => {
-                            if (d.success) {
-                                showToast(d.message, 'success');
-                                dvlInp?.classList.remove('edited');
-                                dvlInp?.classList.add('saved');
-                                editedDates.delete(date);
-                                document.getElementById('unsavedCount').textContent =
-                                    editedDates.size > 0 ? `⚠ ${editedDates.size} ngày chưa lưu` : '';
-                                renderChart();
-                            } else {
-                                showToast('Lỗi lưu!', 'error');
+                            y: {
+                                beginAtZero: true,
+                                grid: {
+                                    color: '#f1f5f9'
+                                },
+                                ticks: {
+                                    callback: v => v >= 1000 ? (v / 1000).toFixed(1) + 'k' : v,
+                                    font: {
+                                        size: 10
+                                    }
+                                }
                             }
-                        });
-                }
-
-                async function saveAllDailyOverrides() {
-                    const dates = [...editedDates];
-                    if (!dates.length) {
-                        showToast('Không có thay đổi nào!', 'error');
-                        return;
+                        }
                     }
+                });
+            }
 
-                    for (const date of dates) {
-                        await fetch(ROUTE_DAILY, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': CSRF
-                            },
-                            body: JSON.stringify({
-                                year: YEAR,
-                                month: MONTH,
-                                target_date: date,
-                                target_qty_dvl: document.querySelector(`.target-dvl[data-date="${date}"]`)
-                                    ?.value || null,
-                            }),
-                        });
-                        document.querySelector(`.target-dvl[data-date="${date}"]`)?.classList.replace('edited', 'saved');
-                    }
-                    editedDates.clear();
-                    document.getElementById('unsavedCount').textContent = '';
-                    showToast(`Đã lưu ${dates.length} ngày override!`, 'success');
-                    renderChart();
-                }
+            document.getElementById('pol_daily_dvl').addEventListener('input', () => {
+                renderChart();
+            });
 
-                function applyDefaultTargetAll() {
-                    const defDvl = document.getElementById('pol_daily_dvl').value;
-                    if (!defDvl) {
-                        showToast('Vui lòng nhập Target/ngày trước!', 'error');
-                        return;
-                    }
+            // ──────────────────────────────────────────────────────
+            // TOAST
+            // ──────────────────────────────────────────────────────
+            function showToast(msg, type = 'success') {
+                const t = document.getElementById('yp-toast');
+                t.className = type;
+                t.innerHTML = `<i class="fas fa-${type==='success'?'check-circle':'times-circle'}"></i> ${msg}`;
+                t.style.display = 'block';
+                clearTimeout(t._timer);
+                t._timer = setTimeout(() => t.style.display = 'none', 3500);
+            }
 
-                    document.querySelectorAll('.target-dvl').forEach(inp => {
-                        if (!inp.value && defDvl && inp.dataset.isOff !== '1') {
-                            inp.value = defDvl;
-                            markEdited(inp);
+            // ──────────────────────────────────────────────────────
+            // SAVE POLICY
+            // ──────────────────────────────────────────────────────
+            function savePolicy() {
+                const minPctEl = document.getElementById('pol_min_submit_pct');
+                const payload = {
+                    year: YEAR,
+                    month: MONTH,
+                    target_month_dvl: document.getElementById('pol_month_dvl').value || null,
+                    target_daily_dvl: document.getElementById('pol_daily_dvl').value || null,
+                    min_submit_pct:   minPctEl?.value !== '' ? parseFloat(minPctEl.value) : 100,
+                    note: document.getElementById('pol_note').value,
+                    _token: CSRF,
+                };
+
+                fetch(ROUTE_STORE, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': CSRF
+                        },
+                        body: JSON.stringify(payload),
+                    })
+                    .then(r => r.json())
+                    .then(d => {
+                        if (d.success) {
+                            showToast(d.message, 'success');
+                            renderChart();
+                            setTimeout(() => location.reload(), 1200);
+                        } else {
+                            showToast(d.message || 'Lỗi lưu chính sách!', 'error');
+                        }
+                    })
+                    .catch(() => showToast('Lỗi kết nối!', 'error'));
+            }
+
+            // ──────────────────────────────────────────────────────
+            // DAILY OVERRIDE — đánh dấu đã sửa
+            // ──────────────────────────────────────────────────────
+            let editedDates = new Set();
+
+            function markEdited(el) {
+                el.classList.remove('saved');
+                el.classList.add('edited');
+                editedDates.add(el.dataset.date);
+                document.getElementById('unsavedCount').textContent =
+                    editedDates.size > 0 ? `⚠ ${editedDates.size} ngày chưa lưu` : '';
+            }
+
+            function saveSingleDay(date, btnEl) {
+                const dvlInp = document.querySelector(`.target-dvl[data-date="${date}"]`);
+
+                fetch(ROUTE_DAILY, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': CSRF
+                        },
+                        body: JSON.stringify({
+                            year: YEAR,
+                            month: MONTH,
+                            target_date: date,
+                            target_qty_dvl: dvlInp?.value || null,
+                            _token: CSRF,
+                        }),
+                    })
+                    .then(r => r.json())
+                    .then(d => {
+                        if (d.success) {
+                            showToast(d.message, 'success');
+                            dvlInp?.classList.remove('edited');
+                            dvlInp?.classList.add('saved');
+                            editedDates.delete(date);
+                            document.getElementById('unsavedCount').textContent =
+                                editedDates.size > 0 ? `⚠ ${editedDates.size} ngày chưa lưu` : '';
+                            renderChart();
+                        } else {
+                            showToast('Lỗi lưu!', 'error');
                         }
                     });
-                    showToast('Đã áp dụng target mặc định cho tất cả ngày trống (bỏ qua ngày nghỉ)!', 'success');
+            }
+
+            async function saveAllDailyOverrides() {
+                const dates = [...editedDates];
+                if (!dates.length) {
+                    showToast('Không có thay đổi nào!', 'error');
+                    return;
                 }
 
-                // ── Init ──
+                for (const date of dates) {
+                    await fetch(ROUTE_DAILY, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': CSRF
+                        },
+                        body: JSON.stringify({
+                            year: YEAR,
+                            month: MONTH,
+                            target_date: date,
+                            target_qty_dvl: document.querySelector(`.target-dvl[data-date="${date}"]`)
+                                ?.value || null,
+                        }),
+                    });
+                    document.querySelector(`.target-dvl[data-date="${date}"]`)?.classList.replace('edited', 'saved');
+                }
+                editedDates.clear();
+                document.getElementById('unsavedCount').textContent = '';
+                showToast(`Đã lưu ${dates.length} ngày override!`, 'success');
                 renderChart();
-            </script>
+            }
 
-            <style>
-                .today-row {
-                    background: #eff6ff !important;
+            function applyDefaultTargetAll() {
+                const defDvl = document.getElementById('pol_daily_dvl').value;
+                if (!defDvl) {
+                    showToast('Vui lòng nhập Target/ngày trước!', 'error');
+                    return;
                 }
 
-                .today-row:hover {
-                    background: #dbeafe !important;
-                }
-            </style>
-        @endsection
-    </div>
+                document.querySelectorAll('.target-dvl').forEach(inp => {
+                    if (!inp.value && defDvl && inp.dataset.isOff !== '1') {
+                        inp.value = defDvl;
+                        markEdited(inp);
+                    }
+                });
+                showToast('Đã áp dụng target mặc định cho tất cả ngày trống (bỏ qua ngày nghỉ)!', 'success');
+            }
+
+            // ── Init ──
+            renderChart();
+
+            // Live-preview cho ngưỡng submit
+            const pctInput = document.getElementById('pol_min_submit_pct');
+            const pctPreview = document.getElementById('pct-preview');
+            if (pctInput && pctPreview) {
+                pctInput.addEventListener('input', () => {
+                    pctPreview.textContent = (pctInput.value || 100) + '%';
+                });
+            }
+        </script>
+
+        <style>
+            .today-row {
+                background: #eff6ff !important;
+            }
+
+            .today-row:hover {
+                background: #dbeafe !important;
+            }
+        </style>
+    @endsection
+</div>
 @endsection
