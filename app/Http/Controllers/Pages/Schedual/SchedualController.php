@@ -2014,8 +2014,11 @@ class SchedualController extends Controller
                     }
                 }
 
-                // Cập nhật submit = 0 sau khi lưu lịch sử
-                DB::table('stage_plan')->where('id', $product['id'])->update(['submit' => 0]);
+                // Cập nhật submit = 0 sau khi lưu lịch sử (Ngoại trừ lịch bảo trì)
+                DB::table('stage_plan')
+                    ->where('id', $product['id'])
+                    ->where('stage_code', '!=', 8)
+                    ->update(['submit' => 0]);
 
                 /*
                 |--------------------------------------------------------------------------
@@ -2640,8 +2643,11 @@ class SchedualController extends Controller
                             Log::info('[History Debug] SKIP sid=' . $sid . ' (submit=' . ($update_row->submit ?? 'NULL') . ')');
                         }
 
-                        // Cập nhật submit = 0 sau khi lưu lịch sử
-                        DB::table('stage_plan')->where('id', $sid)->update(['submit' => 0]);
+                        // Cập nhật submit = 0 sau khi lưu lịch sử (Ngoại trừ lịch bảo trì)
+                        DB::table('stage_plan')
+                            ->where('id', $sid)
+                            ->where('stage_code', '!=', 8)
+                            ->update(['submit' => 0]);
                     }
                 }
             }
@@ -4984,8 +4990,11 @@ class SchedualController extends Controller
                 }
             }
 
-            // Cập nhật submit = 0 sau khi lưu lịch sử
-            DB::table('stage_plan')->where('id', $stageId)->update(['submit' => 0]);
+            // Cập nhật submit = 0 sau khi lưu lịch sử (Ngoại trừ lịch bảo trì)
+            DB::table('stage_plan')
+                ->where('id', $stageId)
+                ->where('stage_code', '!=', 8)
+                ->update(['submit' => 0]);
         });
     }
 
