@@ -16,6 +16,11 @@
      CHÍNH SÁCH SẢN LƯỢNG — YIELD POLICY
     ═══════════════════════════════════════════════════════════ --}}
 
+        @php
+            $can_set_yield_policy = user_has_permission(session('user')['userId'] ?? 0, 'set_yield_policy', 'boolean');
+        @endphp
+
+
         <style>
             /* ── Variables ──────────────────────────────────────────── */
             :root {
@@ -676,7 +681,8 @@
                         <label>Target cả tháng — ĐVL</label>
                         <div class="input-wrap">
                             <input type="number" id="pol_month_dvl" step="1" min="0"
-                                value="{{ $policy->target_month_dvl ?? '' }}" placeholder="Nhập target ĐVL...">
+                                value="{{ $policy->target_month_dvl ?? '' }}" placeholder="Nhập target/tháng ĐVL..."
+                                {{ !$can_set_yield_policy ? 'disabled' : '' }}>
                             <span class="unit-badge">ĐVL</span>
                         </div>
                     </div>
@@ -688,7 +694,8 @@
                         <label>Target mỗi ngày — ĐVL</label>
                         <div class="input-wrap">
                             <input type="number" id="pol_daily_dvl" step="1" min="0"
-                                value="{{ $policy->target_daily_dvl ?? '' }}" placeholder="Nhập target/ngày ĐVL...">
+                                value="{{ $policy->target_daily_dvl ?? '' }}" placeholder="Nhập target/ngày ĐVL..."
+                                {{ !$can_set_yield_policy ? 'disabled' : '' }}>
                             <span class="unit-badge">ĐVL/ngày</span>
                         </div>
                     </div>
@@ -700,21 +707,26 @@
                         <label style="display:flex;align-items:center;gap:6px;">
                             <i class="fas fa-shield-alt" style="color:#7c3aed;font-size:.85rem;"></i>
                             Ngưỡng đáp ứng mỗi ngày để Submit lịch
-                            <span style="font-size:.75rem;color:#94a3b8;font-weight:400;">(% SL lý thuyết / target ngày)</span>
+                            <span style="font-size:.75rem;color:#94a3b8;font-weight:400;">(% SL lý thuyết / target
+                                ngày)</span>
                         </label>
                         <div class="input-wrap">
                             <input type="number" id="pol_min_submit_pct" step="0.1" min="0" max="100"
-                                value="{{ $policy->min_submit_pct ?? 100 }}"
-                                placeholder="100"
-                                style="font-weight:700;color:#7c3aed;">
+                                value="{{ $policy->min_submit_pct ?? 100 }}" placeholder="100"
+                                style="font-weight:700;color:#7c3aed;" {{ !$can_set_yield_policy ? 'disabled' : '' }}>
                             <span class="unit-badge" style="color:#7c3aed;background:#f5f3ff;">%</span>
                         </div>
-                        <div style="font-size:.76rem;color:#64748b;margin-top:4px;padding:8px 10px;background:#f8fafc;border-radius:6px;border:1px solid #e2e8f0;line-height:1.6;">
+                        <div
+                            style="font-size:.76rem;color:#64748b;margin-top:4px;padding:8px 10px;background:#f8fafc;border-radius:6px;border:1px solid #e2e8f0;line-height:1.6;">
                             <div><i class="fas fa-calendar-day" style="color:#7c3aed;width:14px;"></i>
-                                <strong>Mỗi ngày làm việc</strong> phải đạt ≥ <strong id="pct-preview">{{ $policy->min_submit_pct ?? 100 }}%</strong> target/ngày (bỏ qua ngày nghỉ)
+                                <strong>Mỗi ngày làm việc</strong> phải đạt ≥ <strong
+                                    id="pct-preview">{{ $policy->min_submit_pct ?? 100 }}%</strong> target/ngày (bỏ qua
+                                ngày nghỉ)
                             </div>
-                            <div style="margin-top:4px;"><i class="fas fa-calendar-alt" style="color:#dc2626;width:14px;"></i>
-                                <strong>Target cả tháng</strong> luôn yêu cầu đạt <strong style="color:#dc2626;">100%</strong> (cố định)
+                            <div style="margin-top:4px;"><i class="fas fa-calendar-alt"
+                                    style="color:#dc2626;width:14px;"></i>
+                                <strong>Target cả tháng</strong> luôn yêu cầu đạt <strong
+                                    style="color:#dc2626;">100%</strong> (cố định)
                             </div>
                         </div>
                     </div>
@@ -725,12 +737,14 @@
                         <label>Ghi chú</label>
                         <textarea id="pol_note" rows="2"
                             style="width:100%;border:1.5px solid var(--yp-border);border-radius:8px;padding:8px 12px;font-size:.88rem;resize:vertical;"
-                            placeholder="Ghi chú chính sách...">{{ $policy->note ?? '' }}</textarea>
+                            placeholder="Ghi chú chính sách..." {{ !$can_set_yield_policy ? 'disabled' : '' }}>{{ $policy->note ?? '' }}</textarea>
                     </div>
 
-                    <button class="yp-btn yp-btn-success" style="width:100%;" onclick="savePolicy()">
-                        <i class="fas fa-save"></i> Lưu Chính Sách
-                    </button>
+                    @if ($can_set_yield_policy)
+                        <button class="yp-btn yp-btn-success" style="width:100%;" onclick="savePolicy()">
+                            <i class="fas fa-save"></i> Lưu Chính Sách
+                        </button>
+                    @endif
 
                     @if ($policy)
                         <div style="margin-top:10px;font-size:.76rem;color:#94a3b8;text-align:center;">
@@ -769,15 +783,17 @@
                     <h5><i class="fas fa-table" style="margin-right:8px;"></i>Chi Tiết Sản Lượng Theo Ngày</h5>
                     <div style="display:flex;gap:10px;">
                         <span style="font-size:.8rem;color:#94a3b8;align-self:center;" id="unsavedCount"></span>
-                        <button class="yp-btn"
-                            style="color:#fff; border: 1px solid rgba(255,255,255,0.4); background: transparent;"
-                            onmouseover="this.style.background='rgba(255,255,255,0.1)'"
-                            onmouseout="this.style.background='transparent'" onclick="applyDefaultTargetAll()">
-                            <i class="fas fa-magic"></i> Áp Dụng Target Mặc Định
-                        </button>
-                        <button class="yp-btn yp-btn-success" onclick="saveAllDailyOverrides()">
-                            <i class="fas fa-save"></i> Lưu Tất Cả Override
-                        </button>
+                        @if ($can_set_yield_policy)
+                            <button class="yp-btn"
+                                style="color:#fff; border: 1px solid rgba(255,255,255,0.4); background: transparent;"
+                                onmouseover="this.style.background='rgba(255,255,255,0.1)'"
+                                onmouseout="this.style.background='transparent'" onclick="applyDefaultTargetAll()">
+                                <i class="fas fa-magic"></i> Áp Dụng Target Mặc Định
+                            </button>
+                            <button class="yp-btn yp-btn-success" onclick="saveAllDailyOverrides()">
+                                <i class="fas fa-save"></i> Lưu Tất Cả Override
+                            </button>
+                        @endif
                     </div>
                 </div>
                 <div style="overflow-x:auto;">
@@ -860,7 +876,8 @@
                                             class="target-inline target-dvl {{ $isOverride ? 'saved' : '' }}"
                                             data-date="{{ $day['date'] }}" data-type="dvl" value="{{ $tDvl ?? '' }}"
                                             placeholder="{{ $policy->target_daily_dvl ?? '—' }}"
-                                            data-is-off="{{ $isOffDay ? '1' : '0' }}" oninput="markEdited(this)">
+                                            data-is-off="{{ $isOffDay ? '1' : '0' }}" oninput="markEdited(this)"
+                                            {{ !$can_set_yield_policy ? 'disabled' : '' }}>
                                     </td>
                                     <td>
                                         @if ($pct !== null)
@@ -875,10 +892,13 @@
                                     <td><span class="yp-badge yp-badge-{{ $badge }}">{{ $badgeText }}</span>
                                     </td>
                                     <td>
-                                        <button class="yp-btn yp-btn-primary" style="padding:4px 12px;font-size:.78rem;"
-                                            onclick="saveSingleDay('{{ $day['date'] }}', this)">
-                                            <i class="fas fa-save"></i>
-                                        </button>
+                                        @if ($can_set_yield_policy)
+                                            <button class="yp-btn yp-btn-primary"
+                                                style="padding:4px 12px;font-size:.78rem;"
+                                                onclick="saveSingleDay('{{ $day['date'] }}', this)">
+                                                <i class="fas fa-save"></i>
+                                            </button>
+                                        @endif
                                     </td>
                                 </tr>
                             @endforeach
@@ -1043,7 +1063,7 @@
                     month: MONTH,
                     target_month_dvl: document.getElementById('pol_month_dvl').value || null,
                     target_daily_dvl: document.getElementById('pol_daily_dvl').value || null,
-                    min_submit_pct:   minPctEl?.value !== '' ? parseFloat(minPctEl.value) : 100,
+                    min_submit_pct: minPctEl?.value !== '' ? parseFloat(minPctEl.value) : 100,
                     note: document.getElementById('pol_note').value,
                     _token: CSRF,
                 };
