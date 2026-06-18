@@ -2649,6 +2649,13 @@ class SchedualController extends Controller
         }
 
         $production = session('user.production_code');
+
+        // Nếu startDate = null → đây là batch trung gian (không phải batch cuối)
+        // → bỏ qua việc load lại events (rất nặng) để tránh timeout
+        if (!$request->startDate || !$request->endDate) {
+            return response()->json(['status' => 'ok', 'batch' => 'intermediate']);
+        }
+
         $events = $this->getEvents($production, $request->startDate, $request->endDate, true, $this->theory);
         $sumBatchByStage = $this->yield($request->startDate, $request->endDate, 'stage_code');
         $resources = $this->getResources($production, $request->startDate, $request->endDate);

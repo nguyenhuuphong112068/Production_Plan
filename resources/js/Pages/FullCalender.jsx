@@ -1572,13 +1572,517 @@ const ScheduleTest = () => {
 
 
 
+  // ==========================================================================
+  // SUA LOI CHONG CHAT SU KIEN
+  // ==========================================================================
+  const handleFixOverlappingEvents = async () => {
+    const confirmed = await Swal.fire({
+      title: 'Sửa Lỗi Chồng Chất Sự Kiện',
+      html: `<div style="text-align:left;font-size:14px">
+        <p>Chức năng này sẽ:</p>
+        <ul style="margin:8px 0;padding-left:20px">
+          <li>🔍 <b>Quét</b> tất cả sự kiện đang chồng lấn trên cùng phòng sản xuất</li>
+          <li>↔️ <b>Tịnh tuyến</b> chúng vào vị trí trống gần nhất (trước hoặc sau)</li>
+          <li>✅ <b>Đảm bảo</b> không vi phạm ngày nghỉ</li>
+        </ul>
+        <p style="color:#e67e22;margin-top:8px">⚠️ Chỉ di chuyển sự kiện <b>chưa hoàn thành</b>.</p>
+      </div>`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: '🔧 Chạy sửa lỗi',
+      cancelButtonText: 'Hủy',
+      confirmButtonColor: '#f39c12'
+    });
+    if (!confirmed.isConfirmed) return;
 
+    Swal.fire({
+      title: 'Đang quét và sửa lỗi...',
+      html: 'Hệ thống đang tìm và tịnh tuyến các sự kiện chồng lấn...',
+      allowOutsideClick: false, allowEscapeKey: false, showConfirmButton: false,
+      didOpen: () => Swal.showLoading()
+    });
+    await new Promise(resolve => setTimeout(resolve, 80));
 
+    const calendarApi = calendarRef.current?.getApi();
+    if (!calendarApi) return;
+    const allEvents = calendarApi.getEvents();
+    const offRanges = offDays.map(d => {
+      const start = new Date(`${d}T06:00:00`);
+      const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+      return { start, end };
+    }).sort((a, b) => a.start - b.start);
 
+    let updates = [];
+    let updatedTimesById = {};
 
+    // Lock events da hoan thanh
+    allEvents.forEach(e => {
+      if (e.extendedProps?.finished == 1) {
+        updatedTimesById[String(e.id)] = { start: new Date(e.start), end: new Date(e.end) };
+      }
+    });
 
+    // Nhom MAIN events theo resource
+    const eventsByResource = {};
+    allEvents.forEach(e => {
+      if (String(e.id).endsWith('-cleaning')) return;
+      if (updatedTimesById[String(e.id)]) return;
+      const rid = e.getResources()[0]?.id;
+      if (!rid) return;
+      if (!eventsByResource[rid]) eventsByResource[rid] = [];
+      eventsByResource[rid].push(e);
+    });
+
+    for (const [resourceId, events] of Object.entries(eventsByResource)) {
+      events.sort((a, b) => new Date(a.start) - new Date(b.start));
+      for (const ev of events) {
+        const evId = String(ev.id);
+        const cleaningId = evId.replace('-main', '-cleaning');
+        const cleaningEv = allEvents.find(e => String(e.id) === cleaningId);
+        const evStart = new Date(ev.start);
+        const duration = new Date(ev.end).getTime() - evStart.getTime();
+        const cleaningDur = cleaningEv ? (new Date(cleaningEv.end).getTime() - new Date(cleaningEv.start).getTime()) : 0;
+
+        const unprocessed = events.filter(e => !updatedTimesById[String(e.id)] && String(e.id) !== evId).map(e => String(e.id));
+        const unprocessedCleaning = unprocessed.map(id => id.replace('-main', '-cleaning'));
+        const ignoreIds = [...unprocessed, ...unprocessedCleaning, evId, cleaningId].filter(Boolean);
+
+        const newSlot = findNextAvailableSlot(resourceId, duration, evStart, allEvents, offRanges, ignoreIds, updatedTimesById);
+        const moved = Math.abs(newSlot.start.getTime() - evStart.getTime()) > 60000;
+
+        updatedTimesById[evId] = { start: newSlot.start, end: newSlot.end };
+        if (moved) updates.push({ id: evId, start: newSlot.start, end: newSlot.end, resourceId });
+
+        if (cleaningEv) {
+          const cStart = newSlot.end;
+          const cEnd = new Date(cStart.getTime() + cleaningDur);
+          updatedTimesById[cleaningId] = { start: cStart, end: cEnd };
+          if (moved) updates.push({ id: cleaningId, start: cStart, end: cEnd, resourceId });
+        }
+      }
+    }
+
+    if (updates.length > 0) {
+      let newPending = [...pendingChanges];
+      calendarApi.batchRendering(() => {
+        updates.forEach(u => {
+          const ev = calendarApi.getEventById(u.id);
+          if (ev && u.start && u.end) ev.setDates(u.start, u.end);
+          if (ev) {
+            const changeObj = { id: u.id, start: u.start, end: u.end, resourceId: u.resourceId || ev.getResources()[0]?.id, title: ev.title, submit: ev.extendedProps?.submit, C_end: ev.extendedProps?.C_end || false };
+            const idx = newPending.findIndex(p => String(p.id) === String(u.id));
+            if (idx >= 0) newPending[idx] = { ...newPending[idx], ...changeObj };
+            else newPending.push(changeObj);
+          }
+        });
+      });
+      setPendingChanges(newPending);
+      const mainMoved = updates.filter(u => !String(u.id).endsWith('-cleaning')).length;
+      Swal.fire('Hoàn thành!', `Đã dịch chuyển <b>${mainMoved}</b> sự kiện khỏi vị trí chồng lấn.<br>Nhấn 💾 để lưu thay đổi.`, 'success');
+    } else {
+      Swal.fire('Thông báo', 'Không tìm thấy sự kiện nào bị chồng lấn. Lịch đang sạch!', 'info');
+    }
+  };
+
+  // ==========================================================================
+  // TỰ ĐỘNG SỬA LỖI ĐEN THEO PHA CHẾ
+  // Cố định stage_code 3 & 4 (chưa xong, chưa bắt đầu) làm anchor
+  // Backward cascade: kéo stage 1, 2 về sớm hơn (kết thúc trước stage 3)
+  // Forward cascade: đẩy stage 5+ về sau (bắt đầu sau stage 4)
+  // ==========================================================================
+  const handleAutoFixByPhaChe = async () => {
+    const confirmed = await Swal.fire({
+      title: 'Tự Động Sửa Lỗi Đen Theo Pha Chế',
+      html: `
+        <div style="text-align:left;font-size:14px">
+          <p>Chức năng này sẽ:</p>
+          <ul style="margin:8px 0;padding-left:20px">
+            <li>🔒 <b>Cố định</b> các công đoạn <b>Pha Chế</b> (giai đoạn 3 & 4) chưa bắt đầu</li>
+            <li>⬅️ <b>Kéo lùi</b> các công đoạn trước (Cân, ...) để kết thúc đúng hạn</li>
+            <li>➡️ <b>Đẩy tới</b> các công đoạn sau (Nén, Đóng gói...) để bắt đầu sau Pha Chế</li>
+          </ul>
+          <p style="color:#e74c3c;margin-top:8px">⚠️ Thao tác này ảnh hưởng đến <b>toàn bộ lịch hiện tại</b>.</p>
+        </div>
+      `,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Chạy tự động',
+      cancelButtonText: 'Hủy',
+      confirmButtonColor: '#8e44ad'
+    });
+
+    if (!confirmed.isConfirmed) return;
+
+    Swal.fire({
+      title: 'Đang xử lý...',
+      html: 'Vui lòng đợi trong khi hệ thống điều chỉnh lịch theo Pha Chế.',
+      allowOutsideClick: false,
+      showConfirmButton: false,
+      didOpen: () => Swal.showLoading()
+    });
+
+    await new Promise(resolve => setTimeout(resolve, 80));
+
+    const calendarApi = calendarRef.current?.getApi();
+    if (!calendarApi) return;
+    const allEvents = calendarApi.getEvents();
+    const now = new Date();
+
+    // ----------------------------------------------------------------
+    // BƯỚC 1: Xác định anchors
+    // Stage 3 (chưa hoàn thành) → LUÔN là anchor (cố định)
+    // Stage 4 (chưa hoàn thành) → chỉ là anchor nếu KHÔNG có stage 3 trong chuỗi predecessor
+    //   (nếu sản phẩm có cả 3 và 4: stage 3 cố định, stage 4 được forward cascade đặt sau stage 3)
+    // ----------------------------------------------------------------
+    const stage3Anchors = allEvents.filter(e => {
+      if (String(e.id).endsWith('-cleaning')) return false;
+      if (Number(e.extendedProps?.stage_code) !== 3) return false;
+      if (e.extendedProps?.finished == 1) return false;
+      return true;
+    });
+
+    // Tập hợp code của tất cả stage 3 anchors để tra cứu nhanh
+    const stage3AnchorCodes = new Set(stage3Anchors.map(a => String(a.extendedProps?.code)).filter(Boolean));
+
+    // Helper: kiểm tra xem một event có stage 3 ancestor không (trace theo predecessor_code)
+    const hasStage3Ancestor = (ev) => {
+      let code = ev.extendedProps?.predecessor_code;
+      let depth = 0;
+      while (code && depth++ < 20) {
+        if (stage3AnchorCodes.has(String(code))) return true;
+        const predEv = allEvents.find(e =>
+          String(e.extendedProps?.code) === String(code) &&
+          !String(e.id).endsWith('-cleaning')
+        );
+        if (!predEv) break;
+        code = predEv.extendedProps?.predecessor_code;
+      }
+      return false;
+    };
+
+    // Stage 4: chỉ anchor nếu không có stage 3 ancestor
+    const stage4AnchorsList = allEvents.filter(e => {
+      if (String(e.id).endsWith('-cleaning')) return false;
+      if (Number(e.extendedProps?.stage_code) !== 4) return false;
+      if (e.extendedProps?.finished == 1) return false;
+      return !hasStage3Ancestor(e); // Không phải anchor nếu có stage 3 ở trước
+    });
+
+    const anchors = [...stage3Anchors, ...stage4AnchorsList];
+
+    if (anchors.length === 0) {
+      Swal.fire('Thông báo', 'Không tìm thấy công đoạn Pha Chế nào phù hợp (chưa hoàn thành).', 'info');
+      return;
+    }
+
+    const anchorIds = new Set(anchors.map(a => String(a.id)));
+    const offRanges = offDays.map(d => {
+      const start = new Date(`${d}T06:00:00`);
+      const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+      return { start, end };
+    }).sort((a, b) => a.start - b.start);
+
+    let updates = [];
+    let updatedTimesById = {};
+
+    // Đăng ký anchors + cleaning vào updatedTimesById (lock)
+    anchors.forEach(a => {
+      updatedTimesById[String(a.id)] = { start: new Date(a.start), end: new Date(a.end) };
+      const cleaningA = allEvents.find(e => String(e.id) === String(a.id).replace('-main', '-cleaning'));
+      if (cleaningA) {
+        updatedTimesById[String(cleaningA.id)] = { start: new Date(cleaningA.start), end: new Date(cleaningA.end) };
+      }
+    });
+
+    // Các event không di chuyển: chỉ finished=1 (đã hoàn thành)
+    // Event trong quá khứ nhưng chưa hoàn thành VẪN được di chuyển
+    allEvents.forEach(e => {
+      const eId = String(e.id);
+      if (updatedTimesById[eId]) return; // đã lock
+      if (e.extendedProps?.finished == 1) {
+        updatedTimesById[eId] = { start: new Date(e.start), end: new Date(e.end) };
+      }
+    });
+
+    // ----------------------------------------------------------------
+    // Helper: Build predecessor chain (ngược lên)
+    // ----------------------------------------------------------------
+    const buildPredChain = (startId) => {
+      const chain = [];
+      const visited = new Set();
+      let queue = [startId];
+      while (queue.length > 0) {
+        const cId = queue.shift();
+        if (visited.has(cId) || anchorIds.has(cId) || updatedTimesById[cId]) continue;
+        visited.add(cId);
+        const ev = allEvents.find(e => String(e.id) === cId && !String(e.id).endsWith('-cleaning'));
+        if (!ev) continue;
+        if (ev.extendedProps?.finished == 1) continue; // Không di chuyển event đã hoàn thành
+        chain.push(ev);
+        const pCode = ev.extendedProps.predecessor_code;
+        if (pCode) {
+          const pEv = allEvents.find(e =>
+            String(e.extendedProps.code) === String(pCode) &&
+            !String(e.id).endsWith('-cleaning') &&
+            !anchorIds.has(String(e.id)) &&
+            !visited.has(String(e.id))
+          );
+          if (pEv) queue.push(String(pEv.id));
+        }
+      }
+      // Sắp xếp GIẢM dần theo stage_code (gần anchor nhất xử lý trước)
+      return chain.sort((a, b) => (b.extendedProps.stage_code || 0) - (a.extendedProps.stage_code || 0));
+    };
+
+    // ----------------------------------------------------------------
+    // Helper: Build successor chain (xuôi xuống)
+    // ----------------------------------------------------------------
+    const buildSuccChain = (startId) => {
+      const chain = [];
+      const visited = new Set();
+      let queue = [startId];
+      while (queue.length > 0) {
+        const cId = queue.shift();
+        if (visited.has(cId) || anchorIds.has(cId) || updatedTimesById[cId]) continue;
+        visited.add(cId);
+        const ev = allEvents.find(e => String(e.id) === cId && !String(e.id).endsWith('-cleaning'));
+        if (!ev) continue;
+        if (ev.extendedProps?.finished == 1) continue; // Không di chuyển event đã hoàn thành
+        chain.push(ev);
+        const myCode = ev.extendedProps.code;
+        if (myCode) {
+          allEvents.forEach(e => {
+            const eId = String(e.id);
+            if (String(e.extendedProps.predecessor_code) === String(myCode) &&
+              !String(e.id).endsWith('-cleaning') &&
+              !anchorIds.has(eId) &&
+              !visited.has(eId)
+            ) {
+              queue.push(eId);
+            }
+          });
+        }
+      }
+      // Sắp xếp TĂNG dần theo stage_code (gần anchor nhất xử lý trước)
+      return chain.sort((a, b) => (a.extendedProps.stage_code || 0) - (b.extendedProps.stage_code || 0));
+    };
+
+    // ----------------------------------------------------------------
+    // BƯỚC 2: BACKWARD CASCADE từ mỗi anchor stage_code = 3
+    // Kéo predecessors (stage 1, 2) về sớm hơn để kết thúc trước anchor.start
+    // ----------------------------------------------------------------
+    for (const anchor of stage3Anchors) {
+      const predCode = anchor.extendedProps.predecessor_code;
+      if (!predCode) continue;
+
+      const predEv = allEvents.find(e =>
+        String(e.extendedProps.code) === String(predCode) &&
+        !String(e.id).endsWith('-cleaning')
+      );
+      if (!predEv) continue;
+
+      const predChain = buildPredChain(String(predEv.id));
+      if (predChain.length === 0) continue;
+
+      const chainIds = new Set(predChain.map(e => String(e.id)));
+
+      for (const ev of predChain) {
+        const evId = String(ev.id);
+        const cleaningEv = allEvents.find(e => String(e.id) === evId.replace('-main', '-cleaning'));
+
+        // latestEnd = start của successor (event có predecessor_code = ev.code)
+        const myCode = ev.extendedProps.code;
+        let latestEnd = null;
+        if (myCode) {
+          const succEv = allEvents.find(e =>
+            String(e.extendedProps.predecessor_code) === String(myCode) &&
+            !String(e.id).endsWith('-cleaning')
+          );
+          if (succEv) {
+            const succId = String(succEv.id);
+            latestEnd = updatedTimesById[succId]?.start || new Date(succEv.start);
+          }
+        }
+        // Nếu không tìm được successor, dùng anchor.start
+        if (!latestEnd) latestEnd = new Date(anchor.start);
+
+        const duration = new Date(ev.end).getTime() - new Date(ev.start).getTime();
+        const resourceId = ev.getResources()[0]?.id;
+
+        // Cleaning phải đặt SAU main → trừ cleaning duration khỏi latestEnd
+        const cleaningDur = cleaningEv
+          ? (new Date(cleaningEv.end).getTime() - new Date(cleaningEv.start).getTime())
+          : 0;
+        const adjustedLatestEnd = new Date(latestEnd.getTime() - cleaningDur);
+
+        // Kiểm tra xem đã hợp lệ chưa
+        const currentEnd = updatedTimesById[evId]?.end || new Date(ev.end);
+        if (currentEnd <= latestEnd) {
+          updatedTimesById[evId] = { start: updatedTimesById[evId]?.start || new Date(ev.start), end: currentEnd };
+          if (cleaningEv) {
+            const cId = String(cleaningEv.id);
+            if (!updatedTimesById[cId]) updatedTimesById[cId] = { start: new Date(cleaningEv.start), end: new Date(cleaningEv.end) };
+          }
+          continue;
+        }
+
+        // Ignore: chỉ bỏ qua các chain events CHƯА xử lý + event hiện tại
+        // QUAN TRỌNG: KHAI anchorIds không nằm trong ignoreIds
+        // (anchor đã trong updatedTimesById → findPreviousAvailableSlot tự động dùng vị trí làm obstacle)
+        const unprocessed = [...chainIds].filter(id => id !== evId && !updatedTimesById[id]);
+        const ignoreIds = [...unprocessed, evId, cleaningEv ? String(cleaningEv.id) : null].filter(Boolean);
+
+        const newSlot = findPreviousAvailableSlot(resourceId, duration, adjustedLatestEnd, allEvents, offRanges, ignoreIds, updatedTimesById);
+
+        updatedTimesById[evId] = { start: newSlot.start, end: newSlot.end };
+        updates.push({ id: evId, start: newSlot.start, end: newSlot.end, resourceId, clearWarnings: true });
+
+        if (cleaningEv) {
+          const cId = String(cleaningEv.id);
+          const cStart = newSlot.end;
+          const cEnd = new Date(cStart.getTime() + cleaningDur);
+          updatedTimesById[cId] = { start: cStart, end: cEnd };
+          updates.push({ id: cId, start: cStart, end: cEnd, resourceId, clearWarnings: true });
+        }
+      }
+    }
+
+    // ----------------------------------------------------------------
+    // BƯỚC 3: FORWARD CASCADE
+    // Điểm xuất phát:
+    //   - Nếu sản phẩm có stage 3 anchor và stage 4 (không phải anchor) → cascade từ stage 3
+    //     (stage 4 sẽ được dịch chuyển ngay sau stage 3, rồi stage 5, 6, 7 theo sau)
+    //   - Nếu chỉ có stage 4 anchor (không có stage 3) → cascade từ stage 4
+    // ----------------------------------------------------------------
+    // Tạo danh sách tất cả điểm xuất phát forward cascade
+    // = stage3Anchors (có thể có stage 4 kế tiếp) + stage4AnchorsList (không có stage 3 ancestor)
+    const forwardAnchors = [...stage3Anchors, ...stage4AnchorsList];
+
+    for (const anchor of forwardAnchors) {
+      const myCode = anchor.extendedProps.code;
+      if (!myCode) continue;
+
+      const succEv = allEvents.find(e =>
+        String(e.extendedProps.predecessor_code) === String(myCode) &&
+        !String(e.id).endsWith('-cleaning') &&
+        !anchorIds.has(String(e.id))
+      );
+      if (!succEv) continue;
+      if (updatedTimesById[String(succEv.id)]) continue; // đã xử lý
+
+      const succChain = buildSuccChain(String(succEv.id));
+      if (succChain.length === 0) continue;
+
+      const chainIds = new Set(succChain.map(e => String(e.id)));
+
+      for (const ev of succChain) {
+        const evId = String(ev.id);
+        if (updatedTimesById[evId]) continue;
+
+        const cleaningEv = allEvents.find(e => String(e.id) === evId.replace('-main', '-cleaning'));
+
+        // earliestStart = end của predecessor (+ cleaning nếu có)
+        const predCode = ev.extendedProps.predecessor_code;
+        let earliestStart = null;
+        if (predCode) {
+          const predEv = allEvents.find(e =>
+            String(e.extendedProps.code) === String(predCode) &&
+            !String(e.id).endsWith('-cleaning')
+          );
+          if (predEv) {
+            const predId = String(predEv.id);
+            earliestStart = updatedTimesById[predId]?.end || new Date(predEv.end);
+            // Tính cả cleaning của predecessor
+            const predCleaningId = predId.replace('-main', '-cleaning');
+            if (updatedTimesById[predCleaningId]) {
+              earliestStart = updatedTimesById[predCleaningId].end;
+            } else {
+              const predCleaning = allEvents.find(e => String(e.id) === predCleaningId);
+              if (predCleaning) earliestStart = new Date(predCleaning.end);
+            }
+          }
+        }
+
+        const currentStart = updatedTimesById[evId]?.start || new Date(ev.start);
+        if (!earliestStart || currentStart >= earliestStart) {
+          updatedTimesById[evId] = { start: currentStart, end: updatedTimesById[evId]?.end || new Date(ev.end) };
+          if (cleaningEv) {
+            const cId = String(cleaningEv.id);
+            if (!updatedTimesById[cId]) updatedTimesById[cId] = { start: new Date(cleaningEv.start), end: new Date(cleaningEv.end) };
+          }
+          continue;
+        }
+
+        const duration = new Date(ev.end).getTime() - new Date(ev.start).getTime();
+        const resourceId = ev.getResources()[0]?.id;
+
+        // Ignore: chỉ bỏ qua các chain events CHƯА xử lý + event hiện tại
+        // QUAN TRỌNG: anchorIds không nằm trong ignoreIds
+        // (anchor đã trong updatedTimesById → findNextAvailableSlot tự động dùng vị trí làm obstacle)
+        const unprocessed = [...chainIds].filter(id => id !== evId && !updatedTimesById[id]);
+        const unprocessedCleaning = unprocessed.map(id => id.replace('-main', '-cleaning')).filter(cid => !updatedTimesById[cid]);
+        const ignoreIds = [...unprocessed, ...unprocessedCleaning, evId, cleaningEv ? String(cleaningEv.id) : null].filter(Boolean);
+
+        const newSlot = findNextAvailableSlot(resourceId, duration, earliestStart, allEvents, offRanges, ignoreIds, updatedTimesById);
+
+        updatedTimesById[evId] = { start: newSlot.start, end: newSlot.end };
+        updates.push({ id: evId, start: newSlot.start, end: newSlot.end, resourceId, clearWarnings: true });
+
+        if (cleaningEv) {
+          const cId = String(cleaningEv.id);
+          const cDur = new Date(cleaningEv.end).getTime() - new Date(cleaningEv.start).getTime();
+          const cStart = newSlot.end;
+          const cEnd = new Date(cStart.getTime() + cDur);
+          updatedTimesById[cId] = { start: cStart, end: cEnd };
+          updates.push({ id: cId, start: cStart, end: cEnd, resourceId, clearWarnings: true });
+        }
+      }
+    }
+
+    // ----------------------------------------------------------------
+    // BƯỚC 4: Apply tất cả thay đổi
+    // ----------------------------------------------------------------
+    if (updates.length > 0) {
+      let newPending = [...pendingChanges];
+      calendarApi.batchRendering(() => {
+        updates.forEach(u => {
+          const ev = calendarApi.getEventById(u.id);
+          if (ev) {
+            if (u.start && u.end) ev.setDates(u.start, u.end);
+            if (u.clearWarnings) {
+              ev.setExtendedProp('warning_text', '');
+              ev.setExtendedProp('violation_colors', []);
+            }
+          }
+          if (u.start && u.end && ev) {
+            const changeObj = {
+              id: u.id,
+              start: u.start,
+              end: u.end,
+              resourceId: u.resourceId || (ev.getResources ? ev.getResources()[0]?.id : ev.resourceId),
+              title: ev.title,
+              submit: ev.extendedProps?.submit,
+              C_end: ev.extendedProps?.C_end || false
+            };
+            const existIdx = newPending.findIndex(p => String(p.id) === String(u.id));
+            if (existIdx >= 0) newPending[existIdx] = { ...newPending[existIdx], ...changeObj };
+            else newPending.push(changeObj);
+          }
+        });
+      });
+      setPendingChanges(newPending);
+      Swal.fire(
+        'Hoàn thành!',
+        `Đã điều chỉnh <b>${updates.filter(u => u.start).length}</b> sự kiện theo Pha Chế.<br>Nhấn 💾 để lưu thay đổi.`,
+        'success'
+      );
+    } else {
+      Swal.fire('Thông báo', 'Tất cả các công đoạn đã hợp lệ, không cần điều chỉnh.', 'info');
+    }
+  };
 
   const handleFixAllWeighingViolations = async (targetEvent = null) => {
+
     Swal.fire({
       title: "Đang xử lý...",
       html: "Vui lòng đợi trong khi hệ thống điều chỉnh lỗi Cân Nguyên Liệu.",
@@ -2280,60 +2784,95 @@ const ScheduleTest = () => {
 
     setSaving(true);
 
+    // Hiện popup loading - block mọi thao tác trong khi đang lưu
+    Swal.fire({
+      title: 'Đang lưu...',
+      html: `Đang xử lý <b>${pendingChanges.length}</b> thay đổi, vui lòng chờ...`,
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+      showConfirmButton: false,
+      didOpen: () => Swal.showLoading()
+    });
+
     const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
     let startDate = toLocalISOString(activeStart);
     let endDate = toLocalISOString(activeEnd);
     const theoryHidden = JSON.parse(sessionStorage.getItem('theoryHidden'));
-    axios.put('/Schedual/update', {
-      reason: reasonObj,
-      theory: theoryHidden,
-      cascade: isCascadeMode,
-      changes: pendingChanges.map(change => ({
-        id: change.id,
-        start: dayjs(change.start).format('YYYY-MM-DD HH:mm:ss'),
-        end: dayjs(change.end).format('YYYY-MM-DD HH:mm:ss'),
-        resourceId: change.resourceId,
-        title: change.title,
-        C_end: change.C_end || false
-      })),
-      startDate,
-      endDate
-    })
-      .then(res => {
+
+    // ── Chia pendingChanges thành các batch nhỏ ──────────────────────────────
+    const BATCH_SIZE = 50;
+    const allChanges = pendingChanges.map(change => ({
+      id: change.id,
+      start: dayjs(change.start).format('YYYY-MM-DD HH:mm:ss'),
+      end: dayjs(change.end).format('YYYY-MM-DD HH:mm:ss'),
+      resourceId: change.resourceId,
+      title: change.title,
+      C_end: change.C_end || false
+    }));
+
+    const totalBatches = Math.ceil(allChanges.length / BATCH_SIZE);
+    let lastData = null;
+
+    try {
+      for (let i = 0; i < totalBatches; i++) {
+        const batchChanges = allChanges.slice(i * BATCH_SIZE, (i + 1) * BATCH_SIZE);
+        const isLastBatch = i === totalBatches - 1;
+
+        // Cập nhật loading với tiến độ
+        Swal.update({
+          title: `Đang lưu... (${i + 1}/${totalBatches})`,
+          html: `Đang xử lý <b>${batchChanges.length}</b> thay đổi (đợt ${i + 1}/${totalBatches})...`,
+        });
+
+        const res = await axios.put('/Schedual/update', {
+          reason: reasonObj,
+          theory: theoryHidden,
+          cascade: isCascadeMode,
+          changes: batchChanges,
+          // Chỉ gửi startDate/endDate ở đợt cuối để refresh calendar
+          startDate: isLastBatch ? startDate : null,
+          endDate: isLastBatch ? endDate : null,
+        });
+
         let data = res.data;
-        if (typeof data === "string") {
-          data = data.replace(/^<!--.*?-->/, "").trim();
+        if (typeof data === 'string') {
+          data = data.replace(/^<!--.*?-->/, '').trim();
           data = JSON.parse(data);
         }
+        lastData = data;
+      }
 
-        setEvents(data.events);
-        if (data.resources) setResources(data.resources);
-        setSumBatchByStage(data.sumBatchByStage);
-        //setPlan(data.plan);
-        setPendingChanges([]);
-        setSaving(false);
+      // Sau tất cả batch thành công
+      if (lastData) {
+        setEvents(lastData.events);
+        if (lastData.resources) setResources(lastData.resources);
+        setSumBatchByStage(lastData.sumBatchByStage);
+      }
+      setPendingChanges([]);
+      setSaving(false);
 
-        Swal.fire({
-          icon: 'success',
-          title: 'Thành công!',
-          text: 'Đã lưu tất cả thay đổi.',
-          timer: 1200,
-          showConfirmButton: false,
-        });
-
-        // Xóa border đánh dấu sự kiện đã sửa
-        document.querySelectorAll('.fc-event[data-event-id]')
-          .forEach(el => { el.style.border = 'none'; });
-      })
-      .catch(err => {
-        console.error("Lỗi khi lưu events:", err.response?.data || err.message);
-        setSaving(false);
-        Swal.fire({
-          icon: 'error',
-          title: 'Lỗi!',
-          text: 'Không thể lưu thay đổi. Vui lòng thử lại.',
-        });
+      Swal.fire({
+        icon: 'success',
+        title: 'Thành công!',
+        text: totalBatches > 1
+          ? `Đã lưu ${allChanges.length} thay đổi trong ${totalBatches} đợt.`
+          : 'Đã lưu tất cả thay đổi.',
+        timer: 1500,
+        showConfirmButton: false,
       });
+
+      document.querySelectorAll('.fc-event[data-event-id]')
+        .forEach(el => { el.style.border = 'none'; });
+
+    } catch (err) {
+      console.error('Lỗi khi lưu events:', err.response?.data || err.message);
+      setSaving(false);
+      Swal.fire({
+        icon: 'error',
+        title: 'Lỗi!',
+        text: 'Không thể lưu thay đổi. Vui lòng thử lại.',
+      });
+    }
   };
 
   /// Xử lý Toggle sự kiện đang chọn: if đã chọn thì bỏ ra --> selectedEvents
@@ -3051,7 +3590,7 @@ const ScheduleTest = () => {
     let selectedDates = [...offDays];
 
     Swal.fire({
-      title: 'Cấu Hình Chung Sắp Lịch',
+      title: 'Sắp Lịch Tự Động',
       html: `
       <div class="cfg-wrapper">
 
@@ -3198,12 +3737,39 @@ const ScheduleTest = () => {
           </div>
 
 
-
         </div>
+
+        <!-- Cột công cụ sửa lỗi -->
+        <div class="cfg-card cfg-tools" style="min-width:220px;flex:0 0 220px;display:flex;flex-direction:column">
+          <h5 style="color:#c0392b;font-weight:700;margin-bottom:14px;border-bottom:2px solid #e74c3c;padding-bottom:8px;font-size:14px">
+            🔧 Sửa Lỗi Tự Động
+          </h5>
+          <div style="display:flex;flex-direction:column;gap:12px;flex:1">
+
+            <button type="button" id="btn-fix-overlap"
+              style="background:#e67e22;color:white;border:none;border-radius:6px;padding:12px 10px;text-align:left;cursor:pointer;font-size:12px;line-height:1.5;transition:opacity .2s"
+              onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+              <div style="font-weight:700;font-size:13px">📦 Sửa Lỗi Chồng Chất</div>
+              <div style="opacity:.9;margin-top:3px">Quét và tịnh tuyến sự kiện chồng lấn vào vị trí trống</div>
+            </button>
+
+            <button type="button" id="btn-fix-phache-modal"
+              style="background:#8e44ad;color:white;border:none;border-radius:6px;padding:12px 10px;text-align:left;cursor:pointer;font-size:12px;line-height:1.5;transition:opacity .2s"
+              onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+              <div style="font-weight:700;font-size:13px">🧬 Sửa Lỗi Đen Theo Pha Chế</div>
+              <div style="opacity:.9;margin-top:3px">Cố định Pha Chế (3&4), sắp xếp công đoạn khác thoát đen</div>
+            </button>
+
+          </div>
+          <div style="margin-top:14px;font-size:11px;color:#7f8c8d;border-top:1px solid #eee;padding-top:10px;line-height:1.5">
+            ⚠️ Sau khi sửa lỗi, nhấn <b>Đóng</b> rồi nhấn 💾 để lưu.
+          </div>
+        </div>
+
       </div>
       `,
 
-      width: '1200px',
+      width: '1440px',
       customClass: { htmlContainer: 'cfg-html-left', title: 'my-swal-title' },
       showCancelButton: true,
       confirmButtonText: 'Chạy',
@@ -3584,6 +4150,23 @@ const ScheduleTest = () => {
                 });
 
             });
+          });
+        }
+
+        // ================= Sửa lỗi tự động =================
+        const btnFixOverlap = document.getElementById('btn-fix-overlap');
+        const btnFixPhaCheModal = document.getElementById('btn-fix-phache-modal');
+
+        if (btnFixOverlap) {
+          btnFixOverlap.addEventListener('click', () => {
+            Swal.close();
+            setTimeout(() => handleFixOverlappingEvents(), 200);
+          });
+        }
+        if (btnFixPhaCheModal) {
+          btnFixPhaCheModal.addEventListener('click', () => {
+            Swal.close();
+            setTimeout(() => handleAutoFixByPhaChe(), 200);
           });
         }
       }
@@ -4919,7 +5502,7 @@ const ScheduleTest = () => {
         }}
 
         headerToolbar={{
-          left: 'customPre,myToday,customNext noteModal hiddenClearning hiddenTheory cascadeToggle historyToggle autoSchedualer deleteAllScheduale changeSchedualer unSelect ShowBadge AcceptQuarantine clearningValidation Cleaninglevelchange togglePersonnel',
+          left: 'customPre,myToday,customNext noteModal hiddenClearning hiddenTheory cascadeToggle historyToggle autoSchedualer deleteAllScheduale changeSchedualer unSelect ShowBadge AcceptQuarantine clearningValidation Cleaninglevelchange togglePersonnel autoFixPhaChe',
           center: 'title',
           right: 'Submit fontSizeBox searchBox slotDuration customDay,customWeek,customMonth,customQuarter customList' //customYear
         }}
@@ -5121,6 +5704,11 @@ const ScheduleTest = () => {
             hint: 'Ẩn/Hiện phân công nhân sự tại từng phòng'
           },
 
+          autoFixPhaChe: {
+            text: '🧬',
+            click: handleAutoFixByPhaChe,
+            hint: 'Tự Động Sửa Lỗi Đen Theo Pha Chế: Cố định giai đoạn Pha Chế (3 & 4), tự động kéo/đẩy các công đoạn khác để không còn lỗi đen'
+          },
 
         }}
 
