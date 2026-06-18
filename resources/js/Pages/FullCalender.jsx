@@ -4807,7 +4807,7 @@ const ScheduleTest = () => {
     }
 
     let html = `
-        <div class="relative group custom-event-content" data-event-id="${event.id}" style="${tankStyle}; padding-right: ${props.violation_colors?.length > 1 ? '6px' : '0'}; max-height: 80px; overflow: hidden;">
+        <div class="relative group custom-event-content" data-event-id="${event.id}" style="${tankStyle}; padding-right: ${props.violation_colors?.length > 1 ? '6px' : '0'}; max-height: 100px; overflow: hidden;">
           ${violationBars}
           <div style="font-size:${arg.eventFontSize || 12}px; ${isTank ? 'padding: 0px;' : ''} position: relative; z-index: 2;">
             
@@ -4859,7 +4859,7 @@ const ScheduleTest = () => {
       html += `
                 <div 
                   class="absolute bottom-[2px] right-[2px] px-1 rounded shadow-sm bg-white/90 text-red-600 z-[20]"
-                  style="font-size: 8px; line-height: 1;"
+                  style="font-size: 10px; line-height: 1;"
                   title="Mã Chiến dịch"
                 ><b>${props.campaign_code}</b></div>`;
     }
@@ -4875,13 +4875,13 @@ const ScheduleTest = () => {
     }
 
 
-    if (!props.is_clearning && showRenderBadge && props.status) {
+    if (!props.is_clearning && showRenderBadge) {
       const style = getStatusStyleString(props.status);
 
       html += `
               <div 
-                class="absolute top-[-15px] right-2 px-0.5 rounded shadow-sm"
-                style="${style}; font-size: 10px;"
+                class="absolute top-[2px] right-[2px] px-1 rounded shadow-sm z-[20]"
+                style="${style}; font-size: 10px; line-height: 1.2;"
                 title="Trạng Thái SX"
               >
                 <b>${props.status ?? ''}</b>
