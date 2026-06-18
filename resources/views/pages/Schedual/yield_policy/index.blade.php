@@ -639,6 +639,10 @@
                         Chính Sách Tháng {{ $month }}/{{ $year }}
                     </h5>
 
+                    <div style="background:#f8fafc;border-radius:6px;padding:10px;margin-bottom:15px;font-size:0.85rem;border:1px solid #e2e8f0;color:#475569;">
+                        <i class="fas fa-calendar-alt" style="color:#64748b;margin-right:5px;"></i>
+                        Tháng này có <strong style="color:#2563eb;">{{ $totalWorkingDays ?? 0 }}</strong> ngày làm việc và <strong style="color:#dc2626;">{{ $totalOffDays ?? 0 }}</strong> ngày nghỉ.
+                    </div>
 
                     <div class="yp-field-group">
                         <label>Target cả tháng — ĐVL</label>
@@ -711,7 +715,8 @@
                     <h5><i class="fas fa-table" style="margin-right:8px;"></i>Chi Tiết Sản Lượng Theo Ngày</h5>
                     <div style="display:flex;gap:10px;">
                         <span style="font-size:.8rem;color:#94a3b8;align-self:center;" id="unsavedCount"></span>
-                        <button class="yp-btn yp-btn-outline" style="color:#fff;border-color:#fff;"
+                        <button class="yp-btn" style="color:#fff; border: 1px solid rgba(255,255,255,0.4); background: transparent;"
+                            onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='transparent'"
                             onclick="applyDefaultTargetAll()">
                             <i class="fas fa-magic"></i> Áp Dụng Target Mặc Định
                         </button>
@@ -759,16 +764,20 @@
                                     }
                                     $isOverride = $override && ($override->target_qty_dvl);
                                     $isToday = $day['date'] === now()->format('Y-m-d');
+                                    $isOffDay = $day['is_off_day'] ?? false;
                                 @endphp
-                                <tr id="row-{{ $day['date'] }}" class="{{ $isToday ? 'today-row' : '' }}">
+                                <tr id="row-{{ $day['date'] }}" class="{{ $isToday ? 'today-row' : '' }}" style="{{ $isOffDay ? 'background-color:#fef2f2;' : '' }}">
                                     <td>
-                                        <span style="font-weight:700;{{ $isToday ? 'color:#2563eb;' : '' }}">
+                                        <span style="font-weight:700;{{ $isToday ? 'color:#2563eb;' : '' }}{{ $isOffDay ? 'color:#dc2626;' : '' }}">
                                             {{ \Carbon\Carbon::parse($day['date'])->format('d/m/Y') }}
                                         </span>
                                         @if ($isToday)
                                             <span
                                                 style="background:#dbeafe;color:#1d4ed8;border-radius:4px;padding:1px 6px;font-size:.7rem;margin-left:4px;">HÔM
                                                 NAY</span>
+                                        @endif
+                                        @if ($isOffDay)
+                                            <span style="background:#fee2e2;color:#dc2626;border-radius:4px;padding:1px 6px;font-size:.7rem;margin-left:4px;">Nghỉ</span>
                                         @endif
                                     </td>
                                     <td style="color:#64748b;font-size:.82rem;">{{ $day['dow'] }}</td>
@@ -789,6 +798,7 @@
                                             class="target-inline target-dvl {{ $isOverride ? 'saved' : '' }}"
                                             data-date="{{ $day['date'] }}" data-type="dvl" value="{{ $tDvl ?? '' }}"
                                             placeholder="{{ $policy->target_daily_dvl ?? '—' }}"
+                                            data-is-off="{{ $isOffDay ? '1' : '0' }}"
                                             oninput="markEdited(this)">
                                     </td>
                                     <td>
@@ -878,6 +888,7 @@
                     if (chartInstance) chartInstance.destroy();
 
                     chartInstance = new Chart(ctx, {
+                        type: 'bar',
                         data: {
                             labels,
                             datasets: [{
@@ -1079,12 +1090,12 @@
                     }
 
                     document.querySelectorAll('.target-dvl').forEach(inp => {
-                        if (!inp.value && defDvl) {
+                        if (!inp.value && defDvl && inp.dataset.isOff !== '1') {
                             inp.value = defDvl;
                             markEdited(inp);
                         }
                     });
-                    showToast('Đã áp dụng target mặc định cho tất cả ngày trống!', 'success');
+                    showToast('Đã áp dụng target mặc định cho tất cả ngày trống (bỏ qua ngày nghỉ)!', 'success');
                 }
 
                 // ── Init ──

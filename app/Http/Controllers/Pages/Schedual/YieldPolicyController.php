@@ -48,6 +48,9 @@ class YieldPolicyController extends Controller
 
         session()->put(['title' => 'CHÍNH SÁCH SẢN LƯỢNG']);
 
+        $totalWorkingDays = collect($dailyYield)->where('is_off_day', false)->count();
+        $totalOffDays     = collect($dailyYield)->where('is_off_day', true)->count();
+
         return view('pages.Schedual.yield_policy.index', [
             'year'            => $year,
             'month'           => $month,
@@ -56,6 +59,8 @@ class YieldPolicyController extends Controller
             'dailyYield'      => $dailyYield,
             'totalTheoryDvl'  => round($totalTheoryDvl, 0),
             'summary'         => $summary,
+            'totalWorkingDays'=> $totalWorkingDays,
+            'totalOffDays'    => $totalOffDays,
             'productionName'  => session('user')['production_name'] ?? $productionCode,
         ]);
     }
@@ -155,6 +160,12 @@ class YieldPolicyController extends Controller
         $result = [];
         $period = new \DatePeriod($startDate, new \DateInterval('P1D'), $endDate);
 
+        $offDays = DB::table('off_days')
+            ->whereDate('off_date', '>=', $startDate->format('Y-m-d'))
+            ->whereDate('off_date', '<', $endDate->format('Y-m-d'))
+            ->pluck('off_date')
+            ->toArray();
+
         foreach ($period as $date) {
             $date     = Carbon::instance($date);
             $dayStart = $date->copy()->setTime(6, 0, 0);
@@ -185,6 +196,7 @@ class YieldPolicyController extends Controller
                 'date'       => $date->format('Y-m-d'),
                 'date_label' => $date->format('d/m'),
                 'dow'        => $date->locale('vi')->dayName,
+                'is_off_day' => in_array($date->format('Y-m-d'), $offDays),
                 'theory_dvl' => round((float)($dvlRow->total_dvl ?? 0), 2),
             ];
         }
