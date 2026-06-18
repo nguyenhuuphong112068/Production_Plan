@@ -16,6 +16,8 @@
                 <div class="col-sm-6">
                     <h1>Dashboard Tình Hình Nhân Sự</h1>
                 </div>
+                <div class="col-sm-6 text-right">
+                </div>
             </div>
         </div>
     </section>
@@ -39,7 +41,7 @@
                                     </select>
                                 </div>
                             </div>
-                            <div class="col-md-2">
+                            <div class="col-md-3">
                                 <div class="form-group">
                                     <label>Tổ (Nhóm)</label>
                                     <select class="form-control" name="group_id" id="group_id">
@@ -50,7 +52,7 @@
                                     </select>
                                 </div>
                             </div>
-                            <div class="col-md-2">
+                            <div class="col-md-3">
                                 <div class="form-group">
                                     <label>Loại thống kê</label>
                                     <select class="form-control" name="type" id="type">
@@ -65,9 +67,6 @@
                                     <label>Ngày (chọn để xác định thời điểm)</label>
                                     <input type="date" class="form-control" name="date" id="date" value="{{ \Carbon\Carbon::now()->format('Y-m-d') }}">
                                 </div>
-                            </div>
-                            <div class="col-md-2 d-flex align-items-end">
-                                <button type="submit" class="btn btn-primary w-100 mb-3"><i class="fas fa-search"></i> Xem báo cáo</button>
                             </div>
                         </div>
                     </form>
@@ -143,33 +142,43 @@
                 </div>
 
                 <div class="row">
-                    <!-- Biểu đồ tỷ lệ -->
-                    <div class="col-md-4 mb-3">
-                        <div class="card card-outline card-success h-100">
-                            <div class="card-header">
-                                <h3 class="card-title">Tỷ lệ phân công</h3>
+                    <!-- Card cấu hình chính sách -->
+                    <div class="col-md-8 mb-3">
+                        <div class="card card-outline card-warning h-100 shadow-sm">
+                            <div class="card-header bg-warning text-dark">
+                                <h3 class="card-title font-weight-bold"><i class="fas fa-cogs"></i> Cấu hình Chính Sách Tăng Ca</h3>
+                                <div class="card-tools">
+                                    <button class="btn btn-sm btn-info text-white shadow-sm" style="border:none;" onclick="openHistoryModal()"><i class="fas fa-history"></i> Xem lịch sử</button>
+                                </div>
                             </div>
-                            <div class="card-body">
-                                <canvas id="assignmentPieChart" style="min-height: 250px; height: 250px; max-height: 250px; max-width: 100%;"></canvas>
+                            <div class="card-body p-0">
+                                <div style="max-height: 280px; overflow-y: auto;">
+                                    <form id="policyForm">
+                                        <table class="table table-sm table-striped mb-0">
+                                            <thead class="bg-light" style="position:sticky;top:0;z-index:1;">
+                                                <tr>
+                                                    <th>Cấp độ</th>
+                                                    <th>Tổ / Nhóm</th>
+                                                    <th style="width:150px" class="text-center">Tối đa Người/Ngày</th>
+                                                    <th style="width:150px" class="text-center">Tối đa Giờ/Ngày</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="policyTableBody">
+                                                <tr><td colspan="4" class="text-center text-muted py-3">Đang tải...</td></tr>
+                                            </tbody>
+                                        </table>
+                                    </form>
+                                </div>
                             </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Biểu đồ tổng quan -->
-                    <div class="col-md-4 mb-3">
-                        <div class="card card-outline card-info h-100">
-                            <div class="card-header">
-                                <h3 class="card-title">Biểu đồ tổng quan</h3>
-                            </div>
-                            <div class="card-body">
-                                <canvas id="assignmentBarChart" style="min-height: 250px; height: 250px; max-height: 250px; max-width: 100%;"></canvas>
+                            <div class="card-footer text-right p-2 bg-light">
+                                <button type="button" class="btn btn-primary btn-sm px-4 shadow-sm" onclick="savePolicy()"><i class="fas fa-save"></i> Lưu Cấu Hình</button>
                             </div>
                         </div>
                     </div>
 
                     <!-- Thống kê OT theo Tổ -->
                     <div class="col-md-4 mb-3" id="otSummaryRow">
-                        <div class="card card-outline h-100" style="border-color: #f5576c;">
+                        <div class="card card-outline h-100 shadow-sm" style="border-color: #f5576c;">
                             <div class="card-header" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color:#fff;">
                                 <h3 class="card-title"><i class="fas fa-layer-group mr-2"></i>Tăng Ca Theo Tổ</h3>
                             </div>
@@ -189,6 +198,32 @@
                                         </tbody>
                                     </table>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <!-- Biểu đồ tỷ lệ -->
+                    <div class="col-md-6 mb-3">
+                        <div class="card card-outline card-success h-100 shadow-sm">
+                            <div class="card-header">
+                                <h3 class="card-title">Tỷ lệ phân công</h3>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="assignmentPieChart" style="min-height: 250px; height: 250px; max-height: 250px; max-width: 100%;"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Biểu đồ tổng quan -->
+                    <div class="col-md-6 mb-3">
+                        <div class="card card-outline card-info h-100 shadow-sm">
+                            <div class="card-header">
+                                <h3 class="card-title">Biểu đồ tổng quan</h3>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="assignmentBarChart" style="min-height: 250px; height: 250px; max-height: 250px; max-width: 100%;"></canvas>
                             </div>
                         </div>
                     </div>
@@ -227,13 +262,37 @@
     </section>
 </div>
 
+
+
+<!-- Modal Lịch Sử -->
+<div class="modal fade" id="historyModal" tabindex="-1" role="dialog" aria-hidden="true" style="z-index: 1060;">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title font-weight-bold"><i class="fas fa-history"></i> Lịch Sử Thay Đổi Chính Sách</h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" style="max-height: 500px; overflow-y: auto;">
+                <div id="historyContent">
+                    <!-- JS gen -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- ChartJS -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- SweetAlert2 -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script>
     let currentPieChart = null;
     let currentBarChart = null;
     let allDetails = [];
+    let globalAvailableGroups = [];
 
     document.getElementById('filterForm').addEventListener('submit', function(e) {
         e.preventDefault();
@@ -250,6 +309,11 @@
         document.getElementById('group_id').value = '';
         loadData();
     });
+
+    // Auto load khi thay đổi các filter khác
+    document.getElementById('group_id').addEventListener('change', loadData);
+    document.getElementById('type').addEventListener('change', loadData);
+    document.getElementById('date').addEventListener('change', loadData);
 
     // Search detail table
     document.getElementById('searchDetail').addEventListener('input', function() {
@@ -297,12 +361,15 @@
         const groupSelect = document.getElementById('group_id');
         const currentSelectedGroup = groupSelect.value;
         groupSelect.innerHTML = '<option value="">-- Tất cả --</option>';
-        if (data.available_groups) {
-            data.available_groups.forEach(g => {
+        globalAvailableGroups = data.available_groups || [];
+        if (globalAvailableGroups.length > 0) {
+            globalAvailableGroups.forEach(g => {
                 const isSelected = (g.code == currentSelectedGroup) ? 'selected' : '';
                 groupSelect.innerHTML += `<option value="${g.code}" ${isSelected}>${g.name}</option>`;
             });
         }
+        
+        loadPolicyData();
 
         // Update KPIs
         document.getElementById('kpi_total').innerText = data.total_personnel;
@@ -429,6 +496,9 @@
                 ? `<td><span class="badge ${badgeClass}" style="font-size:0.9rem;">${item.status}</span></td>` 
                 : '';
 
+            const eoffice = item.eoffice_hours || 0;
+            const eofficeTotal = Math.round((eoffice + ot) * 100) / 100;
+
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>${item.code}</td>
@@ -436,7 +506,7 @@
                 <td><small class="text-muted">${item.group || '-'}</small></td>
                 <td style="min-width: 150px; max-width: 250px;">${shiftHtml}</td>
                 <td><strong>${item.total_hours} h</strong></td>
-                <td>${item.eoffice_hours} h</td>
+                <td><span class="badge bg-primary shadow-sm" style="font-size: 0.9rem; padding: 0.4em 0.6em; border-radius: 4px;">${eofficeTotal} h</span></td>
                 ${otCell}
                 ${statusCell}
             `;
@@ -446,6 +516,153 @@
         // Re-apply search filter after render
         const q = document.getElementById('searchDetail').value.toLowerCase();
         if (q) filterDetailTable(q);
+    }
+
+    // POLICY LOGIC
+    function loadPolicyData() {
+        const prodCode = document.getElementById('production_code').value;
+        
+        // Fetch current policy
+        fetch(`/assignemnt/overtime-policy?production_code=${prodCode}`)
+            .then(res => res.json())
+            .then(res => {
+                if(res.success) {
+                    renderPolicyForm(prodCode, res.data);
+                } else {
+                    document.getElementById('policyTableBody').innerHTML = '<tr><td colspan="4" class="text-center text-muted py-3">Lỗi tải dữ liệu</td></tr>';
+                }
+            })
+            .catch(err => {
+                document.getElementById('policyTableBody').innerHTML = '<tr><td colspan="4" class="text-center text-muted py-3">Không thể kết nối với máy chủ</td></tr>';
+            });
+    }
+
+    function renderPolicyForm(prodCode, currentPolicies) {
+        const tbody = document.getElementById('policyTableBody');
+        tbody.innerHTML = '';
+
+        const getPol = (groupId) => {
+            return currentPolicies.find(p => p.group_id == groupId) || { max_personnel_per_day: '', max_hours_per_day: '' };
+        };
+
+        const deptPol = getPol(null);
+        tbody.innerHTML += `
+            <tr style="background-color: #fff3cd;">
+                <td><strong>Toàn phân xưởng</strong></td>
+                <td>-</td>
+                <td><input type="number" min="0" class="form-control form-control-sm pol-personnel" data-group="" value="${deptPol.max_personnel_per_day || ''}" placeholder="Ko giới hạn"></td>
+                <td><input type="number" min="0" step="0.5" class="form-control form-control-sm pol-hours" data-group="" value="${deptPol.max_hours_per_day || ''}" placeholder="Ko giới hạn"></td>
+            </tr>
+        `;
+
+        if (prodCode === 'PXV1' && globalAvailableGroups.length > 0) {
+            globalAvailableGroups.forEach(g => {
+                const gPol = getPol(g.code);
+                tbody.innerHTML += `
+                    <tr>
+                        <td>Tổ / Nhóm</td>
+                        <td>${g.name}</td>
+                        <td><input type="number" min="0" class="form-control form-control-sm pol-personnel" data-group="${g.code}" value="${gPol.max_personnel_per_day || ''}" placeholder="Ko giới hạn"></td>
+                        <td><input type="number" min="0" step="0.5" class="form-control form-control-sm pol-hours" data-group="${g.code}" value="${gPol.max_hours_per_day || ''}" placeholder="Ko giới hạn"></td>
+                    </tr>
+                `;
+            });
+        }
+    }
+
+    function savePolicy() {
+        const prodCode = document.getElementById('production_code').value;
+        const rows = document.querySelectorAll('#policyTableBody tr');
+        let policies = [];
+
+        rows.forEach(tr => {
+            const inputP = tr.querySelector('.pol-personnel');
+            const inputH = tr.querySelector('.pol-hours');
+            if(inputP && inputH) {
+                const gId = inputP.getAttribute('data-group');
+                const pVal = parseInt(inputP.value) || 0;
+                const hVal = parseFloat(inputH.value) || 0;
+                
+                if(pVal > 0 || hVal > 0) {
+                    policies.push({
+                        group_id: gId ? gId : null,
+                        max_personnel: pVal,
+                        max_hours: hVal
+                    });
+                }
+            }
+        });
+
+        fetch(`/assignemnt/overtime-policy/store`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({
+                production_code: prodCode,
+                policies: policies
+            })
+        })
+        .then(res => res.json())
+        .then(res => {
+            if(res.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Đã lưu cấu hình thành công',
+                    showConfirmButton: false,
+                    timer: 1500
+                });
+            } else {
+                alert('Có lỗi xảy ra: ' + res.message);
+            }
+        });
+    }
+
+    function openHistoryModal() {
+        const prodCode = document.getElementById('production_code').value;
+        fetch(`/assignemnt/overtime-policy/history?production_code=${prodCode}`)
+            .then(res => res.json())
+            .then(res => {
+                if(res.success) {
+                    let html = '';
+                    if(res.data.length === 0) {
+                        html = '<p class="text-muted text-center mt-3">Chưa có lịch sử thay đổi.</p>';
+                    } else {
+                        res.data.forEach(history => {
+                            const badge = history.active == 1 ? '<span class="badge badge-success">Đang áp dụng</span>' : '<span class="badge badge-secondary">Lịch sử</span>';
+                            let detailHtml = '<ul class="mb-0 pl-3">';
+                            history.policies.forEach(p => {
+                                let scopeName = 'Toàn phân xưởng';
+                                if (p.group_id) {
+                                    const gObj = globalAvailableGroups.find(x => x.code == p.group_id);
+                                    scopeName = gObj ? `Tổ ${gObj.name}` : `Tổ ${p.group_id}`;
+                                }
+                                detailHtml += `<li><strong>${scopeName}:</strong> Tối đa ${p.max_personnel_per_day} người, ${p.max_hours_per_day} giờ</li>`;
+                            });
+                            if(history.policies.length === 0) detailHtml += '<li>Xóa giới hạn (Không giới hạn)</li>';
+                            detailHtml += '</ul>';
+
+                            html += `
+                                <div class="card mb-2 shadow-sm border">
+                                    <div class="card-body p-2">
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <span><i class="far fa-clock text-info"></i> ${history.time}</span>
+                                            ${badge}
+                                        </div>
+                                        <div class="mb-1 text-sm"><i class="far fa-user text-muted"></i> Thay đổi bởi: <strong class="text-primary">${history.created_by || 'System'}</strong></div>
+                                        <div class="bg-light p-2 rounded text-sm">
+                                            ${detailHtml}
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                    }
+                    document.getElementById('historyContent').innerHTML = html;
+                    $('#historyModal').modal('show');
+                }
+            });
     }
 </script>
 @endsection

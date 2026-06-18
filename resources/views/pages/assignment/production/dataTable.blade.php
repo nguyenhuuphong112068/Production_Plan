@@ -462,8 +462,8 @@
                     <i class="fas fa-print"></i> In Lịch
                 </button>
             </div>
-
         </div>
+        <div id="overtimePolicyBadgeContainer" style="display:none; padding: 4px 12px 4px 12px; background: #fff3cd; border-top: 1px solid #ffc107; flex-wrap: wrap; gap: 4px; margin-top: 5px;"></div>
     </div>
 
     <div class="main-content-layout">
@@ -669,7 +669,7 @@
                                                                 </div>
                                                                 <div class="d-flex align-items-center w-100 pl-4 pr-2 mt-1 mb-1 time-slider-container" style="{{ !$canEdit || ($assignment->is_foreign ?? false) ? 'opacity: 0.6; pointer-events: none;' : '' }}">
                                                                     <div class="time-slider flex-grow-1"></div>
-                                                                    <div class="time-display ml-3 font-weight-bold" style="font-size: 0.75rem; width: 85px; text-align: right; color: #444;"></div>
+                                                                    <div class="time-display ml-2 font-weight-bold" style="font-size: 0.7rem; width: 140px; text-align: right; line-height: 1.4; flex-shrink: 0;"></div>
                                                                     <input type="hidden" class="p-start-input" value="{{ $p_info->start ? \Carbon\Carbon::parse($p_info->start)->format('H:i') : '' }}">
                                                                     <input type="hidden" class="p-end-input" value="{{ $p_info->end ? \Carbon\Carbon::parse($p_info->end)->format('H:i') : '' }}">
                                                                 </div>
@@ -810,7 +810,7 @@
                                                             </div>
                                                             <div class="d-flex align-items-center w-100 pl-4 pr-2 mt-1 mb-1 time-slider-container" style="{{ !$canEdit ? 'opacity: 0.6; pointer-events: none;' : '' }}">
                                                                 <div class="time-slider flex-grow-1"></div>
-                                                                <div class="time-display ml-3 font-weight-bold" style="font-size: 0.75rem; width: 85px; text-align: right; color: #444;"></div>
+                                                                <div class="time-display ml-2 font-weight-bold" style="font-size: 0.7rem; width: 140px; text-align: right; line-height: 1.4; flex-shrink: 0;"></div>
                                                                 <input type="hidden" class="p-start-input" value="">
                                                                 <input type="hidden" class="p-end-input" value="">
                                                             </div>
@@ -1388,14 +1388,24 @@
                         
                         p1.$row.addClass('overlap-warning');
                         if (p1.$row.find('.overlap-badge').length === 0) {
-                            let target1 = p1.$row.find('.time-slider-container');
-                            $(`<div class="w-100 pl-4 mb-1 overlap-badge-container"><span class="badge badge-danger overlap-badge" title="Trùng lịch với ca khác (${p2.startStr}-${p2.endStr} tại ${p2.room})" style="font-size:0.75rem;"><i class="fas fa-exclamation-triangle mr-1"></i>Trùng: ${p2.startStr}-${p2.endStr} tại ${p2.room}</span></div>`).insertBefore(target1);
+                            let headerRow1 = p1.$row.find('.d-flex.align-items-center.w-100').first();
+                            let badgeHtml1 = `<span class="badge badge-danger overlap-badge ml-1 cursor-pointer" title="Trùng lịch với ca khác (${p2.startStr}-${p2.endStr} tại ${p2.room})" style="font-size:0.7rem;"><i class="fas fa-exclamation-triangle mr-1"></i>Trùng</span>`;
+                            if (headerRow1.find('.btn-remove-person').length > 0) {
+                                $(badgeHtml1).insertBefore(headerRow1.find('.btn-remove-person'));
+                            } else {
+                                headerRow1.append(badgeHtml1);
+                            }
                         }
                         
                         p2.$row.addClass('overlap-warning');
                         if (p2.$row.find('.overlap-badge').length === 0) {
-                            let target2 = p2.$row.find('.time-slider-container');
-                            $(`<div class="w-100 pl-4 mb-1 overlap-badge-container"><span class="badge badge-danger overlap-badge" title="Trùng lịch với ca khác (${p1.startStr}-${p1.endStr} tại ${p1.room})" style="font-size:0.75rem;"><i class="fas fa-exclamation-triangle mr-1"></i>Trùng: ${p1.startStr}-${p1.endStr} tại ${p1.room}</span></div>`).insertBefore(target2);
+                            let headerRow2 = p2.$row.find('.d-flex.align-items-center.w-100').first();
+                            let badgeHtml2 = `<span class="badge badge-danger overlap-badge ml-1 cursor-pointer" title="Trùng lịch với ca khác (${p1.startStr}-${p1.endStr} tại ${p1.room})" style="font-size:0.7rem;"><i class="fas fa-exclamation-triangle mr-1"></i>Trùng</span>`;
+                            if (headerRow2.find('.btn-remove-person').length > 0) {
+                                $(badgeHtml2).insertBefore(headerRow2.find('.btn-remove-person'));
+                            } else {
+                                headerRow2.append(badgeHtml2);
+                            }
                         }
                     }
                 }
@@ -1860,7 +1870,7 @@
                     </div>
                     <div class="d-flex align-items-center w-100 pl-4 pr-2 mt-1 mb-1 time-slider-container">
                         <div class="time-slider flex-grow-1"></div>
-                        <div class="time-display ml-3 font-weight-bold" style="font-size: 0.75rem; width: 85px; text-align: right; color: #444;"></div>
+                        <div class="time-display ml-2 font-weight-bold" style="font-size: 0.7rem; width: 140px; text-align: right; line-height: 1.4; flex-shrink: 0;"></div>
                         <input type="hidden" class="p-start-input" value="">
                         <input type="hidden" class="p-end-input" value="">
                     </div>
@@ -2054,7 +2064,14 @@
 
             // 2. Scan DB assignments
             const dbList = dbAssignments[personId.toString()] || [];
+            const currentFilterGroup = $('select[name="group_code"]').val() || '';
+            
             for (const dbAss of dbList) {
+                // Chỉ bật cảnh báo liên quan đến tổ đang chọn (bỏ qua nếu dbAss khác tổ)
+                if (currentFilterGroup !== '' && dbAss.group_id && dbAss.group_id.toString() !== currentFilterGroup.toString()) {
+                    continue;
+                }
+
                 const existsInDom = dbAss.assignment_id && $(
                     `.assignment-item[data-id="${dbAss.assignment_id}"]`).length > 0;
                 if (existsInDom) continue;
@@ -2753,6 +2770,11 @@
         }
 
         $(document).on('click', '.btn-save-room', async function() {
+            let checkPol = checkOvertimePolicyBeforeSave();
+            if(!checkPol.valid) {
+                Swal.fire({icon: 'error', title: 'Lỗi Chính Sách', html: checkPol.message});
+                return;
+            }
             if (validateAllOverlaps()) {
                 const result = await Swal.fire({
                     title: 'Cảnh báo',
@@ -2770,6 +2792,11 @@
         });
 
         $(document).on('click', '#btn-save-all', async function() {
+            let checkPol = checkOvertimePolicyBeforeSave();
+            if(!checkPol.valid) {
+                Swal.fire({icon: 'error', title: 'Lỗi Chính Sách', html: checkPol.message});
+                return;
+            }
             if (validateAllOverlaps()) {
                 const result = await Swal.fire({
                     title: 'Cảnh báo',
@@ -3128,7 +3155,7 @@
                                                 </div>
                                                 <div class="d-flex align-items-center w-100 pl-4 pr-2 mt-1 mb-1 time-slider-container">
                                                     <div class="time-slider flex-grow-1"></div>
-                                                    <div class="time-display ml-3 font-weight-bold" style="font-size: 0.75rem; width: 85px; text-align: right; color: #444;"></div>
+                                                    <div class="time-display ml-2 font-weight-bold" style="font-size: 0.7rem; width: 140px; text-align: right; line-height: 1.4; flex-shrink: 0;"></div>
                                                     <input type="hidden" class="p-start-input" value="">
                                                     <input type="hidden" class="p-end-input" value="">
                                                 </div>
@@ -4482,9 +4509,29 @@
             });
 
             sliderEl.noUiSlider.on('update', function(values) {
-                displayEl.text(values[0] + ' - ' + values[1]);
+                // Tính số giờ từ start -> end
+                let sMin = timeToMinutes(values[0]);
+                let eMin = timeToMinutes(values[1]);
+                if (eMin <= sMin) eMin += 24 * 60;
+                let totalMins = eMin - sMin;
+                let totalHrs = (totalMins / 60).toFixed(1);
+                let tc = parseFloat(Math.max(0, (totalMins / 60) - 8).toFixed(1));
+
+                // Gộp tất cả trên 1 dòng
+                displayEl.html(
+                    `<span style="color:#555;">${values[0]}-${values[1]}</span> ` +
+                    `<span style="color:#007bff;font-weight:bold;">=${totalHrs}h</span>` +
+                    (tc > 0 ? ` <span style="color:#dc3545;font-weight:bold;">TC:${tc}h</span>` : '')
+                );
+
                 row.find('.p-start-input').val(values[0]);
                 row.find('.p-end-input').val(values[1]);
+
+                // Cập nhật badge cảnh báo tăng ca realtime
+                if (typeof renderOvertimeBadge === 'function') {
+                    clearTimeout(window._overtimeBadgeTimer);
+                    window._overtimeBadgeTimer = setTimeout(renderOvertimeBadge, 300);
+                }
             });
 
             sliderEl.noUiSlider.on('set', function(values) {
@@ -4530,6 +4577,203 @@
                     initTimeSlider($(this));
                 });
             }, 500);
+
+            // Fetch overtime policy
+            fetch(`/assignemnt/overtime-policy?production_code={{ $production_code }}`)
+                .then(res => res.json())
+                .then(res => {
+                    if(res.success && res.data.length > 0) {
+                        currentOvertimePolicies = res.data;
+                        renderOvertimeBadge();
+                    }
+                });
         });
+
+        let currentOvertimePolicies = [];
+        const currentGroupCode = '{{ $group_code ?? '' }}';
+
+        // Chuyển chuỗi HH:MM thành số phút
+        function timeStrToMins(t) {
+            if (!t) return 0;
+            t = t.toString().trim();
+            if (t.length > 5) t = t.substring(11, 16); // Handle datetime strings
+            const parts = t.split(':');
+            return (parseInt(parts[0]) || 0) * 60 + (parseInt(parts[1]) || 0);
+        }
+
+        function calculateTotalOvertime() {
+            // Đọc trực tiếp từ bảng lịch phân công trong DOM
+            let personData = {}; // pid → { totalMins, groupCodes: Set }
+
+            $('.room-row').each(function() {
+                const $roomRow = $(this);
+                // data-group-code = code của tổ (khớp với stage_groups.code = pol.group_code_value)
+                const groupCode = ($roomRow.attr('data-group-code') || '').toString();
+
+                $roomRow.find('.assignment-item:not(.foreign-assignment)').each(function() {
+                    const $item = $(this);
+                    const startStr = $item.find('.start-time-input').val();
+                    const endStr   = $item.find('.end-time-input').val();
+                    if (!startStr || !endStr) return;
+
+                    let shiftStart = timeStrToMins(startStr);
+                    let shiftEnd   = timeStrToMins(endStr);
+                    if (shiftEnd <= shiftStart) shiftEnd += 24 * 60;
+
+                    $item.find('.personnel-row').each(function() {
+                        const pid = $(this).find('.person-select').val();
+                        if (!pid) return;
+
+                        // Ưu tiên dùng giờ riêng của nhân sự (slider), fallback về giờ ca
+                        const pStartStr = $(this).find('.p-start-input').val();
+                        const pEndStr   = $(this).find('.p-end-input').val();
+
+                        let personMins = shiftEnd - shiftStart;
+                        if (pStartStr && pEndStr) {
+                            let pS = timeStrToMins(pStartStr);
+                            let pE = timeStrToMins(pEndStr);
+                            if (pE <= pS) pE += 24 * 60;
+                            personMins = pE - pS;
+                        }
+
+                        if (!personData[pid]) {
+                            personData[pid] = { totalMins: 0, groupCodes: new Set() };
+                        }
+                        personData[pid].totalMins += personMins;
+                        if (groupCode) personData[pid].groupCodes.add(groupCode);
+                    });
+                });
+            });
+
+            // Tổng hợp tăng ca
+            let totalHoursByGroup  = {}; // group_code → giờ TC
+            let totalPersonsByGroup = {}; // group_code → số người TC
+            let totalHoursDept  = 0;
+            let totalPersonsDept = 0;
+
+            for (let pid in personData) {
+                const p = personData[pid];
+                const totalHrs = p.totalMins / 60;
+                if (totalHrs > 8) {
+                    const otHrs = parseFloat((totalHrs - 8).toFixed(2));
+                    totalHoursDept  += otHrs;
+                    totalPersonsDept++;
+
+                    p.groupCodes.forEach(gc => {
+                        if (!totalHoursByGroup[gc])  totalHoursByGroup[gc]  = 0;
+                        if (!totalPersonsByGroup[gc]) totalPersonsByGroup[gc] = 0;
+                        totalHoursByGroup[gc]  += otHrs;
+                        totalPersonsByGroup[gc]++;
+                    });
+                }
+            }
+
+            return {
+                dept:   { hours: parseFloat(totalHoursDept.toFixed(2)), persons: totalPersonsDept },
+                groups: { hours: totalHoursByGroup, persons: totalPersonsByGroup }
+            };
+        }
+
+        function renderOvertimeBadge() {
+            if(currentOvertimePolicies.length === 0) return;
+            
+            let otData = calculateTotalOvertime();
+            let badgeHtml = '';
+            
+            currentOvertimePolicies.forEach(pol => {
+                let maxP = pol.max_personnel_per_day;
+                let maxH = pol.max_hours_per_day;
+                if(maxP == 0 && maxH == 0) return;
+
+                // Khi đã chọn tổ cụ thể: chỉ hiện badge toàn xưởng và badge của tổ đó
+                if(currentGroupCode !== '') {
+                    if(pol.group_id !== null && pol.group_id !== undefined && pol.group_id !== '') {
+                        if(pol.group_code_value !== null && pol.group_code_value !== undefined && pol.group_code_value.toString() !== currentGroupCode.toString()) {
+                            return; // bỏ qua badge của tổ khác
+                        }
+                    }
+                }
+
+                let curP = 0;
+                let curH = 0;
+                let title = '';
+
+                if(!pol.group_id) {
+                    curP = otData.dept.persons;
+                    curH = otData.dept.hours;
+                    title = 'Toàn phân xưởng';
+                } else {
+                    // Dùng group_code_value (stage_groups.code) làm key — khớp với data-group-code trên room-row
+                    const gCode = pol.group_code_value !== null && pol.group_code_value !== undefined
+                        ? pol.group_code_value.toString() : '';
+                    curP = otData.groups.persons[gCode] || 0;
+                    curH = parseFloat((otData.groups.hours[gCode] || 0).toFixed(1));
+                    title = `Tổ ${gCode}`;
+                }
+
+                let isExceeded = (maxP > 0 && curP > maxP) || (maxH > 0 && curH > maxH);
+                let colorClass = isExceeded ? 'badge-danger' : 'badge-primary';
+
+                badgeHtml += `<span class="badge ${colorClass} mr-2 shadow-sm" style="font-size:0.9rem; padding: 6px 10px;">
+                    <i class="fas ${isExceeded ? 'fa-exclamation-triangle' : 'fa-check-circle'}"></i> Mức trần ${title}: 
+                    ${maxP > 0 ? `<b>${curP}/${maxP}</b> người ` : ''} 
+                    ${maxH > 0 ? `<b>${curH.toFixed(1)}/${maxH}</b> giờ` : ''}
+                </span>`;
+            });
+
+            if(badgeHtml) {
+                $('#overtimePolicyBadgeContainer').css('display', 'flex').html(badgeHtml);
+            } else {
+                $('#overtimePolicyBadgeContainer').hide();
+            }
+        }
+
+        function checkOvertimePolicyBeforeSave() {
+            if(currentOvertimePolicies.length === 0) return { valid: true };
+            
+            // force update sidebar times just in case
+            if(typeof updateSidebarPersonnelTimes === 'function') {
+                updateSidebarPersonnelTimes();
+            }
+
+            let otData = calculateTotalOvertime();
+            
+            for(let i=0; i<currentOvertimePolicies.length; i++) {
+                let pol = currentOvertimePolicies[i];
+                let maxP = pol.max_personnel_per_day;
+                let maxH = pol.max_hours_per_day;
+
+                // Khi đã chọn tổ cụ thể: chỉ kiểm tra policy toàn xưởng và policy của tổ đang chọn
+                if(currentGroupCode !== '') {
+                    if(pol.group_id !== null && pol.group_id !== undefined && pol.group_id !== '') {
+                        if(pol.group_code_value !== null && pol.group_code_value !== undefined && pol.group_code_value.toString() !== currentGroupCode.toString()) {
+                            continue; // bỏ qua policy của tổ khác
+                        }
+                    }
+                }
+
+                let curP = 0;
+                let curH = 0;
+                let title = '';
+
+                if(!pol.group_id) {
+                    curP = otData.dept.persons;
+                    curH = otData.dept.hours;
+                    title = 'Toàn phân xưởng';
+                } else {
+                    curP = otData.groups.persons[pol.group_id] || 0;
+                    curH = otData.groups.hours[pol.group_id] || 0;
+                    title = `Tổ ${pol.group_code_value || pol.group_id}`;
+                }
+
+                if(maxP > 0 && curP > maxP) {
+                    return { valid: false, message: `Vượt mức trần tăng ca của <b>${title}</b>!<br>Tối đa <b>${maxP}</b> người, nhưng hiện tại là <b>${curP}</b> người.` };
+                }
+                if(maxH > 0 && curH > maxH) {
+                    return { valid: false, message: `Vượt mức trần tăng ca của <b>${title}</b>!<br>Tối đa <b>${maxH}</b> giờ, nhưng hiện tại là <b>${curH}</b> giờ.` };
+                }
+            }
+            return { valid: true };
+        }
 
 </script>

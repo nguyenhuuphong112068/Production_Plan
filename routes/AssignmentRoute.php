@@ -3,6 +3,7 @@
 use App\Http\Controllers\Pages\Assignment\MaintenanceAssignmentController;
 use App\Http\Controllers\Pages\Assignment\ProductionAssignmentController;
 use App\Http\Controllers\Pages\Assignment\DashBoardController;
+use App\Http\Controllers\Pages\Assignment\OvertimePolicyController;
 use App\Http\Middleware\CheckLogin;
 use Illuminate\Support\Facades\Route;
 
@@ -53,4 +54,14 @@ Route::prefix('/assignemnt/dashboard')
     ->group(function () {
         Route::get('', 'index')->name('index');
         Route::get('data', 'getData')->name('data');
+    });
+
+Route::prefix('/assignemnt/overtime-policy')
+    ->controller(OvertimePolicyController::class)
+    ->name('pages.assignment.overtime_policy.')
+    ->middleware(CheckLogin::class)
+    ->group(function () {
+        Route::get('', 'index')->name('index');
+        Route::post('store', 'store')->name('store');
+        Route::get('history', 'history')->name('history');
     });

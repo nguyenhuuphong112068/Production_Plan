@@ -624,6 +624,9 @@
                                 </a>
                             </li>
 
+
+
+
                             <li class="nav-item">
                                 <a href="{{ route('pages.assignment.production.index') }}"
                                     class="nav-link {{ str_contains(url()->current(), 'assignment/production') ? 'active' : '' }}">
