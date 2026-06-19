@@ -1,5 +1,0 @@
-112:   const [blackViolationCount, setBlackViolationCount] = useState(0);
-4498:           {blackViolationCount > 0 && (
-4506:               <span className="font-bold text-sm">{blackViolationCount} Sự Kiện Đen</span>
-4509:           {blackViolationCount > 0 && (
-4605:           if (blackViolationCount !== count) {

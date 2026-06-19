@@ -4518,6 +4518,7 @@ const ScheduleTest = () => {
   };
 
   /// Xử lý xoa các lịch được chọn
+
   const handleDeleteScheduale = (e) => {
 
     if (!authorization) { return };
@@ -4638,64 +4639,132 @@ const ScheduleTest = () => {
     const calYear  = activeStart ? new Date(activeStart).getFullYear() : new Date().getFullYear();
     const calMonth = activeStart ? new Date(activeStart).getMonth() + 1 : new Date().getMonth() + 1;
 
-    // 🔹 Gọi API kiểm tra sản lượng lý thuyết
+    // 🔹 1. BẮT ĐẦU CHẶN LỖI LỊCH NGHIÊM TRỌNG
+    const allEvents = api?.getEvents() || [];
+    const errorEvents = [];
+    // Tạm thời comment phần chặn lỗi lịch nghiêm trọng sẽ mở lại sau
+    /*
+    allEvents.forEach(evt => {
+      const bg = (evt.backgroundColor || '').toLowerCase();
+      if (bg === '#920000ff' || bg === '#e54a4aff') {
+        errorEvents.push(evt);
+      }
+    });
+    */
+    const hasEventErrors = errorEvents.length > 0;
+
+    // 🔹 2. Gọi API kiểm tra sản lượng lý thuyết
     let checkResult = null;
     try {
       const res = await axios.post('/Schedual/yield_policy/check', { year: calYear, month: calMonth });
       checkResult = res.data;
     } catch (err) {
       console.warn('Không thể kiểm tra chính sách sản lượng:', err);
-      // Nếu API lỗi => vẫn cho phép submit
     }
+    const hasYieldErrors = checkResult && checkResult.can_submit === false;
 
-    // 🔹 Nếu không đạt => hiện cảnh báo và chặn
-    if (checkResult && checkResult.can_submit === false) {
-      const minPct = checkResult.min_submit_pct ?? 100;
-      const violationRows = (checkResult.violations || [])
-        .map(v => `<tr>
-          <td style="padding:4px 10px;border-bottom:1px solid #f1f5f9;">${v.date}</td>
-          <td style="padding:4px 10px;border-bottom:1px solid #f1f5f9;text-align:right;">${Number(v.theory_dvl).toLocaleString()}</td>
-          <td style="padding:4px 10px;border-bottom:1px solid #f1f5f9;text-align:right;">${Number(v.target_dvl).toLocaleString()}</td>
-          <td style="padding:4px 10px;border-bottom:1px solid #f1f5f9;text-align:center;color:#dc2626;font-weight:700;">${v.pct}%</td>
-        </tr>`)
-        .join('');
+    // 🔹 3. Tổng hợp và hiển thị nếu có lỗi
+    if (hasEventErrors || hasYieldErrors) {
+      const isTwoCols = hasEventErrors && hasYieldErrors;
+      let combinedHtml = `<div style="text-align:left; display: ${isTwoCols ? 'grid' : 'block'}; grid-template-columns: ${isTwoCols ? '1fr 1fr' : '1fr'}; gap: 20px;">`;
 
-      const monthRow = checkResult.month_pct !== null && !checkResult.month_ok
-        ? `<div style="margin-top:12px;padding:8px 12px;background:#fef2f2;border-radius:6px;border:1px solid #fecaca;">
-            <i class="fas fa-calendar-alt" style="color:#dc2626;"></i>
-            <strong>Target cả tháng chưa đạt 100%:</strong>
-            ${Number(checkResult.total_theory).toLocaleString()} / ${Number(checkResult.target_month).toLocaleString()} ĐVL
-            <strong style="color:#dc2626;">(${checkResult.month_pct}%)</strong>
-          </div>`
-        : '';
+      if (hasEventErrors) {
+        const rows = errorEvents.map(evt => {
+          const bg = (evt.backgroundColor || '').toLowerCase();
+          const reason = bg === '#920000ff' ? 'Cảnh Báo Ngày Đáp Ứng NL/BB' : 'Không Đáp Ứng Ngày Cần Hàng Theo Kế Hoạch';
+          const dateStr = evt.start ? moment(evt.start).format('DD/MM/YYYY') : '';
+          return `<tr>
+            <td style="padding:8px;border-bottom:1px solid #f1f5f9;text-align:left;color:#334155;">${evt.title}</td>
+            <td style="padding:8px;border-bottom:1px solid #f1f5f9;text-align:center;color:#64748b;">${dateStr}</td>
+            <td style="padding:8px;border-bottom:1px solid #f1f5f9;color:${bg.substring(0, 7)};font-weight:600;text-align:left;">${reason}</td>
+          </tr>`;
+        }).join('');
 
-      const dailySection = violationRows
-        ? `<div style="margin-top:10px;">
-            <p style="color:#475569;margin-bottom:6px;font-size:.85rem;">
-              <i class="fas fa-calendar-day" style="color:#7c3aed;"></i>
-              Các ngày làm việc chưa đạt ngưỡng <strong>${minPct}%</strong> target/ngày:
+        combinedHtml += `
+          <div style="background:#fff; border:1px solid #e2e8f0; border-radius:8px; padding:16px; box-shadow:0 2px 4px rgba(0,0,0,0.02);">
+            <p style="color:#dc2626; margin-bottom:14px; font-size:1.1rem; border-bottom:1px solid #fee2e2; padding-bottom:10px;">
+              <b><i class="fas fa-exclamation-triangle"></i> Lịch vi phạm quy tắc</b>
             </p>
-            <div style="max-height:240px;overflow-y:auto;">
-              <table style="width:100%;border-collapse:collapse;font-size:.84rem;">
-                <thead><tr style="background:#f8fafc;">
-                  <th style="padding:6px 10px;text-align:left;">Ngày</th>
-                  <th style="padding:6px 10px;text-align:right;">SL LT (ĐVL)</th>
-                  <th style="padding:6px 10px;text-align:right;">Target (ĐVL)</th>
-                  <th style="padding:6px 10px;text-align:center;">% Đạt</th>
-                </tr></thead>
-                <tbody>${violationRows}</tbody>
+            <div style="max-height:280px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:6px;">
+              <table style="width:100%; border-collapse:collapse; font-size:13px;">
+                 <thead style="position: sticky; top: 0; background: #f8fafc; z-index: 1; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                   <tr>
+                     <th style="padding:10px 8px;text-align:left;border-bottom:1px solid #e2e8f0;color:#475569;font-weight:600;">Tên Kế Hoạch</th>
+                     <th style="padding:10px 8px;text-align:center;border-bottom:1px solid #e2e8f0;color:#475569;font-weight:600;">Ngày Bắt Đầu</th>
+                     <th style="padding:10px 8px;text-align:left;border-bottom:1px solid #e2e8f0;color:#475569;font-weight:600;">Lỗi Vi Phạm</th>
+                   </tr>
+                 </thead>
+                 <tbody>${rows}</tbody>
               </table>
             </div>
-          </div>`
-        : '';
+          </div>
+        `;
+      }
+
+      if (hasYieldErrors) {
+        const minPct = checkResult.min_submit_pct ?? 100;
+        const violationRows = (checkResult.violations || [])
+          .map(v => `<tr>
+            <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;color:#334155;">${v.date}</td>
+            <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;text-align:right;color:#64748b;">${Number(v.theory_dvl).toLocaleString()}</td>
+            <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;text-align:right;color:#64748b;">${Number(v.target_dvl).toLocaleString()}</td>
+            <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9;text-align:center;color:#dc2626;font-weight:700;">${v.pct}%</td>
+          </tr>`)
+          .join('');
+
+        const monthRow = checkResult.month_pct !== null && !checkResult.month_ok
+          ? `<div style="margin-top:16px;padding:12px 14px;background:#fef2f2;border-radius:6px;border:1px solid #fecaca;font-size:.9rem;">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                <i class="fas fa-calendar-alt" style="color:#dc2626;font-size:1.1rem;"></i>
+                <strong style="color:#991b1b;">Target cả tháng chưa đạt 100%</strong>
+              </div>
+              <div style="color:#b91c1c;">
+                Hiện tại: <b>${Number(checkResult.total_theory).toLocaleString()}</b> / Target: <b>${Number(checkResult.target_month).toLocaleString()}</b> ĐVL
+                <strong style="color:#dc2626;float:right;font-size:1.05rem;">(${checkResult.month_pct}%)</strong>
+              </div>
+            </div>`
+          : '';
+
+        const dailySection = violationRows
+          ? `<div>
+              <p style="color:#475569;margin-bottom:10px;font-size:.9rem;display:flex;align-items:center;gap:6px;">
+                <i class="fas fa-calendar-day" style="color:#7c3aed;"></i>
+                <span>Các ngày làm việc chưa đạt ngưỡng <strong style="color:#7c3aed;">${minPct}%</strong> target/ngày:</span>
+              </p>
+              <div style="max-height:240px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:6px;">
+                <table style="width:100%;border-collapse:collapse;font-size:.84rem;">
+                  <thead style="position: sticky; top: 0; background: #f8fafc; z-index: 1; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><tr>
+                    <th style="padding:10px;text-align:left;border-bottom:1px solid #e2e8f0;color:#475569;font-weight:600;">Ngày</th>
+                    <th style="padding:10px;text-align:right;border-bottom:1px solid #e2e8f0;color:#475569;font-weight:600;">SL LT (ĐVL)</th>
+                    <th style="padding:10px;text-align:right;border-bottom:1px solid #e2e8f0;color:#475569;font-weight:600;">Target (ĐVL)</th>
+                    <th style="padding:10px;text-align:center;border-bottom:1px solid #e2e8f0;color:#475569;font-weight:600;">% Đạt</th>
+                  </tr></thead>
+                  <tbody>${violationRows}</tbody>
+                </table>
+              </div>
+            </div>`
+          : '';
+
+        combinedHtml += `
+          <div style="background:#fff; border:1px solid #e2e8f0; border-radius:8px; padding:16px; box-shadow:0 2px 4px rgba(0,0,0,0.02); display:flex; flex-direction:column;">
+            <p style="color:#dc2626; margin-bottom:14px; font-size:1.1rem; border-bottom:1px solid #fee2e2; padding-bottom:10px;">
+              <b><i class="fas fa-chart-line"></i> Vi phạm Chính sách sản lượng</b>
+            </p>
+            ${dailySection}
+            ${monthRow}
+          </div>
+        `;
+      }
+
+      combinedHtml += '</div>';
 
       Swal.fire({
         title: `❌ Không thể Submit — Tháng ${calMonth}/${calYear}`,
-        html: `${dailySection}${monthRow}`,
+        html: combinedHtml,
         icon: 'error',
         confirmButtonText: 'Đóng',
         confirmButtonColor: '#3085d6',
-        width: '620px',
+        width: '80%'
       });
       return;
     }

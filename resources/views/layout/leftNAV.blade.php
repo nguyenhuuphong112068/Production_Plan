@@ -500,7 +500,7 @@
                             <li class="nav-item">
                                 <a href="{{ route('pages.Schedual.warning.index') }}" class="nav-link">
                                     <i class="far fa-circle nav-icon"></i>
-                                    <p> Cảnh Báo Lịch </p>
+                                    <p> Đề Nghị Thay Đổi KH </p>
                                 </a>
                             </li>
                         @endif

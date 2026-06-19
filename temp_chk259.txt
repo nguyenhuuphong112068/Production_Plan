@@ -1,8 +1,0 @@
-112:   const [blackViolationCount, setBlackViolationCount] = useState(0);
-1159:       const firstViolation = allEvents.find(e => e.extendedProps?.violation_colors?.includes('black'));
-3868:     "Chưa làm": { backgroundColor: "white", color: "black" },
-4314:           {blackViolationCount > 0 && (
-4322:               <span className="font-bold text-sm">{blackViolationCount} Lỗi chuỗi</span>
-4404:             const count = events.filter(e => e.extendedProps?.violation_colors?.includes('black')).length;
-4405:             if (blackViolationCount !== count) {
-4441:             <div style={{ fontWeight: "bold", color: highlight ? "red" : "black" }}>
