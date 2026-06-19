@@ -1117,8 +1117,8 @@ class SchedualController extends Controller
         /* 6️⃣ HẠN CẦN HÀNG */
         $Stage_plan_7 = $plans->firstWhere('stage_code', 7);
 
-        $overExpected = ($Stage_plan_7 && \Carbon\Carbon::parse($plan->expected_date)->startOfDay()->lt(\Carbon\Carbon::parse($Stage_plan_7->end)->startOfDay())) 
-                     || \Carbon\Carbon::parse($plan->expected_date)->startOfDay()->lt(\Carbon\Carbon::parse($plan->end)->startOfDay());
+        $overExpected = ($Stage_plan_7 && \Carbon\Carbon::parse($plan->expected_date)->startOfDay()->lt(\Carbon\Carbon::parse($Stage_plan_7->end)->startOfDay()))
+            || \Carbon\Carbon::parse($plan->expected_date)->startOfDay()->lt(\Carbon\Carbon::parse($plan->end)->startOfDay());
 
         if ($overExpected && $plan->stage_code <= 7) {
 
@@ -1141,7 +1141,7 @@ class SchedualController extends Controller
 
             if ($pre) {
                 $pre_end = ($pre->finished == 1 && $pre->actual_end) ? $pre->actual_end : $pre->end;
-                
+
                 if ($plan_start < $pre_end  && $plan_end < $pre_end) {
 
                     $subtitles[] = "➡️ (KT {$this->stage_Name[$pre->stage_code]} tại {$room_code[$pre->resourceId]}: "
@@ -1150,7 +1150,7 @@ class SchedualController extends Controller
                     $color_event = '#4d4b4bff'; // '#4d4b4bff'
                     $textColor = '#ffffff';
                     $violation_colors[] = '#4d4b4bff';
-                    
+
                     $plan->violation_predecessor_id = $pre->id;
                     $plan->violation_predecessor_end = $pre_end;
                 }
@@ -1172,7 +1172,7 @@ class SchedualController extends Controller
                     $color_event = '#4d4b4bff'; // '#4d4b4bff'
                     $textColor = '#ffffff';
                     $violation_colors[] = '#4d4b4bff';
-                    
+
                     $plan->violation_successor_id = $next->id;
                     $plan->violation_successor_start = $next_start;
                 }
@@ -1186,7 +1186,7 @@ class SchedualController extends Controller
         }
 
         $criticalChecks = [
-            // [1,  3,  'after_weigth_date',         '➡️ Ngày có đủ NL',  '>'],
+            [1,  3,  'after_weigth_date',         '➡️ Ngày có đủ NL',  '>'],
             [1,  3,  'allow_weight_before_date',  '➡️ Ngày được phép cân',  '>'],
             [1,  3,  'expired_material_date',     '➡️ Ngày hết hạn NL chính',  '<'],
             [7,  7,  'expired_packing_date',     '➡️ Ngày hết hạn BB',  '<'],
@@ -1194,7 +1194,7 @@ class SchedualController extends Controller
             [4,  4,  'blending_before_date',    '➡️ Phải THT trước ngày',  '<'],
             [6,  6,  'coating_before_date',     '➡️ Phải BP trước ngày',  '<'],
             [7,  7,  'parkaging_before_date',     '➡️ Phải ĐG trước ngày ',  '<'],
-            // [7,  7,  'after_parkaging_date',    '➡️ Ngày có đủ BB',  '>'],
+            [7,  7,  'after_parkaging_date',    '➡️ Ngày có đủ BB',  '>'],
         ];
 
         foreach ($criticalChecks as [$from,  $to,  $field,  $label,  $operator]) {
@@ -1250,11 +1250,11 @@ class SchedualController extends Controller
         $finalSubtitle = implode("\n", $subtitles);
 
         return [
-            $color_event,  
-            $textColor,  
-            $finalSubtitle, 
-            array_values($filtered_violation_colors), 
-            $mold_warning, 
+            $color_event,
+            $textColor,
+            $finalSubtitle,
+            array_values($filtered_violation_colors),
+            $mold_warning,
             $mold_code,
             $plan->violation_predecessor_id ?? null,
             $plan->violation_predecessor_end ?? null,
@@ -5074,6 +5074,12 @@ class SchedualController extends Controller
             $this->scheduleIntermediate($i, 0, 0, $start_date);
         }
 
+        // ///stage_plan có cảnh báo NL/BB (chạy sau bán thành phẩm, trước sản phẩm nhạy cảm)
+        for ($i = $selectedStep; $i >= 3; $i--) {
+
+            $this->scheduleWarningMR($i, 0, 0, $start_date);
+        }
+
         // ///sản phẩm nhạy cảm
         for ($i = 3; $i <= $selectedStep; $i++) {
 
@@ -5134,6 +5140,195 @@ class SchedualController extends Controller
         }
 
         return response()->json([]);
+    }
+
+    /**
+     * Nhóm 2b: Xếp lịch các stage_plan có ràng buộc cảnh báo NL/BB.
+     * Chạy sau scheduleIntermediate, trước scheduleSensitiveProduct.
+     * Lấy task chưa xếp lịch, có ít nhất 1 cột cảnh báo not null.
+     * Sắp xếp theo ngày deadline chặt nhất (earliest deadline first) để tránh vi phạm.
+     */
+    public function scheduleWarningMR(int $stageCode, int $waite_time_nomal_batch = 0, int $waite_time_val_batch = 0, ?Carbon $start_date = null)
+    {
+        $tasks = DB::table('stage_plan as sp')
+            ->select(
+                'sp.id',
+                'sp.plan_master_id',
+                'sp.product_caterogy_id',
+                'sp.predecessor_code',
+                'sp.nextcessor_code',
+                'sp.campaign_code',
+                'sp.code',
+                'sp.stage_code',
+                'sp.tank',
+                'sp.keep_dry',
+                'sp.order_by',
+                'sp.required_room_code',
+                'sp.immediately',
+
+                'plan_master.batch',
+                'plan_master.is_val',
+                'plan_master.code_val',
+                'plan_master.expected_date',
+                'plan_master.responsed_date',
+
+                'plan_master.after_weigth_date',
+                'plan_master.after_parkaging_date',
+                'plan_master.allow_weight_before_date',
+                'plan_master.expired_material_date',
+                'plan_master.expired_packing_date',
+                'plan_master.preperation_before_date',
+                'plan_master.blending_before_date',
+                'plan_master.coating_before_date',
+                'plan_master.parkaging_before_date',
+
+                'finished_product_category.product_name_id',
+                'finished_product_category.market_id',
+                'finished_product_category.finished_product_code',
+                'finished_product_category.intermediate_code',
+                'product_name.name',
+                'market.code as market',
+                'prev.start as prev_start',
+            )
+            ->leftJoin('plan_master', 'sp.plan_master_id', 'plan_master.id')
+            ->leftJoin('finished_product_category', 'sp.product_caterogy_id', 'finished_product_category.id')
+            ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
+            ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
+            ->leftJoin('stage_plan as prev', 'prev.code', '=', 'sp.predecessor_code')
+            ->where('sp.stage_code', $stageCode)
+            ->where('sp.finished', 0)
+            ->where('sp.not_schedule', 0)
+            ->where('sp.active', 1)
+            ->whereNull('sp.start')
+            // Chỉ lấy task có ít nhất 1 ràng buộc cảnh báo NL/BB not null
+            ->where(function ($q) use ($stageCode) {
+                $q->whereNotNull('plan_master.after_weigth_date')
+                  ->orWhereNotNull('plan_master.allow_weight_before_date')
+                  ->orWhereNotNull('plan_master.expired_material_date')
+                  ->orWhereNotNull('plan_master.preperation_before_date')
+                  ->orWhereNotNull('plan_master.blending_before_date')
+                  ->orWhereNotNull('plan_master.coating_before_date');
+                if ($stageCode == 7) {
+                    $q->orWhereNotNull('plan_master.after_parkaging_date')
+                      ->orWhereNotNull('plan_master.expired_packing_date')
+                      ->orWhereNotNull('plan_master.parkaging_before_date');
+                }
+            })
+            ->where('sp.deparment_code', session('user.production_code'))
+            // Sắp xếp: ưu tiên task có deadline chặt nhất trước (Earliest Deadline First)
+            ->orderByRaw("
+                LEAST(
+                    COALESCE(plan_master.expired_material_date, '9999-12-31'),
+                    COALESCE(plan_master.allow_weight_before_date, '9999-12-31'),
+                    COALESCE(plan_master.preperation_before_date, '9999-12-31'),
+                    COALESCE(plan_master.blending_before_date, '9999-12-31'),
+                    COALESCE(plan_master.coating_before_date, '9999-12-31'),
+                    COALESCE(plan_master.parkaging_before_date, '9999-12-31'),
+                    COALESCE(plan_master.expired_packing_date, '9999-12-31')
+                ) ASC
+            ")
+            ->orderBy('prev.start', 'asc')
+            ->get();
+
+        if (! $tasks->isNotEmpty()) {
+            return;
+        }
+
+        $processedCampaigns = [];
+
+        foreach ($tasks as $task) {
+
+            if ($task->is_val === 1) {
+                $waite_time = $waite_time_val_batch;
+            } else {
+                $waite_time = $waite_time_nomal_batch;
+            }
+
+            // ─── BƯỚC 1: Lower bound (operator '>') ───────────────────────────────────
+            // Task phải bắt đầu SAU ngày có đủ NL / ngày được phép cân
+            $start_date_effective = $start_date ? clone $start_date : null;
+
+            $lowerBounds = array_filter([
+                $task->after_weigth_date,
+                $task->allow_weight_before_date,
+            ]);
+
+            foreach ($lowerBounds as $boundDate) {
+                $bound = Carbon::parse($boundDate)->setTime(6, 0, 0);
+                if ($start_date_effective === null || $bound->gt($start_date_effective)) {
+                    $start_date_effective = $bound;
+                }
+            }
+
+            // ─── BƯỚC 2: Just-In-Time — tránh xếp quá sớm ────────────────────────────
+            // Tìm deadline cụ thể của stageCode hiện tại (operator '<')
+            // Nếu deadline > start_date_effective → đẩy start_date_effective lên deadline
+            // để engine xếp lịch gần sát ngày đó, không chiếm slot sớm của task gấp hơn
+            $stageDeadlineCandidates = [];
+
+            switch ($stageCode) {
+                case 3:
+                    if (!empty($task->preperation_before_date)) {
+                        $stageDeadlineCandidates[] = $task->preperation_before_date;
+                    }
+                    break;
+                case 4:
+                    if (!empty($task->blending_before_date)) {
+                        $stageDeadlineCandidates[] = $task->blending_before_date;
+                    }
+                    break;
+                case 6:
+                    if (!empty($task->coating_before_date)) {
+                        $stageDeadlineCandidates[] = $task->coating_before_date;
+                    }
+                    break;
+                case 7:
+                    if (!empty($task->parkaging_before_date)) {
+                        $stageDeadlineCandidates[] = $task->parkaging_before_date;
+                    }
+                    if (!empty($task->expired_packing_date)) {
+                        $stageDeadlineCandidates[] = $task->expired_packing_date;
+                    }
+                    break;
+            }
+
+            // expired_material_date áp dụng cho stage 1-3
+            if ($stageCode <= 3 && !empty($task->expired_material_date)) {
+                $stageDeadlineCandidates[] = $task->expired_material_date;
+            }
+
+            // Tìm deadline chặt nhất (sớm nhất) trong các candidates
+            $stageEarliestDeadline = null;
+            foreach ($stageDeadlineCandidates as $d) {
+                $dt = Carbon::parse($d)->setTime(6, 0, 0);
+                if ($stageEarliestDeadline === null || $dt->lt($stageEarliestDeadline)) {
+                    $stageEarliestDeadline = $dt;
+                }
+            }
+
+            // Đẩy start_date_effective lên deadline nếu deadline > start_date_effective hiện tại
+            // Ví dụ: blending_before_date=19/7, start_date_effective=tháng 6
+            // → start_date_effective = 19/7, engine tìm slot từ 19/7 thay vì từ tháng 6
+            if ($stageEarliestDeadline !== null && ($start_date_effective === null || $stageEarliestDeadline->gt($start_date_effective))) {
+                $start_date_effective = $stageEarliestDeadline;
+            }
+
+            if ($task->campaign_code === null) {
+
+                $this->sheduleNotCampaing($task, $stageCode, $waite_time, $start_date_effective, null);
+            } else {
+
+                if (in_array($task->campaign_code, $processedCampaigns)) {
+                    continue;
+                }
+
+                $campaignTasks = $tasks->where('campaign_code', $task->campaign_code)->sortBy('batch');
+
+                $this->scheduleCampaign($campaignTasks, $stageCode, $waite_time, $start_date_effective, null);
+
+                $processedCampaigns[] = $task->campaign_code;
+            }
+        }
     }
 
     public function scheduleIntermediate(int $stageCode, int $waite_time_nomal_batch = 0, int $waite_time_val_batch = 0, ?Carbon $start_date = null)
