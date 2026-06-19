@@ -128,7 +128,7 @@ class DashBoardController extends Controller
             ->where('a.start', '<', $endDate)
             ->where('a.end', '>', $startDate)
             ->whereIn('ap.personnel_id', $employeeIds)
-            ->select('ap.personnel_id', 'a.start', 'a.end', 'r.name as room_name', 'r.id as room_id', 'a.work_location')
+            ->select('ap.personnel_id', 'a.start', 'a.end', 'r.name as room_name', 'r.id as room_id', 'a.work_location', 'a.Sheet')
             ->get();
 
         // Calculate hours per employee and room
