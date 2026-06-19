@@ -36,6 +36,36 @@
                 <div class="alert alert-danger">{{ $message }}</div>
             @enderror
 
+            {{-- THÁNG & NĂM --}}
+            <div class="form-row">
+                <div class="form-group col-6">
+                    <label for="month">Tháng <span class="text-danger">*</span></label>
+                    <select class="form-control" name="month" id="month" required>
+                        @for ($m = 1; $m <= 12; $m++)
+                            <option value="{{ $m }}" {{ (old('month', date('n')) == $m) ? 'selected' : '' }}>
+                                Tháng {{ $m }}
+                            </option>
+                        @endfor
+                    </select>
+                </div>
+                <div class="form-group col-6">
+                    <label for="year">Năm <span class="text-danger">*</span></label>
+                    <select class="form-control" name="year" id="year" required>
+                        @for ($y = date('Y') - 1; $y <= date('Y') + 2; $y++)
+                            <option value="{{ $y }}" {{ (old('year', date('Y')) == $y) ? 'selected' : '' }}>
+                                {{ $y }}
+                            </option>
+                        @endfor
+                    </select>
+                </div>
+            </div>
+            @error('month', 'createErrors')
+                <div class="alert alert-danger">{{ $message }}</div>
+            @enderror
+            @error('year', 'createErrors')
+                <div class="alert alert-danger">{{ $message }}</div>
+            @enderror
+
         </div>
 
 
@@ -60,7 +90,7 @@
 @if ($errors->createErrors->any())
 <script>
     $(document).ready(function () {
-        $('#create_modal').modal('show');
+        $('#create_plan_list_modal').modal('show');
     });
 </script>
 @endif

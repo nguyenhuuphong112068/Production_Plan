@@ -607,8 +607,8 @@
                     <label>&nbsp;</label>
                     <span style="font-size:.82rem;color:#64748b;">
                         <i class="fas fa-circle" style="color:#16a34a;font-size:.6rem;"></i> ≥ 100% &nbsp;
-                        <i class="fas fa-circle" style="color:#d97706;font-size:.6rem;"></i> 80–99% &nbsp;
-                        <i class="fas fa-circle" style="color:#dc2626;font-size:.6rem;"></i> &lt; 80%
+                        <i class="fas fa-circle" style="color:#d97706;font-size:.6rem;"></i> <span id="legend-warning">{{ $policy->min_submit_pct ?? 100 }}</span>–99% &nbsp;
+                        <i class="fas fa-circle" style="color:#dc2626;font-size:.6rem;"></i> &lt; <span id="legend-danger">{{ $policy->min_submit_pct ?? 100 }}</span>%
                     </span>
                 </div>
             </form>
@@ -934,6 +934,13 @@
                 const labels = DAILY_YIELD.map(d => d.date_label);
                 const theory = DAILY_YIELD.map(d => d.theory_dvl);
                 const target = parseFloat(document.getElementById('pol_daily_dvl').value) || (POLICY?.target_daily_dvl ?? 0);
+                const minPct = parseFloat(document.getElementById('pol_min_submit_pct').value) || (POLICY?.min_submit_pct ?? 100);
+
+                const thresholdLineData = labels.map((_, i) => {
+                    const tRow = getDailyTarget(DAILY_YIELD[i].date);
+                    const t2 = tRow || target;
+                    return t2 * (minPct / 100);
+                });
 
                 const barColors = theory.map((v, i) => {
                     const tRow = getDailyTarget(DAILY_YIELD[i].date);
@@ -941,7 +948,7 @@
                     if (!t2 || t2 <= 0) return 'rgba(99,102,241,.6)';
                     const pct = v / t2 * 100;
                     if (pct >= 100) return 'rgba(22,163,74,.75)';
-                    if (pct >= 90) return 'rgba(217,119,6,.75)';
+                    if (pct >= minPct) return 'rgba(217,119,6,.75)';
                     return 'rgba(220,38,38,.75)';
                 });
 
@@ -949,7 +956,8 @@
                     labels,
                     theory,
                     target,
-                    barColors
+                    barColors,
+                    thresholdLineData
                 };
             }
 
@@ -963,7 +971,8 @@
                     labels,
                     theory,
                     target,
-                    barColors
+                    barColors,
+                    thresholdLineData
                 } = buildChartData();
                 const ctx = document.getElementById('yieldChart').getContext('2d');
                 if (chartInstance) chartInstance.destroy();
@@ -990,6 +999,17 @@
                                 pointRadius: 0,
                                 fill: false,
                                 order: 1,
+                                tension: 0,
+                            }, {
+                                type: 'line',
+                                label: `Ngưỡng Submit`,
+                                data: thresholdLineData,
+                                borderColor: '#dc2626',
+                                borderWidth: 1.5,
+                                borderDash: [4, 4],
+                                pointRadius: 0,
+                                fill: false,
+                                order: 0,
                                 tension: 0,
                             }] : []),
                         ]
@@ -1038,6 +1058,21 @@
             }
 
             document.getElementById('pol_daily_dvl').addEventListener('input', () => {
+                renderChart();
+            });
+
+            document.getElementById('pol_min_submit_pct').addEventListener('input', (e) => {
+                let val = e.target.value;
+                if (!val) val = 100;
+                const elPreview = document.getElementById('pct-preview');
+                if (elPreview) elPreview.innerText = val + '%';
+                
+                const legendWarning = document.getElementById('legend-warning');
+                if (legendWarning) legendWarning.innerText = val;
+                
+                const legendDanger = document.getElementById('legend-danger');
+                if (legendDanger) legendDanger.innerText = val;
+                
                 renderChart();
             });
 

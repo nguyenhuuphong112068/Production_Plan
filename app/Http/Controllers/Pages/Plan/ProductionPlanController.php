@@ -433,15 +433,25 @@ class ProductionPlanController extends Controller
 
         public function create_plan_list(Request $request)
         {
+                $request->validate([
+                        'name'  => 'required',
+                        'month' => 'required|integer|between:1,12',
+                        'year'  => 'required|integer|min:2020',
+                ], [
+                        'name.required'  => 'Vui lòng nhập tên kế hoạch.',
+                        'month.required' => 'Vui lòng chọn tháng.',
+                        'year.required'  => 'Vui lòng chọn năm.',
+                ], 'createErrors');
 
                 DB::table('plan_list')->insert([
-                        'name' => $request->name,
-                        'month' => date('m'),
-                        'type' => 1,
-                        'send' => false,
+                        'name'            => $request->name,
+                        'month'           => $request->month,
+                        'year'            => $request->year,
+                        'type'            => 1,
+                        'send'            => false,
                         'deparment_code'  => session('user')['production_code'],
-                        'prepared_by' => session('user')['fullName'],
-                        'created_at' => now(),
+                        'prepared_by'     => session('user')['fullName'],
+                        'created_at'      => now(),
                 ]);
                 return redirect()->back()->with('success', "Tạo Mới $request->name Thành Công!");
         }
