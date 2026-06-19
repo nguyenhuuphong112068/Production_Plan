@@ -17,7 +17,12 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        $exceptions->render(function (\Illuminate\Session\TokenMismatchException $e, $request) {
+            if ($request->expectsJson() || $request->wantsJson() || $request->ajax()) {
+                return response()->json(['message' => 'CSRF token mismatch.', 'redirect' => url('/')], 419);
+            }
+            return redirect('/')->with('error', 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+        });
     })
     ->create();
 

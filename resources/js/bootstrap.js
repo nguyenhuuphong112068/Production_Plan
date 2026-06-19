@@ -13,4 +13,13 @@ if (token) {
     console.error('CSRF token not found: https://laravel.com/docs/csrf#csrf-x-csrf-token');
 }
 
-
+window.axios.interceptors.response.use(
+    response => response,
+    error => {
+        if (error.response && (error.response.status === 419 || error.response.status === 401)) {
+            window.location.href = '/';
+            return new Promise(() => {}); // Prevent further error handling
+        }
+        return Promise.reject(error);
+    }
+);

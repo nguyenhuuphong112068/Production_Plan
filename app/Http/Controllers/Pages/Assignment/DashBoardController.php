@@ -122,13 +122,13 @@ class DashBoardController extends Controller
         // 2. Get assignments in period
         $assignments = DB::table('assignments as a')
             ->join('assignment_personnel as ap', 'a.id', '=', 'ap.assignment_id')
-            ->join('room as r', 'a.room_id', '=', 'r.id')
+            ->leftJoin('room as r', 'a.room_id', '=', 'r.id')
             ->where('a.deparment_code', $production_code)
             ->where('a.active', 1)
             ->where('a.start', '<', $endDate)
             ->where('a.end', '>', $startDate)
             ->whereIn('ap.personnel_id', $employeeIds)
-            ->select('ap.personnel_id', 'a.start', 'a.end', 'r.name as room_name', 'r.id as room_id')
+            ->select('ap.personnel_id', 'a.start', 'a.end', 'r.name as room_name', 'r.id as room_id', 'a.work_location')
             ->get();
 
         // Calculate hours per employee and room
@@ -150,12 +150,25 @@ class DashBoardController extends Controller
                 $aEnd = $endDate->copy();
             }
 
-            $hours = $aStart->diffInMinutes($aEnd) / 60;
+            $durationMin = $aStart->diffInMinutes($aEnd);
+
+            // Subtract lunch break (11:30 - 12:15)
+            $lunchStart = $aStart->copy()->setTime(11, 30, 0);
+            $lunchEnd = $aStart->copy()->setTime(12, 15, 0);
+
+            $overlapStart = $aStart->copy()->max($lunchStart);
+            $overlapEnd = $aEnd->copy()->min($lunchEnd);
+
+            if ($overlapStart->lt($overlapEnd)) {
+                $durationMin -= $overlapStart->diffInMinutes($overlapEnd);
+            }
+
+            $hours = $durationMin / 60;
             if (isset($employeeHours[$assignment->personnel_id])) {
                 $employeeHours[$assignment->personnel_id] += $hours;
             }
 
-            $roomName = $assignment->room_name ?? 'Khác';
+            $roomName = $assignment->room_name ?? $assignment->work_location ?? 'Khác';
             if (!isset($roomHoursMap[$roomName])) {
                 $roomHoursMap[$roomName] = 0;
             }

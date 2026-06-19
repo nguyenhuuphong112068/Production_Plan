@@ -1256,7 +1256,20 @@
                 eMin += 24 * 60;
             }
 
-            return (eMin - sMin) / 60;
+            let durationMin = eMin - sMin;
+
+            // Subtract lunch break (11:30 - 12:15)
+            const lunchStart = 11 * 60 + 30; // 690
+            const lunchEnd = 12 * 60 + 15;   // 735
+
+            const overlapStart = Math.max(sMin, lunchStart);
+            const overlapEnd = Math.min(eMin, lunchEnd);
+
+            if (overlapStart < overlapEnd) {
+                durationMin -= (overlapEnd - overlapStart);
+            }
+
+            return durationMin / 60;
         }
 
         const filterUnder8h = $('#filter-under-8h').is(':checked');
@@ -4638,6 +4651,18 @@
             let eMin = timeToMinutes(values[1]);
             if (eMin <= sMin) eMin += 24 * 60;
             let totalMins = eMin - sMin;
+
+            // Subtract lunch break (11:30 - 12:15)
+            const lunchStart = 11 * 60 + 30; // 690
+            const lunchEnd = 12 * 60 + 15;   // 735
+
+            const overlapStart = Math.max(sMin, lunchStart);
+            const overlapEnd = Math.min(eMin, lunchEnd);
+
+            if (overlapStart < overlapEnd) {
+                totalMins -= (overlapEnd - overlapStart);
+            }
+
             let totalHrs = (totalMins / 60).toFixed(1);
             let tc = parseFloat(Math.max(0, (totalMins / 60) - 8).toFixed(1));
 

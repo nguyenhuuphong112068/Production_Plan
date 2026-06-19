@@ -948,7 +948,20 @@
                 eMin += 24 * 60;
             }
             
-            return (eMin - sMin) / 60;
+            let durationMin = eMin - sMin;
+
+            // Subtract lunch break (11:30 - 12:15)
+            const lunchStart = 11 * 60 + 30; // 690
+            const lunchEnd = 12 * 60 + 15;   // 735
+
+            const overlapStart = Math.max(sMin, lunchStart);
+            const overlapEnd = Math.min(eMin, lunchEnd);
+
+            if (overlapStart < overlapEnd) {
+                durationMin -= (overlapEnd - overlapStart);
+            }
+
+            return durationMin / 60;
         }
 
         const filterUnder8h = $('#filter-under-8h').is(':checked');
