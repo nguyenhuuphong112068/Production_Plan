@@ -1117,7 +1117,8 @@ class SchedualController extends Controller
         /* 6️⃣ HẠN CẦN HÀNG */
         $Stage_plan_7 = $plans->firstWhere('stage_code', 7);
 
-        $overExpected = ($Stage_plan_7 && $plan->expected_date < $Stage_plan_7->end) || $plan->expected_date < $plan->end;
+        $overExpected = ($Stage_plan_7 && \Carbon\Carbon::parse($plan->expected_date)->startOfDay()->lt(\Carbon\Carbon::parse($Stage_plan_7->end)->startOfDay())) 
+                     || \Carbon\Carbon::parse($plan->expected_date)->startOfDay()->lt(\Carbon\Carbon::parse($plan->end)->startOfDay());
 
         if ($overExpected && $plan->stage_code <= 7) {
 
@@ -1185,7 +1186,7 @@ class SchedualController extends Controller
         }
 
         $criticalChecks = [
-            [1,  3,  'after_weigth_date',         '➡️ Ngày có đủ NL',  '>'],
+            // [1,  3,  'after_weigth_date',         '➡️ Ngày có đủ NL',  '>'],
             [1,  3,  'allow_weight_before_date',  '➡️ Ngày được phép cân',  '>'],
             [1,  3,  'expired_material_date',     '➡️ Ngày hết hạn NL chính',  '<'],
             [7,  7,  'expired_packing_date',     '➡️ Ngày hết hạn BB',  '<'],
@@ -1193,8 +1194,7 @@ class SchedualController extends Controller
             [4,  4,  'blending_before_date',    '➡️ Phải THT trước ngày',  '<'],
             [6,  6,  'coating_before_date',     '➡️ Phải BP trước ngày',  '<'],
             [7,  7,  'parkaging_before_date',     '➡️ Phải ĐG trước ngày ',  '<'],
-            [7,  7,  'after_parkaging_date',    '➡️ Ngày có đủ BB',  '>'],
-
+            // [7,  7,  'after_parkaging_date',    '➡️ Ngày có đủ BB',  '>'],
         ];
 
         foreach ($criticalChecks as [$from,  $to,  $field,  $label,  $operator]) {
@@ -1207,9 +1207,9 @@ class SchedualController extends Controller
                 continue;
             }
 
-            $left = Carbon::parse($plan->$field);
+            $left = Carbon::parse($plan->$field)->startOfDay();
 
-            $right = Carbon::parse($plan->start);
+            $right = Carbon::parse($plan->start)->startOfDay();
 
             $matched = match ($operator) {
 

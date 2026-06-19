@@ -1144,7 +1144,7 @@
             `;
 
             // Clear the placeholder text if empty
-            if ($list.find('.text-muted').length) {
+            if ($list.find('.room-assignment-row').length === 0) {
                 $list.empty();
             }
 
@@ -1152,7 +1152,26 @@
             if (availableRoom) {
                 const $newSelect = $list.find('.room-id-select').last();
                 $newSelect.val(availableRoom.id);
-                triggerRoomUpdate($list.closest('.room-assignments-container'));
+                // Dùng mode=add để chỉ INSERT/UPDATE phòng mới, không xóa phòng cũ
+                const $trMain = $btn.closest('.main-employee-row');
+                const empId = $trMain.find('.room-assignments-container').first().data('employee-id');
+                $.ajax({
+                    url: "{{ route('pages.quota.personnel.updatePermissions') }}",
+                    type: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}',
+                        employee_id: empId,
+                        type: 'room',
+                        mode: 'add',
+                        ids: [availableRoom.id + ':4:1:' + groupId + ':1']
+                    },
+                    success: function(res) {
+                        if (res.success) {
+                            Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 })
+                                .fire({ icon: 'success', title: res.message });
+                        }
+                    }
+                });
             }
         });
 

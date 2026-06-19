@@ -608,6 +608,8 @@ class PersonnelController extends Controller
                     }
                 }
             } else {
+                $mode = $request->input('mode', 'reconcile'); // 'add' = only insert/update, no delete
+
                 // Get list of submitted room_id & group_id pairs
                 $submittedPairs = [];
                 foreach ($ids as $item) {
@@ -626,29 +628,31 @@ class PersonnelController extends Controller
                     $submittedPairs[] = $groupId . '_' . $roomId;
                 }
 
-                // Delete assignments that are NOT in the submitted list
-                $currentAssignments = DB::table('employee_assignments')
-                    ->where('employees_id', $employeeId)
-                    ->where('room_id', '>', 0)
-                    ->get();
+                // Delete assignments that are NOT in the submitted list (only in reconcile mode)
+                if ($mode !== 'add') {
+                    $currentAssignments = DB::table('employee_assignments')
+                        ->where('employees_id', $employeeId)
+                        ->where('room_id', '>', 0)
+                        ->get();
 
-                foreach ($currentAssignments as $ca) {
-                    $pair = $ca->group_id . '_' . $ca->room_id;
-                    if (!in_array($pair, $submittedPairs)) {
-                        $groupRoomsCount = DB::table('employee_assignments')
-                            ->where('employees_id', $employeeId)
-                            ->where('group_id', $ca->group_id)
-                            ->where('room_id', '>', 0)
-                            ->count();
-                            
-                        if ($groupRoomsCount <= 1) {
-                            DB::table('employee_assignments')->where('id', $ca->id)->update([
-                                'room_id' => 0,
-                                'level' => 1,
-                                'updated_at' => now()
-                            ]);
-                        } else {
-                            DB::table('employee_assignments')->where('id', $ca->id)->delete();
+                    foreach ($currentAssignments as $ca) {
+                        $pair = $ca->group_id . '_' . $ca->room_id;
+                        if (!in_array($pair, $submittedPairs)) {
+                            $groupRoomsCount = DB::table('employee_assignments')
+                                ->where('employees_id', $employeeId)
+                                ->where('group_id', $ca->group_id)
+                                ->where('room_id', '>', 0)
+                                ->count();
+
+                            if ($groupRoomsCount <= 1) {
+                                DB::table('employee_assignments')->where('id', $ca->id)->update([
+                                    'room_id' => 0,
+                                    'level' => 1,
+                                    'updated_at' => now()
+                                ]);
+                            } else {
+                                DB::table('employee_assignments')->where('id', $ca->id)->delete();
+                            }
                         }
                     }
                 }
@@ -721,18 +725,39 @@ class PersonnelController extends Controller
                                 'updated_at' => now()
                             ]);
                     } else {
-                        DB::table('employee_assignments')->insert([
-                            'employees_id' => $employeeId,
-                            'production_code' => $productionCode,
-                            'is_main' => 1,
-                            'group_id' => $groupId,
-                            'room_id' => $roomId,
-                            'level' => $level,
-                            'active' => $active,
-                            'created_by' => $userName,
-                            'created_at' => now(),
-                            'updated_at' => now()
-                        ]);
+                        // Kiểm tra nếu có bản ghi placeholder room_id = 0 thì UPDATE thay vì INSERT
+                        $placeholderRoom = DB::table('employee_assignments')
+                            ->where('employees_id', $employeeId)
+                            ->where('group_id', $groupId)
+                            ->where('room_id', 0)
+                            ->first();
+
+                        if ($placeholderRoom) {
+                            DB::table('employee_assignments')
+                                ->where('id', $placeholderRoom->id)
+                                ->update([
+                                    'production_code' => $productionCode,
+                                    'room_id' => $roomId,
+                                    'level' => $level,
+                                    'active' => $active,
+                                    'priority_level' => $priorityLevel,
+                                    'created_by' => $userName,
+                                    'updated_at' => now()
+                                ]);
+                        } else {
+                            DB::table('employee_assignments')->insert([
+                                'employees_id' => $employeeId,
+                                'production_code' => $productionCode,
+                                'is_main' => 1,
+                                'group_id' => $groupId,
+                                'room_id' => $roomId,
+                                'level' => $level,
+                                'active' => $active,
+                                'created_by' => $userName,
+                                'created_at' => now(),
+                                'updated_at' => now()
+                            ]);
+                        }
                     }
                 }
             }

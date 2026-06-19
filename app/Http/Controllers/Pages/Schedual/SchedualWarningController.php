@@ -34,7 +34,7 @@ class SchedualWarningController extends Controller
             ->where('stage_plan.stage_code', 7)
             ->whereNotNull('stage_plan.start')
             ->where('stage_plan.deparment_code', $production)
-            ->whereRaw('stage_plan.end > DATE_SUB(plan_master.expected_date, INTERVAL 5 DAY)')
+            ->whereRaw('DATE(stage_plan.end) > DATE_SUB(DATE(plan_master.expected_date), INTERVAL 5 DAY)')
             ->groupBy('plan_master.id', 'plan_master.batch', 'plan_master.expected_date', 'plan_master.expected_date_change', 'finished_product_category.finished_product_code', 'product_name.name')
             ->orderBy('plan_master.expected_date', 'asc')
             ->get();
@@ -60,6 +60,7 @@ class SchedualWarningController extends Controller
             ->whereNotNull('stage_plan.start')
             ->where('stage_plan.deparment_code', $production)
             ->where('plan_master.expected_date_change', 1)
+            ->whereRaw('DATE(stage_plan.end) > DATE_SUB(DATE(plan_master.expected_date), INTERVAL 5 DAY)')
             ->groupBy('plan_master.id', 'plan_master.batch', 'plan_master.expected_date', 'plan_master.expected_date_change', 'finished_product_category.finished_product_code', 'product_name.name')
             ->orderBy('plan_master.expected_date', 'asc')
             ->get();
@@ -67,15 +68,15 @@ class SchedualWarningController extends Controller
 
         // 2. Cảnh Báo Ngày Đáp Ứng NL/BB
         $criticalChecks = [
-            [1,  3,  'after_weigth_date',         '➡️ Ngày có đủ NL',  '>'],
-            [1,  3,  'allow_weight_before_date',  '➡️ Ngày được phép cân',  '>'],
-            [1,  3,  'expired_material_date',     '➡️ Ngày hết hạn NL chính',  '<'],
-            [7,  7,  'expired_packing_date',     '➡️ Ngày hết hạn BB',  '<'],
-            [3,  3,  'preperation_before_date',  '➡️ Phải PC trước ngày',  '<'],
-            [4,  4,  'blending_before_date',    '➡️ Phải THT trước ngày',  '<'],
-            [6,  6,  'coating_before_date',     '➡️ Phải BP trước ngày',  '<'],
-            [7,  7,  'parkaging_before_date',     '➡️ Phải ĐG trước ngày',  '<'],
-            [7,  7,  'after_parkaging_date',    '➡️ Ngày có đủ BB',  '>'],
+            // [1,  3,  'after_weigth_date',         'Ngày có đủ NL',  '>'],
+            [1,  3,  'allow_weight_before_date',  'Ngày được phép cân',  '>'],
+            [1,  3,  'expired_material_date',     'Ngày hết hạn NL chính',  '<'],
+            [7,  7,  'expired_packing_date',     'Ngày hết hạn BB',  '<'],
+            [3,  3,  'preperation_before_date',  'Phải PC trước ngày',  '<'],
+            [4,  4,  'blending_before_date',    'Phải THT trước ngày',  '<'],
+            [6,  6,  'coating_before_date',     'Phải BP trước ngày',  '<'],
+            [7,  7,  'parkaging_before_date',     'Phải ĐG trước ngày',  '<'],
+            // [7,  7,  'after_parkaging_date',    'Ngày có đủ BB',  '>'],
         ];
 
         $activePlans = DB::table('stage_plan')
@@ -153,7 +154,7 @@ class SchedualWarningController extends Controller
                         'responsed_date_change' => $plan->responsed_date_change,
                         'violations' => []
                     ];
-                    
+
                     if ($plan->responsed_date_change) {
                         $proposedMaterialMap[$plan->id] = $planData;
                     } else {
@@ -183,14 +184,14 @@ class SchedualWarningController extends Controller
             ->merge($materialWarnings->pluck('id'))
             ->merge($proposedMaterialChanges->pluck('id'))
             ->unique()->toArray();
-            
+
         $commentsRaw = DB::table('plan_master_comments')
             ->join('user_management', 'plan_master_comments.user_id', '=', 'user_management.id')
             ->whereIn('plan_master_id', $planMasterIds)
             ->select('plan_master_comments.*', 'user_management.fullName as user_name', 'user_management.deparment')
             ->orderBy('plan_master_comments.created_at', 'asc')
             ->get();
-            
+
         $commentsGrouped = $commentsRaw->groupBy('plan_master_id');
 
         $proposalHistories = DB::table('plan_master_proposals')
@@ -199,11 +200,11 @@ class SchedualWarningController extends Controller
             ->select('plan_master_proposals.*', 'user_management.fullName as user_name', 'plan_master.batch')
             ->orderBy('plan_master_proposals.created_at', 'desc')
             ->get();
-            
+
         $proposalHistoryCounts = $proposalHistories->groupBy('plan_master_id')->map->count();
 
         session()->put(['title' => 'CẢNH BÁO LỊCH SẢN XUẤT']);
-        
+
         return view('pages.Schedual.warning.index', compact('unmetPlans', 'materialWarnings', 'proposedChanges', 'proposedMaterialChanges', 'commentsGrouped', 'proposalHistories', 'proposalHistoryCounts'));
     }
 
@@ -219,13 +220,13 @@ class SchedualWarningController extends Controller
             $productionCode = session('user')['production_code'] ?? null;
             $productionName = session('user')['production_name'] ?? $productionCode;
             $senderName = session('user')['fullName'] ?? 'Một người dùng';
-            
+
             $targetUserIds = DB::table('user_management')
                 ->where('isActive', 1)
-                ->where(function($query) use ($productionCode) {
+                ->where(function ($query) use ($productionCode) {
                     $query->whereIn('deparment', ['PL', 'COMP']);
                     if ($productionCode) {
-                        $query->orWhere(function($sub) use ($productionCode) {
+                        $query->orWhere(function ($sub) use ($productionCode) {
                             $sub->where('deparment', $productionCode)
                                 ->where('userGroup', 'Schedualer');
                         });
@@ -233,11 +234,11 @@ class SchedualWarningController extends Controller
                 })
                 ->pluck('id')
                 ->toArray();
-                
+
             $count = count($ids);
             $message = "{$senderName} ({$productionName}) đã gửi đề nghị chấp nhận ngày đáp ứng cho {$count} lô Kế hoạch Sản xuất.";
-            $url = route('pages.Schedual.warning.index'); 
-            
+            $url = route('pages.Schedual.warning.index');
+
             if (!empty($targetUserIds)) {
                 \App\Http\Controllers\General\NotificationController::sendNotification(
                     $message,
@@ -356,7 +357,7 @@ class SchedualWarningController extends Controller
         $plan = DB::table('plan_master')->where('id', $id)->first();
         if ($plan) {
             DB::table('plan_master')->where('id', $id)->update(['expected_date_change' => 0]);
-            
+
             DB::table('plan_master_proposals')->insert([
                 'plan_master_id' => $id,
                 'type' => 'KCS',
@@ -423,7 +424,7 @@ class SchedualWarningController extends Controller
             DB::table('plan_master')
                 ->whereIn('id', $ids)
                 ->update(['responsed_date_change' => 1]);
-                
+
             $userId = session('user')['userId'];
             $production = session('user')['production_code'];
 
@@ -486,7 +487,7 @@ class SchedualWarningController extends Controller
                     $field => $newDate,
                     'responsed_date_change' => 0
                 ]);
-                
+
             $production = session('user')['production_code'];
             app('App\Http\Controllers\System\NotificationController')->createNotification(
                 'Đã Chấp Nhận Thay Đổi Ngày Đáp Ứng NL/BB',
@@ -519,7 +520,7 @@ class SchedualWarningController extends Controller
         $plan = DB::table('plan_master')->where('id', $id)->first();
         if ($plan) {
             DB::table('plan_master')->where('id', $id)->update(['responsed_date_change' => 0]);
-            
+
             DB::table('plan_master_proposals')->insert([
                 'plan_master_id' => $id,
                 'type' => 'NL_BB',

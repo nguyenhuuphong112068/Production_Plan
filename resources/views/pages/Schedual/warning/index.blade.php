@@ -9,6 +9,10 @@
 @endsection
 
 @section('mainContent')
+    @php
+        $can_propose = user_has_permission(session('user')['userId'] ?? 0, 'schedual_warning_propose', 'boolean');
+        $can_approve = user_has_permission(session('user')['userId'] ?? 0, 'schedual_warning_approve', 'boolean');
+    @endphp
     <style>
         .table-responsive thead th {
             position: sticky;
@@ -18,6 +22,7 @@
             border-top: 0 !important;
             box-shadow: inset 0 1px 0 #dee2e6, inset 0 -2px 0 #dee2e6;
         }
+
         .chat-container {
             display: flex;
             flex-direction: column;
@@ -29,6 +34,7 @@
             border-radius: 5px;
             margin-bottom: 10px;
         }
+
         .chat-msg {
             margin-bottom: 10px;
             padding: 8px 12px;
@@ -36,16 +42,19 @@
             max-width: 80%;
             word-wrap: break-word;
         }
+
         .chat-msg.mine {
             align-self: flex-end;
             background-color: #007bff;
             color: white;
         }
+
         .chat-msg.others {
             align-self: flex-start;
             background-color: #e9ecef;
             color: black;
         }
+
         .chat-msg-header {
             font-size: 0.8em;
             margin-bottom: 3px;
@@ -91,8 +100,8 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" id="proposed-material-tab" data-toggle="tab" href="#proposed-material" role="tab"
-                            aria-controls="proposed-material" aria-selected="false">
+                        <a class="nav-link" id="proposed-material-tab" data-toggle="tab" href="#proposed-material"
+                            role="tab" aria-controls="proposed-material" aria-selected="false">
                             Xem Xét Đổi Ngày NL/BB <span
                                 class="badge badge-primary">{{ isset($proposedMaterialChanges) ? $proposedMaterialChanges->count() : 0 }}</span>
                         </a>
@@ -111,15 +120,20 @@
                     <div class="tab-pane fade show active" id="unmet" role="tabpanel" aria-labelledby="unmet-tab">
                         <div class="card card-danger card-outline">
                             <div class="card-header">
+                                @if($can_propose)
                                 <button type="button" class="btn btn-sm btn-primary" id="btn-propose-date">Đề nghị chấp
                                     nhận ngày đáp ứng</button>
+                                @endif
                             </div>
-                            <div class="card-body table-responsive" style="height: calc(100vh - 150px);">
+                            <div class="card-body table-responsive" style="height: calc(100vh - 200px);">
                                 <table id="table_unmet" class="table table-bordered table-striped">
                                     <thead>
                                         <tr>
-                                            <th class="text-center" style="width: 40px;"><input type="checkbox"
-                                                    id="selectAllUnmet"></th>
+                                            <th class="text-center" style="width: 40px;">
+                                                @if($can_propose)
+                                                <input type="checkbox" id="selectAllUnmet">
+                                                @endif
+                                            </th>
                                             <th>Mã Sản Phẩm</th>
                                             <th>Tên Sản Phẩm</th>
                                             <th>Mã Lô</th>
@@ -148,7 +162,7 @@
                                             @endphp
                                             <tr>
                                                 <td class="text-center">
-                                                    @if (!$item->expected_date_change)
+                                                    @if($can_propose && !$item->expected_date_change)
                                                         <input type="checkbox" class="row-checkbox"
                                                             value="{{ $item->id }}">
                                                     @endif
@@ -179,7 +193,8 @@
                                                 </td>
                                                 <td style="min-width:300px">
                                                     {{-- ===== LIST COMMENT ===== --}}
-                                                    <div class="chat-box" style="max-height:150px; overflow-y:auto; font-size:14px; text-align: left;">
+                                                    <div class="chat-box"
+                                                        style="max-height:150px; overflow-y:auto; font-size:14px; text-align: left;">
                                                         @forelse ($commentsGrouped[$item->id] ?? [] as $comment)
                                                             <div class="mb-2 p-2 border rounded"
                                                                 style="background-color: {{ \Illuminate\Support\Str::startsWith($comment->deparment, 'PX') ? '#d4edda' : '#d1ecf1' }}; border-radius:15px; padding:6px;">
@@ -196,16 +211,25 @@
                                                         @endforelse
                                                     </div>
                                                     {{-- ===== INPUT CHAT ===== --}}
+                                                    @if($can_propose || $can_approve)
                                                     <div class="chat-input-wrapper d-flex mt-2">
-                                                        <input type="text" class="form-control form-control-sm chat-input" data-row-id="{{ $item->id }}" placeholder="Nhập trao đổi...">
-                                                        <button class="btn btn-sm btn-primary send-comment" data-row-id="{{ $item->id }}">Gửi</button>
+                                                        <input type="text"
+                                                            class="form-control form-control-sm chat-input"
+                                                            data-row-id="{{ $item->id }}"
+                                                            placeholder="Nhập trao đổi...">
+                                                        <button class="btn btn-sm btn-primary send-comment"
+                                                            data-row-id="{{ $item->id }}">Gửi</button>
                                                     </div>
+                                                    @endif
                                                 </td>
                                                 <td class="text-center align-middle">
-                                                    <button type="button" class="btn btn-sm btn-info btn-view-history" style="position: relative;" data-id="{{ $item->id }}" title="Lịch sử đề nghị">
+                                                    <button type="button" class="btn btn-sm btn-info btn-view-history"
+                                                        style="position: relative;" data-id="{{ $item->id }}"
+                                                        title="Lịch sử đề nghị">
                                                         <i class="fas fa-history"></i>
-                                                        @if(isset($proposalHistoryCounts) && isset($proposalHistoryCounts[$item->id]) && $proposalHistoryCounts[$item->id] > 0)
-                                                            <span class="badge badge-danger" style="position: absolute; top: -8px; right: -8px; border-radius: 50%; font-size: 10px; padding: 3px 5px;">
+                                                        @if (isset($proposalHistoryCounts) && isset($proposalHistoryCounts[$item->id]) && $proposalHistoryCounts[$item->id] > 0)
+                                                            <span class="badge badge-danger"
+                                                                style="position: absolute; top: -8px; right: -8px; border-radius: 50%; font-size: 10px; padding: 3px 5px;">
                                                                 {{ $proposalHistoryCounts[$item->id] }}
                                                             </span>
                                                         @endif
@@ -223,20 +247,25 @@
                     <div class="tab-pane fade" id="material" role="tabpanel" aria-labelledby="material-tab">
                         <div class="card card-warning card-outline">
                             <div class="card-header">
-                                <button type="button" class="btn btn-sm btn-primary" id="btn-propose-material-date">Đề nghị chấp nhận thay đổi NL/BB</button>
+                                @if($can_propose)
+                                <button type="button" class="btn btn-sm btn-primary" id="btn-propose-material-date">Đề
+                                    nghị chấp nhận thay đổi NL/BB</button>
+                                @endif
                             </div>
                             <div class="card-body table-responsive" style="height: calc(100vh - 200px);">
                                 <table id="table_material" class="table table-bordered table-striped">
                                     <thead>
                                         <tr>
-                                            <th class="text-center" style="width: 40px;"><input type="checkbox"
-                                                    id="selectAllMaterial"></th>
+                                            <th class="text-center" style="width: 40px;">
+                                                @if($can_propose)
+                                                <input type="checkbox" id="selectAllMaterial">
+                                                @endif
+                                            </th>
                                             <th>Mã Sản Phẩm</th>
                                             <th>Tên Sản Phẩm</th>
                                             <th>Mã Lô</th>
-                                            <th>Bắt Đầu (Dự Kiến)</th>
-                                            <th>Ngày Đáp Ứng NL/BB</th>
                                             <th>Công đoạn</th>
+                                            <th>Bắt Đầu (Dự Kiến)</th>
                                             <th>Loại Ngày Cảnh Báo</th>
                                             <th>Trao đổi thông tin</th>
                                             <th>Lịch Sử</th>
@@ -245,7 +274,9 @@
                                     <tbody>
                                         @foreach ($materialWarnings as $item)
                                             @php
-                                                $violations = is_array($item->violations) ? $item->violations : json_decode($item->violations, true) ?? [];
+                                                $violations = is_array($item->violations)
+                                                    ? $item->violations
+                                                    : json_decode($item->violations, true) ?? [];
                                                 $types = [];
                                                 $stages = [];
                                                 $stage_name = [
@@ -257,10 +288,16 @@
                                                     7 => 'ĐGSC - ĐGTC',
                                                 ];
                                                 foreach ($violations as $violation) {
-                                                    $types[] = $violation['label'] . ' (' . \Carbon\Carbon::parse($violation['date'])->format('d/m/Y') . ')';
-                                                    if(isset($violation['stage_code'])) {
+                                                    $types[] =
+                                                        $violation['label'] .
+                                                        ' (' .
+                                                        \Carbon\Carbon::parse($violation['date'])->format('d/m/Y') .
+                                                        ')';
+                                                    if (isset($violation['stage_code'])) {
                                                         $sCode = $violation['stage_code'];
-                                                        $sName = isset($stage_name[$sCode]) ? $stage_name[$sCode] : 'CĐ ' . $sCode;
+                                                        $sName = isset($stage_name[$sCode])
+                                                            ? $stage_name[$sCode]
+                                                            : 'CĐ ' . $sCode;
                                                         if (!in_array($sName, $stages)) {
                                                             $stages[] = $sName;
                                                         }
@@ -268,12 +305,16 @@
                                                 }
                                                 $typeStr = implode('<br>', $types);
                                                 $stageStr = implode('<br>', $stages);
-                                                if (empty($typeStr)) $typeStr = 'Khác';
-                                                if (empty($stageStr)) $stageStr = '-';
+                                                if (empty($typeStr)) {
+                                                    $typeStr = 'Khác';
+                                                }
+                                                if (empty($stageStr)) {
+                                                    $stageStr = '-';
+                                                }
                                             @endphp
                                             <tr>
                                                 <td class="text-center">
-                                                    @if (!$item->responsed_date_change)
+                                                    @if($can_propose && !$item->responsed_date_change)
                                                         <input type="checkbox" class="row-checkbox-material"
                                                             value="{{ $item->id }}">
                                                     @endif
@@ -281,21 +322,19 @@
                                                 <td>{{ $item->finished_product_code }}</td>
                                                 <td>{{ $item->product_name }}</td>
                                                 <td>{{ $item->batch }}</td>
-                                                <td class="text-danger font-weight-bold">
-                                                    {{ $item->min_start ? \Carbon\Carbon::parse($item->min_start)->format('d/m/Y H:i') : '' }}
-                                                </td>
-                                                <td class="text-warning font-weight-bold">
-                                                    {{ $item->responsed_date ? \Carbon\Carbon::parse($item->responsed_date)->format('d/m/Y') : '' }}
-                                                </td>
                                                 <td class="font-weight-bold text-secondary text-center">
                                                     {{ $stageStr }}
+                                                </td>
+                                                <td class="text-danger font-weight-bold">
+                                                    {{ $item->min_start ? \Carbon\Carbon::parse($item->min_start)->format('d/m/Y H:i') : '' }}
                                                 </td>
                                                 <td class="font-weight-bold text-info">
                                                     {!! $typeStr !!}
                                                 </td>
                                                 <td style="min-width:300px">
                                                     {{-- ===== LIST COMMENT ===== --}}
-                                                    <div class="chat-box" style="max-height:150px; overflow-y:auto; font-size:14px; text-align: left;">
+                                                    <div class="chat-box"
+                                                        style="max-height:150px; overflow-y:auto; font-size:14px; text-align: left;">
                                                         @forelse ($commentsGrouped[$item->id] ?? [] as $comment)
                                                             <div class="mb-2 p-2 border rounded"
                                                                 style="background-color: {{ \Illuminate\Support\Str::startsWith($comment->deparment, 'PX') ? '#d4edda' : '#d1ecf1' }}; border-radius:15px; padding:6px;">
@@ -312,16 +351,25 @@
                                                         @endforelse
                                                     </div>
                                                     {{-- ===== INPUT CHAT ===== --}}
+                                                    @if($can_propose || $can_approve)
                                                     <div class="chat-input-wrapper d-flex mt-2">
-                                                        <input type="text" class="form-control form-control-sm chat-input" data-row-id="{{ $item->id }}" placeholder="Nhập trao đổi...">
-                                                        <button class="btn btn-sm btn-primary send-comment" data-row-id="{{ $item->id }}">Gửi</button>
+                                                        <input type="text"
+                                                            class="form-control form-control-sm chat-input"
+                                                            data-row-id="{{ $item->id }}"
+                                                            placeholder="Nhập trao đổi...">
+                                                        <button class="btn btn-sm btn-primary send-comment"
+                                                            data-row-id="{{ $item->id }}">Gửi</button>
                                                     </div>
+                                                    @endif
                                                 </td>
                                                 <td class="text-center align-middle">
-                                                    <button type="button" class="btn btn-sm btn-info btn-view-history" style="position: relative;" data-id="{{ $item->id }}" title="Lịch sử đề nghị">
+                                                    <button type="button" class="btn btn-sm btn-info btn-view-history"
+                                                        style="position: relative;" data-id="{{ $item->id }}"
+                                                        title="Lịch sử đề nghị">
                                                         <i class="fas fa-history"></i>
-                                                        @if(isset($proposalHistoryCounts) && isset($proposalHistoryCounts[$item->id]) && $proposalHistoryCounts[$item->id] > 0)
-                                                            <span class="badge badge-danger" style="position: absolute; top: -8px; right: -8px; border-radius: 50%; font-size: 10px; padding: 3px 5px;">
+                                                        @if (isset($proposalHistoryCounts) && isset($proposalHistoryCounts[$item->id]) && $proposalHistoryCounts[$item->id] > 0)
+                                                            <span class="badge badge-danger"
+                                                                style="position: absolute; top: -8px; right: -8px; border-radius: 50%; font-size: 10px; padding: 3px 5px;">
                                                                 {{ $proposalHistoryCounts[$item->id] }}
                                                             </span>
                                                         @endif
@@ -339,15 +387,21 @@
                     <div class="tab-pane fade" id="proposed" role="tabpanel" aria-labelledby="proposed-tab">
                         <div class="card card-info card-outline">
                             <div class="card-header">
-                                <button type="button" class="btn btn-sm btn-success" id="btn-accept-bulk">Chấp nhận mục đã
+                                @if($can_approve)
+                                <button type="button" class="btn btn-sm btn-success" id="btn-accept-bulk">Chấp nhận mục
+                                    đã
                                     chọn</button>
+                                @endif
                             </div>
                             <div class="card-body table-responsive" style="height: calc(100vh - 200px);">
                                 <table id="table_proposed" class="table table-bordered table-striped">
                                     <thead>
                                         <tr>
-                                            <th class="text-center" style="width: 40px;"><input type="checkbox"
-                                                    id="selectAllProposed"></th>
+                                            <th class="text-center" style="width: 40px;">
+                                                @if($can_approve)
+                                                <input type="checkbox" id="selectAllProposed">
+                                                @endif
+                                            </th>
                                             <th>Mã Sản Phẩm</th>
                                             <th>Tên Sản Phẩm</th>
                                             <th>Mã Lô</th>
@@ -358,7 +412,9 @@
                                             <th>Số Ngày Trễ Hạn</th>
                                             <th>Trao đổi thông tin</th>
                                             <th>Lịch Sử</th>
-                                            <th>Hành Động</th>
+                                            <th>
+                                                @if($can_approve) Hành Động @endif
+                                            </th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -380,9 +436,11 @@
                                                 @endphp
                                                 <tr>
                                                     <td class="text-center">
+                                                        @if($can_approve)
                                                         <input type="checkbox" class="row-checkbox-proposed"
                                                             value="{{ $item->id }}"
                                                             data-response-date="{{ $responseDate ? $responseDate->format('Y-m-d') : '' }}">
+                                                        @endif
                                                     </td>
                                                     <td>{{ $item->finished_product_code }}</td>
                                                     <td>{{ $item->product_name }}</td>
@@ -404,7 +462,8 @@
                                                     </td>
                                                     <td style="min-width:300px">
                                                         {{-- ===== LIST COMMENT ===== --}}
-                                                        <div class="chat-box" style="max-height:150px; overflow-y:auto; font-size:14px; text-align: left;">
+                                                        <div class="chat-box"
+                                                            style="max-height:150px; overflow-y:auto; font-size:14px; text-align: left;">
                                                             @forelse ($commentsGrouped[$item->id] ?? [] as $comment)
                                                                 <div class="mb-2 p-2 border rounded"
                                                                     style="background-color: {{ \Illuminate\Support\Str::startsWith($comment->deparment, 'PX') ? '#d4edda' : '#d1ecf1' }}; border-radius:15px; padding:6px;">
@@ -421,22 +480,33 @@
                                                             @endforelse
                                                         </div>
                                                         {{-- ===== INPUT CHAT ===== --}}
+                                                        @if($can_propose || $can_approve)
                                                         <div class="chat-input-wrapper d-flex mt-2">
-                                                            <input type="text" class="form-control form-control-sm chat-input" data-row-id="{{ $item->id }}" placeholder="Nhập trao đổi...">
-                                                            <button class="btn btn-sm btn-primary send-comment" data-row-id="{{ $item->id }}">Gửi</button>
+                                                            <input type="text"
+                                                                class="form-control form-control-sm chat-input"
+                                                                data-row-id="{{ $item->id }}"
+                                                                placeholder="Nhập trao đổi...">
+                                                            <button class="btn btn-sm btn-primary send-comment"
+                                                                data-row-id="{{ $item->id }}">Gửi</button>
                                                         </div>
+                                                        @endif
                                                     </td>
                                                     <td class="text-center align-middle">
-                                                        <button type="button" class="btn btn-sm btn-info btn-view-history mb-1" style="position: relative;" data-id="{{ $item->id }}" title="Lịch sử đề nghị">
+                                                        <button type="button"
+                                                            class="btn btn-sm btn-info btn-view-history mb-1"
+                                                            style="position: relative;" data-id="{{ $item->id }}"
+                                                            title="Lịch sử đề nghị">
                                                             <i class="fas fa-history"></i>
-                                                            @if(isset($proposalHistoryCounts) && isset($proposalHistoryCounts[$item->id]) && $proposalHistoryCounts[$item->id] > 0)
-                                                                <span class="badge badge-danger" style="position: absolute; top: -8px; right: -8px; border-radius: 50%; font-size: 10px; padding: 3px 5px;">
+                                                            @if (isset($proposalHistoryCounts) && isset($proposalHistoryCounts[$item->id]) && $proposalHistoryCounts[$item->id] > 0)
+                                                                <span class="badge badge-danger"
+                                                                    style="position: absolute; top: -8px; right: -8px; border-radius: 50%; font-size: 10px; padding: 3px 5px;">
                                                                     {{ $proposalHistoryCounts[$item->id] }}
                                                                 </span>
                                                             @endif
                                                         </button>
                                                     </td>
                                                     <td class="text-center">
+                                                        @if($can_approve)
                                                         <button type="button"
                                                             class="btn btn-sm btn-success btn-accept-single mb-1"
                                                             data-id="{{ $item->id }}"
@@ -448,6 +518,7 @@
                                                             data-id="{{ $item->id }}">
                                                             Không chấp nhận
                                                         </button>
+                                                        @endif
                                                     </td>
                                                 </tr>
                                             @endforeach
@@ -479,10 +550,12 @@
                                         @if (isset($proposalHistories))
                                             @foreach ($proposalHistories as $hist)
                                                 <tr>
-                                                    <td>{{ \Carbon\Carbon::parse($hist->created_at)->format('d/m/Y H:i') }}</td>
+                                                    <td>{{ \Carbon\Carbon::parse($hist->created_at)->format('d/m/Y H:i') }}
+                                                    </td>
                                                     <td>{{ $hist->batch }}</td>
                                                     <td>
-                                                        <span class="badge badge-{{ $hist->type == 'KCS' ? 'info' : 'primary' }}">
+                                                        <span
+                                                            class="badge badge-{{ $hist->type == 'KCS' ? 'info' : 'primary' }}">
                                                             {{ $hist->type }}
                                                         </span>
                                                     </td>
@@ -499,8 +572,10 @@
                                                         @endif
                                                     </td>
                                                     <td>{{ $hist->field_name }}</td>
-                                                    <td>{{ $hist->old_date ? \Carbon\Carbon::parse($hist->old_date)->format('d/m/Y') : '' }}</td>
-                                                    <td>{{ $hist->new_date ? \Carbon\Carbon::parse($hist->new_date)->format('d/m/Y') : '' }}</td>
+                                                    <td>{{ $hist->old_date ? \Carbon\Carbon::parse($hist->old_date)->format('d/m/Y') : '' }}
+                                                    </td>
+                                                    <td>{{ $hist->new_date ? \Carbon\Carbon::parse($hist->new_date)->format('d/m/Y') : '' }}
+                                                    </td>
                                                     <td>{{ $hist->reason }}</td>
                                                 </tr>
                                             @endforeach
@@ -510,18 +585,20 @@
                             </div>
                         </div>
                     </div>
-                    </div>
                 </div>
             </div>
-        </section>
+    </div>
+    </section>
     </div>
 
     <!-- Modal Lịch Sử -->
-    <div class="modal fade" id="proposalHistoryModal" tabindex="-1" role="dialog" aria-labelledby="proposalHistoryModalLabel" aria-hidden="true">
+    <div class="modal fade" id="proposalHistoryModal" tabindex="-1" role="dialog"
+        aria-labelledby="proposalHistoryModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg" role="document">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="proposalHistoryModalLabel"><i class="fas fa-history text-secondary"></i> Lịch Sử Đề Nghị</h5>
+                    <h5 class="modal-title" id="proposalHistoryModalLabel"><i class="fas fa-history text-secondary"></i>
+                        Lịch Sử Đề Nghị</h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
                     </button>
@@ -554,6 +631,7 @@
             $('#table_unmet').DataTable({
                 "paging": true,
                 "lengthChange": true,
+                "lengthMenu": [[10, 25, 50, 100, -1], [10, 25, 50, 100, "Tất cả"]],
                 "searching": true,
                 "ordering": true,
                 "order": [
@@ -574,11 +652,12 @@
             $('#table_material').DataTable({
                 "paging": true,
                 "lengthChange": true,
+                "lengthMenu": [[10, 25, 50, 100, -1], [10, 25, 50, 100, "Tất cả"]],
                 "searching": true,
                 "ordering": true,
                 "columnDefs": [{
                     "orderable": false,
-                    "targets": [0, 8, 9]
+                    "targets": [0, 7, 8]
                 }],
                 "info": true,
                 "autoWidth": false,
@@ -591,6 +670,7 @@
             $('#table_proposed_material').DataTable({
                 "paging": true,
                 "lengthChange": true,
+                "lengthMenu": [[10, 25, 50, 100, -1], [10, 25, 50, 100, "Tất cả"]],
                 "searching": true,
                 "ordering": true,
                 "columnDefs": [{
@@ -608,6 +688,7 @@
             $('#table_proposed').DataTable({
                 "paging": true,
                 "lengthChange": true,
+                "lengthMenu": [[10, 25, 50, 100, -1], [10, 25, 50, 100, "Tất cả"]],
                 "searching": true,
                 "ordering": true,
                 "order": [
@@ -790,7 +871,9 @@
                 if (button.prop('disabled')) return;
 
                 button.prop('disabled', true);
-                button.html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>');
+                button.html(
+                    '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>'
+                );
 
                 $.ajax({
                     url: "{{ route('pages.Schedual.warning.postComment') }}",
@@ -802,8 +885,9 @@
                     },
                     success: function(res) {
                         if (res.success) {
-                            let bgColor = res.department && res.department.startsWith('PX') ? '#d4edda' : '#d1ecf1';
-                            
+                            let bgColor = res.department && res.department.startsWith('PX') ?
+                                '#d4edda' : '#d1ecf1';
+
                             // Xóa text "Chưa có trao đổi" nếu có
                             let chatBox = input.closest('td').find('.chat-box');
                             chatBox.find('.text-muted:contains("Chưa có trao đổi")').remove();
@@ -856,7 +940,8 @@
 
                 Swal.fire({
                     title: 'Xác nhận',
-                    text: 'Bạn có chắc chắn gửi đề nghị thay đổi ngày đáp ứng NL/BB cho ' + ids.length + ' lô này?',
+                    text: 'Bạn có chắc chắn gửi đề nghị thay đổi ngày đáp ứng NL/BB cho ' + ids
+                        .length + ' lô này?',
                     icon: 'question',
                     showCancelButton: true,
                     confirmButtonText: 'Đồng ý',
@@ -872,9 +957,10 @@
                             },
                             success: function(res) {
                                 if (res.success) {
-                                    Swal.fire('Thành công', res.message, 'success').then(() => {
-                                        location.reload();
-                                    });
+                                    Swal.fire('Thành công', res.message, 'success')
+                                        .then(() => {
+                                            location.reload();
+                                        });
                                 } else {
                                     Swal.fire('Lỗi', res.message, 'error');
                                 }
@@ -979,10 +1065,11 @@
                 }
 
                 if (ids.length > 1) {
-                    Swal.fire('Tính năng đang phát triển', 'Chấp nhận hàng loạt cần thiết kế lại UI, vui lòng duyệt từng lô.', 'info');
+                    Swal.fire('Tính năng đang phát triển',
+                        'Chấp nhận hàng loạt cần thiết kế lại UI, vui lòng duyệt từng lô.', 'info');
                     return;
                 }
-                
+
                 let id = ids[0];
                 let defaultText = $('#min-start-material-' + id).text().trim();
                 let defaultDate = '';
@@ -1026,9 +1113,10 @@
                             },
                             success: function(response) {
                                 if (response.success) {
-                                    Swal.fire('Thành công', response.message, 'success').then(() => {
-                                        location.reload();
-                                    });
+                                    Swal.fire('Thành công', response.message, 'success')
+                                        .then(() => {
+                                            location.reload();
+                                        });
                                 } else {
                                     Swal.fire('Lỗi', response.message, 'error');
                                 }
@@ -1069,9 +1157,10 @@
                             },
                             success: function(response) {
                                 if (response.success) {
-                                    Swal.fire('Thành công', response.message, 'success').then(() => {
-                                        location.reload();
-                                    });
+                                    Swal.fire('Thành công', response.message, 'success')
+                                        .then(() => {
+                                            location.reload();
+                                        });
                                 } else {
                                     Swal.fire('Lỗi', response.message, 'error');
                                 }
@@ -1096,7 +1185,8 @@
                             tbody.empty();
                             if (res.data && res.data.length > 0) {
                                 res.data.forEach(function(hist) {
-                                    let typeBadge = hist.type == 'KCS' ? 'info' : 'primary';
+                                    let typeBadge = hist.type == 'KCS' ? 'info' :
+                                        'primary';
                                     let actionBadge = '';
                                     let actionText = hist.action;
                                     if (hist.action == 'PROPOSE') {
@@ -1110,17 +1200,27 @@
                                         actionText = 'Từ chối';
                                     }
 
-                                    let time = new Date(hist.created_at).toLocaleString('vi-VN', {day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'});
-                                    
+                                    let time = new Date(hist.created_at).toLocaleString(
+                                        'vi-VN', {
+                                            day: '2-digit',
+                                            month: '2-digit',
+                                            year: 'numeric',
+                                            hour: '2-digit',
+                                            minute: '2-digit'
+                                        });
+
                                     let detailText = '';
                                     if (hist.field_name) {
-                                        detailText += '<b>' + hist.field_name + '</b><br>';
+                                        detailText += '<b>' + hist.field_name +
+                                            '</b><br>';
                                     }
                                     if (hist.old_date) {
-                                        detailText += 'Cũ: ' + new Date(hist.old_date).toLocaleDateString('vi-VN') + '<br>';
+                                        detailText += 'Cũ: ' + new Date(hist.old_date)
+                                            .toLocaleDateString('vi-VN') + '<br>';
                                     }
                                     if (hist.new_date) {
-                                        detailText += 'Mới: ' + new Date(hist.new_date).toLocaleDateString('vi-VN');
+                                        detailText += 'Mới: ' + new Date(hist.new_date)
+                                            .toLocaleDateString('vi-VN');
                                     }
 
                                     let html = `<tr>
@@ -1134,7 +1234,9 @@
                                     tbody.append(html);
                                 });
                             } else {
-                                tbody.append('<tr><td colspan="6" class="text-center text-muted">Chưa có lịch sử đề nghị nào.</td></tr>');
+                                tbody.append(
+                                    '<tr><td colspan="6" class="text-center text-muted">Chưa có lịch sử đề nghị nào.</td></tr>'
+                                );
                             }
                             $('#proposalHistoryModal').modal('show');
                         } else {
@@ -1151,9 +1253,12 @@
             $('#table_history_all').DataTable({
                 "paging": true,
                 "lengthChange": true,
+                "lengthMenu": [[10, 25, 50, 100, -1], [10, 25, 50, 100, "Tất cả"]],
                 "searching": true,
                 "ordering": true,
-                "order": [[0, "desc"]],
+                "order": [
+                    [0, "desc"]
+                ],
                 "info": true,
                 "autoWidth": false,
                 "responsive": true,
