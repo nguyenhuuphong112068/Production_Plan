@@ -1243,7 +1243,7 @@
 
     function updateSidebarPersonnelTimes() {
         // Helper to calculate hours between HH:mm times
-        function calculateDurationHours(startStr, endStr) {
+        function calculateDurationHours(startStr, endStr, shiftVal = null) {
             if (!startStr || !endStr) return 0;
             const sParts = startStr.split(':');
             const eParts = endStr.split(':');
@@ -1258,15 +1258,32 @@
 
             let durationMin = eMin - sMin;
 
-            // Subtract lunch break (11:30 - 12:15)
-            const lunchStart = 11 * 60 + 30; // 690
-            const lunchEnd = 12 * 60 + 15;   // 735
+            let isNoLunchBreakShift = false;
+            if (shiftVal) {
+                if (['1', '2', '3', '6'].includes(shiftVal.toString())) {
+                    isNoLunchBreakShift = true;
+                }
+            } else {
+                if ((startStr === '06:00' && endStr === '14:00') ||
+                    (startStr === '14:00' && endStr === '22:00') ||
+                    (startStr === '22:00' && endStr === '06:00') ||
+                    (startStr === '08:00' && endStr === '20:00') ||
+                    (startStr === '20:00' && endStr === '08:00')) {
+                    isNoLunchBreakShift = true;
+                }
+            }
 
-            const overlapStart = Math.max(sMin, lunchStart);
-            const overlapEnd = Math.min(eMin, lunchEnd);
+            if (!isNoLunchBreakShift) {
+                // Subtract lunch break (11:30 - 12:15)
+                const lunchStart = 11 * 60 + 30; // 690
+                const lunchEnd = 12 * 60 + 15;   // 735
 
-            if (overlapStart < overlapEnd) {
-                durationMin -= (overlapEnd - overlapStart);
+                const overlapStart = Math.max(sMin, lunchStart);
+                const overlapEnd = Math.min(eMin, lunchEnd);
+
+                if (overlapStart < overlapEnd) {
+                    durationMin -= (overlapEnd - overlapStart);
+                }
             }
 
             return durationMin / 60;
@@ -1312,6 +1329,7 @@
                         } else {
                             roomCode = roomRow.find('.room-name-cell b').text().trim() || 'NA';
                         }
+                        const shiftVal = $item.find('.shift-select').val() || '4';
                         const start = foundPersonRow.find('.p-start-input').val() || $item.find(
                             '.start-time-input').val() || '';
                         const end = foundPersonRow.find('.p-end-input').val() || $item.find(
@@ -1323,7 +1341,8 @@
                                 room: roomCode,
                                 start: start,
                                 end: end,
-                                is_local: true
+                                is_local: true,
+                                shift: shiftVal
                             });
                         }
                     }
@@ -1348,7 +1367,7 @@
 
                 if (assignments.length > 0) {
                     assignments.forEach(a => {
-                        totalHours += calculateDurationHours(a.start, a.end);
+                        totalHours += calculateDurationHours(a.start, a.end, a.shift);
                     });
                     totalHours = Math.round(totalHours * 100) / 100;
 
@@ -4652,15 +4671,24 @@
             if (eMin <= sMin) eMin += 24 * 60;
             let totalMins = eMin - sMin;
 
-            // Subtract lunch break (11:30 - 12:15)
-            const lunchStart = 11 * 60 + 30; // 690
-            const lunchEnd = 12 * 60 + 15;   // 735
+            let assignmentItem = row.closest('.assignment-item');
+            let shiftVal = assignmentItem.find('.shift-select').val() || '1';
+            let isNoLunchBreakShift = false;
+            if (['1', '2', '3', '6'].includes(shiftVal.toString())) {
+                isNoLunchBreakShift = true;
+            }
 
-            const overlapStart = Math.max(sMin, lunchStart);
-            const overlapEnd = Math.min(eMin, lunchEnd);
+            if (!isNoLunchBreakShift) {
+                // Subtract lunch break (11:30 - 12:15)
+                const lunchStart = 11 * 60 + 30; // 690
+                const lunchEnd = 12 * 60 + 15;   // 735
 
-            if (overlapStart < overlapEnd) {
-                totalMins -= (overlapEnd - overlapStart);
+                const overlapStart = Math.max(sMin, lunchStart);
+                const overlapEnd = Math.min(eMin, lunchEnd);
+
+                if (overlapStart < overlapEnd) {
+                    totalMins -= (overlapEnd - overlapStart);
+                }
             }
 
             let totalHrs = (totalMins / 60).toFixed(1);

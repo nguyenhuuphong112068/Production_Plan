@@ -585,15 +585,26 @@
 
                 let durationMin = eMin - sMin;
 
-                // Subtract lunch break (11:30 - 12:15)
-                const lunchStart = 11 * 60 + 30; // 690
-                const lunchEnd = 12 * 60 + 15;   // 735
+                let isNoLunchBreakShift = false;
+                if ((startStr === '06:00' && endStr === '14:00') ||
+                    (startStr === '14:00' && endStr === '22:00') ||
+                    (startStr === '22:00' && endStr === '06:00') ||
+                    (startStr === '08:00' && endStr === '20:00') ||
+                    (startStr === '20:00' && endStr === '08:00')) {
+                    isNoLunchBreakShift = true;
+                }
 
-                const overlapStart = Math.max(sMin, lunchStart);
-                const overlapEnd = Math.min(eMin, lunchEnd);
+                if (!isNoLunchBreakShift) {
+                    // Subtract lunch break (11:30 - 12:15)
+                    const lunchStart = 11 * 60 + 30; // 690
+                    const lunchEnd = 12 * 60 + 15;   // 735
 
-                if (overlapStart < overlapEnd) {
-                    durationMin -= (overlapEnd - overlapStart);
+                    const overlapStart = Math.max(sMin, lunchStart);
+                    const overlapEnd = Math.min(eMin, lunchEnd);
+
+                    if (overlapStart < overlapEnd) {
+                        durationMin -= (overlapEnd - overlapStart);
+                    }
                 }
 
                 return durationMin / 60;

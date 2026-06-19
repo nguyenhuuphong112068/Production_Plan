@@ -768,23 +768,31 @@
             @endforeach
         };
 
-        function updateSidebarPersonnelTimes() {
-            // Helper to calculate hours between HH:mm times
-            function calculateDurationHours(startStr, endStr) {
-                if (!startStr || !endStr) return 0;
-                const sParts = startStr.split(':');
-                const eParts = endStr.split(':');
+        function calculateDurationHours(startStr, endStr) {
+            if (!startStr || !endStr) return 0;
+            const sParts = startStr.split(':');
+            const eParts = endStr.split(':');
 
-                let sMin = parseInt(sParts[0], 10) * 60 + parseInt(sParts[1], 10);
-                let eMin = parseInt(eParts[0], 10) * 60 + parseInt(eParts[1], 10);
+            let sMin = parseInt(sParts[0], 10) * 60 + parseInt(sParts[1], 10);
+            let eMin = parseInt(eParts[0], 10) * 60 + parseInt(eParts[1], 10);
 
-                if (eMin < sMin) {
-                    // Crosses midnight
-                    eMin += 24 * 60;
-                }
+            if (eMin < sMin) {
+                // Crosses midnight
+                eMin += 24 * 60;
+            }
 
-                let durationMin = eMin - sMin;
+            let durationMin = eMin - sMin;
 
+            let isNoLunchBreakShift = false;
+            if ((startStr === '06:00' && endStr === '14:00') ||
+                (startStr === '14:00' && endStr === '22:00') ||
+                (startStr === '22:00' && endStr === '06:00') ||
+                (startStr === '08:00' && endStr === '20:00') ||
+                (startStr === '20:00' && endStr === '08:00')) {
+                isNoLunchBreakShift = true;
+            }
+
+            if (!isNoLunchBreakShift) {
                 // Subtract lunch break (11:30 - 12:15)
                 const lunchStart = 11 * 60 + 30; // 690
                 const lunchEnd = 12 * 60 + 15;   // 735
@@ -795,10 +803,12 @@
                 if (overlapStart < overlapEnd) {
                     durationMin -= (overlapEnd - overlapStart);
                 }
-
-                return durationMin / 60;
             }
 
+            return durationMin / 60;
+        }
+
+        function updateSidebarPersonnelTimes() {
             const filterUnder8h = $('#filter-under-8h').is(':checked');
 
             $('.draggable-person').each(function() {

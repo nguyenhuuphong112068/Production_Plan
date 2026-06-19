@@ -152,15 +152,23 @@ class DashBoardController extends Controller
 
             $durationMin = $aStart->diffInMinutes($aEnd);
 
-            // Subtract lunch break (11:30 - 12:15)
-            $lunchStart = $aStart->copy()->setTime(11, 30, 0);
-            $lunchEnd = $aStart->copy()->setTime(12, 15, 0);
+            $isNoLunchBreakShift = false;
+            // Sheet: 1=C1, 2=C2, 3=C3, 6=C4. Chỉ trừ nghỉ trưa cho 4=HC, 5=Khác
+            if (in_array($assignment->Sheet, [1, 2, 3, 6])) {
+                $isNoLunchBreakShift = true;
+            }
 
-            $overlapStart = $aStart->copy()->max($lunchStart);
-            $overlapEnd = $aEnd->copy()->min($lunchEnd);
+            if (!$isNoLunchBreakShift) {
+                // Subtract lunch break (11:30 - 12:15)
+                $lunchStart = $aStart->copy()->setTime(11, 30, 0);
+                $lunchEnd = $aStart->copy()->setTime(12, 15, 0);
 
-            if ($overlapStart->lt($overlapEnd)) {
-                $durationMin -= $overlapStart->diffInMinutes($overlapEnd);
+                $overlapStart = $aStart->copy()->max($lunchStart);
+                $overlapEnd = $aEnd->copy()->min($lunchEnd);
+
+                if ($overlapStart->lt($overlapEnd)) {
+                    $durationMin -= $overlapStart->diffInMinutes($overlapEnd);
+                }
             }
 
             $hours = $durationMin / 60;
