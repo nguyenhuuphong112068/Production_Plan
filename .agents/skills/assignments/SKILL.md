@@ -83,7 +83,7 @@ Kỹ năng này tài liệu hóa quy trình quản lý nhân sự và phân côn
     - Khoảng thời gian chấm công/đi ca của hệ thống bắt đầu từ ngày 21 tháng trước đến ngày 20 tháng hiện tại.
     - Khi truy vấn lịch trực cho một tháng `M` (ví dụ: `M = 6`), dữ liệu sẽ được lấy và ghép nối từ hai nguồn API:
         - **Ngày 01 -> 20:** Lấy từ API theo tháng hiện tại `month = M` (ví dụ: `month = 6`).
-        - **Ngày 21 -> 31:** Lấy từ API theo tháng liền trước `month = M - 1` (ví dụ: `month = 5`). (Hệ thống sẽ tự động lùi về `month = 12` của năm `year - 1` nếu `M = 1`).
+        - **Ngày 21 -> 31:** Lấy từ API theo tháng tiếp theo `month = M + 1` (ví dụ: `month = 7`). (Hệ thống sẽ tự động tăng lên `month = 1` của năm `year + 1` nếu `M = 12`).
 
 ### 7.1 Tự động Phân công Nhân sự Sản Xuất (Auto Assign)
 - **Chỉ định theo ca:** Nhân sự được tự động lấy từ danh sách lịch trực (sidebar) và gom vào các nhóm (pool) tương ứng với từng ca làm việc (C1, C2, HC...). Những nhân sự đang nghỉ phép (P) sẽ bị loại bỏ.

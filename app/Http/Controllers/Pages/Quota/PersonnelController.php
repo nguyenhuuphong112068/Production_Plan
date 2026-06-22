@@ -1144,13 +1144,13 @@ class PersonnelController extends Controller
                 }
             }
 
-            $prevMonth = $month - 1;
-            $prevYear = $year;
-            if ($prevMonth < 1) {
-                $prevMonth = 12;
-                $prevYear--;
+            $nextMonth = $month + 1;
+            $nextYear = $year;
+            if ($nextMonth > 12) {
+                $nextMonth = 1;
+                $nextYear++;
             }
-            $url2 = "http://s-webdev:5070/api/shifts/by-department?month={$prevMonth}&year={$prevYear}&department={$depId}";
+            $url2 = "http://s-webdev:5070/api/shifts/by-department?month={$nextMonth}&year={$nextYear}&department={$depId}";
             $data2 = [];
             try {
                 $ctx = stream_context_create(['http' => ['timeout' => 5]]);
@@ -1163,7 +1163,7 @@ class PersonnelController extends Controller
 
             if ($depId == 15) {
                 try {
-                    $url2_17 = "http://s-webdev:5070/api/shifts/by-department?month={$prevMonth}&year={$prevYear}&department=17";
+                    $url2_17 = "http://s-webdev:5070/api/shifts/by-department?month={$nextMonth}&year={$nextYear}&department=17";
                     $ctx = stream_context_create(['http' => ['timeout' => 5]]);
                     $res2_17 = @file_get_contents($url2_17, false, $ctx);
                     if ($res2_17) {
@@ -1192,23 +1192,23 @@ class PersonnelController extends Controller
                 }
             }
 
-            $empShiftsPrev = [];
+            $empShiftsNext = [];
             foreach ($data2 as $person) {
                 $code = $person['employeeId'] ?? $person['code'] ?? null;
                 if ($code) {
-                    $empShiftsPrev[$code] = [
+                    $empShiftsNext[$code] = [
                         'name' => $person['employeeName'] ?? '',
                         'days' => $person['days'] ?? []
                     ];
                 }
             }
 
-            $allCodes = array_unique(array_merge(array_keys($empShifts), array_keys($empShiftsPrev)));
+            $allCodes = array_unique(array_merge(array_keys($empShifts), array_keys($empShiftsNext)));
 
             $merged = [];
             foreach ($allCodes as $code) {
                 $days = [];
-                $name = $empShifts[$code]['name'] ?? ($empShiftsPrev[$code]['name'] ?? '');
+                $name = $empShifts[$code]['name'] ?? ($empShiftsNext[$code]['name'] ?? '');
 
                 for ($d = 1; $d <= 20; $d++) {
                     $dayKey = 'day' . $d;
@@ -1222,7 +1222,7 @@ class PersonnelController extends Controller
                 }
                 for ($d = 21; $d <= 31; $d++) {
                     $dayKey = 'day' . $d;
-                    $dayData = $empShiftsPrev[$code]['days'][$dayKey] ?? null;
+                    $dayData = $empShiftsNext[$code]['days'][$dayKey] ?? null;
                     if (is_array($dayData)) {
                         $days[$d] = strtoupper(trim($dayData['shift'] ?? ''));
                     } else {

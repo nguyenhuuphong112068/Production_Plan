@@ -1,83 +1,82 @@
-
 <link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet">
 
 <!-- Modal -->
-<div class="modal fade" id="create_plan_list_modal" tabindex="-1" role="dialog" aria-labelledby="ModalLabel" aria-hidden="true">
-  <div class="modal-dialog" role="document">
-   
-    <form 
-      action="{{route('pages.plan.production.create_plan_list')}}" 
-      method="POST">
-      @csrf
+<div class="modal fade" id="create_plan_list_modal" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog" role="document">
 
-      <div class="modal-content">
-        <div class="modal-header">
-          <a href="{{ route ('pages.general.home') }}">
-              <img src="{{ asset('img/iconstella.svg') }}" style="opacity: 0.8 ; max-width:45px;">
-          </a>
+        <form action="{{ route('pages.plan.production.create_plan_list') }}" method="POST">
+            @csrf
 
-          <h4 class="modal-title w-100 text-center" style="color: #CDC717">
-              {{'Tạo Mới Kế Hoạch Sản Xuất' }}
-          </h4>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <a href="{{ route('pages.general.home') }}">
+                        <img src="{{ asset('img/iconstella.svg') }}" style="opacity: 0.8 ; max-width:45px;">
+                    </a>
 
-          <button type="button" class="close" data-dismiss="modal" aria-label="Đóng">
-            <span aria-hidden="true">&times;</span>
-          </button>
-        </div>
+                    <h4 class="modal-title w-100 text-center" style="color: #CDC717">
+                        {{ 'Tạo Mới Kế Hoạch Sản Xuất' }}
+                    </h4>
 
-        <div class="modal-body">
-            {{-- NAME --}}
-            <div class="form-group">
-              <label for="name">Tên Kế Hoạch</label>
-              <input type="text" class="form-control" name="name" 
-                value="{{ old('name') }}">
-            </div>
-            @error('name', 'createErrors')
-                <div class="alert alert-danger">{{ $message }}</div>
-            @enderror
-
-            {{-- THÁNG & NĂM --}}
-            <div class="form-row">
-                <div class="form-group col-6">
-                    <label for="month">Tháng <span class="text-danger">*</span></label>
-                    <select class="form-control" name="month" id="month" required>
-                        @for ($m = 1; $m <= 12; $m++)
-                            <option value="{{ $m }}" {{ (old('month', date('n')) == $m) ? 'selected' : '' }}>
-                                Tháng {{ $m }}
-                            </option>
-                        @endfor
-                    </select>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Đóng">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
                 </div>
-                <div class="form-group col-6">
-                    <label for="year">Năm <span class="text-danger">*</span></label>
-                    <select class="form-control" name="year" id="year" required>
-                        @for ($y = date('Y') - 1; $y <= date('Y') + 2; $y++)
-                            <option value="{{ $y }}" {{ (old('year', date('Y')) == $y) ? 'selected' : '' }}>
-                                {{ $y }}
-                            </option>
-                        @endfor
-                    </select>
+
+                <div class="modal-body">
+                    {{-- NAME --}}
+                    <div class="form-group">
+                        <label for="name">Tên Kế Hoạch</label>
+                        <input type="text" class="form-control" name="name" value="{{ old('name') }}">
+                    </div>
+                    @error('name', 'createErrors')
+                        <div class="alert alert-danger">{{ $message }}</div>
+                    @enderror
+
+                    {{-- THÁNG & NĂM --}}
+                    <div class="form-row">
+                        <div class="form-group col-6">
+                            <label for="month">Tháng <span class="text-danger">*</span></label>
+                            <select class="form-control" name="month" id="month" required>
+                                @for ($m = 1; $m <= 12; $m++)
+                                    <option value="{{ $m }}"
+                                        {{ old('month', date('n')) == $m ? 'selected' : '' }}>
+                                        Tháng {{ $m }}
+                                    </option>
+                                @endfor
+                            </select>
+                        </div>
+                        <div class="form-group col-6">
+                            <label for="year">Năm <span class="text-danger">*</span></label>
+                            <select class="form-control" name="year" id="year" required>
+                                @for ($y = date('Y') - 1; $y <= date('Y') + 2; $y++)
+                                    <option value="{{ $y }}"
+                                        {{ old('year', date('Y')) == $y ? 'selected' : '' }}>
+                                        {{ $y }}
+                                    </option>
+                                @endfor
+                            </select>
+                        </div>
+                    </div>
+                    @error('month', 'createErrors')
+                        <div class="alert alert-danger">{{ $message }}</div>
+                    @enderror
+                    @error('year', 'createErrors')
+                        <div class="alert alert-danger">{{ $message }}</div>
+                    @enderror
+
+                </div>
+
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Đóng</button>
+                    <button type="submit" class="btn btn-primary">
+                        Lưu
+                    </button>
                 </div>
             </div>
-            @error('month', 'createErrors')
-                <div class="alert alert-danger">{{ $message }}</div>
-            @enderror
-            @error('year', 'createErrors')
-                <div class="alert alert-danger">{{ $message }}</div>
-            @enderror
-
-        </div>
-
-
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-dismiss="modal">Đóng</button>
-          <button type="submit" class="btn btn-primary">
-              Lưu
-          </button>
-        </div>
-      </div>
-    </form>
-  </div>
+        </form>
+    </div>
 </div>
 
 <!-- Scripts -->
@@ -88,23 +87,23 @@
 
 {{-- //Show modal nếu có lỗi validation --}}
 @if ($errors->createErrors->any())
-<script>
-    $(document).ready(function () {
-        $('#create_plan_list_modal').modal('show');
-    });
-</script>
+    <script>
+        $(document).ready(function() {
+            $('#create_plan_list_modal').modal('show');
+        });
+    </script>
 @endif
 
 
 
 @if (session('success'))
-<script>
-    Swal.fire({
-        title: 'Thành công!',
-        text: '{{ session('success') }}',
-        icon: 'success',
-        timer: 1000, // tự đóng sau 2 giây
-        showConfirmButton: false
-    });
-</script>
+    <script>
+        Swal.fire({
+            title: 'Thành công!',
+            text: '{{ session('success') }}',
+            icon: 'success',
+            timer: 1000, // tự đóng sau 2 giây
+            showConfirmButton: false
+        });
+    </script>
 @endif
