@@ -160,6 +160,13 @@
                         </li>
 
                         <li class="nav-item">
+                            <a href="{{ route('pages.materData.room_links.list') }}" class="nav-link">
+                                <i class="far fa-circle nav-icon text-warning"></i>
+                                <p>Liên kết Phòng</p>
+                            </a>
+                        </li>
+
+                        <li class="nav-item">
                             <a href="{{ route('pages.materData.Dosage.list') }}" class="nav-link">
                                 <i class="far fa-circle nav-icon"></i>
                                 <p>Dạng Bào Chế</p>

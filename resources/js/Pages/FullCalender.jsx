@@ -94,6 +94,7 @@ const ScheduleTest = () => {
   const [sumBatchByStage, setSumBatchByStage] = useState([]);
   const [plan, setPlan] = useState([]);
   const [quota, setQuota] = useState([]);
+  const [roomLinks, setRoomLinks] = useState([]);
   const [stageMap, setStageMap] = useState({});
   const [contextMenuInfo, setContextMenuInfo] = useState({ visible: false, x: 0, y: 0, event: null });
   const [type, setType] = useState(true);
@@ -200,6 +201,7 @@ const ScheduleTest = () => {
           setPlan(data.plan);
           setCurrentPassword(data.currentPassword ?? '')
           setQuota(data.quota);
+          setRoomLinks(data.room_links ?? []);
           setOffDays(data.off_days);
           setBkcCode(data.bkc_code);
           setUserID(data.UesrID);
@@ -2753,179 +2755,217 @@ const ScheduleTest = () => {
       changedEvent.setExtendedProp('process_code', baseProcessCode + "_" + newResourceId);
     }
 
-    // =====================================================================
-    // 🔍 KIỂM TRA CHỒNG CHẤT TRƯỚC KHI LƯU
-    // =====================================================================
-    const calendarApiCheck = calendarRef.current?.getApi();
-    const allEventsCheck = calendarApiCheck ? calendarApiCheck.getEvents() : [];
-    const conflictingEvents = detectOverlappingEvents(changedEvent, allEventsCheck);
+    const _proceedWithOverlapCheck = () => {
+      // =====================================================================
+      // 🔍 KIỂM TRA CHỒNG CHẤT TRƯỚC KHI LƯU
+      // =====================================================================
+      const calendarApiCheck = calendarRef.current?.getApi();
+      const allEventsCheck = calendarApiCheck ? calendarApiCheck.getEvents() : [];
+      const conflictingEvents = detectOverlappingEvents(changedEvent, allEventsCheck);
 
-    const hasCascadeOldEvent = !!changeInfo.oldEvent;
+      const hasCascadeOldEvent = !!changeInfo.oldEvent;
 
-    const _applyEventChange = (changedEvRef, oldEvRef, resourceIdRef) => {
-      // Create updates array starting with the changed event
-      let updates = [{
-        id: changedEvRef.id,
-        start: changedEvRef.start.toISOString(),
-        end: changedEvRef.end.toISOString(),
-        resourceId: resourceIdRef,
-        title: changedEvRef.title,
-        submit: changedEvRef.extendedProps.submit
-      }];
+      const _applyEventChange = (changedEvRef, oldEvRef, resourceIdRef) => {
+        // Create updates array starting with the changed event
+        let updates = [{
+          id: changedEvRef.id,
+          start: changedEvRef.start.toISOString(),
+          end: changedEvRef.end.toISOString(),
+          resourceId: resourceIdRef,
+          title: changedEvRef.title,
+          submit: changedEvRef.extendedProps.submit
+        }];
 
-      // 🔹 Cascade Logic for single move/resize
-      if (isCascadeMode && hasCascadeOldEvent) {
-        Swal.fire({
-          title: 'Đang xử lý Cascade...',
-          allowOutsideClick: false,
-          didOpen: () => { Swal.showLoading(); }
-        });
-        setTimeout(() => {
-          const cascadeUpdates = runCascadeLogic(changedEvRef, oldEvRef);
-          updates = [...updates, ...cascadeUpdates];
+        // 🔹 Cascade Logic for single move/resize
+        if (isCascadeMode && hasCascadeOldEvent) {
+          Swal.fire({
+            title: 'Đang xử lý Cascade...',
+            allowOutsideClick: false,
+            didOpen: () => { Swal.showLoading(); }
+          });
+          setTimeout(() => {
+            const cascadeUpdates = runCascadeLogic(changedEvRef, oldEvRef);
+            updates = [...updates, ...cascadeUpdates];
+            setPendingChanges(prev => {
+              const ids = new Set(updates.map(u => u.id));
+              return [...prev.filter(e => !ids.has(e.id)), ...updates];
+            });
+            Swal.close();
+          }, 50);
+        } else {
           setPendingChanges(prev => {
             const ids = new Set(updates.map(u => u.id));
             return [...prev.filter(e => !ids.has(e.id)), ...updates];
           });
-          Swal.close();
-        }, 50);
-      } else {
-        setPendingChanges(prev => {
-          const ids = new Set(updates.map(u => u.id));
-          return [...prev.filter(e => !ids.has(e.id)), ...updates];
+        }
+      };
+
+      if (conflictingEvents.length > 0) {
+        // Tìm sự kiện bị chồng có end lớn nhất (để sắp tiếp sau)
+        const latestConflict = conflictingEvents.reduce((max, ev) =>
+          (ev.end && max.end && ev.end > max.end) ? ev : max
+          , conflictingEvents[0]);
+
+        // Tạo danh sách thông tin chồng chất (tối đa 5 sự kiện)
+        const conflictRows = conflictingEvents.slice(0, 5).map(ev => {
+          const props = ev.extendedProps || {};
+          const product = props.product_name || ev.title || '—';
+          const lot = props.actual_batch || props.batch_name || '—';
+          const startFmt = ev.start ? new Date(ev.start).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+          const endFmt = ev.end ? new Date(ev.end).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+          return `
+            <tr>
+              <td style="padding:6px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#1e40af">${product}</td>
+              <td style="padding:6px 10px;border-bottom:1px solid #e2e8f0;color:#7c3aed;font-weight:600">${lot}</td>
+              <td style="padding:6px 10px;border-bottom:1px solid #e2e8f0;color:#64748b;font-size:12px">${startFmt} → ${endFmt}</td>
+            </tr>`;
+        }).join('');
+
+        const moreText = conflictingEvents.length > 5
+          ? `<div style="text-align:center;margin-top:8px;color:#94a3b8;font-size:12px">...và ${conflictingEvents.length - 5} sự kiện khác</div>`
+          : '';
+
+        Swal.fire({
+          title: '<span style="color:#dc2626;font-size:18px">⚠️ Phát Hiện Chồng Lấn Lịch!</span>',
+          width: '680px',
+          html: `
+            <div style="text-align:left;font-family:inherit">
+              <p style="margin:0 0 12px;color:#475569;font-size:14px">
+                Sự kiện <strong style="color:#1e40af">${changedEvent.extendedProps?.product_name || changedEvent.title}</strong>
+                đang <span style="color:#dc2626;font-weight:700">chồng thời gian</span> với ${conflictingEvents.length} lịch sau:
+              </p>
+              <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;overflow:hidden;margin-bottom:12px">
+                <table style="width:100%;border-collapse:collapse">
+                  <thead>
+                    <tr style="background:#fee2e2">
+                      <th style="padding:8px 10px;text-align:left;font-size:12px;color:#991b1b">🏷️ Sản phẩm</th>
+                      <th style="padding:8px 10px;text-align:left;font-size:12px;color:#991b1b">📦 Lô</th>
+                      <th style="padding:8px 10px;text-align:left;font-size:12px;color:#991b1b">🕐 Thời gian</th>
+                    </tr>
+                  </thead>
+                  <tbody>${conflictRows}</tbody>
+                </table>
+                ${moreText}
+              </div>
+              <p style="margin:0;color:#64748b;font-size:13px">Bạn muốn xử lý như thế nào?</p>
+            </div>
+          `,
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonText: 'Sắp tiếp sau',
+          cancelButtonText: 'Hủy',
+          confirmButtonColor: '#2563eb',
+          cancelButtonColor: '#6b7280',
+          buttonsStyling: true,
+          customClass: {
+            popup: 'swal-overlap-popup',
+            confirmButton: 'swal-btn-confirm',
+            denyButton: 'swal-btn-deny',
+            cancelButton: 'swal-btn-cancel'
+          }
+        }).then((result) => {
+          if (result.isConfirmed) {
+            // ✅ Lựa chọn 1: Sắp tiếp sau sự kiện bị chồng có end lớn nhất
+            const conflictEnd = latestConflict.extendedProps?.end_clearning || latestConflict.end || latestConflict.start;
+            
+            const calendarApiCheck = calendarRef.current?.getApi();
+            const resourceEvents = calendarApiCheck ? calendarApiCheck.getEvents().filter(ev => {
+                const rId = ev.getResources?.()[0]?.id ?? ev.resourceId ?? ev._def?.resourceIds?.[0];
+                if (rId !== newResourceId) return false;
+                if (ev.extendedProps?.finished == 1) return false;
+                if (String(ev.id) === String(changedEvent.id)) return false;
+                return true;
+            }) : [];
+
+            let currentStart = skipOffDays(new Date(conflictEnd), offRanges);
+            const duration = changedEvent.end
+              ? changedEvent.end.getTime() - changedEvent.start.getTime()
+              : 0;
+            let finalStart, finalEnd;
+
+            while (true) {
+                let currentEnd = new Date(currentStart.getTime() + duration);
+                let safeEnd;
+                do { safeEnd = currentEnd; currentEnd = skipOffDays(currentEnd, offRanges); } while (currentEnd.getTime() !== safeEnd.getTime());
+
+                let hasOverlap = false;
+                let nextPossibleStart = null;
+
+                for (const ev of resourceEvents) {
+                    const evStart = ev.start ? ev.start.getTime() : 0;
+                    const evEnd = ev.extendedProps?.end_clearning ? new Date(ev.extendedProps.end_clearning).getTime() : (ev.end ? ev.end.getTime() : evStart);
+
+                    if (currentStart.getTime() < evEnd && currentEnd.getTime() > evStart) {
+                        hasOverlap = true;
+                        if (!nextPossibleStart || evEnd > nextPossibleStart.getTime()) {
+                            nextPossibleStart = new Date(evEnd);
+                        }
+                    }
+                }
+
+                if (!hasOverlap) {
+                    finalStart = currentStart;
+                    finalEnd = currentEnd;
+                    break;
+                } else {
+                    currentStart = skipOffDays(nextPossibleStart, offRanges);
+                }
+            }
+
+            let newStart = finalStart;
+            let newEnd = finalEnd;
+
+            changedEvent.setDates(newStart, newEnd, { maintainDuration: false });
+            _applyEventChange(changedEvent, oldEvent, newResourceId);
+
+          } else {
+            // ↩️ Hủy → hoàn tác về vị trí cũ và xóa khỏi pendingChanges
+            changeInfo.revert?.();
+            setPendingChanges(prev => prev.filter(e => String(e.id) !== String(changedEvent.id)));
+          }
         });
+
+      } else {
+        // Không có chồng chất → lưu bình thường
+        _applyEventChange(changedEvent, oldEvent, newResourceId);
       }
     };
 
-    if (conflictingEvents.length > 0) {
-      // Tìm sự kiện bị chồng có end lớn nhất (để sắp tiếp sau)
-      const latestConflict = conflictingEvents.reduce((max, ev) =>
-        (ev.end && max.end && ev.end > max.end) ? ev : max
-        , conflictingEvents[0]);
-
-      // Tạo danh sách thông tin chồng chất (tối đa 5 sự kiện)
-      const conflictRows = conflictingEvents.slice(0, 5).map(ev => {
-        const props = ev.extendedProps || {};
-        const product = props.product_name || ev.title || '—';
-        const lot = props.actual_batch || props.batch_name || '—';
-        const startFmt = ev.start ? new Date(ev.start).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
-        const endFmt = ev.end ? new Date(ev.end).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
-        return `
-          <tr>
-            <td style="padding:6px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#1e40af">${product}</td>
-            <td style="padding:6px 10px;border-bottom:1px solid #e2e8f0;color:#7c3aed;font-weight:600">${lot}</td>
-            <td style="padding:6px 10px;border-bottom:1px solid #e2e8f0;color:#64748b;font-size:12px">${startFmt} → ${endFmt}</td>
-          </tr>`;
-      }).join('');
-
-      const moreText = conflictingEvents.length > 5
-        ? `<div style="text-align:center;margin-top:8px;color:#94a3b8;font-size:12px">...và ${conflictingEvents.length - 5} sự kiện khác</div>`
-        : '';
-
-      Swal.fire({
-        title: '<span style="color:#dc2626;font-size:18px">⚠️ Phát Hiện Chồng Lấn Lịch!</span>',
-        width: '680px',
-        html: `
-          <div style="text-align:left;font-family:inherit">
-            <p style="margin:0 0 12px;color:#475569;font-size:14px">
-              Sự kiện <strong style="color:#1e40af">${changedEvent.extendedProps?.product_name || changedEvent.title}</strong>
-              đang <span style="color:#dc2626;font-weight:700">chồng thời gian</span> với ${conflictingEvents.length} lịch sau:
-            </p>
-            <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;overflow:hidden;margin-bottom:12px">
-              <table style="width:100%;border-collapse:collapse">
-                <thead>
-                  <tr style="background:#fee2e2">
-                    <th style="padding:8px 10px;text-align:left;font-size:12px;color:#991b1b">🏷️ Sản phẩm</th>
-                    <th style="padding:8px 10px;text-align:left;font-size:12px;color:#991b1b">📦 Lô</th>
-                    <th style="padding:8px 10px;text-align:left;font-size:12px;color:#991b1b">🕐 Thời gian</th>
-                  </tr>
-                </thead>
-                <tbody>${conflictRows}</tbody>
-              </table>
-              ${moreText}
-            </div>
-            <p style="margin:0;color:#64748b;font-size:13px">Bạn muốn xử lý như thế nào?</p>
-          </div>
-        `,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'Sắp tiếp sau',
-        cancelButtonText: 'Hủy',
-        confirmButtonColor: '#2563eb',
-        cancelButtonColor: '#6b7280',
-        buttonsStyling: true,
-        customClass: {
-          popup: 'swal-overlap-popup',
-          confirmButton: 'swal-btn-confirm',
-          denyButton: 'swal-btn-deny',
-          cancelButton: 'swal-btn-cancel'
-        }
-      }).then((result) => {
-        if (result.isConfirmed) {
-          // ✅ Lựa chọn 1: Sắp tiếp sau sự kiện bị chồng có end lớn nhất
-          const conflictEnd = latestConflict.extendedProps?.end_clearning || latestConflict.end || latestConflict.start;
-          
-          const calendarApiCheck = calendarRef.current?.getApi();
-          const resourceEvents = calendarApiCheck ? calendarApiCheck.getEvents().filter(ev => {
-              const rId = ev.getResources?.()[0]?.id ?? ev.resourceId ?? ev._def?.resourceIds?.[0];
-              if (rId !== newResourceId) return false;
-              if (ev.extendedProps?.finished == 1) return false;
-              if (String(ev.id) === String(changedEvent.id)) return false;
-              return true;
-          }) : [];
-
-          let currentStart = skipOffDays(new Date(conflictEnd), offRanges);
-          const duration = changedEvent.end
-            ? changedEvent.end.getTime() - changedEvent.start.getTime()
-            : 0;
-          let finalStart, finalEnd;
-
-          while (true) {
-              let currentEnd = new Date(currentStart.getTime() + duration);
-              let safeEnd;
-              do { safeEnd = currentEnd; currentEnd = skipOffDays(currentEnd, offRanges); } while (currentEnd.getTime() !== safeEnd.getTime());
-
-              let hasOverlap = false;
-              let nextPossibleStart = null;
-
-              for (const ev of resourceEvents) {
-                  const evStart = ev.start ? ev.start.getTime() : 0;
-                  const evEnd = ev.extendedProps?.end_clearning ? new Date(ev.extendedProps.end_clearning).getTime() : (ev.end ? ev.end.getTime() : evStart);
-
-                  if (currentStart.getTime() < evEnd && currentEnd.getTime() > evStart) {
-                      hasOverlap = true;
-                      if (!nextPossibleStart || evEnd > nextPossibleStart.getTime()) {
-                          nextPossibleStart = new Date(evEnd);
-                      }
-                  }
-              }
-
-              if (!hasOverlap) {
-                  finalStart = currentStart;
-                  finalEnd = currentEnd;
-                  break;
+    // --- Room Link Logic ---
+    const ext = changedEvent.extendedProps || {};
+    if (ext.stage_code == 4 && newResourceId && ext.predecessor_code) {
+      const calendarApiCheck = calendarRef.current?.getApi();
+      const allEventsCheck = calendarApiCheck ? calendarApiCheck.getEvents() : [];
+      const predEvent = allEventsCheck.find(e => e.extendedProps?.code === ext.predecessor_code);
+      if (predEvent) {
+        const predRoomId = predEvent.getResources?.()[0]?.id;
+        if (predRoomId) {
+          const link = roomLinks.find(l => l.source_room_id == predRoomId);
+          if (link && link.target_room_id != newResourceId) {
+            const targetRoomName = resources.find(r => r.id == link.target_room_id)?.title || link.target_room_id;
+            Swal.fire({
+              title: "⚠️ Cảnh Báo Liên Kết Phòng!",
+              text: `Lô Trộn này theo quy định phải được xếp vào phòng: ${targetRoomName}. Bạn có chắc muốn tiếp tục xếp vào phòng khác?`,
+              icon: "warning",
+              showCancelButton: true,
+              confirmButtonColor: "#3085d6",
+              cancelButtonColor: "#d33",
+              confirmButtonText: "Vẫn tiếp tục",
+              cancelButtonText: "Hủy thao tác"
+            }).then((result) => {
+              if (result.isConfirmed) {
+                _proceedWithOverlapCheck();
               } else {
-                  currentStart = skipOffDays(nextPossibleStart, offRanges);
+                changeInfo.revert?.();
               }
+            });
+            return;
           }
-
-          let newStart = finalStart;
-          let newEnd = finalEnd;
-
-          changedEvent.setDates(newStart, newEnd, { maintainDuration: false });
-          _applyEventChange(changedEvent, oldEvent, newResourceId);
-
-        } else {
-          // ↩️ Hủy → hoàn tác về vị trí cũ và xóa khỏi pendingChanges
-          changeInfo.revert?.();
-          setPendingChanges(prev => prev.filter(e => String(e.id) !== String(changedEvent.id)));
         }
-      });
-
-    } else {
-      // Không có chồng chất → lưu bình thường
-      _applyEventChange(changedEvent, oldEvent, newResourceId);
+      }
     }
+
+    _proceedWithOverlapCheck();
   };
 
   const handleEventMouseEnter = (info) => {

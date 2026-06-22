@@ -53,6 +53,16 @@ Route::prefix('/materData')
           
         });
 
+        Route::prefix('/room_links')
+        ->name('room_links.')
+        ->controller(\App\Http\Controllers\Pages\MaterData\RoomLinkController::class)
+        ->group(function(){
+            Route::get('','index')->name('list');
+            Route::post('store','store')->name('store');
+            Route::post('update', 'update')->name('update');
+            Route::post('deActive','deActive')->name('deActive');
+        });
+
 
         Route::prefix('/Dosage')
         ->name('Dosage.')

@@ -40,7 +40,7 @@
                                 <tr>
                                     <th>STT</th>
                                     <th>Mã Sản Phẩm</th>
-                                    <th>Tên Thiết Bị</th>
+                                    <th>Tên Sản Phẩm</th>
                                     <th>Số Lô</th>
                                     <th>Sản Lượng Thực Tế</th>
                                     <th>Công Đoạn Tiếp Theo</th>

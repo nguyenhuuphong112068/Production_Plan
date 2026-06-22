@@ -1660,6 +1660,13 @@ class SchedualController extends Controller
                 ];
             }
 
+            $room_links = DB::table('room_links')
+                ->join('room as src', 'src.id', '=', 'room_links.source_room_id')
+                ->where('src.deparment_code', $production)
+                ->where('room_links.active', 1)
+                ->select('room_links.source_room_id', 'room_links.target_room_id')
+                ->get();
+
             return response()->json([
                 'title' => $title,
                 'events' => $events,
@@ -1680,6 +1687,7 @@ class SchedualController extends Controller
                 'bkc_code' => $bkc_code ?? [],
                 'UesrID' => $UesrID,
                 'personnel_events' => $personnelEvents,
+                'room_links' => $room_links,
             ]);
         } catch (\Throwable  $e) {
 
@@ -6156,6 +6164,25 @@ class SchedualController extends Controller
             }
         }
 
+        // --- NEW LOGIC: Room Linking ---
+        if ($stageCode == 4 && $task->predecessor_code != null) {
+            $pred = DB::table('stage_plan')->where('code', $task->predecessor_code)->first();
+            if ($pred && $pred->resourceId) {
+                // Check if there is a mandatory link
+                $link = DB::table('room_links')
+                          ->where('source_room_id', $pred->resourceId)
+                          ->where('active', 1)
+                          ->first();
+                if ($link) {
+                    $filtered = $rooms->where('room_id', $link->target_room_id)->values();
+                    if (!$filtered->isEmpty()) {
+                        $rooms = $filtered;
+                    }
+                }
+            }
+        }
+        // -------------------------------
+
         // phòng phù hợp (quota)
         if ($rooms->isEmpty()) {
             return;
@@ -6654,34 +6681,22 @@ class SchedualController extends Controller
             return;
         }
 
-        // liên hê giữa pc và tht
-        if ($stageCode == 4 && $firstTask->predecessor_code && explode('_', $firstTask->predecessor_code)[1] == 3 && $rooms->count() > 1) {
-
-            $rooms_bkc = $rooms;
-
+        // liên hê giữa pc và tht (Room Links logic)
+        if ($stageCode == 4 && $firstTask->predecessor_code && $rooms->count() > 1) {
             $resourceId_prev = DB::table('stage_plan')
                 ->where('code', $firstTask->predecessor_code)
                 ->value('resourceId');
-
-            $rooms = $rooms->filter(function ($room) use ($resourceId_prev) {
-
-                if (in_array($resourceId_prev, [6,  7])) {
-
-                    return in_array($room->room_id, [13,  14]);
+            if ($resourceId_prev) {
+                $link = DB::table('room_links')
+                          ->where('source_room_id', $resourceId_prev)
+                          ->where('active', 1)
+                          ->first();
+                if ($link) {
+                    $filtered = $rooms->where('room_id', $link->target_room_id)->values();
+                    if (!$filtered->isEmpty()) {
+                        $rooms = $filtered;
+                    }
                 }
-
-                if ($resourceId_prev == 10) {
-
-                    return $room->room_id == 17;
-                }
-
-                return true;
-            })->values();
-
-            // ✅ rollback nếu filter làm rỗng
-            if ($rooms->isEmpty()) {
-
-                $rooms = $rooms_bkc;
             }
         }
 
