@@ -433,7 +433,7 @@ class ProductionPlanController extends Controller
 
         public function create_plan_list(Request $request)
         {
-                $request->validate([
+                $request->validateWithBag('createErrors', [
                         'name'  => 'required',
                         'month' => 'required|integer|between:1,12',
                         'year'  => 'required|integer|min:2020',
@@ -441,7 +441,7 @@ class ProductionPlanController extends Controller
                         'name.required'  => 'Vui lòng nhập tên kế hoạch.',
                         'month.required' => 'Vui lòng chọn tháng.',
                         'year.required'  => 'Vui lòng chọn năm.',
-                ], 'createErrors');
+                ]);
 
                 DB::table('plan_list')->insert([
                         'name'            => $request->name,
