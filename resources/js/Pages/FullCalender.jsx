@@ -2325,7 +2325,7 @@ const ScheduleTest = () => {
     const calendarApi = info.view.calendar;
 
     // Luôn revert để React tự quản lý render qua pendingChanges
-    info.revert();
+    //info.revert();
 
     // Xác định danh sách sự kiện bị kéo
     // Nếu event bị kéo chưa được chọn, ta kéo chính nó (coi như nhóm 1)
@@ -2349,7 +2349,7 @@ const ScheduleTest = () => {
       const eventConfigs = eventsToMove.map(event => {
         if (!event) return null;
         let trueDurMs = 0;
-        
+
         if (!workingSunday) {
           const baseProcessCode = event._def.extendedProps.process_code?.split('_').slice(0, 2).join('_');
           let lookupCode = baseProcessCode + "_" + event._def.resourceIds[0];
@@ -2396,7 +2396,7 @@ const ScheduleTest = () => {
           const event_start = conf.event.start.getTime();
           const newStart = new Date(event_start + currentOffset);
           let newEnd;
-          
+
           if (!workingSunday) {
             newEnd = new Date(event_start + currentOffset + conf.trueDurMs);
             let safeEnd;
@@ -2519,6 +2519,7 @@ const ScheduleTest = () => {
       });
 
       // Nếu có overlap và KHÔNG ở Cascade mode (Cascade mode tự động đẩy nên về lý thuyết không có overlap, nhưng an toàn vẫn check)
+      /* Tạm thời bỏ tính năng cảnh báo chồng lấn lịch - Sẽ kiểm tra và triển khai sau
       if (allConflicts.length > 0) {
         if (isCascadeMode) Swal.close();
 
@@ -2638,6 +2639,7 @@ const ScheduleTest = () => {
         });
         return;
       }
+      */
 
       // 4. Áp dụng thay đổi nếu không có lỗi
       setPendingChanges(prev => {
@@ -2867,14 +2869,14 @@ const ScheduleTest = () => {
           if (result.isConfirmed) {
             // ✅ Lựa chọn 1: Sắp tiếp sau sự kiện bị chồng có end lớn nhất
             const conflictEnd = latestConflict.extendedProps?.end_clearning || latestConflict.end || latestConflict.start;
-            
+
             const calendarApiCheck = calendarRef.current?.getApi();
             const resourceEvents = calendarApiCheck ? calendarApiCheck.getEvents().filter(ev => {
-                const rId = ev.getResources?.()[0]?.id ?? ev.resourceId ?? ev._def?.resourceIds?.[0];
-                if (rId !== newResourceId) return false;
-                if (ev.extendedProps?.finished == 1) return false;
-                if (String(ev.id) === String(changedEvent.id)) return false;
-                return true;
+              const rId = ev.getResources?.()[0]?.id ?? ev.resourceId ?? ev._def?.resourceIds?.[0];
+              if (rId !== newResourceId) return false;
+              if (ev.extendedProps?.finished == 1) return false;
+              if (String(ev.id) === String(changedEvent.id)) return false;
+              return true;
             }) : [];
 
             let currentStart = skipOffDays(new Date(conflictEnd), offRanges);
@@ -2884,32 +2886,32 @@ const ScheduleTest = () => {
             let finalStart, finalEnd;
 
             while (true) {
-                let currentEnd = new Date(currentStart.getTime() + duration);
-                let safeEnd;
-                do { safeEnd = currentEnd; currentEnd = skipOffDays(currentEnd, offRanges); } while (currentEnd.getTime() !== safeEnd.getTime());
+              let currentEnd = new Date(currentStart.getTime() + duration);
+              let safeEnd;
+              do { safeEnd = currentEnd; currentEnd = skipOffDays(currentEnd, offRanges); } while (currentEnd.getTime() !== safeEnd.getTime());
 
-                let hasOverlap = false;
-                let nextPossibleStart = null;
+              let hasOverlap = false;
+              let nextPossibleStart = null;
 
-                for (const ev of resourceEvents) {
-                    const evStart = ev.start ? ev.start.getTime() : 0;
-                    const evEnd = ev.extendedProps?.end_clearning ? new Date(ev.extendedProps.end_clearning).getTime() : (ev.end ? ev.end.getTime() : evStart);
+              for (const ev of resourceEvents) {
+                const evStart = ev.start ? ev.start.getTime() : 0;
+                const evEnd = ev.extendedProps?.end_clearning ? new Date(ev.extendedProps.end_clearning).getTime() : (ev.end ? ev.end.getTime() : evStart);
 
-                    if (currentStart.getTime() < evEnd && currentEnd.getTime() > evStart) {
-                        hasOverlap = true;
-                        if (!nextPossibleStart || evEnd > nextPossibleStart.getTime()) {
-                            nextPossibleStart = new Date(evEnd);
-                        }
-                    }
+                if (currentStart.getTime() < evEnd && currentEnd.getTime() > evStart) {
+                  hasOverlap = true;
+                  if (!nextPossibleStart || evEnd > nextPossibleStart.getTime()) {
+                    nextPossibleStart = new Date(evEnd);
+                  }
                 }
+              }
 
-                if (!hasOverlap) {
-                    finalStart = currentStart;
-                    finalEnd = currentEnd;
-                    break;
-                } else {
-                    currentStart = skipOffDays(nextPossibleStart, offRanges);
-                }
+              if (!hasOverlap) {
+                finalStart = currentStart;
+                finalEnd = currentEnd;
+                break;
+              } else {
+                currentStart = skipOffDays(nextPossibleStart, offRanges);
+              }
             }
 
             let newStart = finalStart;
