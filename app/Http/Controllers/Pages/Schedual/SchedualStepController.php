@@ -70,7 +70,7 @@ class SchedualStepController extends Controller
                         END as status
                     ")
             )
-            ->whereBetween('stage_plan.created_date', [$fromDate, $toDate])
+            ->whereBetween('plan_master.expected_date', [$fromDate, $toDate])
             ->where('stage_plan.active', 1)
             ->where('stage_plan.deparment_code', $production)
             ->where('plan_master.only_parkaging',  0)
@@ -124,7 +124,7 @@ class SchedualStepController extends Controller
                         END as status
                     ")
             )
-            ->whereBetween('stage_plan.created_date', [$fromDate, $toDate])
+            ->whereBetween('plan_master.expected_date', [$fromDate, $toDate])
             ->where('stage_plan.active', 1)
             ->where('stage_plan.deparment_code', $production)
             ->where('plan_master.only_parkaging',  1)

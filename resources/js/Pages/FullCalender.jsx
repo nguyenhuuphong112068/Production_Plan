@@ -920,6 +920,47 @@ const ScheduleTest = () => {
     }).sort((a, b) => a.start - b.start);
   };
 
+  // =========================================================================
+  // Kiểm tra sự kiện chồng chất trên cùng resource (cả trước và sau)
+  // Trả về mảng { event, overlap: 'before'|'after'|'full' }
+  // =========================================================================
+  const detectOverlappingEvents = (changedEvent, allEvents) => {
+    const resId = changedEvent.getResources?.()[0]?.id ?? changedEvent.resourceId ?? changedEvent._def?.resourceIds?.[0];
+    if (!resId) {
+      console.log('detectOverlappingEvents: NO RES ID', changedEvent);
+      return [];
+    }
+
+    const newStart = changedEvent.start.getTime();
+    const newEnd = changedEvent.end ? changedEvent.end.getTime() : newStart;
+    console.log('detectOverlappingEvents: Target', { resId, newStart: new Date(newStart), newEnd: new Date(newEnd) });
+
+    const conflicts = [];
+    allEvents.forEach(ev => {
+      if (String(ev.id) === String(changedEvent.id)) return;
+      // Bỏ qua sự kiện đã hoàn thành
+      if (ev.extendedProps?.finished == 1) return;
+      // Bỏ qua event cleaning (chúng follow event chính)
+      // if (String(ev.id).endsWith('-cleaning')) return;
+
+      const evRes = ev.getResources?.()[0]?.id ?? ev.resourceId ?? ev._def?.resourceIds?.[0];
+      if (evRes !== resId) return;
+
+      const evStart = ev.start ? ev.start.getTime() : 0;
+      const evEnd = ev.end ? ev.end.getTime() : evStart;
+
+      // Kiểm tra chồng lấn: hai khoảng [newStart, newEnd) và [evStart, evEnd) overlap khi:
+      const overlaps = newStart < evEnd && newEnd > evStart;
+      console.log('detectOverlappingEvents: Checking ev', ev.id, ev.title, { evRes, evStart: new Date(evStart), evEnd: new Date(evEnd), overlaps });
+
+      if (overlaps) {
+        conflicts.push(ev);
+      }
+    });
+    console.log('detectOverlappingEvents: Conflicts found =', conflicts.length);
+    return conflicts;
+  };
+
   const findNextAvailableSlot = (machineId, durationMs, earliestStart, allEvents, offRanges, ignoreIds = [], updatedTimesById = {}) => {
     let currentStart = new Date(earliestStart);
     currentStart = skipOffDays(currentStart, offRanges);
@@ -2281,224 +2322,336 @@ const ScheduleTest = () => {
     const delta = info.delta;
     const calendarApi = info.view.calendar;
 
+    // Luôn revert để React tự quản lý render qua pendingChanges
+    info.revert();
 
+    // Xác định danh sách sự kiện bị kéo
+    // Nếu event bị kéo chưa được chọn, ta kéo chính nó (coi như nhóm 1)
+    const isUnselected = !selectedEvents.some(ev => String(ev.id) === String(draggedEvent.id));
+    const eventsToMove = isUnselected ? [draggedEvent] : selectedEvents.map(s => calendarApi.getEventById(s.id)).filter(Boolean);
 
-    // Nếu chưa được chọn thì tự động chọn
-    if (!selectedEvents.some(ev => ev.id === draggedEvent.id)) {
-      info.revert();
-      toggleEventSelect(draggedEvent);
+    const batchUpdates = [];
 
+    if (isCascadeMode) {
+      Swal.fire({
+        title: 'Đang xử lý tịnh tuyến sự kiện...! Vui lòng chờ giây lát.',
+        allowOutsideClick: false,
+        didOpen: () => { Swal.showLoading(); }
+      });
     }
 
-    // Nếu đã chọn thì xử lý nhóm
-    if (selectedEvents.some(ev => ev.id === draggedEvent.id)) {
-      info.revert();
+    setTimeout(() => {
+      let isQuotaMissing = false;
 
-      // Gom thay đổi tạm
-      const batchUpdates = [];
+      // 1. Tính toán delta và kiểm tra định mức cho từng event
+      const eventConfigs = eventsToMove.map(event => {
+        if (!event) return null;
+        let trueDurMs = 0;
+        
+        if (!workingSunday) {
+          const baseProcessCode = event._def.extendedProps.process_code?.split('_').slice(0, 2).join('_');
+          let lookupCode = baseProcessCode + "_" + event._def.resourceIds[0];
+          let stage_code = event._def.extendedProps.stage_code;
+          let is_clearning = event._def.extendedProps.is_clearning;
+          let quota_event = quota.find(q =>
+            q.process_code === lookupCode &&
+            q.stage_code == stage_code
+          );
 
-      // Hiển thị loader nếu ở chế độ Cascade vì tính toán có thể nặng
+          if (quota_event === undefined) {
+            isQuotaMissing = true;
+          } else {
+            let m_time = timeToMilliseconds(quota_event.m_time);
+            let p_time = event._def.extendedProps.first_in_campaign ? timeToMilliseconds(quota_event.p_time) : 0;
+
+            if (is_clearning) {
+              if (event.title == "VS-II") m_time = timeToMilliseconds(quota_event.C2_time);
+              else m_time = timeToMilliseconds(quota_event.C1_time);
+            }
+            trueDurMs = m_time + p_time;
+          }
+        } else {
+          trueDurMs = event.end ? event.end.getTime() - event.start.getTime() : 0;
+        }
+
+        const resId = String(event.id) === String(draggedEvent.id)
+          ? (info.newResource?.id || event.getResources?.()[0]?.id || draggedEvent.getResources?.()[0]?.id)
+          : event.getResources?.()[0]?.id;
+
+        return { event, trueDurMs, resId };
+      }).filter(Boolean);
+
+      if (isQuotaMissing) {
+        Swal.fire({ icon: 'warning', title: 'Thiếu Định Mức', timer: 1000, showConfirmButton: false });
+        if (isCascadeMode) Swal.close();
+        return;
+      }
+
+      const initialOffset = delta.milliseconds + delta.days * 24 * 60 * 60 * 1000;
+
+      const generateBatchUpdates = (currentOffset) => {
+        return eventConfigs.map(conf => {
+          const event_start = conf.event.start.getTime();
+          const newStart = new Date(event_start + currentOffset);
+          let newEnd;
+          
+          if (!workingSunday) {
+            newEnd = new Date(event_start + currentOffset + conf.trueDurMs);
+            let safeEnd;
+            do {
+              safeEnd = newEnd;
+              newEnd = skipOffDays(newEnd, offRanges);
+            } while (newEnd.getTime() !== safeEnd.getTime());
+          } else {
+            newEnd = new Date(conf.event.end ? conf.event.end.getTime() + currentOffset : event_start + currentOffset);
+          }
+
+          return {
+            id: conf.event.id,
+            start: newStart.toISOString(),
+            end: newEnd.toISOString(),
+            resourceId: conf.resId || null,
+            title: conf.event.title,
+            submit: conf.event._def.extendedProps.submit,
+            _event: conf.event
+          };
+        });
+      };
+
+      const batchUpdates = generateBatchUpdates(initialOffset);
+
+      // 2. Cascade Logic (Group Move)
       if (isCascadeMode) {
-        Swal.fire({
-          title: 'Đang xử lý tịnh tuyến sự kiện...! Vui lòng chờ giây lát.',
-          allowOutsideClick: false,
-          didOpen: () => {
-            Swal.showLoading();
+        const offset = delta.milliseconds + delta.days * 24 * 60 * 60 * 1000;
+        const movedIds = new Set(batchUpdates.map(s => s.id));
+
+        const resourceMinStart = {};
+        batchUpdates.forEach(update => {
+          const resId = update.resourceId;
+          if (resId) {
+            const originalStart = new Date(new Date(update.start).getTime() - offset);
+            if (!resourceMinStart[resId] || originalStart < resourceMinStart[resId]) {
+              resourceMinStart[resId] = originalStart;
+            }
+          }
+        });
+
+        const sortedEvents = calendarApi.getEvents().sort((a, b) => a.start - b.start);
+        const resourceLastEnd = {};
+        batchUpdates.forEach(update => {
+          const rId = update.resourceId;
+          const ev = calendarApi.getEventById(update.id);
+          if (ev) {
+            const boundary = ev.extendedProps.end_clearning ? new Date(ev.extendedProps.end_clearning) : new Date(update.end);
+            if (!resourceLastEnd[rId] || (boundary && boundary > resourceLastEnd[rId])) {
+              resourceLastEnd[rId] = boundary;
+            }
+          }
+        });
+
+        sortedEvents.forEach(otherEv => {
+          const resId = otherEv.getResources()[0]?.id;
+          const minS = resourceMinStart[resId];
+          if (
+            minS &&
+            !movedIds.has(otherEv.id) &&
+            otherEv.start >= minS &&
+            !otherEv.extendedProps.finished
+          ) {
+            let ns = new Date(otherEv.start.getTime());
+            if (offset < 0) {
+              ns = new Date(ns.getTime() + offset);
+            }
+
+            const boundary = resourceLastEnd[resId];
+            if (boundary && ns < boundary) {
+              ns = new Date(boundary.getTime());
+            }
+
+            ns = skipOffDays(ns, offRanges);
+
+            const actualShift = ns.getTime() - otherEv.start.getTime();
+            const ne = new Date((otherEv.end || otherEv.start).getTime() + actualShift);
+
+            if (actualShift !== 0) {
+              const newBoundary = otherEv.extendedProps.end_clearning
+                ? new Date(new Date(otherEv.extendedProps.end_clearning).getTime() + actualShift)
+                : ne;
+              resourceLastEnd[resId] = newBoundary;
+
+              batchUpdates.push({
+                id: otherEv.id,
+                start: ns.toISOString(),
+                end: ne.toISOString(),
+                resourceId: resId,
+                title: otherEv.title,
+                submit: otherEv.extendedProps.submit,
+                _event: otherEv
+              });
+            } else {
+              resourceLastEnd[resId] = otherEv.extendedProps.end_clearning ? new Date(otherEv.extendedProps.end_clearning) : ne;
+            }
           }
         });
       }
 
-      // Đưa logic vào setTimeout để UI kịp render loader và tránh block main thread quá lâu
-      setTimeout(() => {
-        selectedEvents.forEach(sel => {
-          const event = calendarApi.getEventById(sel.id);
+      // 3. Kiểm tra Overlap cho Batch Updates
+      const allEventsNow = calendarApi.getEvents();
+      const movedIds = new Set(batchUpdates.map(u => u.id));
+      const allConflicts = [];
 
-          /// kiểm tra lại định mức
-          if (event) {
-            const offset = delta.milliseconds + delta.days * 24 * 60 * 60 * 1000;
-            const event_start = event.start.getTime()
-            const newStart = new Date(event_start + offset);
-            let newEnd = null;
-
-            // Kiêm tra điều chinh đinh mức ngày chủ nhật
-            if (!workingSunday) {
-              const baseProcessCode = event._def.extendedProps.process_code.split('_').slice(0, 2).join('_');
-              let lookupCode = baseProcessCode + "_" + event._def.resourceIds[0]
-              let stage_code = event._def.extendedProps.stage_code
-              let is_clearning = event._def.extendedProps.is_clearning
-              let quota_event = quota.find(q =>
-                q.process_code === lookupCode &&
-                q.stage_code == stage_code
-              );
-
-              if (quota_event === undefined) {
-                Swal.fire({
-                  icon: 'warning',
-                  title: 'Thiếu Định Mức',
-                  timer: 1000,
-                  showConfirmButton: false,
-                });
-                info.revert();
-                return false;
-              }
-
-              let quota_event_m_time_seconds = timeToMilliseconds(quota_event.m_time)
-              let quota_event_p_time_seconds = 0;
-
-              if (event._def.extendedProps.first_in_campaign) {
-                quota_event_p_time_seconds = timeToMilliseconds(quota_event.p_time)
-              }
-
-
-              if (is_clearning) {
-                if (event._def.title == "VS-II") {
-                  quota_event_m_time_seconds = timeToMilliseconds(quota_event.C2_time)
-                } else {
-                  quota_event_m_time_seconds = timeToMilliseconds(quota_event.C1_time)
-                }
-
-              }
-              newEnd = new Date(event_start + offset + quota_event_m_time_seconds + quota_event_p_time_seconds);
-
-              let safeEnd;
-              do {
-                safeEnd = newEnd;
-                newEnd = skipOffDays(newEnd, offRanges);
-              } while (newEnd.getTime() !== safeEnd.getTime());
-
-            } else {
-              newEnd = new Date(event.end.getTime() + offset);
-            }
-
-
-            event.setDates(newStart, newEnd, { maintainDuration: true, skipRender: true }); // skipRender nếu có
-
-            batchUpdates.push({
-              id: event.id,
-              start: newStart.toISOString(),
-              end: newEnd.toISOString(),
-              resourceId: event.getResources?.()[0]?.id ?? null,
-              title: event.title,
-              submit: event._def.extendedProps.submit
-            });
-          }
-        });
-
-        // 🔹 Cascade Logic for Frontend (Group Move) - Smart Skip Off Days
-        if (isCascadeMode) {
-          const offset = delta.milliseconds + delta.days * 24 * 60 * 60 * 1000;
-          const selectedIds = new Set(selectedEvents.map(s => s.id));
-
-          const resourceMinStart = {};
-          selectedEvents.forEach(sel => {
-            const event = calendarApi.getEventById(sel.id);
-            if (event) {
-              // 🔹 Cập nhật cả ExtendedProps để mốc biên tịnh tuyến (boundary) chính xác cho các lô sau
-              if (event.extendedProps.start_clearning && event.extendedProps.end_clearning) {
-                const sc = new Date(new Date(event.extendedProps.start_clearning).getTime() + offset);
-                const ec = new Date(new Date(event.extendedProps.end_clearning).getTime() + offset);
-                event.setExtendedProp('start_clearning', sc.toISOString());
-                event.setExtendedProp('end_clearning', ec.toISOString());
-              }
-
-              const resId = event.getResources()[0]?.id;
-              if (resId) {
-                const originalStart = new Date(event.start.getTime() - offset);
-                if (!resourceMinStart[resId] || originalStart < resourceMinStart[resId]) {
-                  resourceMinStart[resId] = originalStart;
-                }
-              }
-            }
-          });
-
-          const sortedEvents = calendarApi.getEvents().sort((a, b) => a.start - b.start);
-          const resourceLastEnd = {};
-          selectedEvents.forEach(sel => {
-            const ev = calendarApi.getEventById(sel.id);
-            if (ev) {
-              const rId = ev.getResources()[0]?.id;
-              const boundary = ev.extendedProps.end_clearning ? new Date(ev.extendedProps.end_clearning) : ev.end;
-              if (!resourceLastEnd[rId] || (boundary && boundary > resourceLastEnd[rId])) {
-                resourceLastEnd[rId] = boundary;
-              }
-            }
-          });
-
-          sortedEvents.forEach(otherEv => {
-            const resId = otherEv.getResources()[0]?.id;
-            const minS = resourceMinStart[resId];
-            if (
-              minS &&
-              !selectedIds.has(otherEv.id) &&
-              otherEv.start >= minS &&
-              !otherEv.extendedProps.finished &&
-              !batchUpdates.some(b => b.id === otherEv.id)
-            ) {
-              // 1. Dự định vị trí: 
-              // Nếu kéo sang phải (offset > 0): Giữ nguyên vị trí cũ (Push-only)
-              // Nếu kéo sang trái (offset < 0): Tịnh tiến theo (Parallel Pull)
-              let ns = new Date(otherEv.start.getTime());
-              if (offset < 0) {
-                ns = new Date(ns.getTime() + offset);
-              }
-
-              // 2. Ép biên (Collision/Sequence): Không cho phép lấn vào lô trước
-              const boundary = resourceLastEnd[resId];
-              if (boundary && ns < boundary) {
-                ns = new Date(boundary.getTime());
-              }
-
-              ns = skipOffDays(ns, offRanges);
-
-              const actualShift = ns.getTime() - otherEv.start.getTime();
-              const ne = new Date((otherEv.end || otherEv.start).getTime() + actualShift);
-
-              // 🔹 Chỉ lưu và vẽ lại nếu thực sự có thay đổi vị trí
-              if (actualShift !== 0) {
-                otherEv.setDates(ns, ne, { maintainDuration: true, skipRender: true });
-
-                // 🔹 Quan trọng: Cập nhật cả extendedProps để chuỗi tịnh tiến sau đó dùng mốc biên chuẩn
-                if (otherEv.extendedProps.start_clearning && otherEv.extendedProps.end_clearning) {
-                  const sc_new = new Date(new Date(otherEv.extendedProps.start_clearning).getTime() + actualShift);
-                  const ec_new = new Date(new Date(otherEv.extendedProps.end_clearning).getTime() + actualShift);
-                  otherEv.setExtendedProp('start_clearning', sc_new.toISOString());
-                  otherEv.setExtendedProp('end_clearning', ec_new.toISOString());
-                }
-
-                const newBoundary = otherEv.extendedProps.end_clearning
-                  ? new Date(otherEv.extendedProps.end_clearning)
-                  : ne;
-                resourceLastEnd[resId] = newBoundary;
-
-                batchUpdates.push({
-                  id: otherEv.id,
-                  start: ns.toISOString(),
-                  end: ne.toISOString(),
-                  resourceId: resId,
-                  title: otherEv.title,
-                  submit: otherEv.extendedProps.submit
-                });
-              } else {
-                // Nếu không đổi vị trí, vẫn cập nhật biên cho các sự kiện phía sau
-                resourceLastEnd[resId] = otherEv.extendedProps.end_clearning ? new Date(otherEv.extendedProps.end_clearning) : ne;
-              }
-            }
-          });
+      batchUpdates.forEach(update => {
+        const pseudoEvent = {
+          id: update.id,
+          start: new Date(update.start),
+          end: new Date(update.end),
+          getResources: () => [{ id: update.resourceId }],
+          extendedProps: update._event.extendedProps || {},
+          title: update.title
+        };
+        // Check overlap (bỏ qua những event nằm trong danh sách đang di chuyển)
+        const c = detectOverlappingEvents(pseudoEvent, allEventsNow).filter(ev => !movedIds.has(ev.id));
+        if (c.length > 0) {
+          allConflicts.push({ event: pseudoEvent, conflicts: c });
         }
+      });
 
-        setPendingChanges(prev => {
-          const ids = new Set(batchUpdates.map(e => e.id));
-          const filtered = prev.filter(e => !ids.has(e.id));
-          return [...filtered, ...batchUpdates];
-        });
-
-        calendarApi.render();
+      // Nếu có overlap và KHÔNG ở Cascade mode (Cascade mode tự động đẩy nên về lý thuyết không có overlap, nhưng an toàn vẫn check)
+      if (allConflicts.length > 0) {
         if (isCascadeMode) Swal.close();
-      }, 50);
-    } else {
-      // Nếu không nằm trong selectedEvents thì xử lý đơn lẻ
-      handleEventChange(info);
-    }
+
+        const flatConflicts = [];
+        allConflicts.forEach(item => flatConflicts.push(...item.conflicts));
+        const uniqueConflicts = Array.from(new Map(flatConflicts.map(c => [c.id, c])).values());
+        
+        const conflictRows = uniqueConflicts.slice(0, 5).map(ev => {
+            const props = ev.extendedProps || {};
+            const product = props.product_name || ev.title || '—';
+            const lot = props.actual_batch || props.batch_name || '—';
+            const startFmt = ev.start ? new Date(ev.start).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+            const endFmt = ev.end ? new Date(ev.end).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+            return `
+                <tr>
+                  <td style="padding:6px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#1e40af">${product}</td>
+                  <td style="padding:6px 10px;border-bottom:1px solid #e2e8f0;color:#7c3aed;font-weight:600">${lot}</td>
+                  <td style="padding:6px 10px;border-bottom:1px solid #e2e8f0;color:#64748b;font-size:12px">${startFmt} → ${endFmt}</td>
+                </tr>`;
+        }).join('');
+        const moreText = uniqueConflicts.length > 5 ? `<div style="text-align:center;margin-top:8px;color:#94a3b8;font-size:12px">...và ${uniqueConflicts.length - 5} sự kiện khác</div>` : '';
+
+        const isGroup = eventsToMove.length > 1;
+        Swal.fire({
+            title: '<span style="color:#dc2626;font-size:18px">⚠️ Phát Hiện Chồng Lấn Lịch!</span>',
+            width: '680px',
+            html: `
+                <div style="text-align:left;font-family:inherit">
+                  <p style="margin:0 0 12px;color:#475569;font-size:14px">
+                    ${isGroup ? `<strong>NHÓM ${eventsToMove.length} sự kiện</strong> đang di chuyển` : `Sự kiện <strong style="color:#1e40af">${batchUpdates[0]._event.extendedProps?.product_name || batchUpdates[0].title}</strong>`}
+                    đang <span style="color:#dc2626;font-weight:700">chồng thời gian</span> với ${uniqueConflicts.length} lịch sau:
+                  </p>
+                  <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;overflow:hidden;margin-bottom:12px">
+                    <table style="width:100%;border-collapse:collapse">
+                      <thead><tr style="background:#fee2e2">
+                        <th style="padding:8px 10px;text-align:left;font-size:12px;color:#991b1b">🏷️ Sản phẩm</th>
+                        <th style="padding:8px 10px;text-align:left;font-size:12px;color:#991b1b">📦 Lô</th>
+                        <th style="padding:8px 10px;text-align:left;font-size:12px;color:#991b1b">🕐 Thời gian</th>
+                      </tr></thead>
+                      <tbody>${conflictRows}</tbody>
+                    </table>
+                    ${moreText}
+                  </div>
+                  <p style="margin:0;color:#64748b;font-size:13px">Bạn muốn xử lý như thế nào?</p>
+                </div>`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Sắp tiếp sau',
+            cancelButtonText: 'Hủy',
+            confirmButtonColor: '#2563eb',
+            cancelButtonColor: '#6b7280',
+        }).then((result) => {
+            if (result.isConfirmed) {
+                let currentOffset = initialOffset;
+                let finalUpdates = batchUpdates;
+                let currentConflicts = allConflicts;
+                
+                while (true) {
+                    let maxAddOffset = 0;
+                    let hasOverlap = false;
+
+                    for (const item of currentConflicts) {
+                        const bEvStart = new Date(item.event.start).getTime();
+                        for (const cEv of item.conflicts) {
+                            const cEvEnd = cEv.extendedProps?.end_clearning 
+                                ? new Date(cEv.extendedProps.end_clearning).getTime() 
+                                : (cEv.end ? cEv.end.getTime() : cEv.start.getTime());
+                            
+                            if (cEvEnd > bEvStart) {
+                                const addOff = cEvEnd - bEvStart;
+                                if (addOff > maxAddOffset) maxAddOffset = addOff;
+                                hasOverlap = true;
+                            }
+                        }
+                    }
+
+                    if (!hasOverlap) break;
+
+                    currentOffset += maxAddOffset;
+                    finalUpdates = generateBatchUpdates(currentOffset);
+                    
+                    currentConflicts = [];
+                    finalUpdates.forEach(update => {
+                        const pseudoEvent = {
+                            id: update.id,
+                            start: new Date(update.start),
+                            end: new Date(update.end),
+                            getResources: () => [{ id: update.resourceId }],
+                            extendedProps: update._event.extendedProps || {},
+                            title: update.title
+                        };
+                        const c = detectOverlappingEvents(pseudoEvent, allEventsNow).filter(ev => !movedIds.has(ev.id));
+                        if (c.length > 0) {
+                            currentConflicts.push({ event: pseudoEvent, conflicts: c });
+                        }
+                    });
+                    
+                    if (currentConflicts.length === 0) break;
+                }
+
+                finalUpdates.forEach(u => {
+                    const ev = calendarApi.getEventById(u.id);
+                    if (ev) ev.setDates(new Date(u.start), new Date(u.end), { maintainDuration: false });
+                });
+
+                setPendingChanges(prev => {
+                    const ids = new Set(finalUpdates.map(u => String(u.id)));
+                    const filtered = prev.filter(e => !ids.has(String(e.id)));
+                    const cleanUpdates = finalUpdates.map(u => { const ret = {...u}; delete ret._event; return ret; });
+                    return [...filtered, ...cleanUpdates];
+                });
+
+                if (isUnselected) toggleEventSelect(draggedEvent);
+            } else {
+                setPendingChanges(prev => prev.filter(e => !movedIds.has(String(e.id))));
+            }
+        });
+        return;
+      }
+
+      // 4. Áp dụng thay đổi nếu không có lỗi
+      setPendingChanges(prev => {
+        const ids = new Set(batchUpdates.map(e => e.id));
+        const filtered = prev.filter(e => !ids.has(e.id));
+        const cleanUpdates = batchUpdates.map(u => { delete u._event; return u; });
+        return [...filtered, ...cleanUpdates];
+      });
+
+      if (isUnselected) {
+        toggleEventSelect(draggedEvent);
+      }
+
+      calendarApi.render();
+      if (isCascadeMode) Swal.close();
+    }, 50);
   };
 
   ///
@@ -2600,46 +2753,178 @@ const ScheduleTest = () => {
       changedEvent.setExtendedProp('process_code', baseProcessCode + "_" + newResourceId);
     }
 
-    // Create updates array starting with the changed event
-    let updates = [{
-      id: changedEvent.id,
-      start: changedEvent.start.toISOString(),
-      end: changedEvent.end.toISOString(),
-      resourceId: newResourceId,
-      title: changedEvent.title,
-      submit: changedEvent.extendedProps.submit
-    }];
+    // =====================================================================
+    // 🔍 KIỂM TRA CHỒNG CHẤT TRƯỚC KHI LƯU
+    // =====================================================================
+    const calendarApiCheck = calendarRef.current?.getApi();
+    const allEventsCheck = calendarApiCheck ? calendarApiCheck.getEvents() : [];
+    const conflictingEvents = detectOverlappingEvents(changedEvent, allEventsCheck);
 
-    // 🔹 Cascade Logic for single move/resize - Smart Sequential Collision Skip
-    if (isCascadeMode && changeInfo.oldEvent) {
+    const hasCascadeOldEvent = !!changeInfo.oldEvent;
+
+    const _applyEventChange = (changedEvRef, oldEvRef, resourceIdRef) => {
+      // Create updates array starting with the changed event
+      let updates = [{
+        id: changedEvRef.id,
+        start: changedEvRef.start.toISOString(),
+        end: changedEvRef.end.toISOString(),
+        resourceId: resourceIdRef,
+        title: changedEvRef.title,
+        submit: changedEvRef.extendedProps.submit
+      }];
+
+      // 🔹 Cascade Logic for single move/resize
+      if (isCascadeMode && hasCascadeOldEvent) {
+        Swal.fire({
+          title: 'Đang xử lý Cascade...',
+          allowOutsideClick: false,
+          didOpen: () => { Swal.showLoading(); }
+        });
+        setTimeout(() => {
+          const cascadeUpdates = runCascadeLogic(changedEvRef, oldEvRef);
+          updates = [...updates, ...cascadeUpdates];
+          setPendingChanges(prev => {
+            const ids = new Set(updates.map(u => u.id));
+            return [...prev.filter(e => !ids.has(e.id)), ...updates];
+          });
+          Swal.close();
+        }, 50);
+      } else {
+        setPendingChanges(prev => {
+          const ids = new Set(updates.map(u => u.id));
+          return [...prev.filter(e => !ids.has(e.id)), ...updates];
+        });
+      }
+    };
+
+    if (conflictingEvents.length > 0) {
+      // Tìm sự kiện bị chồng có end lớn nhất (để sắp tiếp sau)
+      const latestConflict = conflictingEvents.reduce((max, ev) =>
+        (ev.end && max.end && ev.end > max.end) ? ev : max
+        , conflictingEvents[0]);
+
+      // Tạo danh sách thông tin chồng chất (tối đa 5 sự kiện)
+      const conflictRows = conflictingEvents.slice(0, 5).map(ev => {
+        const props = ev.extendedProps || {};
+        const product = props.product_name || ev.title || '—';
+        const lot = props.actual_batch || props.batch_name || '—';
+        const startFmt = ev.start ? new Date(ev.start).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+        const endFmt = ev.end ? new Date(ev.end).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+        return `
+          <tr>
+            <td style="padding:6px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#1e40af">${product}</td>
+            <td style="padding:6px 10px;border-bottom:1px solid #e2e8f0;color:#7c3aed;font-weight:600">${lot}</td>
+            <td style="padding:6px 10px;border-bottom:1px solid #e2e8f0;color:#64748b;font-size:12px">${startFmt} → ${endFmt}</td>
+          </tr>`;
+      }).join('');
+
+      const moreText = conflictingEvents.length > 5
+        ? `<div style="text-align:center;margin-top:8px;color:#94a3b8;font-size:12px">...và ${conflictingEvents.length - 5} sự kiện khác</div>`
+        : '';
+
       Swal.fire({
-        title: 'Đang xử lý Cascade...',
-        allowOutsideClick: false,
-        didOpen: () => {
-          Swal.showLoading();
+        title: '<span style="color:#dc2626;font-size:18px">⚠️ Phát Hiện Chồng Lấn Lịch!</span>',
+        width: '680px',
+        html: `
+          <div style="text-align:left;font-family:inherit">
+            <p style="margin:0 0 12px;color:#475569;font-size:14px">
+              Sự kiện <strong style="color:#1e40af">${changedEvent.extendedProps?.product_name || changedEvent.title}</strong>
+              đang <span style="color:#dc2626;font-weight:700">chồng thời gian</span> với ${conflictingEvents.length} lịch sau:
+            </p>
+            <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;overflow:hidden;margin-bottom:12px">
+              <table style="width:100%;border-collapse:collapse">
+                <thead>
+                  <tr style="background:#fee2e2">
+                    <th style="padding:8px 10px;text-align:left;font-size:12px;color:#991b1b">🏷️ Sản phẩm</th>
+                    <th style="padding:8px 10px;text-align:left;font-size:12px;color:#991b1b">📦 Lô</th>
+                    <th style="padding:8px 10px;text-align:left;font-size:12px;color:#991b1b">🕐 Thời gian</th>
+                  </tr>
+                </thead>
+                <tbody>${conflictRows}</tbody>
+              </table>
+              ${moreText}
+            </div>
+            <p style="margin:0;color:#64748b;font-size:13px">Bạn muốn xử lý như thế nào?</p>
+          </div>
+        `,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Sắp tiếp sau',
+        cancelButtonText: 'Hủy',
+        confirmButtonColor: '#2563eb',
+        cancelButtonColor: '#6b7280',
+        buttonsStyling: true,
+        customClass: {
+          popup: 'swal-overlap-popup',
+          confirmButton: 'swal-btn-confirm',
+          denyButton: 'swal-btn-deny',
+          cancelButton: 'swal-btn-cancel'
+        }
+      }).then((result) => {
+        if (result.isConfirmed) {
+          // ✅ Lựa chọn 1: Sắp tiếp sau sự kiện bị chồng có end lớn nhất
+          const conflictEnd = latestConflict.extendedProps?.end_clearning || latestConflict.end || latestConflict.start;
+          
+          const calendarApiCheck = calendarRef.current?.getApi();
+          const resourceEvents = calendarApiCheck ? calendarApiCheck.getEvents().filter(ev => {
+              const rId = ev.getResources?.()[0]?.id ?? ev.resourceId ?? ev._def?.resourceIds?.[0];
+              if (rId !== newResourceId) return false;
+              if (ev.extendedProps?.finished == 1) return false;
+              if (String(ev.id) === String(changedEvent.id)) return false;
+              return true;
+          }) : [];
+
+          let currentStart = skipOffDays(new Date(conflictEnd), offRanges);
+          const duration = changedEvent.end
+            ? changedEvent.end.getTime() - changedEvent.start.getTime()
+            : 0;
+          let finalStart, finalEnd;
+
+          while (true) {
+              let currentEnd = new Date(currentStart.getTime() + duration);
+              let safeEnd;
+              do { safeEnd = currentEnd; currentEnd = skipOffDays(currentEnd, offRanges); } while (currentEnd.getTime() !== safeEnd.getTime());
+
+              let hasOverlap = false;
+              let nextPossibleStart = null;
+
+              for (const ev of resourceEvents) {
+                  const evStart = ev.start ? ev.start.getTime() : 0;
+                  const evEnd = ev.extendedProps?.end_clearning ? new Date(ev.extendedProps.end_clearning).getTime() : (ev.end ? ev.end.getTime() : evStart);
+
+                  if (currentStart.getTime() < evEnd && currentEnd.getTime() > evStart) {
+                      hasOverlap = true;
+                      if (!nextPossibleStart || evEnd > nextPossibleStart.getTime()) {
+                          nextPossibleStart = new Date(evEnd);
+                      }
+                  }
+              }
+
+              if (!hasOverlap) {
+                  finalStart = currentStart;
+                  finalEnd = currentEnd;
+                  break;
+              } else {
+                  currentStart = skipOffDays(nextPossibleStart, offRanges);
+              }
+          }
+
+          let newStart = finalStart;
+          let newEnd = finalEnd;
+
+          changedEvent.setDates(newStart, newEnd, { maintainDuration: false });
+          _applyEventChange(changedEvent, oldEvent, newResourceId);
+
+        } else {
+          // ↩️ Hủy → hoàn tác về vị trí cũ và xóa khỏi pendingChanges
+          changeInfo.revert?.();
+          setPendingChanges(prev => prev.filter(e => String(e.id) !== String(changedEvent.id)));
         }
       });
 
-      setTimeout(() => {
-        const cascadeUpdates = runCascadeLogic(changedEvent, oldEvent);
-        updates = [...updates, ...cascadeUpdates];
-
-        // Thêm hoặc cập nhật event vào pendingChanges
-        setPendingChanges(prev => {
-          const ids = new Set(updates.map(u => u.id));
-          const filtered = prev.filter(e => !ids.has(e.id));
-          return [...filtered, ...updates];
-        });
-
-        Swal.close();
-      }, 50);
     } else {
-      // Thêm hoặc cập nhật event vào pendingChanges (Trường hợp không Cascade)
-      setPendingChanges(prev => {
-        const ids = new Set(updates.map(u => u.id));
-        const filtered = prev.filter(e => !ids.has(e.id));
-        return [...filtered, ...updates];
-      });
+      // Không có chồng chất → lưu bình thường
+      _applyEventChange(changedEvent, oldEvent, newResourceId);
     }
   };
 
@@ -4636,7 +4921,7 @@ const ScheduleTest = () => {
     // 🔹 Lấy tháng/năm hiện tại từ calendar
     const api = calendarRef.current?.getApi();
     const activeStart = api?.view?.activeStart;
-    const calYear  = activeStart ? new Date(activeStart).getFullYear() : new Date().getFullYear();
+    const calYear = activeStart ? new Date(activeStart).getFullYear() : new Date().getFullYear();
     const calMonth = activeStart ? new Date(activeStart).getMonth() + 1 : new Date().getMonth() + 1;
 
     // 🔹 1. BẮT ĐẦU CHẶN LỖI LỊCH NGHIÊM TRỌNG

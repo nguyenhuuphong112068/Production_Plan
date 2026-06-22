@@ -255,6 +255,13 @@
                               
                             @endforeach
                           </div>
+                          <!-- Dummy content để tránh lỗi JS Cannot read properties of null -->
+                          <div class="bs-stepper-content d-none">
+                            @foreach($stages as $i => $stage)
+                              @php $stageKey = Str::slug($stage->stage_code, '-'); @endphp
+                              <div id="step-{{ $plan_master_id }}-{{ $stageKey }}" class="content" role="tabpanel"></div>
+                            @endforeach
+                          </div>
                         </div>
                       </td>
                       <td>
