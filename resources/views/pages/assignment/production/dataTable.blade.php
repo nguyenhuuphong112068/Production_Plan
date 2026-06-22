@@ -3748,13 +3748,7 @@
                 let month = date.getMonth() + 1;
                 let year = date.getFullYear();
                 const day = date.getDate();
-                if (day >= 21) {
-                    month += 1;
-                    if (month > 12) {
-                        month = 1;
-                        year += 1;
-                    }
-                }
+                // Backend đã tự xử lý logic cho ngày 21-31
                 const depMapping = {
                     'PXV1': 15,
                     'PXV2': 31,
@@ -4046,13 +4040,7 @@
             let month = date.getMonth() + 1;
             let year = date.getFullYear();
             const day = date.getDate();
-            if (day >= 21) {
-                month += 1;
-                if (month > 12) {
-                    month = 1;
-                    year += 1;
-                }
-            }
+            // Backend đã tự xử lý logic cho ngày 21-31
             const depMapping = {
                 'PXV1': 15,
                 'PXV2': 31,

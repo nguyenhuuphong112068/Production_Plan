@@ -2780,13 +2780,6 @@
                 let month = date.getMonth() + 1;
                 let year = date.getFullYear();
                 const day = date.getDate();
-                if (day >= 21) {
-                    month += 1;
-                    if (month > 12) {
-                        month = 1;
-                        year += 1;
-                    }
-                }
                 const depMapping = {
                     '11': 3,
                     '12': 3,
@@ -3082,13 +3075,7 @@
             let month = date.getMonth() + 1;
             let year = date.getFullYear();
             const day = date.getDate();
-            if (day >= 21) {
-                month += 1;
-                if (month > 12) {
-                    month = 1;
-                    year += 1;
-                }
-            }
+            // Backend đã tự xử lý logic cho ngày 21-31
             const depMapping = {
                 '11': 3,
                 '12': 3,
