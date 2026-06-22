@@ -500,52 +500,52 @@ class ProductionAssignmentController extends Controller
                 }
                 $personnelData = $filteredPersonnelData;
 
-                // Lấy dữ liệu đi ca của tháng sau (month + 1) để điền cho day21 - day31
-                $nextMonth = intval($month) + 1;
-                $nextYear = intval($year);
-                if ($nextMonth > 12) {
-                    $nextMonth = 1;
-                    $nextYear += 1;
+                // Lấy dữ liệu đi ca của tháng trước (month - 1) để điền cho day21 - day31
+                $prevMonth = intval($month) - 1;
+                $prevYear = intval($year);
+                if ($prevMonth < 1) {
+                    $prevMonth = 12;
+                    $prevYear -= 1;
                 }
 
-                $urlNext = "http://s-webdev:5070/api/shifts/by-department?month={$nextMonth}&year={$nextYear}&department={$departmentId}";
-                $personnelDataNext = [];
+                $urlPrev = "http://s-webdev:5070/api/shifts/by-department?month={$prevMonth}&year={$prevYear}&department={$departmentId}";
+                $personnelDataPrev = [];
                 try {
                     $ctx = stream_context_create(['http' => ['timeout' => 5]]);
-                    $dataNext = @file_get_contents($urlNext, false, $ctx);
-                    if ($dataNext) {
-                        $personnelDataNext = json_decode($dataNext, true) ?: [];
+                    $dataPrev = @file_get_contents($urlPrev, false, $ctx);
+                    if ($dataPrev) {
+                        $personnelDataPrev = json_decode($dataPrev, true) ?: [];
                     }
-                } catch (\Exception $exNext) {
-                    // Bỏ qua lỗi lấy dữ liệu tháng tiếp theo nếu chưa có lịch
+                } catch (\Exception $exPrev) {
+                    // Bỏ qua lỗi lấy dữ liệu tháng trước nếu chưa có lịch
                 }
 
                 if ($departmentId == 15) {
                     try {
-                        $urlNext17 = "http://s-webdev:5070/api/shifts/by-department?month={$nextMonth}&year={$nextYear}&department=17";
+                        $urlPrev17 = "http://s-webdev:5070/api/shifts/by-department?month={$prevMonth}&year={$prevYear}&department=17";
                         $ctx = stream_context_create(['http' => ['timeout' => 5]]);
-                        $dataNext17 = @file_get_contents($urlNext17, false, $ctx);
-                        if ($dataNext17) {
-                            $personnelDataNext17 = json_decode($dataNext17, true) ?: [];
-                            if (is_array($personnelDataNext17)) {
-                                foreach ($personnelDataNext17 as &$p17) {
+                        $dataPrev17 = @file_get_contents($urlPrev17, false, $ctx);
+                        if ($dataPrev17) {
+                            $personnelDataPrev17 = json_decode($dataPrev17, true) ?: [];
+                            if (is_array($personnelDataPrev17)) {
+                                foreach ($personnelDataPrev17 as &$p17) {
                                     if (isset($p17['employeeName'])) {
                                         $p17['employeeName'] = trim($p17['employeeName']) . ' - WH';
                                     }
                                 }
-                                $personnelDataNext = array_merge($personnelDataNext, $personnelDataNext17);
+                                $personnelDataPrev = array_merge($personnelDataPrev, $personnelDataPrev17);
                             }
                         }
-                    } catch (\Exception $exNext17) {
+                    } catch (\Exception $exPrev17) {
                     }
                 }
 
-                // Index nhân sự tháng tiếp theo theo employeeId / code
-                $nextMonthEmployees = [];
-                foreach ($personnelDataNext as $person) {
+                // Index nhân sự tháng trước theo employeeId / code
+                $prevMonthEmployees = [];
+                foreach ($personnelDataPrev as $person) {
                     $code = $person['employeeId'] ?? $person['code'] ?? null;
                     if ($code) {
-                        $nextMonthEmployees[$code] = $person;
+                        $prevMonthEmployees[$code] = $person;
                     }
                 }
 
@@ -555,7 +555,7 @@ class ProductionAssignmentController extends Controller
                 foreach ($personnelData as &$person) {
                     $code = $person['employeeId'] ?? $person['code'] ?? null;
 
-                    // Ghép logic: day1-day20 từ tháng $month, day21-day31 từ tháng $month+1
+                    // Ghép logic: day1-day20 từ tháng $month, day21-day31 từ tháng $month-1
                     $originalDays = $person['days'] ?? [];
                     $newDays = [];
 
@@ -564,14 +564,14 @@ class ProductionAssignmentController extends Controller
                         $newDays[$dayKey] = $originalDays[$dayKey] ?? null;
                     }
 
-                    if ($code && isset($nextMonthEmployees[$code])) {
-                        $nextPersonDays = $nextMonthEmployees[$code]['days'] ?? [];
+                    if ($code && isset($prevMonthEmployees[$code])) {
+                        $prevPersonDays = $prevMonthEmployees[$code]['days'] ?? [];
                         for ($i = 21; $i <= 31; $i++) {
                             $dayKey = 'day' . $i;
-                            $newDays[$dayKey] = $nextPersonDays[$dayKey] ?? null;
+                            $newDays[$dayKey] = $prevPersonDays[$dayKey] ?? null;
                         }
                     } else {
-                        // Fallback: nếu không lấy được tháng sau thì giữ nguyên dữ liệu gốc
+                        // Fallback: nếu không lấy được tháng trước thì giữ nguyên dữ liệu gốc
                         for ($i = 21; $i <= 31; $i++) {
                             $dayKey = 'day' . $i;
                             $newDays[$dayKey] = $originalDays[$dayKey] ?? null;

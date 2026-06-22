@@ -966,6 +966,14 @@ class PersonnelController extends Controller
             $month = $date->month;
             $day = $date->day;
 
+            if ($day >= 21) {
+                $month += 1;
+                if ($month > 12) {
+                    $month = 1;
+                    $year += 1;
+                }
+            }
+
             $merged = $this->getFilteredMergedShifts($year, $month, $depId, $activeEmployeeCodes);
 
             $stats = [
@@ -1005,6 +1013,14 @@ class PersonnelController extends Controller
                 $dYear = $date->year;
                 $dMonth = $date->month;
                 $dDay = $date->day;
+
+                if ($dDay >= 21) {
+                    $dMonth += 1;
+                    if ($dMonth > 12) {
+                        $dMonth = 1;
+                        $dYear += 1;
+                    }
+                }
 
                 $merged = $this->getFilteredMergedShifts($dYear, $dMonth, $depId, $activeEmployeeCodes);
 
@@ -1128,13 +1144,13 @@ class PersonnelController extends Controller
                 }
             }
 
-            $nextMonth = $month + 1;
-            $nextYear = $year;
-            if ($nextMonth > 12) {
-                $nextMonth = 1;
-                $nextYear++;
+            $prevMonth = $month - 1;
+            $prevYear = $year;
+            if ($prevMonth < 1) {
+                $prevMonth = 12;
+                $prevYear--;
             }
-            $url2 = "http://s-webdev:5070/api/shifts/by-department?month={$nextMonth}&year={$nextYear}&department={$depId}";
+            $url2 = "http://s-webdev:5070/api/shifts/by-department?month={$prevMonth}&year={$prevYear}&department={$depId}";
             $data2 = [];
             try {
                 $ctx = stream_context_create(['http' => ['timeout' => 5]]);
@@ -1147,7 +1163,7 @@ class PersonnelController extends Controller
 
             if ($depId == 15) {
                 try {
-                    $url2_17 = "http://s-webdev:5070/api/shifts/by-department?month={$nextMonth}&year={$nextYear}&department=17";
+                    $url2_17 = "http://s-webdev:5070/api/shifts/by-department?month={$prevMonth}&year={$prevYear}&department=17";
                     $ctx = stream_context_create(['http' => ['timeout' => 5]]);
                     $res2_17 = @file_get_contents($url2_17, false, $ctx);
                     if ($res2_17) {
@@ -1176,23 +1192,23 @@ class PersonnelController extends Controller
                 }
             }
 
-            $empShiftsNext = [];
+            $empShiftsPrev = [];
             foreach ($data2 as $person) {
                 $code = $person['employeeId'] ?? $person['code'] ?? null;
                 if ($code) {
-                    $empShiftsNext[$code] = [
+                    $empShiftsPrev[$code] = [
                         'name' => $person['employeeName'] ?? '',
                         'days' => $person['days'] ?? []
                     ];
                 }
             }
 
-            $allCodes = array_unique(array_merge(array_keys($empShifts), array_keys($empShiftsNext)));
+            $allCodes = array_unique(array_merge(array_keys($empShifts), array_keys($empShiftsPrev)));
 
             $merged = [];
             foreach ($allCodes as $code) {
                 $days = [];
-                $name = $empShifts[$code]['name'] ?? ($empShiftsNext[$code]['name'] ?? '');
+                $name = $empShifts[$code]['name'] ?? ($empShiftsPrev[$code]['name'] ?? '');
 
                 for ($d = 1; $d <= 20; $d++) {
                     $dayKey = 'day' . $d;
@@ -1206,7 +1222,7 @@ class PersonnelController extends Controller
                 }
                 for ($d = 21; $d <= 31; $d++) {
                     $dayKey = 'day' . $d;
-                    $dayData = $empShiftsNext[$code]['days'][$dayKey] ?? null;
+                    $dayData = $empShiftsPrev[$code]['days'][$dayKey] ?? null;
                     if (is_array($dayData)) {
                         $days[$d] = strtoupper(trim($dayData['shift'] ?? ''));
                     } else {

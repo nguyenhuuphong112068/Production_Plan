@@ -955,9 +955,16 @@
             function fetchPersonnelShifts() {
                 const dateStr = '{{ $reportedDate }}';
                 const date = new Date(dateStr);
-                const month = date.getMonth() + 1;
-                const year = date.getFullYear();
+                let month = date.getMonth() + 1;
+                let year = date.getFullYear();
                 const day = date.getDate();
+                if (day >= 21) {
+                    month += 1;
+                    if (month > 12) {
+                        month = 1;
+                        year += 1;
+                    }
+                }
                 const depMapping = {
                     'PXV1': 15,
                     'PXV2': 31,
@@ -1017,8 +1024,12 @@
 
                 data.forEach(person => {
                     const dayKey = 'day' + currentDay;
-                    let shiftCode = (person.days && person.days[dayKey]) ? person.days[dayKey]
-                        .toUpperCase() : 'HC';
+                    let shiftCode = 'HC';
+                    if (person.days && person.days[dayKey]) {
+                        const dayData = person.days[dayKey];
+                        let rawShift = typeof dayData === 'object' ? dayData.shift : dayData;
+                        shiftCode = (rawShift || 'HC').toString().toUpperCase();
+                    }
 
                     const personName = person.employeeName || person.name || '';
                     const personCode = person.employeeId || person.code || '';
