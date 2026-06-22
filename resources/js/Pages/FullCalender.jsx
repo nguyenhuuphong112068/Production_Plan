@@ -2324,8 +2324,8 @@ const ScheduleTest = () => {
     const delta = info.delta;
     const calendarApi = info.view.calendar;
 
-    // Luôn revert để React tự quản lý render qua pendingChanges
-    //info.revert();
+    // Không dùng info.revert() nữa để tránh xung đột FullCalendar nội bộ
+    // info.revert();
 
     // Xác định danh sách sự kiện bị kéo
     // Nếu event bị kéo chưa được chọn, ta kéo chính nó (coi như nhóm 1)
@@ -2391,21 +2391,85 @@ const ScheduleTest = () => {
 
       const initialOffset = delta.milliseconds + delta.days * 24 * 60 * 60 * 1000;
 
+      // Hàm tính tổng thời gian làm việc giữa 2 mốc thời gian
+      const getWorkingTimeBetween = (start, end, offRanges) => {
+        let s = new Date(start).getTime();
+        let e = new Date(end).getTime();
+        let isNegative = false;
+        if (s > e) {
+          let temp = s; s = e; e = temp;
+          isNegative = true;
+        }
+        let total = e - s;
+        for (const off of offRanges) {
+          const offS = off.start.getTime();
+          const offE = off.end.getTime();
+          const overlapS = Math.max(s, offS);
+          const overlapE = Math.min(e, offE);
+          if (overlapS < overlapE) {
+            total -= (overlapE - overlapS);
+          }
+        }
+        return isNegative ? -total : total;
+      };
+
+      // Hàm cộng thêm thời gian làm việc vào 1 mốc thời gian
+      const addWorkingTime = (start, workingMs, offRanges) => {
+        let current = workingMs > 0 ? skipOffDays(new Date(start), offRanges).getTime() : new Date(start).getTime();
+        if (workingMs === 0) return new Date(current);
+        
+        let remaining = Math.abs(workingMs);
+        const direction = workingMs > 0 ? 1 : -1;
+
+        while (remaining > 0) {
+          let nextOff = null;
+          for (const off of offRanges) {
+            if (direction > 0) {
+              if (off.start.getTime() >= current && (!nextOff || off.start.getTime() < nextOff.start.getTime())) {
+                nextOff = off;
+              }
+            } else {
+              if (off.end.getTime() <= current && (!nextOff || off.end.getTime() > nextOff.end.getTime())) {
+                nextOff = off;
+              }
+            }
+          }
+
+          if (nextOff) {
+            let timeUntilOff = direction > 0 ? (nextOff.start.getTime() - current) : (current - nextOff.end.getTime());
+            if (timeUntilOff >= remaining) {
+              current += direction * remaining;
+              remaining = 0;
+            } else {
+              current = direction > 0 ? nextOff.end.getTime() : nextOff.start.getTime();
+              remaining -= timeUntilOff;
+            }
+          } else {
+            current += direction * remaining;
+            remaining = 0;
+          }
+        }
+        return direction > 0 ? skipOffDays(new Date(current), offRanges) : new Date(current);
+      };
+
       const generateBatchUpdates = (currentOffset) => {
+        const draggedOriginalStart = info.oldEvent.start;
+        const currentDraggedNewStart = new Date(draggedOriginalStart.getTime() + currentOffset);
+        const currentDraggedShiftedStart = !workingSunday ? skipOffDays(currentDraggedNewStart, offRanges) : currentDraggedNewStart;
+        const currentWorkingShiftMs = !workingSunday ? getWorkingTimeBetween(draggedOriginalStart, currentDraggedShiftedStart, offRanges) : currentOffset;
+
         return eventConfigs.map(conf => {
-          const event_start = conf.event.start.getTime();
-          const newStart = new Date(event_start + currentOffset);
+          const isDragged = String(conf.event.id) === String(info.event.id);
+          const event_start = isDragged ? info.oldEvent.start : conf.event.start;
+          let newStart;
           let newEnd;
 
           if (!workingSunday) {
-            newEnd = new Date(event_start + currentOffset + conf.trueDurMs);
-            let safeEnd;
-            do {
-              safeEnd = newEnd;
-              newEnd = skipOffDays(newEnd, offRanges);
-            } while (newEnd.getTime() !== safeEnd.getTime());
+            newStart = addWorkingTime(event_start, currentWorkingShiftMs, offRanges);
+            newEnd = addWorkingTime(newStart, conf.trueDurMs, offRanges);
           } else {
-            newEnd = new Date(conf.event.end ? conf.event.end.getTime() + currentOffset : event_start + currentOffset);
+            newStart = new Date(event_start.getTime() + currentOffset);
+            newEnd = new Date(isDragged ? (info.oldEvent.end ? info.oldEvent.end.getTime() + currentOffset : event_start.getTime() + currentOffset) : (conf.event.end ? conf.event.end.getTime() + currentOffset : event_start.getTime() + currentOffset));
           }
 
           return {
@@ -2642,6 +2706,11 @@ const ScheduleTest = () => {
       */
 
       // 4. Áp dụng thay đổi nếu không có lỗi
+      batchUpdates.forEach(u => {
+          const ev = calendarApi.getEventById(u.id);
+          if (ev) ev.setDates(new Date(u.start), new Date(u.end), { maintainDuration: false });
+      });
+
       setPendingChanges(prev => {
         const ids = new Set(batchUpdates.map(e => e.id));
         const filtered = prev.filter(e => !ids.has(e.id));
