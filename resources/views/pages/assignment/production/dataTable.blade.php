@@ -725,9 +725,6 @@
                                                     @php
                                                         $isJobEditable =
                                                             $canEdit && !($assignment->is_foreign ?? false);
-                                                        if ($group_code == 8 && ($assignment->is_scheduled ?? false)) {
-                                                            $isJobEditable = false;
-                                                        }
                                                     @endphp
                                                     <div class="form-control form-control-sm job-desc"
                                                         contenteditable="{{ $isJobEditable ? 'true' : 'false' }}"

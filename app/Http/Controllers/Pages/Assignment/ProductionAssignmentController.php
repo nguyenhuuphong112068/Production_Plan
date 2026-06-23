@@ -242,8 +242,13 @@ class ProductionAssignmentController extends Controller
                 $a->end_time_display = $a->end ? Carbon::parse($a->end)->format('H:i') : null;
             }
 
-            // Tự động tạo gợi ý nếu chưa có phân công
-            if ($assignments->isEmpty() && $plans->isNotEmpty()) {
+            // Lọc ra các assignment của chính tổ này (bỏ foreign)
+            $localAssignments = $assignments->filter(function($a) {
+                return !$a->is_foreign;
+            });
+
+            // Tự động tạo gợi ý nếu chưa có phân công cho tổ này
+            if ($localAssignments->isEmpty() && $plans->isNotEmpty()) {
                 $dayStart = Carbon::parse($reportedDate)->setTime(6, 0, 0);
                 $shiftItems = ['1' => [], '2' => [], '3' => []];
 
