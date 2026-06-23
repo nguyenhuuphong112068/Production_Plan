@@ -678,12 +678,16 @@
                                                                     data-priority="{{ $rPriorityLevel }}">
                                                                     <i class="fas fa-grip-vertical text-muted mr-2 cursor-grab" style="cursor: grab;" title="Kéo thả để sắp xếp độ ưu tiên"></i>
                                                                     <span class="badge badge-secondary priority-badge mr-1" style="width: 20px; text-align: center;" title="Ưu tiên {{ $rPriorityLevel }}">{{ $rPriorityLevel }}</span>
-                                                                    <select
-                                                                        class="form-control form-control-sm room-id-select mr-1"
-                                                                        style="width: 250px;" {{ $disabled }}>
-                                                                        <option value="">-- Phòng --</option>
-                                                                        {!! str_replace('value="' . $rId . '"', 'value="' . $rId . '" selected', $roomOptionsHtml) !!}
-                                                                    </select>
+                                                                    <div class="input-group input-group-sm mr-1" style="width: 250px;">
+                                                                        @php
+                                                                            $roomNameDisp = $rId && isset($roomsById[$rId]) ? ($roomsById[$rId]->code . ' - ' . $roomsById[$rId]->name . ' - ' . $roomsById[$rId]->main_equiment_name) : '-- Phòng --';
+                                                                        @endphp
+                                                                        <input type="text" class="form-control room-name-display" readonly value="{{ $roomNameDisp }}" style="font-size: 0.8rem; background-color: #fff; cursor: pointer;" title="{{ $roomNameDisp }}">
+                                                                        <input type="hidden" class="room-id-select" value="{{ $rId }}">
+                                                                        <div class="input-group-append">
+                                                                            <button class="btn btn-outline-info btn-edit-room-modal" type="button" {{ $disabled }} title="Đổi phòng"><i class="fas fa-edit"></i></button>
+                                                                        </div>
+                                                                    </div>
                                                                     <select
                                                                         class="form-control form-control-sm room-level-select mr-1 lvl-{{ $rLvl }}"
                                                                         style="width: 70px;" {{ $disabled }}>
@@ -775,12 +779,16 @@
                                                                 data-priority="{{ $rPriorityLevel }}">
                                                                 <i class="fas fa-grip-vertical text-muted mr-2 cursor-grab" style="cursor: grab;" title="Kéo thả để sắp xếp độ ưu tiên"></i>
                                                                 <span class="badge badge-secondary priority-badge mr-1" style="width: 20px; text-align: center;" title="Ưu tiên {{ $rPriorityLevel }}">{{ $rPriorityLevel }}</span>
-                                                                <select
-                                                                    class="form-control form-control-sm room-id-select mr-1"
-                                                                    style="width: 250px;" {{ $disabled }}>
-                                                                    <option value="">-- Phòng --</option>
-                                                                    {!! str_replace('value="' . $rId . '"', 'value="' . $rId . '" selected', $roomOptionsHtml) !!}
-                                                                </select>
+                                                                <div class="input-group input-group-sm mr-1" style="width: 250px;">
+                                                                    @php
+                                                                        $roomNameDisp = $rId && isset($roomsById[$rId]) ? ($roomsById[$rId]->code . ' - ' . $roomsById[$rId]->name . ' - ' . $roomsById[$rId]->main_equiment_name) : '-- Phòng --';
+                                                                    @endphp
+                                                                    <input type="text" class="form-control room-name-display" readonly value="{{ $roomNameDisp }}" style="font-size: 0.8rem; background-color: #fff; cursor: pointer;" title="{{ $roomNameDisp }}">
+                                                                    <input type="hidden" class="room-id-select" value="{{ $rId }}">
+                                                                    <div class="input-group-append">
+                                                                        <button class="btn btn-outline-info btn-edit-room-modal" type="button" {{ $disabled }} title="Đổi phòng"><i class="fas fa-edit"></i></button>
+                                                                    </div>
+                                                                </div>
                                                                 <select
                                                                     class="form-control form-control-sm room-level-select mr-1 lvl-{{ $rLvl }}"
                                                                     style="width: 70px;" {{ $disabled }}>
@@ -882,8 +890,35 @@
 <script src="{{ asset('assets/vendor/select2/select2.min.js') }}"></script>
 
 
+<!-- Modal Chọn Phòng -->
+<div class="modal fade" id="editRoomModal" tabindex="-1" role="dialog" aria-hidden="true" style="z-index: 1060;">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title"><i class="fas fa-door-open"></i> Chọn Phòng Công Tác</h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Phòng</label>
+                    <select id="modalRoomSelect" class="form-control select2" style="width: 100%;">
+                        <option value="">-- Chọn Phòng --</option>
+                        {!! $roomOptionsHtml !!}
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Đóng</button>
+                <button type="button" class="btn btn-primary" id="btn-save-room-modal">Lưu thay đổi</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
-    $(document).ready(function() {
+    document.addEventListener("DOMContentLoaded", function() {
         document.body.style.overflowY = "auto";
         const canEdit = {{ $canEdit ? 'true' : 'false' }};
 
@@ -1095,13 +1130,12 @@
                 return;
             }
 
-            let roomOptions = '<option value="">-- Chọn phòng --</option>';
-            filteredRooms.forEach(r => {
-                const isSelected = alreadySelectedIds.includes(r.id.toString()) ? 'disabled' :
-                    '';
-                roomOptions +=
-                    `<option value="${r.id}" ${isSelected}>${r.code} - ${r.name} - ${r.main_equiment_name}</option>`;
-            });
+            let newRoomText = '-- Chọn phòng --';
+            let newRoomVal = '';
+            if (availableRoom) {
+                newRoomText = `${availableRoom.code} - ${availableRoom.name} - ${availableRoom.main_equiment_name}`;
+                newRoomVal = availableRoom.id;
+            }
 
             const today = new Date();
             const day = String(today.getDate()).padStart(2, '0');
@@ -1113,9 +1147,14 @@
                 <div class="room-assignment-row d-flex align-items-center mb-1" data-active="1" data-group-id="${groupId}">
                     <i class="fas fa-grip-vertical text-muted mr-2 cursor-grab" style="cursor: grab;" title="Kéo thả để sắp xếp độ ưu tiên"></i>
                     <span class="badge badge-secondary priority-badge mr-1" style="width: 20px; text-align: center;">-</span>
-                    <select class="form-control form-control-sm room-id-select mr-1" style="width: 250px;">
-                        ${roomOptions}
-                    </select>
+                    
+                    <div class="input-group input-group-sm mr-1" style="width: 250px;">
+                        <input type="text" class="form-control room-name-display" readonly value="${newRoomText}" style="font-size: 0.8rem; background-color: #fff; cursor: pointer;" title="${newRoomText}">
+                        <input type="hidden" class="room-id-select" value="${newRoomVal}">
+                        <div class="input-group-append">
+                            <button class="btn btn-outline-info btn-edit-room-modal" type="button" title="Đổi phòng"><i class="fas fa-edit"></i></button>
+                        </div>
+                    </div>
                     <select class="form-control form-control-sm room-level-select mr-1 lvl-4" style="width: 70px;">
                         <option value="1">1</option>
                         <option value="2">2</option>
@@ -1152,6 +1191,9 @@
             if (availableRoom) {
                 const $newSelect = $list.find('.room-id-select').last();
                 $newSelect.val(availableRoom.id);
+                // Cập nhật text hiển thị
+                $newSelect.siblings('.room-name-display').val(`${availableRoom.code} - ${availableRoom.name} - ${availableRoom.main_equiment_name}`);
+                
                 // Dùng mode=add để chỉ INSERT/UPDATE phòng mới, không xóa phòng cũ
                 const $trMain = $btn.closest('.main-employee-row');
                 const empId = $trMain.find('.room-assignments-container').first().data('employee-id');
@@ -1676,6 +1718,44 @@
 
         $(document).on('click', '.btn-toggle-group', function() {
             if ($('#personnel-dashboard').is(':visible')) setTimeout(renderLocalDashboard, 100);
+        });
+
+        let $currentEditingRow = null;
+
+        $(document).on('click', '.btn-edit-room-modal, .room-name-display', function() {
+            if (!canEdit) return;
+            $currentEditingRow = $(this).closest('.room-assignment-row');
+            let currentRoomId = $currentEditingRow.find('.room-id-select').val();
+            
+            $('#modalRoomSelect').val(currentRoomId).trigger('change');
+            $('#editRoomModal').modal('show');
+        });
+
+        $('#btn-save-room-modal').on('click', function() {
+            if (!$currentEditingRow) return;
+            
+            let selectedRoomId = $('#modalRoomSelect').val();
+            let selectedRoomText = $('#modalRoomSelect option:selected').text();
+            
+            if (!selectedRoomId) {
+                Swal.fire('Lỗi', 'Vui lòng chọn một phòng', 'error');
+                return;
+            }
+            
+            $currentEditingRow.find('.room-id-select').val(selectedRoomId);
+            $currentEditingRow.find('.room-name-display').val(selectedRoomText).attr('title', selectedRoomText);
+            
+            $('#editRoomModal').modal('hide');
+            
+            // Trigger update
+            const $container = $currentEditingRow.closest('.room-assignments-container');
+            triggerRoomUpdate($container);
+        });
+        
+        $('#editRoomModal').on('shown.bs.modal', function () {
+            $('#modalRoomSelect').select2({
+                dropdownParent: $('#editRoomModal')
+            });
         });
 
         // Initialize Sortable on all room lists

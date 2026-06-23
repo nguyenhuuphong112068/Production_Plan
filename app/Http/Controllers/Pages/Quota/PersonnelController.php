@@ -147,6 +147,9 @@ class PersonnelController extends Controller
 
     public function index(Request $request, $department = null)
     {
+        // Tăng giới hạn bộ nhớ cho route này vì render View HTML quá lớn
+        ini_set('memory_limit', '512M');
+        
         // 1. Lấy mã bộ phận: Ưu tiên URL -> Session
         $departmentCode = $department ?? session('user')['department'];
 
