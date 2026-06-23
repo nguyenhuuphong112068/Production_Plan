@@ -228,16 +228,83 @@ export const handleAutoSchedualer = () => {
             data = JSON.parse(data);
           }
 
-          Swal.fire({
-            icon: "success",
-            title: "Hoàn Thành Sắp Lịch",
-            timer: 1000,
-            showConfirmButton: false,
-          });
-
-          setEvents(data.events);
-          setSumBatchByStage(data.sumBatchByStage);
-          setPlan(data.plan);
+              if (data && data.overdueCampaigns && data.overdueCampaigns.length > 0) {
+                Swal.fire({
+                    title: `Phát hiện ${data.overdueCampaigns.length} chiến dịch quá hạn!`,
+                    text: "Bạn có muốn hệ thống chạy Tối ưu hóa (Pass 2) đẩy độ ưu tiên tuyệt đối để triệt tiêu lỗi quá hạn này không?",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Có, Tối Ưu',
+                    cancelButtonText: 'Không',
+                    confirmButtonColor: '#3085d6',
+                    cancelButtonColor: '#d33',
+                }).then((pass2Result) => {
+                    if (pass2Result.isConfirmed) {
+                        Swal.fire({
+                            title: 'Đang chạy Pass 2...',
+                            text: 'Vui lòng chờ trong giây lát',
+                            allowOutsideClick: false,
+                            didOpen: () => Swal.showLoading(),
+                        });
+                        axios.post('/Schedual/scheduleAllPass2', {
+                            ...result.value,
+                            startDate: activeStart.toISOString(),
+                            endDate: activeEnd.toISOString(),
+                            overdueCampaigns: data.overdueCampaigns
+                        }).then(res2 => {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Hoàn Thành Pass 2',
+                                timer: 1000,
+                                showConfirmButton: false,
+                            });
+                            
+                            let data2 = res2.data;
+                            if (typeof data2 === "string") {
+                                data2 = data2.replace(/^<!--.*?-->/, "").trim();
+                                data2 = JSON.parse(data2);
+                            }
+                            if (data2.events) {
+                                setEvents(data2.events);
+                                setSumBatchByStage(data2.sumBatchByStage);
+                                if(data2.plan) setPlan(data2.plan);
+                            } else {
+                                window.location.reload();
+                            }
+                        }).catch(err => {
+                            Swal.fire('Lỗi Pass 2', err.message, 'error');
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Hoàn Thành Sắp Lịch',
+                            timer: 1000,
+                            showConfirmButton: false,
+                        });
+                        if (data.events) {
+                            setEvents(data.events);
+                            setSumBatchByStage(data.sumBatchByStage);
+                            if(data.plan) setPlan(data.plan);
+                        } else {
+                            window.location.reload();
+                        }
+                    }
+                });
+              } else {
+                  Swal.fire({
+                    icon: 'success',
+                    title: 'Hoàn Thành Sắp Lịch',
+                    timer: 1000,
+                    showConfirmButton: false,
+                  });
+                  if (data.events) {
+                      setEvents(data.events);
+                      setSumBatchByStage(data.sumBatchByStage);
+                      if(data.plan) setPlan(data.plan);
+                  } else {
+                      window.location.reload();
+                  }
+              }
         })
         .catch((err) => {
           Swal.fire({

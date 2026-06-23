@@ -4196,6 +4196,13 @@ const ScheduleTest = () => {
               <div style="font-weight:700;font-size:13px">🧬 Sửa Lỗi Đen Theo Pha Chế</div>
               <div style="opacity:.9;margin-top:3px">Cố định Pha Chế (3&4), sắp xếp công đoạn khác thoát đen</div>
             </button>
+            <button type="button" id="btn-fix-pass2"
+              style="background:#27ae60;color:white;border:none;border-radius:6px;padding:12px 10px;text-align:left;cursor:pointer;font-size:12px;line-height:1.5;transition:opacity .2s"
+              onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+              <div style="font-weight:700;font-size:13px">🚀 Tối Ưu Hóa (Pass 2)</div>
+              <div style="opacity:.9;margin-top:3px">Xếp lại lịch ưu tiên tuyệt đối cho các chiến dịch quá hạn biệt trữ</div>
+            </button>
+
 
           </div>
           <div style="margin-top:14px;font-size:11px;color:#7f8c8d;border-top:1px solid #eee;padding-top:10px;line-height:1.5">
@@ -4601,11 +4608,50 @@ const ScheduleTest = () => {
           });
         }
         if (btnFixPhaCheModal) {
-          btnFixPhaCheModal.addEventListener('click', () => {
-            Swal.close();
-            setTimeout(() => handleAutoFixByPhaChe(), 200);
-          });
-        }
+            btnFixPhaCheModal.addEventListener('click', () => {
+              Swal.close();
+              setTimeout(() => handleAutoFixByPhaChe(), 200);
+            });
+          }
+
+          const btnFixPass2 = document.getElementById('btn-fix-pass2');
+          if (btnFixPass2) {
+            btnFixPass2.addEventListener('click', () => {
+              Swal.close();
+              setTimeout(() => {
+                Swal.fire({
+                  title: 'Đang chạy Pass 2...',
+                  text: 'Vui lòng chờ trong giây lát',
+                  allowOutsideClick: false,
+                  didOpen: () => Swal.showLoading(),
+                });
+                
+                const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
+                
+                axios.post('/Schedual/scheduleAllPass2', {
+                  startDate: toLocalISOString(activeStart),
+                  endDate: toLocalISOString(activeEnd),
+                }, { timeout: 1200000 }).then(res => {
+                  let data = res.data;
+                  if (data && data.success === false) {
+                     Swal.fire('Thông báo', data.message, 'info');
+                     setLoading(!loading);
+                     return;
+                  }
+                  Swal.fire({
+                    icon: 'success',
+                    title: 'Hoàn Thành Pass 2',
+                    timer: 1000,
+                    showConfirmButton: false,
+                  });
+                  setLoading(!loading);
+                }).catch(err => {
+                  Swal.fire('Lỗi Pass 2', err.message, 'error');
+                  setLoading(!loading);
+                });
+              }, 200);
+            });
+          }
       }
       ,
       preConfirm: () => {
@@ -4679,15 +4725,14 @@ const ScheduleTest = () => {
                 data = data.replace(/^<!--.*?-->/, "").trim();
                 data = JSON.parse(data);
               }
-
+              
               Swal.fire({
                 icon: 'success',
                 title: 'Hoàn Thành Sắp Lịch',
                 timer: 1000,
                 showConfirmButton: false,
               });
-              setLoading(!loading)
-
+              setLoading(!loading);
             })
             .catch(err => {
 

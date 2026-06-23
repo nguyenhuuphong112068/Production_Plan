@@ -725,6 +725,9 @@ class ProductionPlanController extends Controller
                         $second_val_batch = $request->second_val_batch == "on" ? 1 : 0;
                         $third_val_batch = $request->third_val_batch == "on" ? 1 : 0;
 
+                        $deparment_code = DB::table('finished_product_category')
+                                ->where('id', $request->product_caterogy_id)
+                                ->value('deparment_code') ?? session('user')['production_code'];
 
                         $i = 1;
 
@@ -763,7 +766,7 @@ class ProductionPlanController extends Controller
                                         "number_parkaging" => $request->max_number_of_unit,
                                         "only_parkaging" => 0,
                                         "note" => $request->note ?? "NA",
-                                        'deparment_code' => session('user')['production_code'],
+                                        'deparment_code' => $deparment_code,
                                         'prepared_by' => session('user')['fullName'],
                                         'created_at' => now(),
                                 ]);

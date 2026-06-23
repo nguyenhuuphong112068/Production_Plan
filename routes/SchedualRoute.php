@@ -51,6 +51,7 @@ Route::prefix('/Schedual')
 
                 // Sắp Lịch Tư Động //
                 Route::post('scheduleAll', 'scheduleAll')->name('scheduleAll');
+                Route::post('scheduleAllPass2', 'scheduleAllPass2')->name('scheduleAllPass2');
                 Route::put('getInforSoure', 'getInforSoure')->name('getInforSoure');
                 Route::put('confirm_source', 'confirm_source')->name('confirm_source');
                 Route::put('history', 'history')->name('history');

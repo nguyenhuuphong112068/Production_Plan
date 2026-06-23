@@ -2113,7 +2113,10 @@ class SchedualController extends Controller
                         ->leftJoin('finished_product_category', 'sp.product_caterogy_id', 'finished_product_category.id')
                         ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
                         ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
-                        ->leftJoin('stage_plan as prev', 'prev.code', '=', 'sp.predecessor_code')
+                        ->leftJoin('stage_plan as prev', function ($join) {
+                            $join->on('prev.code', '=', 'sp.predecessor_code')
+                                ->whereNotIn('prev.stage_code', [1, 2]);
+                        })
                         ->whereIn('sp.code', $nextcessor_codes)
                         ->where('sp.active', 1)
                         ->where('sp.deparment_code', session('user.production_code'))
@@ -4789,7 +4792,12 @@ class SchedualController extends Controller
         $current_start = $this->skipOffTime($current_start, $offDateList);
 
         // =========================================================
+        $loop_count = 0;
         while (true) {
+            $loop_count++;
+            if ($loop_count > 1000) {
+                return null;
+            }
             $conflictFound = false;
 
             foreach ($busyList as $busy) {
@@ -5008,6 +5016,8 @@ class SchedualController extends Controller
 
     public function scheduleAll(Request $request)
     {
+        set_time_limit(1200);
+        ini_set('max_execution_time', 1200);
 
 
         $this->selectedDates = $request->selectedDates ?? [];
@@ -5147,7 +5157,324 @@ class SchedualController extends Controller
             $this->Auto_scheduler_Stage_Forward($i, $waite_time_nomal_batch, $waite_time_val_batch, $start_date);
         }
 
-        return response()->json([]);
+        $overdueCampaigns = $this->scanOverdueTasks();
+
+        return response()->json(['overdueCampaigns' => $overdueCampaigns]);
+    }
+
+    public function scheduleAllPass2(Request $request)
+    {
+        set_time_limit(1200);
+        ini_set('max_execution_time', 1200);
+        $overdueCampaigns = $request->overdueCampaigns;
+
+        if (empty($overdueCampaigns)) {
+            $overdueCampaigns = $this->scanOverdueTasks();
+        }
+
+        if (empty($overdueCampaigns)) {
+            return response()->json(['success' => false, 'message' => 'Không có sự kiện nào bị quá hạn biệt trữ.']);
+        }
+
+        $this->selectedDates = $request->selectedDates ?? [];
+        $this->work_sunday = $request->work_sunday ?? false;
+        $this->reason = $request->reason ?? 'NA';
+        $this->prev_orderBy = $request->prev_orderBy ?? false;
+        $this->loadOffDate('asc');
+
+        $today = Carbon::now()->toDateString();
+        $start_date = Carbon::createFromFormat('Y-m-d', $request->start_date ?? $today)->setTime(6, 0, 0);
+
+        $Step = [
+            'PC' => 3,
+            'THT' => 4,
+            'ĐH' => 5,
+            'BP' => 6,
+            'ĐG' => 7,
+        ];
+        $selectedStep = $Step[$request->selectedStep ?? 'ĐG'];
+        $this->max_Step = $selectedStep;
+
+        // --- BƯỚC 3: ROLLBACK LỊCH CHỌN LỌC ---
+        foreach ($overdueCampaigns as $overdue) {
+            $campaignCode = $overdue['campaign_code'];
+            $stageCode = $overdue['stage_code'];
+
+            if (in_array($stageCode, [1, 2])) {
+                // Lỗi ở Cân: Chỉ xóa lịch Cân (stage_code 1, 2)
+                DB::table('stage_plan')
+                    ->where('campaign_code', $campaignCode)
+                    ->whereIn('stage_code', [1, 2])
+                    ->where('schedualed', 1)
+                    ->update([
+                        'start' => null,
+                        'end' => null,
+                        'start_clearning' => null,
+                        'end_clearning' => null,
+                        'resourceId' => null,
+                        'schedualed' => 0,
+                    ]);
+            } else {
+                // Lỗi ở đoạn khác: Xóa lịch toàn bộ các batch trong campaign đó, CHỪ STAGE 1, 2 và 3 ĐÃ CHỐT TRƯỚC (NẾU MUỐN).
+                // Nhưng theo kế hoạch, nếu lỗi ở 4,5,7 thì xóa toàn bộ:
+                DB::table('stage_plan')
+                    ->where('campaign_code', $campaignCode)
+                    ->where('schedualed', 1)
+                    ->update([
+                        'start' => null,
+                        'end' => null,
+                        'start_clearning' => null,
+                        'end_clearning' => null,
+                        'resourceId' => null,
+                        'schedualed' => 0,
+                    ]);
+            }
+        }
+
+        // --- BƯỚC 4: CHẠY PASS 2 VỚI ĐỘ ƯU TIÊN TUYỆT ĐỐI ---
+        $this->scheduleOverdueCampaigns($overdueCampaigns, $request, $start_date);
+
+        // Sau đó chạy lại phần Auto Schedule bình thường cho các lô chưa xếp
+        $stageCodes = DB::table('stage_plan as sp')
+            ->distinct()
+            ->where('sp.stage_code', '>=', 3)
+            ->where('sp.stage_code', '<=', $selectedStep)
+            ->where('sp.deparment_code', session('user.production_code'))
+            ->orderBy('sp.stage_code')
+            ->pluck('sp.stage_code');
+
+        for ($i = $selectedStep; $i >= 3; $i--) {
+            $this->scheduleIntermediate($i, 0, 0, $start_date);
+        }
+
+        for ($i = $selectedStep; $i >= 3; $i--) {
+            $this->scheduleWarningMR($i, 0, 0, $start_date);
+        }
+
+        for ($i = 3; $i <= $selectedStep; $i++) {
+            $this->scheduleSensitiveProduct($i, 0, 0, $start_date);
+        }
+
+        foreach ($stageCodes as $i) {
+            $waite_time_nomal_batch = 0;
+            $waite_time_val_batch = 0;
+
+            switch ($i) {
+                case 3:
+                    $waite_time_nomal_batch = 0;
+                    $waite_time_val_batch = 0;
+                    break;
+                case 4:
+                    $waite_time_nomal_batch = ($request->wt_bleding ?? 0) * 24 * 60;
+                    $waite_time_val_batch = ($request->wt_bleding_val ?? 1) * 24 * 60;
+                    break;
+                case 5:
+                    $waite_time_nomal_batch = ($request->wt_forming ?? 0) * 24 * 60;
+                    $waite_time_val_batch = ($request->wt_forming_val ?? 5) * 24 * 60;
+                    break;
+                case 6:
+                    $waite_time_nomal_batch = ($request->wt_coating ?? 0) * 24 * 60;
+                    $waite_time_val_batch = ($request->wt_coating_val ?? 5) * 24 * 60;
+                    break;
+                case 7:
+                    $waite_time_nomal_batch = ($request->wt_blitering ?? 0) * 24 * 60;
+                    $waite_time_val_batch = ($request->wt_blitering_val ?? 5) * 24 * 60;
+                    break;
+            }
+
+            $this->Auto_scheduler_Stage_Forward($i, $waite_time_nomal_batch, $waite_time_val_batch, $start_date);
+        }
+
+        return response()->json(['status' => 'Pass 2 Completed']);
+    }
+
+    protected function scheduleOverdueCampaigns($overdueCampaigns, Request $request, $start_date)
+    {
+        $hasWeightFix = false;
+        foreach ($overdueCampaigns as $overdue) {
+            if (in_array($overdue['stage_code'], [1, 2])) {
+                $hasWeightFix = true;
+            }
+        }
+        
+        // --- XỬ LÝ LỖI STAGE 1, 2: Xếp Backward Scheduling (cân sớm nhất có thể nhưng sát ngày Pha Chế) ---
+        if ($hasWeightFix) {
+            $this->scheduleWeightStage($start_date);
+        }
+
+        // --- XỬ LÝ LỖI STAGE 4, 5, 7: Xếp Tiến (Forward Scheduling) bằng Priority Engine ---
+        $vipCampaigns = [];
+        foreach ($overdueCampaigns as $overdue) {
+            if (!in_array($overdue['stage_code'], [1, 2])) {
+                $vipCampaigns[] = $overdue['campaign_code'];
+            }
+        }
+
+        if (empty($vipCampaigns)) {
+            return;
+        }
+
+        $Step = [
+            'PC' => 3,
+            'THT' => 4,
+            'ĐH' => 5,
+            'BP' => 6,
+            'ĐG' => 7,
+        ];
+        $selectedStep = $Step[$request->selectedStep ?? 'ĐG'];
+
+        $stageCodes = DB::table('stage_plan as sp')
+            ->distinct()
+            ->where('sp.stage_code', '>=', 3)
+            ->where('sp.stage_code', '<=', $selectedStep)
+            ->whereIn('sp.campaign_code', $vipCampaigns)
+            ->where('sp.deparment_code', session('user.production_code'))
+            ->orderBy('sp.stage_code')
+            ->pluck('sp.stage_code');
+
+        foreach ($stageCodes as $i) {
+            $waite_time_nomal_batch = 0;
+            $waite_time_val_batch = 0;
+
+            switch ($i) {
+                case 3:
+                    $waite_time_nomal_batch = 0;
+                    $waite_time_val_batch = 0;
+                    break;
+                case 4:
+                    $waite_time_nomal_batch = ($request->wt_bleding ?? 0) * 24 * 60;
+                    $waite_time_val_batch = ($request->wt_bleding_val ?? 1) * 24 * 60;
+                    break;
+                case 5:
+                    $waite_time_nomal_batch = ($request->wt_forming ?? 0) * 24 * 60;
+                    $waite_time_val_batch = ($request->wt_forming_val ?? 5) * 24 * 60;
+                    break;
+                case 6:
+                    $waite_time_nomal_batch = ($request->wt_coating ?? 0) * 24 * 60;
+                    $waite_time_val_batch = ($request->wt_coating_val ?? 5) * 24 * 60;
+                    break;
+                case 7:
+                    $waite_time_nomal_batch = ($request->wt_blitering ?? 0) * 24 * 60;
+                    $waite_time_val_batch = ($request->wt_blitering_val ?? 5) * 24 * 60;
+                    break;
+            }
+
+            $this->autoScheduleVIPCampaigns($i, $waite_time_nomal_batch, $waite_time_val_batch, $start_date, $vipCampaigns);
+        }
+    }
+
+    protected function autoScheduleVIPCampaigns(int $stageCode, int $waite_time_nomal_batch = 0, int $waite_time_val_batch = 0, ?Carbon $start_date = null, array $vipCampaigns = [])
+    {
+        if (empty($vipCampaigns)) return;
+
+        $tasks = DB::table('stage_plan as sp')
+            ->select(
+                'sp.id', 'sp.plan_master_id', 'sp.product_caterogy_id', 'sp.predecessor_code',
+                'sp.nextcessor_code', 'sp.campaign_code', 'sp.code', 'sp.stage_code', 'sp.tank', 'sp.keep_dry',
+                'sp.order_by', 'sp.required_room_code', 'sp.immediately',
+                'plan_master.batch', 'plan_master.is_val', 'plan_master.code_val', 'plan_master.expected_date',
+                'plan_master.after_weigth_date', 'plan_master.after_parkaging_date', 'plan_master.allow_weight_before_date',
+                'finished_product_category.product_name_id', 'finished_product_category.market_id',
+                'finished_product_category.finished_product_code', 'finished_product_category.intermediate_code',
+                'product_name.name', 'market.code as market', 'prev.start as prev_start'
+            )
+            ->leftJoin('plan_master', 'sp.plan_master_id', 'plan_master.id')
+            ->leftJoin('finished_product_category', 'sp.product_caterogy_id', 'finished_product_category.id')
+            ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
+            ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
+            ->leftJoin('stage_plan as prev', function ($join) {
+                $join->on('prev.code', '=', 'sp.predecessor_code')
+                     ->whereNotIn('prev.stage_code', [1, 2]);
+            })
+            ->where('sp.stage_code', $stageCode)
+            ->where('sp.finished', 0)
+            ->where('sp.active', 1)
+            ->where('sp.not_schedule', 0)
+            ->whereNull('sp.start')
+            ->whereIn('sp.campaign_code', $vipCampaigns)
+            ->where('sp.deparment_code', session('user.production_code'))
+            ->orderByRaw("FIELD(sp.campaign_code, '" . implode("','", $vipCampaigns) . "') ASC")
+            ->orderBy('plan_master.batch', 'asc')
+            ->get();
+
+        if ($tasks->isEmpty()) return;
+
+        $processedCampaigns = [];
+
+        foreach ($tasks as $task) {
+            $waite_time = ($task->is_val === 1) ? $waite_time_val_batch : $waite_time_nomal_batch;
+            $start_date_temp = $start_date;
+
+            if ($task->campaign_code === null) {
+                $this->sheduleNotCampaing($task, $stageCode, $waite_time, $start_date_temp, null);
+            } else {
+                if (in_array($task->campaign_code, $processedCampaigns)) continue;
+
+                $campaignTasks = $tasks->where('campaign_code', $task->campaign_code)->sortBy('batch');
+                $this->scheduleCampaign($campaignTasks, $stageCode, $waite_time, $start_date_temp, null);
+                $processedCampaigns[] = $task->campaign_code;
+            }
+        }
+    }
+
+    protected function scanOverdueTasks()
+    {
+        $overdueCampaigns = [];
+
+        $tasks = DB::table('stage_plan as sp')
+            ->leftJoin('plan_master', 'sp.plan_master_id', 'plan_master.id')
+            ->whereNotNull('sp.start')
+            ->where('sp.finished', 0)
+            ->where('sp.active', 1)
+            ->where('sp.not_schedule', 0)
+            ->where('sp.deparment_code', session('user.production_code'))
+            ->select('sp.id', 'sp.campaign_code', 'sp.stage_code', 'sp.start', 'plan_master.expired_material_date', 'plan_master.preperation_before_date', 'plan_master.blending_before_date', 'plan_master.coating_before_date', 'plan_master.parkaging_before_date', 'plan_master.expired_packing_date')
+            ->get();
+
+        foreach ($tasks as $task) {
+            $overdueStart = null;
+            $start = Carbon::parse($task->start);
+
+            if (in_array($task->stage_code, [1, 2, 3])) {
+                if ($task->expired_material_date && $start->gt(Carbon::parse($task->expired_material_date)->setTime(6, 0, 0))) {
+                    $overdueStart = Carbon::parse($task->expired_material_date)->setTime(6, 0, 0);
+                } elseif ($task->preperation_before_date && $start->gt(Carbon::parse($task->preperation_before_date)->setTime(6, 0, 0))) {
+                    $overdueStart = Carbon::parse($task->preperation_before_date)->setTime(6, 0, 0);
+                }
+            } elseif ($task->stage_code == 4) {
+                if ($task->blending_before_date && $start->gt(Carbon::parse($task->blending_before_date)->setTime(6, 0, 0))) {
+                    $overdueStart = Carbon::parse($task->blending_before_date)->setTime(6, 0, 0);
+                }
+            } elseif ($task->stage_code == 5 || $task->stage_code == 6) {
+                if ($task->coating_before_date && $start->gt(Carbon::parse($task->coating_before_date)->setTime(6, 0, 0))) {
+                    $overdueStart = Carbon::parse($task->coating_before_date)->setTime(6, 0, 0);
+                }
+            } elseif ($task->stage_code == 7) {
+                if ($task->parkaging_before_date && $start->gt(Carbon::parse($task->parkaging_before_date)->setTime(6, 0, 0))) {
+                    $overdueStart = Carbon::parse($task->parkaging_before_date)->setTime(6, 0, 0);
+                } elseif ($task->expired_packing_date && $start->gt(Carbon::parse($task->expired_packing_date)->setTime(6, 0, 0))) {
+                    $overdueStart = Carbon::parse($task->expired_packing_date)->setTime(6, 0, 0);
+                }
+            }
+
+            if ($overdueStart && $task->campaign_code) {
+                $tardiness = $start->diffInMinutes($overdueStart);
+                if (!isset($overdueCampaigns[$task->campaign_code]) || $overdueCampaigns[$task->campaign_code]['tardiness'] < $tardiness) {
+                    $overdueCampaigns[$task->campaign_code] = [
+                        'campaign_code' => $task->campaign_code,
+                        'tardiness' => $tardiness,
+                        'stage_code' => $task->stage_code
+                    ];
+                }
+            }
+        }
+
+        $overdueArray = array_values($overdueCampaigns);
+        usort($overdueArray, function($a, $b) {
+            return $b['tardiness'] <=> $a['tardiness'];
+        });
+
+        return $overdueArray;
     }
 
     /**
@@ -5202,7 +5529,10 @@ class SchedualController extends Controller
             ->leftJoin('finished_product_category', 'sp.product_caterogy_id', 'finished_product_category.id')
             ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
             ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
-            ->leftJoin('stage_plan as prev', 'prev.code', '=', 'sp.predecessor_code')
+            ->leftJoin('stage_plan as prev', function ($join) {
+                $join->on('prev.code', '=', 'sp.predecessor_code')
+                    ->whereNotIn('prev.stage_code', [1, 2]);
+            })
             ->where('sp.stage_code', $stageCode)
             ->where('sp.finished', 0)
             ->where('sp.not_schedule', 0)
@@ -5268,58 +5598,8 @@ class SchedualController extends Controller
                 }
             }
 
-            // ─── BƯỚC 2: Just-In-Time — tránh xếp quá sớm ────────────────────────────
-            // Tìm deadline cụ thể của stageCode hiện tại (operator '<')
-            // Nếu deadline > start_date_effective → đẩy start_date_effective lên deadline
-            // để engine xếp lịch gần sát ngày đó, không chiếm slot sớm của task gấp hơn
-            $stageDeadlineCandidates = [];
+            // Bỏ BƯỚC 2: Không áp dụng Just-In-Time nữa để ưu tiên xếp khi có phòng trống sớm nhất
 
-            switch ($stageCode) {
-                case 3:
-                    if (!empty($task->preperation_before_date)) {
-                        $stageDeadlineCandidates[] = $task->preperation_before_date;
-                    }
-                    break;
-                case 4:
-                    if (!empty($task->blending_before_date)) {
-                        $stageDeadlineCandidates[] = $task->blending_before_date;
-                    }
-                    break;
-                case 6:
-                    if (!empty($task->coating_before_date)) {
-                        $stageDeadlineCandidates[] = $task->coating_before_date;
-                    }
-                    break;
-                case 7:
-                    if (!empty($task->parkaging_before_date)) {
-                        $stageDeadlineCandidates[] = $task->parkaging_before_date;
-                    }
-                    if (!empty($task->expired_packing_date)) {
-                        $stageDeadlineCandidates[] = $task->expired_packing_date;
-                    }
-                    break;
-            }
-
-            // expired_material_date áp dụng cho stage 1-3
-            if ($stageCode <= 3 && !empty($task->expired_material_date)) {
-                $stageDeadlineCandidates[] = $task->expired_material_date;
-            }
-
-            // Tìm deadline chặt nhất (sớm nhất) trong các candidates
-            $stageEarliestDeadline = null;
-            foreach ($stageDeadlineCandidates as $d) {
-                $dt = Carbon::parse($d)->setTime(6, 0, 0);
-                if ($stageEarliestDeadline === null || $dt->lt($stageEarliestDeadline)) {
-                    $stageEarliestDeadline = $dt;
-                }
-            }
-
-            // Đẩy start_date_effective lên deadline nếu deadline > start_date_effective hiện tại
-            // Ví dụ: blending_before_date=19/7, start_date_effective=tháng 6
-            // → start_date_effective = 19/7, engine tìm slot từ 19/7 thay vì từ tháng 6
-            if ($stageEarliestDeadline !== null && ($start_date_effective === null || $stageEarliestDeadline->gt($start_date_effective))) {
-                $start_date_effective = $stageEarliestDeadline;
-            }
 
             if ($task->campaign_code === null) {
 
@@ -5383,7 +5663,10 @@ class SchedualController extends Controller
             ->leftJoin('finished_product_category', 'sp.product_caterogy_id', 'finished_product_category.id')
             ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
             ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
-            ->leftJoin('stage_plan as prev', 'prev.code', '=', 'sp.predecessor_code')
+            ->leftJoin('stage_plan as prev', function ($join) {
+                $join->on('prev.code', '=', 'sp.predecessor_code')
+                    ->whereNotIn('prev.stage_code', [1, 2]);
+            })
             ->where('sp.stage_code', $stageCode)
             ->where('sp.finished', 0)
             ->where('sp.not_schedule', 0)
@@ -5487,7 +5770,10 @@ class SchedualController extends Controller
             ->leftJoin('intermediate_category', 'finished_product_category.intermediate_code', 'intermediate_category.intermediate_code')
             ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
             ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
-            ->leftJoin('stage_plan as prev', 'prev.code', '=', 'sp.predecessor_code')
+            ->leftJoin('stage_plan as prev', function ($join) {
+                $join->on('prev.code', '=', 'sp.predecessor_code')
+                    ->whereNotIn('prev.stage_code', [1, 2]);
+            })
             ->where('sp.not_schedule', 0)
             ->where('sp.stage_code', $stageCode)
             ->where('sp.finished', 0)
@@ -5607,7 +5893,10 @@ class SchedualController extends Controller
                 // ->leftJoin('intermediate_category', 'finished_product_category.intermediate_code', 'intermediate_category.intermediate_code')
                 ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
                 ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
-                ->leftJoin('stage_plan as prev', 'prev.code', '=', 'sp.predecessor_code')
+                ->leftJoin('stage_plan as prev', function ($join) {
+                    $join->on('prev.code', '=', 'sp.predecessor_code')
+                        ->whereNotIn('prev.stage_code', [1, 2]);
+                })
                 ->where('sp.stage_code', $stageCode)
                 ->where('sp.finished', 0)
                 ->where('sp.active', 1)
@@ -5841,7 +6130,10 @@ class SchedualController extends Controller
                 ->leftJoin('finished_product_category', 'sp.product_caterogy_id', 'finished_product_category.id')
                 ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
                 ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
-                ->leftJoin('stage_plan as prev', 'prev.code', '=', 'sp.predecessor_code')
+                ->leftJoin('stage_plan as prev', function ($join) {
+                    $join->on('prev.code', '=', 'sp.predecessor_code')
+                        ->whereNotIn('prev.stage_code', [1, 2]);
+                })
                 ->whereNotNull('prev.start')
                 ->where('sp.not_schedule', 0)
                 ->whereIn('sp.id', $stage_plan_ids)
@@ -5900,7 +6192,10 @@ class SchedualController extends Controller
                 })
                 ->when($stageCode >= 4, function ($query) {
 
-                    $query->leftJoin('stage_plan as prev', 'prev.code', '=', 'sp.predecessor_code')
+                    $query->leftJoin('stage_plan as prev', function ($join) {
+                        $join->on('prev.code', '=', 'sp.predecessor_code')
+                            ->whereNotIn('prev.stage_code', [1, 2]);
+                    })
                         ->whereNotNull('prev.start');
                 })
                 ->where('sp.deparment_code', session('user.production_code'))
@@ -6259,7 +6554,7 @@ class SchedualController extends Controller
             $candidateStart = is_array($candidate) ? $candidate['start'] : $candidate;
             $candidateMoldId = is_array($candidate) ? $candidate['mold_id'] : null;
 
-            if ($bestStart === null || $candidateStart->lt($bestStart)) {
+            if ($candidateStart !== null && ($bestStart === null || $candidateStart->lt($bestStart))) {
                 $bestRoom = $room->room_id;
                 $bestStart = $candidateStart;
                 $bestMoldId = $candidateMoldId;
@@ -6438,76 +6733,24 @@ class SchedualController extends Controller
         // $pre_campaign_first_batch_end = [];
         $pre_campaign_codes = [];
 
+        $avg_m_time = DB::table('quota')
+            ->selectRaw('AVG(TIME_TO_SEC(m_time)/60) as avg_m_time_minutes')
+            ->when($firstTask->stage_code <= 6, function ($query) use ($firstTask) {
+                return $query->where('intermediate_code', $firstTask->intermediate_code);
+            }, function ($query) use ($firstTask) {
+                return $query->where('finished_product_code', $firstTask->finished_product_code);
+            })
+            ->where('active', 1)
+            ->where('stage_code', $stageCode)
+            ->value('avg_m_time_minutes') ?? 15;
+
+        $batch_index = 0;
         foreach ($campaignTasks as $campaignTask) {
-
             $pred = DB::table('stage_plan')->where('code', $campaignTask->predecessor_code)->first();
-
-            if ($pred) {
-
-                $code = $pred->campaign_code;
-
-                if (! in_array($code, $pre_campaign_codes) && $code != null) {
-
-                    $pre_campaign_codes[] = $code;
-
-                    $pre_campaign_batch = DB::table('stage_plan')
-                        ->where('campaign_code', $code)
-                        ->orderBy('start', 'asc')
-                        ->get();
-
-                    $pre_campaign_first_batch = $pre_campaign_batch->first();
-
-                    $pre_campaign_last_batch = $pre_campaign_batch->last();
-
-                    $prevCycle = DB::table('quota')
-                        ->selectRaw('AVG(TIME_TO_SEC(m_time)/60) as avg_m_time_minutes')
-                        ->when($firstTask->stage_code <= 6, function ($query) use ($firstTask) {
-
-                            return $query->where('intermediate_code', $firstTask->intermediate_code);
-                        }, function ($query) use ($firstTask) {
-
-                            return $query->where('finished_product_code', $firstTask->finished_product_code);
-                        })
-                        ->where('active', 1)
-                        ->where('stage_code', $pre_campaign_first_batch->stage_code)
-                        ->value('avg_m_time_minutes');
-
-                    $currCycle = DB::table('quota')
-                        ->selectRaw('AVG(TIME_TO_SEC(m_time)/60) as avg_m_time_minutes')
-                        ->when($firstTask->stage_code <= 6, function ($query) use ($firstTask) {
-
-                            return $query->where('intermediate_code', $firstTask->intermediate_code);
-                        }, function ($query) use ($firstTask) {
-
-                            return $query->where('finished_product_code', $firstTask->finished_product_code);
-                        })
-                        ->where('active', 1)
-                        ->where('stage_code', $campaignTask->stage_code)
-                        ->value('avg_m_time_minutes');
-
-                    $maxCount = max($campaignTasks->count(), $pre_campaign_batch->count());
-
-                    if ($currCycle && $currCycle >= $prevCycle) {
-
-                        $candidates[] = Carbon::parse($pred->end)->addMinutes($waite_time);
-                    } else {
-
-                        $hasImmediately = collect($campaignTasks)->contains('immediately', 1);
-
-                        if ($campaignTask->immediately == false && $hasImmediately) {
-
-                            $candidates[] = Carbon::parse($pre_campaign_last_batch->end)->subMinutes(($campaignTasks->count() - 1) * $currCycle);
-
-                            $candidates[] = Carbon::parse($pred->end)->addMinutes($waite_time + $maxCount * ($prevCycle - $currCycle));
-                        }
-                    }
-                }
-
-                if ($code == null) {
-
-                    $candidates[] = Carbon::parse($pred->end);
-                }
+            if ($pred && !in_array($pred->stage_code, [1, 2])) {
+                $candidates[] = Carbon::parse($pred->end)->addMinutes($waite_time)->subMinutes($batch_index * $avg_m_time);
             }
+            $batch_index++;
         }
 
         // Lấy max
@@ -6771,7 +7014,7 @@ class SchedualController extends Controller
             $candidateStart = is_array($candidate) ? $candidate['start'] : $candidate;
             $candidateMoldId = is_array($candidate) ? $candidate['mold_id'] : null;
 
-            if ($bestStart === null || $candidateStart->lt($bestStart)) {
+            if ($candidateStart !== null && ($bestStart === null || $candidateStart->lt($bestStart))) {
                 $bestRoom = $room;
                 $bestStart = $candidateStart;
                 $bestMoldId = $candidateMoldId;
@@ -6935,7 +7178,10 @@ class SchedualController extends Controller
                 ->leftJoin('finished_product_category', 'sp.product_caterogy_id', 'finished_product_category.id')
                 ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
                 ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
-                ->leftJoin('stage_plan as prev', 'prev.code', '=', 'sp.predecessor_code')
+                ->leftJoin('stage_plan as prev', function ($join) {
+                    $join->on('prev.code', '=', 'sp.predecessor_code')
+                        ->whereNotIn('prev.stage_code', [1, 2]);
+                })
                 ->whereIn('sp.code', $nextcessor_codes)
                 // ->where('sp.stage_code', $nextcessor_code)
                 ->where('sp.active', 1)
@@ -7327,8 +7573,13 @@ class SchedualController extends Controller
         $current_end_clearning = Carbon::parse($latestEnd)->copy()->addMinutes($afterIntervalMinutes);
 
         $tryCount = 0;
+        $loop_count2 = 0;
 
         while (true) {
+            $loop_count2++;
+            if ($loop_count2 > 1000) {
+                return null;
+            }
 
             foreach ($busyList as $busy) {
 

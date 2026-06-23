@@ -1,0 +1,194 @@
+﻿diff --git a/app/Http/Controllers/Pages/Schedual/SchedualController.php b/app/Http/Controllers/Pages/Schedual/SchedualController.php
+index da9db888..5d8e81cb 100644
+--- a/app/Http/Controllers/Pages/Schedual/SchedualController.php
++++ b/app/Http/Controllers/Pages/Schedual/SchedualController.php
+@@ -5211,60 +5211,7 @@ public function scheduleWarningMR(int $stageCode, int $waite_time_nomal_batch =
+             // Chß╗ë lß║Ñy task c├│ ├¡t nhß║Ñt 1 r├áng buß╗Öc cß║únh b├ío NL/BB not null
+             ->where(function ($q) use ($stageCode) {
+                 $q->whereNotNull('plan_master.after_weigth_date')
+-                  ->orWhereNotNull('plan_master.allow_weight_before_date')
+-                  ->orWhereNotNull('plan_master.expired_material_date')
+-                  ->orWhereNotNull('plan_master.preperation_before_date')
+-                  ->orWhereNotNull('plan_master.blending_before_date')
+-                  ->orWhereNotNull('plan_master.coating_before_date');
+-                if ($stageCode == 7) {
+-                    $q->orWhereNotNull('plan_master.after_parkaging_date')
+-                      ->orWhereNotNull('plan_master.expired_packing_date')
+-                      ->orWhereNotNull('plan_master.parkaging_before_date');
+-                }
+-            })
+-            ->where('sp.deparment_code', session('user.production_code'))
+-            // Sß║»p xß║┐p: ╞░u ti├¬n task c├│ deadline chß║╖t nhß║Ñt tr╞░ß╗¢c (Earliest Deadline First)
+-            ->orderByRaw("
+-                LEAST(
+-                    COALESCE(plan_master.expired_material_date, '9999-12-31'),
+-                    COALESCE(plan_master.allow_weight_before_date, '9999-12-31'),
+-                    COALESCE(plan_master.preperation_before_date, '9999-12-31'),
+-                    COALESCE(plan_master.blending_before_date, '9999-12-31'),
+-                    COALESCE(plan_master.coating_before_date, '9999-12-31'),
+-                    COALESCE(plan_master.parkaging_before_date, '9999-12-31'),
+-                    COALESCE(plan_master.expired_packing_date, '9999-12-31')
+-                ) ASC
+-            ")
+-            ->orderBy('prev.start', 'asc')
+-            ->get();
+-
+-        if (! $tasks->isNotEmpty()) {
+-            return;
+-        }
+-
+-        $processedCampaigns = [];
+-
+-        foreach ($tasks as $task) {
+-
+-            if ($task->is_val === 1) {
+-                $waite_time = $waite_time_val_batch;
+-            } else {
+-                $waite_time = $waite_time_nomal_batch;
+-            }
+-
+-            // ΓöÇΓöÇΓöÇ B╞»ß╗ÜC 1: Lower bound (operator '>') ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+-            // Task phß║úi bß║»t ─æß║ºu SAU ng├áy c├│ ─æß╗º NL / ng├áy ─æ╞░ß╗úc ph├⌐p c├ón
+-            $start_date_effective = $start_date ? clone $start_date : null;
+-
+-            $lowerBounds = array_filter([
+-                $task->after_weigth_date,
+-                $task->allow_weight_before_date,
+-            ]);
+-
+-            foreach ($lowerBounds as $boundDate) {
+-                $bound = Carbon::parse($boundDate)->setTime(6, 0, 0);
+-                if ($start_date_effective === null || $bound->gt($start_date_effective)) {
+-                    $start_date_effective = $bound;
++                        // Bß╗Å B╞»ß╗ÜC 2: Kh├┤ng ├íp dß╗Ñng Just-In-Time nß╗»a ─æß╗â ╞░u ti├¬n xß║┐p khi c├│ ph├▓ng trß╗æng sß╗¢m nhß║Ñt       $start_date_effective = $bound;
+                 }
+             }
+ 
+@@ -6170,9 +6117,9 @@ protected function sheduleNotCampaing($task, $stageCode, int $waite_time = 0, ?C
+             if ($pred && $pred->resourceId) {
+                 // Check if there is a mandatory link
+                 $link = DB::table('room_links')
+-                          ->where('source_room_id', $pred->resourceId)
+-                          ->where('active', 1)
+-                          ->first();
++                    ->where('source_room_id', $pred->resourceId)
++                    ->where('active', 1)
++                    ->first();
+                 if ($link) {
+                     $filtered = $rooms->where('room_id', $link->target_room_id)->values();
+                     if (!$filtered->isEmpty()) {
+@@ -6410,18 +6357,8 @@ protected function scheduleCampaign($campaignTasks, $stageCode, int $waite_time
+ 
+         $now->minute($roundedMinute)->second(0)->microsecond(0);
+ 
+-        $hasPredecessor = false;
+-        foreach ($campaignTasks as $t) {
+-            if (!empty($t->predecessor_code)) {
+-                $hasPredecessor = true;
+-                break;
+-            }
+-        }
+-
+         // Gom tß║Ñt cß║ú candidate time v├áo 1 mß║úng
+-        if (!$hasPredecessor || $stageCode == 1) {
+-            $candidates[] = $now;
+-        }
++        $candidates[] = $now;
+ 
+         $candidates[] = $start_date;
+ 
+@@ -6460,58 +6397,7 @@ protected function scheduleCampaign($campaignTasks, $stageCode, int $waite_time
+ 
+                     $pre_campaign_codes[] = $code;
+ 
+-                    $pre_campaign_batch = DB::table('stage_plan')
+-                        ->where('campaign_code', $code)
+-                        ->where('stage_code', $pred->stage_code)
+-                        ->orderBy('start', 'asc')
+-                        ->get();
+-
+-                    $pre_campaign_first_batch = $pre_campaign_batch->first();
+-
+-                    $pre_campaign_last_batch = $pre_campaign_batch->last();
+-
+-                    $prevCycle = DB::table('quota')
+-                        ->selectRaw('AVG(TIME_TO_SEC(m_time)/60) as avg_m_time_minutes')
+-                        ->when($firstTask->stage_code <= 6, function ($query) use ($firstTask) {
+-
+-                            return $query->where('intermediate_code', $firstTask->intermediate_code);
+-                        }, function ($query) use ($firstTask) {
+-
+-                            return $query->where('finished_product_code', $firstTask->finished_product_code);
+-                        })
+-                        ->where('active', 1)
+-                        ->where('stage_code', $pre_campaign_first_batch->stage_code)
+-                        ->value('avg_m_time_minutes');
+-
+-                    $currCycle = DB::table('quota')
+-                        ->selectRaw('AVG(TIME_TO_SEC(m_time)/60) as avg_m_time_minutes')
+-                        ->when($firstTask->stage_code <= 6, function ($query) use ($firstTask) {
+-
+-                            return $query->where('intermediate_code', $firstTask->intermediate_code);
+-                        }, function ($query) use ($firstTask) {
+-
+-                            return $query->where('finished_product_code', $firstTask->finished_product_code);
+-                        })
+-                        ->where('active', 1)
+-                        ->where('stage_code', $campaignTask->stage_code)
+-                        ->value('avg_m_time_minutes');
+-
+-                    $maxCount = max($campaignTasks->count(), $pre_campaign_batch->count());
+-
+-                    if ($currCycle && $currCycle >= $prevCycle) {
+-
+-                        $candidates[] = Carbon::parse($pred->end)->addMinutes($waite_time);
+-                    } else {
+-
+-                        $hasImmediately = collect($campaignTasks)->contains('immediately', 1);
+-
+-                        if ($campaignTask->immediately == false && $hasImmediately) {
+-
+-                            $candidates[] = Carbon::parse($pre_campaign_last_batch->end)->subMinutes(($campaignTasks->count() - 1) * $currCycle);
+-
+-                            $candidates[] = Carbon::parse($pred->end)->addMinutes($waite_time + $maxCount * ($prevCycle - $currCycle));
+-                        }
+-                    }
++                    $candidates[] = Carbon::parse($pred->start)->addMinutes($waite_time);
+                 }
+ 
+                 if ($code == null) {
+@@ -6699,9 +6585,9 @@ protected function scheduleCampaign($campaignTasks, $stageCode, int $waite_time
+                 ->value('resourceId');
+             if ($resourceId_prev) {
+                 $link = DB::table('room_links')
+-                          ->where('source_room_id', $resourceId_prev)
+-                          ->where('active', 1)
+-                          ->first();
++                    ->where('source_room_id', $resourceId_prev)
++                    ->where('active', 1)
++                    ->first();
+                 if ($link) {
+                     $filtered = $rooms->where('room_id', $link->target_room_id)->values();
+                     if (!$filtered->isEmpty()) {
+@@ -6742,10 +6628,9 @@ protected function scheduleCampaign($campaignTasks, $stageCode, int $waite_time
+                 + ($campaignTasks->count() - 1) * ($room->C1_time_minutes)
+                 + $room->C2_time_minutes;
+ 
+-            // Bß╗Å logic ghi ─æ├¿ bß║▒ng $totalTimeCampaign ─æß╗â ph├▓ng kh├┤ng bß╗ï booking khoß║úng thß╗¥i gian trß╗æng sai lß╗çch
+-            // if ($totalTimeCampaign > 0 && $totalTimeCampaign > $totalMunites) {
+-            //     $totalMunites = $totalTimeCampaign;
+-            // }
++            if ($totalTimeCampaign > 0 && $totalTimeCampaign > $totalMunites) {
++                $totalMunites = $totalTimeCampaign;
++            }
+ 
+             $compatibleMolds = null;
+             if ($stageCode == 7 && $allCompatibleMolds && $allCompatibleMolds->isNotEmpty()) {
+@@ -7498,7 +7383,6 @@ protected function findLatestSlot(
+         }
+     }
+ 
+-
+     protected function syncPackagingDate($stagePlanId, $date, $type, $updateType = null)
+     {
+         $plan = DB::table('stage_plan')->where('id', $stagePlanId)->first(['received', 'received_second_packaging']);
