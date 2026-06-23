@@ -142,7 +142,8 @@ class ProductionAssignmentController extends Controller
         if (!empty($allAssignmentIds)) {
             $allPersonnelData = DB::table('assignment_personnel')
                 ->whereIn('assignment_id', $allAssignmentIds)
-                ->select('assignment_id', 'personnel_id', 'notification', 'operation_type', 'start', 'end')
+                ->select('assignment_id', 'personnel_id', 'notification', 'operation_type', 'start', 'end', 'display_order')
+                ->orderBy('display_order', 'asc')
                 ->get()
                 ->groupBy('assignment_id');
         }
@@ -246,10 +247,32 @@ class ProductionAssignmentController extends Controller
             $localAssignments = $assignments->filter(function($a) {
                 return !$a->is_foreign;
             });
+            $foreignAssignments = $assignments->filter(function($a) {
+                return $a->is_foreign;
+            });
 
             // Tự động tạo gợi ý nếu chưa có phân công cho tổ này
-            if ($localAssignments->isEmpty() && $plans->isNotEmpty()) {
-                $dayStart = Carbon::parse($reportedDate)->setTime(6, 0, 0);
+            if ($localAssignments->isEmpty()) {
+                if ($foreignAssignments->isNotEmpty()) {
+                    foreach ($foreignAssignments as $fa) {
+                        $assignments->push((object)[
+                            'id' => null,
+                            'Sheet' => $fa->Sheet,
+                            'start' => $fa->start,
+                            'end' => $fa->end,
+                            'Job_description' => $fa->Job_description,
+                            'number_of_employes' => 1,
+                            'Num_of_per_Level_3' => 0,
+                            'personnel_data' => collect([(object)['personnel_id' => null, 'notification' => null, 'start' => null, 'end' => null, 'operation_type' => null]]),
+                            'start_time_display' => $fa->start_time_display,
+                            'end_time_display' => $fa->end_time_display,
+                            'is_foreign' => false,
+                            'is_scheduled' => false
+                        ]);
+                    }
+                    $assignments = $assignments->sortBy('start');
+                } elseif ($plans->isNotEmpty()) {
+                    $dayStart = Carbon::parse($reportedDate)->setTime(6, 0, 0);
                 $shiftItems = ['1' => [], '2' => [], '3' => []];
 
                 foreach ($displayItems as $item) {
@@ -302,8 +325,9 @@ class ProductionAssignmentController extends Controller
                 }
                 $assignments = $assignments->sortBy('start');
             }
+        }
 
-            return (object)[
+        return (object)[
                 'sp_id' => $spIdString,
                 'room_id' => $room->id,
                 'group_code' => $room->group_code,
@@ -769,6 +793,7 @@ class ProductionAssignmentController extends Controller
 
                     // Lưu danh sách nhân sự
                     $unique_p_data = collect($p_data)->unique('personnel_id');
+                    $displayOrder = 1;
                     foreach ($unique_p_data as $p) {
                         if (empty($p['personnel_id'])) continue;
                         
@@ -784,7 +809,8 @@ class ProductionAssignmentController extends Controller
                             'notification' => $p['notification'] ?? null,
                             'operation_type' => $p['operation_type'] ?? 'thủ công',
                             'start' => $pStart,
-                            'end' => $pEnd
+                            'end' => $pEnd,
+                            'display_order' => $displayOrder++
                         ]);
                     }
                 }

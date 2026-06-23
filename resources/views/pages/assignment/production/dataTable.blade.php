@@ -584,6 +584,9 @@
                                 <table class="assignment-inner-table">
                                     <tbody class="assignment-container">
                                         @forelse($task->assignments as $assignment)
+                                            @if ($assignment->is_foreign ?? false)
+                                                @continue
+                                            @endif
                                             <tr class="assignment-item {{ $assignment->is_foreign ?? false ? 'foreign-assignment' : '' }}"
                                                 data-id="{{ $assignment->id }}"
                                                 data-theory-start="{{ $task->theory_start }}"
@@ -717,11 +720,6 @@
                                                     @endif
                                                 </td>
                                                 <td style="width: 500px">
-                                                    @if ($assignment->is_foreign ?? false)
-                                                        <div class="badge badge-info mb-1">Lịch của
-                                                            {{ $assignment->stage_groups_code == 7 ? 'ĐGSC' : 'ĐGTC' }}
-                                                        </div>
-                                                    @endif
                                                     @php
                                                         $isJobEditable =
                                                             $canEdit && !($assignment->is_foreign ?? false);
@@ -744,7 +742,7 @@
                                                     @endif
                                                 </td>
                                                 <td style="width: 60px" class="text-center">
-                                                    @if ($canEdit)
+                                                    @if ($canEdit && !($assignment->is_foreign ?? false))
                                                         <i class="fas fa-times-circle btn-remove-shift cursor-pointer text-danger mb-2"
                                                             style="font-size: 1.1rem" title="Xóa ca này"></i>
                                                         <br />
