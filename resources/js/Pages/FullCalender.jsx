@@ -2417,7 +2417,7 @@ const ScheduleTest = () => {
       const addWorkingTime = (start, workingMs, offRanges) => {
         let current = workingMs > 0 ? skipOffDays(new Date(start), offRanges).getTime() : new Date(start).getTime();
         if (workingMs === 0) return new Date(current);
-        
+
         let remaining = Math.abs(workingMs);
         const direction = workingMs > 0 ? 1 : -1;
 
@@ -2707,8 +2707,8 @@ const ScheduleTest = () => {
 
       // 4. Áp dụng thay đổi nếu không có lỗi
       batchUpdates.forEach(u => {
-          const ev = calendarApi.getEventById(u.id);
-          if (ev) ev.setDates(new Date(u.start), new Date(u.end), { maintainDuration: false });
+        const ev = calendarApi.getEventById(u.id);
+        if (ev) ev.setDates(new Date(u.start), new Date(u.end), { maintainDuration: false });
       });
 
       setPendingChanges(prev => {
@@ -4610,50 +4610,50 @@ const ScheduleTest = () => {
           });
         }
         if (btnFixPhaCheModal) {
-            btnFixPhaCheModal.addEventListener('click', () => {
-              Swal.close();
-              setTimeout(() => handleAutoFixByPhaChe(), 200);
-            });
-          }
+          btnFixPhaCheModal.addEventListener('click', () => {
+            Swal.close();
+            setTimeout(() => handleAutoFixByPhaChe(), 200);
+          });
+        }
 
-          const btnFixPass2 = document.getElementById('btn-fix-pass2');
-          if (btnFixPass2) {
-            btnFixPass2.addEventListener('click', () => {
-              Swal.close();
-              setTimeout(() => {
+        const btnFixPass2 = document.getElementById('btn-fix-pass2');
+        if (btnFixPass2) {
+          btnFixPass2.addEventListener('click', () => {
+            Swal.close();
+            setTimeout(() => {
+              Swal.fire({
+                title: 'Đang chạy Pass 2...',
+                text: 'Vui lòng chờ trong giây lát',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading(),
+              });
+
+              const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
+
+              axios.post('/Schedual/scheduleAllPass2', {
+                startDate: toLocalISOString(activeStart),
+                endDate: toLocalISOString(activeEnd),
+              }, { timeout: 1200000 }).then(res => {
+                let data = res.data;
+                if (data && data.success === false) {
+                  Swal.fire('Thông báo', data.message, 'info');
+                  setLoading(!loading);
+                  return;
+                }
                 Swal.fire({
-                  title: 'Đang chạy Pass 2...',
-                  text: 'Vui lòng chờ trong giây lát',
-                  allowOutsideClick: false,
-                  didOpen: () => Swal.showLoading(),
+                  icon: 'success',
+                  title: 'Hoàn Thành Pass 2',
+                  timer: 1000,
+                  showConfirmButton: false,
                 });
-                
-                const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
-                
-                axios.post('/Schedual/scheduleAllPass2', {
-                  startDate: toLocalISOString(activeStart),
-                  endDate: toLocalISOString(activeEnd),
-                }, { timeout: 1200000 }).then(res => {
-                  let data = res.data;
-                  if (data && data.success === false) {
-                     Swal.fire('Thông báo', data.message, 'info');
-                     setLoading(!loading);
-                     return;
-                  }
-                  Swal.fire({
-                    icon: 'success',
-                    title: 'Hoàn Thành Pass 2',
-                    timer: 1000,
-                    showConfirmButton: false,
-                  });
-                  setLoading(!loading);
-                }).catch(err => {
-                  Swal.fire('Lỗi Pass 2', err.message, 'error');
-                  setLoading(!loading);
-                });
-              }, 200);
-            });
-          }
+                setLoading(!loading);
+              }).catch(err => {
+                Swal.fire('Lỗi Pass 2', err.message, 'error');
+                setLoading(!loading);
+              });
+            }, 200);
+          });
+        }
       }
       ,
       preConfirm: () => {
@@ -4727,7 +4727,7 @@ const ScheduleTest = () => {
                 data = data.replace(/^<!--.*?-->/, "").trim();
                 data = JSON.parse(data);
               }
-              
+
               Swal.fire({
                 icon: 'success',
                 title: 'Hoàn Thành Sắp Lịch',
@@ -5086,14 +5086,14 @@ const ScheduleTest = () => {
     const allEvents = api?.getEvents() || [];
     const errorEvents = [];
     // Tạm thời comment phần chặn lỗi lịch nghiêm trọng sẽ mở lại sau
-    /*
+
     allEvents.forEach(evt => {
       const bg = (evt.backgroundColor || '').toLowerCase();
       if (bg === '#920000ff' || bg === '#e54a4aff') {
         errorEvents.push(evt);
       }
     });
-    */
+
     const hasEventErrors = errorEvents.length > 0;
 
     // 🔹 2. Gọi API kiểm tra sản lượng lý thuyết

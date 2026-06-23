@@ -277,4 +277,26 @@ class IntermediateCategoryController extends Controller
 
                 return response()->json($datas);
         }
+
+        public function getMaterialName(Request $request)
+        {
+                $matId = trim($request->mat_id);
+                if (empty($matId)) {
+                        return response()->json(['success' => false, 'message' => 'Missing mat_id']);
+                }
+
+                try {
+                        $material = DB::connection('mms')
+                                ->table('mstmaterial')
+                                ->where('MatID', $matId)
+                                ->first();
+
+                        if ($material) {
+                                return response()->json(['success' => true, 'mat_name' => $material->MatNM, 'mat_uom' => $material->MatUOM]);
+                        }
+                        return response()->json(['success' => false, 'message' => 'Not found']);
+                } catch (\Exception $e) {
+                        return response()->json(['success' => false, 'message' => $e->getMessage()]);
+                }
+        }
 }

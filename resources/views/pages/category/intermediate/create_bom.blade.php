@@ -37,11 +37,11 @@
 
             <div class="mb-3" style="display:flex; gap:10px; align-items:center; font-size:18px;">
                 <input type="hidden" id="product_caterogy_id">
-                <input type="text" id="input_code" class="form-control" placeholder="Mã Nguyên Liệu">
-                <input type="text" id="input_name" class="form-control" placeholder="Tên Nguyên Liệu">
-                <input type="number" id="input_qty" class="form-control" placeholder="Số Lượng">
+                <input type="text" id="input_code" class="form-control" placeholder="Mã Nguyên Liệu" style="flex: 2;">
+                <input type="text" id="input_name" class="form-control" placeholder="Tên Nguyên Liệu" style="flex: 4;">
+                <input type="number" id="input_qty" class="form-control" placeholder="Số Lượng" style="flex: 2;">
                 
-                <select class="form-control" id="input_uom" >
+                <select class="form-control" id="input_uom" style="flex: 1;">
                   <option> - Đơn Vị - </option>
                   @foreach ($units as $unit)
                   <option value="{{ $unit->code }}"
@@ -51,23 +51,22 @@
                   @endforeach
                 </select> 
 
-                <button type="button" class="btn btn-success" id="btn_add_row">
+                <button type="button" class="btn btn-success" id="btn_add_row" style="flex: 0 0 auto;">
                     <i class="fa fa-plus"></i>
                 </button>
 
             </div>
 
             <div class="table-responsive">
-                <table id="data_table_recipe" class="table table-bordered table-striped" style="font-size: 20px">
+                <table id="data_table_recipe" class="table table-bordered table-striped" style="font-size: 20px; table-layout: fixed;">
                   <thead >
                     <tr>
-                      <th>STT</th>
-                      <th>Mã Nguyên Liệu</th>
-                      <th>Tên Nguyên Liệu</th>
-                      <th>Số Lượng Nguyên Liệu</th>
-                      <th>Đơn Vị</th>
-                      <th>Xóa</th>
-                    
+                      <th style="width: 5%;">STT</th>
+                      <th style="width: 25%;">Mã Nguyên Liệu</th>
+                      <th style="width: 40%;">Tên Nguyên Liệu</th>
+                      <th style="width: 15%;">Số Lượng</th>
+                      <th style="width: 10%;">Đơn Vị</th>
+                      <th style="width: 5%; text-align: center;">Xóa</th>
                     </tr>
                   </thead>
 
@@ -93,6 +92,29 @@
 
 <script>
   let rowIndex = 1;
+
+  $('#input_code').on('change', function() {
+      let code = $(this).val().trim();
+      if (!code) {
+          $('#input_name').val('');
+          return;
+      }
+      
+      $.ajax({
+          url: "{{ route('pages.category.intermediate.getMaterialName') }}",
+          type: "GET",
+          data: { mat_id: code },
+          success: function(res) {
+              if (res.success) {
+                  $('#input_name').val(res.mat_name);
+                  if (res.mat_uom) {
+                      $('#input_uom').val(res.mat_uom);
+                  }
+              }
+          }
+      });
+  });
+
   $('#btn_add_row').on('click', function () {
      
       let code = $('#input_code').val().trim();

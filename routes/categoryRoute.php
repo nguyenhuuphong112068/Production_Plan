@@ -25,6 +25,7 @@ Route::prefix('/category')
                                 Route::post('deActive', 'deActive')->name('deActive');
                                 Route::post('recipe', 'recipe')->name('recipe');
                                 Route::post('save_bom', 'save_bom')->name('resave_bomcipe');
+                                Route::get('get_material_name', 'getMaterialName')->name('getMaterialName');
                                 Route::get('history', 'history')->name('history');
                         });
 
