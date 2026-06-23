@@ -212,18 +212,25 @@ class DashBoardController extends Controller
         ];
 
         $departmentId = $deptMapping[$production_code] ?? null;
-        $employeeDailyHours = []; // hours array per day
+        
+        // Lấy danh sách ngày nghỉ (off-dates)
+        $offDates = DB::table('off_days')
+            ->whereDate('off_date', '>=', $startDate->format('Y-m-d'))
+            ->whereDate('off_date', '<=', $endDate->format('Y-m-d'))
+            ->pluck('off_date')->toArray();
+        $offDatesMap = [];
+        foreach ($offDates as $od) {
+            $offDatesMap[substr($od, 0, 10)] = true;
+        }
+
         $employeeOvertimeHours = []; // total overtime for period
         $employeeDailyOT = []; // overtime hours per day
         $employeeRegisteredShifts = [];
         $employeeEofficeHours = [];
-        $employeeDailyLeave = [];
         foreach ($employees as $emp) {
             $employeeOvertimeHours[$emp->code] = 0;
             $employeeRegisteredShifts[$emp->code] = [];
             $employeeEofficeHours[$emp->code] = 0;
-            $employeeDailyHours[$emp->id] = array_fill(0, $daysInPeriod, 0);
-            $employeeDailyLeave[$emp->id] = array_fill(0, $daysInPeriod, false);
         }
 
         if ($departmentId) {
@@ -272,6 +279,12 @@ class DashBoardController extends Controller
                                     $shiftCode = strtoupper(trim($dayData ?? ''));
                                     $ot = 0;
                                     $eoffice = 0; // Cũ không có giờ làm việc e-office
+                                }
+
+                                // Reset regular working hours nếu rơi vào ngày nghỉ (off-date)
+                                $dayStr = $currentDay->format('Y-m-d');
+                                if (isset($offDatesMap[$dayStr])) {
+                                    $eoffice = 0;
                                 }
 
                                 if ($shiftCode === 'P') {
