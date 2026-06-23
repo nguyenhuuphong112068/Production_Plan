@@ -27,16 +27,16 @@
                 </div>
 
                 <div class="modal-body">
-                    {{-- REASON --}}
-                    <div class="form-group">
-                        <label for="reason">Lý Do </label>
-                        <textarea type="text" class="form-control" name="reason" {{ $auth_update }}> {{ old('reason') }} </textarea>
-                    </div>
-
                     {{-- NAME --}}
                     <div class="form-group">
                         <label for="name">Nội Dung Giải Trình </label>
                         <textarea type="text" class="form-control" name="note" {{ $auth_update }}> {{ old('content') }} </textarea>
+                    </div>
+
+                    {{-- REASON --}}
+                    <div class="form-group">
+                        <label for="reason">Lý Do </label>
+                        <textarea type="text" class="form-control" name="reason" {{ $auth_update }}> {{ old('reason') }} </textarea>
                     </div>
 
                     <div class="form-group">
