@@ -79,8 +79,8 @@
                 font-size: 0.85rem !important;
             }
 
-            .assignment-inner-table td, 
-            .room-name-cell, 
+            .assignment-inner-table td,
+            .room-name-cell,
             .theory-cell {
                 padding: 4px !important;
                 font-size: 0.85rem !important;
@@ -371,25 +371,33 @@
                         </tr>
                     @endif
                     @php
-                        $sortedTasks = collect($tasks)->map(function($task, $index) {
-                            $hasJob = false;
-                            if (!empty($task->assignments) && count($task->assignments) > 0) {
-                                foreach ($task->assignments as $a) {
-                                    $desc = trim(strip_tags(str_replace(['&nbsp;', '<br>', '<br/>'], '', $a->Job_description ?? '')));
-                                    if ($desc !== '' && $desc !== 'Nội dung...') {
-                                        $hasJob = true;
-                                        break;
+                        $sortedTasks = collect($tasks)
+                            ->map(function ($task, $index) {
+                                $hasJob = false;
+                                if (!empty($task->assignments) && count($task->assignments) > 0) {
+                                    foreach ($task->assignments as $a) {
+                                        $desc = trim(
+                                            strip_tags(
+                                                str_replace(['&nbsp;', '<br>', '<br/>'], '', $a->Job_description ?? ''),
+                                            ),
+                                        );
+                                        if ($desc !== '' && $desc !== 'Nội dung...') {
+                                            $hasJob = true;
+                                            break;
+                                        }
                                     }
                                 }
-                            }
-                            return (object)[
-                                'task' => $task,
-                                'hasJob' => $hasJob,
-                                'originalIndex' => $index
-                            ];
-                        })->sortBy(function($item) {
-                            return ($item->hasJob ? 0 : 1) . '-' . sprintf('%06d', $item->originalIndex);
-                        })->pluck('task')->all();
+                                return (object) [
+                                    'task' => $task,
+                                    'hasJob' => $hasJob,
+                                    'originalIndex' => $index,
+                                ];
+                            })
+                            ->sortBy(function ($item) {
+                                return ($item->hasJob ? 0 : 1) . '-' . sprintf('%06d', $item->originalIndex);
+                            })
+                            ->pluck('task')
+                            ->all();
                     @endphp
                     @foreach ($sortedTasks as $task)
                         <tr class="{{ count($task->assignments ?? []) === 0 ? 'no-assignment' : '' }}">
@@ -418,8 +426,17 @@
                                                     <!-- Ca làm việc -->
                                                     <td>
                                                         @php
-                                                            $shiftNames = ['1' => 'Ca 1', '2' => 'Ca 2', '3' => 'Ca 3', '4' => 'HC', '5' => 'Khác', '6' => 'Ca 4'];
-                                                            $sName = isset($a->Sheet) ? ($shiftNames[$a->Sheet] ?? 'Ca ' . $a->Sheet) : '-';
+                                                            $shiftNames = [
+                                                                '1' => 'Ca 1',
+                                                                '2' => 'Ca 2',
+                                                                '3' => 'Ca 3',
+                                                                '4' => 'HC',
+                                                                '5' => 'Khác',
+                                                                '6' => 'Ca 4',
+                                                            ];
+                                                            $sName = isset($a->Sheet)
+                                                                ? $shiftNames[$a->Sheet] ?? 'Ca ' . $a->Sheet
+                                                                : '-';
                                                         @endphp
                                                         <div class="font-weight-bold">{{ $sName }}</div>
                                                         <small class="text-primary"><span
@@ -597,7 +614,7 @@
                 if (!isNoLunchBreakShift) {
                     // Subtract lunch break (11:30 - 12:15)
                     const lunchStart = 11 * 60 + 30; // 690
-                    const lunchEnd = 12 * 60 + 15;   // 735
+                    const lunchEnd = 12 * 60 + 15; // 735
 
                     const overlapStart = Math.max(sMin, lunchStart);
                     const overlapEnd = Math.min(eMin, lunchEnd);

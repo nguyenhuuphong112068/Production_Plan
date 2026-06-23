@@ -93,7 +93,13 @@
                                 <th class="text-center" style="width: 5% ">Sản lượng lý thuyết</th>
                                 <th class="text-center" style="width: 5% ">Sản lượng thực tế</th>
                                 <th class="text-center" style="width: 5% ">Phần trăm đáp ứng</th>
-                                <th class="text-center">Chi tiết</th>
+                                <th class="text-center p-0 align-middle" style="min-width: 500px;">
+                                    <div class="border-bottom" style="border-color: #dee2e6; padding: 10px 0;">Chi tiết</div>
+                                    <div class="row m-0 w-100">
+                                        <div class="col-6 p-2" style="border-right: 1px solid #dee2e6;">Giải trình</div>
+                                        <div class="col-6 p-2">Lý do</div>
+                                    </div>
+                                </th>
                             </tr>
                         </thead>
 
@@ -207,14 +213,22 @@
                                         {{ number_format($stagePercent, 2) }}%
                                     </td>
 
-                                    <td class="text-left note-content">
-                                        {{ trim($explanation[$stage_code] ?? '-') }}
-                                        <button type="button" class="btn btn-sm btn-explain"
-                                            data-stage_code="{{ $stage_code }}"
-                                            data-reported_date="{{ $defaultFrom }}" data-toggle="modal"
-                                            data-target="#explanation">
-                                            📝
-                                        </button>
+                                    <td class="text-left note-content p-0 align-middle">
+                                        <div class="d-flex w-100 h-100" style="min-width: 500px;">
+                                            <div class="w-50 p-2 d-flex align-items-start" style="border-right: 1px dashed rgba(0,0,0,0.2);">
+                                                <span style="font-size: 0.9em; white-space: pre-line; flex-grow: 1;">{{ isset($explanation[$stage_code]) && !empty($explanation[$stage_code]->content) ? trim($explanation[$stage_code]->content) : '-' }}</span>
+                                            </div>
+                                            <div class="w-50 p-2 d-flex justify-content-between align-items-start">
+                                                <span style="font-size: 0.9em; white-space: pre-line; flex-grow: 1;">{{ isset($explanation[$stage_code]) && !empty($explanation[$stage_code]->reason) ? trim($explanation[$stage_code]->reason) : '-' }}</span>
+                                                <button type="button" class="btn btn-sm btn-outline-info btn-explain ml-2"
+                                                    style="padding: 2px 6px; font-size: 10px; height: fit-content;"
+                                                    data-stage_code="{{ $stage_code }}"
+                                                    data-reported_date="{{ $defaultFrom }}" data-toggle="modal"
+                                                    data-target="#explanation" title="Sửa nội dung">
+                                                    <i class="fas fa-pen"></i>
+                                                </button>
+                                            </div>
+                                        </div>
                                     </td>
                                     {{-- @endforeach --}}
 
@@ -635,6 +649,7 @@
                 success: function(res) {
 
                     modal.find('textarea[name="note"]').val(res.content);
+                    modal.find('textarea[name="reason"]').val(res.reason);
                     modal.find('input[name="created_by"]').val(res.created_by);
                     modal.find('input[name="created_at"]').val(res.updated_at || res
                         .created_at);

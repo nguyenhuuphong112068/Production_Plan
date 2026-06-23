@@ -69,7 +69,7 @@ class DailyReportController extends Controller
 
         $explanation = DB::table('explanation')
             ->where('deparment_code', session('user')['production_code'])
-            ->where('reported_date', $reportedDate->toDateString())->pluck('content', 'stage_code');
+            ->where('reported_date', $reportedDate->toDateString())->get()->keyBy('stage_code');
 
         $displayDate = $reportedDate->format('d/m/Y');
         session()->put(['title' => "BÁO CÁO NGÀY $displayDate"]);
@@ -764,6 +764,7 @@ class DailyReportController extends Controller
             ],
             [
                 'content'     => $request->note,
+                'reason'      => $request->reason,
                 'created_by'  => session('user')['fullName'],
                 'updated_at'  => now(),
                 'created_at'  => now(),
