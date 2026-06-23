@@ -4196,12 +4196,14 @@ const ScheduleTest = () => {
               <div style="font-weight:700;font-size:13px">🧬 Sửa Lỗi Đen Theo Pha Chế</div>
               <div style="opacity:.9;margin-top:3px">Cố định Pha Chế (3&4), sắp xếp công đoạn khác thoát đen</div>
             </button>
+            <!--
             <button type="button" id="btn-fix-pass2"
               style="background:#27ae60;color:white;border:none;border-radius:6px;padding:12px 10px;text-align:left;cursor:pointer;font-size:12px;line-height:1.5;transition:opacity .2s"
               onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
               <div style="font-weight:700;font-size:13px">🚀 Tối Ưu Hóa (Pass 2)</div>
               <div style="opacity:.9;margin-top:3px">Xếp lại lịch ưu tiên tuyệt đối cho các chiến dịch quá hạn biệt trữ</div>
             </button>
+            -->
 
 
           </div>

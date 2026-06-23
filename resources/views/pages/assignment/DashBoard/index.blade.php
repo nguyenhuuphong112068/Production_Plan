@@ -89,52 +89,52 @@
                         <div class="small-box bg-info">
                             <div class="inner">
                                 <h3 id="kpi_total">0</h3>
-                                <p>Tổng nhân sự</p>
+                                <p id="kpi_total_label">Tổng nhân sự</p>
                             </div>
                             <div class="icon"><i class="fas fa-users"></i></div>
                         </div>
                     </div>
                     <div class="col-lg-2 col-6">
-                        <div class="small-box bg-secondary">
+                        <div class="small-box bg-secondary" onclick="showDailyStats('on_leave', 'Nghỉ phép (P)', 'bg-secondary')" style="cursor:pointer;" title="Click để xem chi tiết theo ngày">
                             <div class="inner">
                                 <h3 id="kpi_on_leave">0</h3>
-                                <p>Nghỉ phép (P)</p>
+                                <p id="kpi_on_leave_label">Nghỉ phép (P)</p>
                             </div>
                             <div class="icon"><i class="fas fa-bed"></i></div>
                         </div>
                     </div>
                     <div class="col-lg-2 col-6">
-                        <div class="small-box bg-danger">
+                        <div class="small-box bg-danger" onclick="showDailyStats('unassigned', 'Chưa xếp lịch (0h)', 'bg-danger')" style="cursor:pointer;" title="Click để xem chi tiết theo ngày">
                             <div class="inner">
                                 <h3 id="kpi_unassigned">0</h3>
-                                <p>Chưa xếp lịch (0h)</p>
+                                <p id="kpi_unassigned_label">Chưa xếp lịch (0h)</p>
                             </div>
                             <div class="icon"><i class="fas fa-user-times"></i></div>
                         </div>
                     </div>
                     <div class="col-lg-2 col-6">
-                        <div class="small-box bg-warning">
+                        <div class="small-box bg-warning" onclick="showDailyStats('under_8h', '< 8h / ngày', 'bg-warning')" style="cursor:pointer;" title="Click để xem chi tiết theo ngày">
                             <div class="inner">
                                 <h3 id="kpi_under8">0</h3>
-                                <p>< 8h / ngày</p>
+                                <p id="kpi_under8_label">< 8h / ngày</p>
                             </div>
                             <div class="icon"><i class="fas fa-battery-half"></i></div>
                         </div>
                     </div>
                     <div class="col-lg-2 col-6">
-                        <div class="small-box bg-success">
+                        <div class="small-box bg-success" onclick="showDailyStats('exact_8h', 'Đủ 8h / ngày', 'bg-success')" style="cursor:pointer;" title="Click để xem chi tiết theo ngày">
                             <div class="inner">
                                 <h3 id="kpi_exact8">0</h3>
-                                <p>Đủ 8h / ngày</p>
+                                <p id="kpi_exact8_label">Đủ 8h / ngày</p>
                             </div>
                             <div class="icon"><i class="fas fa-battery-full"></i></div>
                         </div>
                     </div>
                     <div class="col-lg-2 col-6">
-                        <div class="small-box" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: #fff;">
+                        <div class="small-box" onclick="showDailyStats('total_ot_hours', 'Tổng Tăng Ca (TC)', '', 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)')" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: #fff; cursor:pointer;" title="Click để xem chi tiết theo ngày">
                             <div class="inner">
                                 <h3 id="kpi_total_ot">0h</h3>
-                                <p><i class="fas fa-clock mr-1"></i>Tổng Tăng Ca (TC)</p>
+                                <p id="kpi_total_ot_label"><i class="fas fa-clock mr-1"></i>Tổng Tăng Ca (TC)</p>
                             </div>
                             <div class="icon"><i class="fas fa-fire-alt"></i></div>
                         </div>
@@ -283,17 +283,44 @@
     </div>
 </div>
 
+<!-- Modal Thống Kê Theo Ngày -->
+<div class="modal fade" id="dailyStatsModal" tabindex="-1" role="dialog" aria-hidden="true" style="z-index: 1060;">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white" id="dailyStatsHeader">
+                <h5 class="modal-title font-weight-bold" id="dailyStatsTitle">Chi Tiết Theo Ngày</h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" style="max-height: 500px; overflow-y: auto;">
+                <table class="table table-bordered table-striped text-center table-sm">
+                    <thead class="bg-light">
+                        <tr>
+                            <th>Ngày</th>
+                            <th id="dailyStatsUnit">Số Lượng (Người)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dailyStatsBody">
+                        <!-- JS gen -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- ChartJS -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <!-- SweetAlert2 -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script>
+    let globalStatsDaily = [];
     let currentPieChart = null;
     let currentBarChart = null;
     let allDetails = [];
     let globalAvailableGroups = [];
-
     document.getElementById('filterForm').addEventListener('submit', function(e) {
         e.preventDefault();
         loadData();
@@ -372,12 +399,35 @@
         loadPolicyData();
 
         // Update KPIs
+        const days = data.period ? data.period.days : 1;
+        const totalLaps = data.total_personnel * days;
+        
+        // Luôn hiển thị Số Người ở h3 (to)
         document.getElementById('kpi_total').innerText = data.total_personnel;
-        document.getElementById('kpi_on_leave').innerText = data.stats.on_leave;
-        document.getElementById('kpi_unassigned').innerText = data.stats.unassigned;
-        document.getElementById('kpi_under8').innerText = data.stats.under_8h;
-        document.getElementById('kpi_exact8').innerText = data.stats.exact_8h;
-        document.getElementById('kpi_total_ot').innerText = (data.stats.total_ot_hours || 0) + 'h';
+        document.getElementById('kpi_on_leave').innerText = data.stats_people.on_leave;
+        document.getElementById('kpi_unassigned').innerText = data.stats_people.unassigned;
+        document.getElementById('kpi_under8').innerText = data.stats_people.under_8h;
+        document.getElementById('kpi_exact8').innerText = data.stats_people.exact_8h;
+        document.getElementById('kpi_total_ot').innerText = (data.stats_people.total_ot_hours || 0) + 'h';
+        
+        // Hiển thị Số Lượt (Laps) ở thẻ p (nhỏ)
+        if (days > 1) {
+            document.getElementById('kpi_total_label').innerText = 'Tổng nhân sự (' + totalLaps + ' lượt)';
+            document.getElementById('kpi_on_leave_label').innerText = 'Nghỉ phép (P) - ' + data.stats_laps.on_leave + ' lượt';
+            document.getElementById('kpi_unassigned_label').innerText = 'Chưa xếp lịch - ' + data.stats_laps.unassigned + ' lượt';
+            document.getElementById('kpi_under8_label').innerText = '< 8h/ngày - ' + data.stats_laps.under_8h + ' lượt';
+            document.getElementById('kpi_exact8_label').innerText = 'Đủ 8h/ngày - ' + data.stats_laps.exact_8h + ' lượt';
+            document.getElementById('kpi_total_ot_label').innerHTML = '<i class="fas fa-clock mr-1"></i>Tổng Tăng Ca (' + (data.stats_laps.total_ot_hours || 0) + 'h)';
+        } else {
+            document.getElementById('kpi_total_label').innerText = 'Tổng nhân sự';
+            document.getElementById('kpi_on_leave_label').innerText = 'Nghỉ phép (P)';
+            document.getElementById('kpi_unassigned_label').innerText = 'Chưa xếp lịch (0h)';
+            document.getElementById('kpi_under8_label').innerText = '< 8h / ngày';
+            document.getElementById('kpi_exact8_label').innerText = 'Đủ 8h / ngày';
+            document.getElementById('kpi_total_ot_label').innerHTML = '<i class="fas fa-clock mr-1"></i>Tổng Tăng Ca (TC)';
+        }
+        
+        globalStatsDaily = data.stats_daily || [];
 
         // Update Period
         document.getElementById('period_text').innerText = `${data.period.start} đến ${data.period.end} (${data.period.days} ngày)`;
@@ -421,8 +471,10 @@
         const ctxPie = document.getElementById('assignmentPieChart').getContext('2d');
         const ctxBar = document.getElementById('assignmentBarChart').getContext('2d');
 
+        // Use stats_laps for charts to reflect Man-Days correctly for Week/Month
+        const statsChart = data.period.days > 1 ? data.stats_laps : data.stats_people;
         const chartLabels = ['Nghỉ phép', 'Chưa phân công', '< 8h', 'Đủ 8h', '> 8h'];
-        const chartData = [data.stats.on_leave, data.stats.unassigned, data.stats.under_8h, data.stats.exact_8h, data.stats.over_8h];
+        const chartData = [statsChart.on_leave, statsChart.unassigned, statsChart.under_8h, statsChart.exact_8h, statsChart.over_8h];
         const chartColors = ['#6c757d', '#dc3545', '#ffc107', '#28a745', '#007bff'];
 
         if (currentPieChart) currentPieChart.destroy();
@@ -663,6 +715,53 @@
                     $('#historyModal').modal('show');
                 }
             });
+    }
+
+    function showDailyStats(key, title, bgClass, bgStyle) {
+        if (!globalStatsDaily || globalStatsDaily.length <= 1) {
+            // Nếu chỉ có 1 ngày thì không cần show modal
+            return;
+        }
+        
+        const header = document.getElementById('dailyStatsHeader');
+        header.className = 'modal-header text-white ' + (bgClass || 'bg-primary');
+        if (bgStyle) {
+            header.style.background = bgStyle;
+        } else {
+            header.style.background = ''; // reset
+        }
+
+        const unitTh = document.getElementById('dailyStatsUnit');
+        const isHours = key === 'total_ot_hours';
+        unitTh.innerText = isHours ? 'Số Lượng (Giờ)' : 'Số Lượng (Người)';
+
+        document.getElementById('dailyStatsTitle').innerText = title;
+        const tbody = document.getElementById('dailyStatsBody');
+        tbody.innerHTML = '';
+        
+        let total = 0;
+        globalStatsDaily.forEach(day => {
+            const val = day[key] || 0;
+            total += val;
+            const displayVal = isHours ? val + 'h' : val;
+            tbody.innerHTML += `
+                <tr>
+                    <td>${day.date}</td>
+                    <td class="font-weight-bold text-primary">${displayVal}</td>
+                </tr>
+            `;
+        });
+        
+        const totalDisplay = isHours ? (Math.round(total * 100) / 100) + 'h' : total;
+        // Thêm dòng tổng
+        tbody.innerHTML += `
+            <tr class="bg-light">
+                <td class="font-weight-bold">Tổng Cộng</td>
+                <td class="font-weight-bold text-danger">${totalDisplay}</td>
+            </tr>
+        `;
+        
+        $('#dailyStatsModal').modal('show');
     }
 </script>
 @endsection

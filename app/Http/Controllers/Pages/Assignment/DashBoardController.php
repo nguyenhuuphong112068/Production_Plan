@@ -132,10 +132,14 @@ class DashBoardController extends Controller
             ->get();
 
         // Calculate hours per employee and room
-        $employeeHours = [];
+        $employeeDailyHours = [];
+        $employeeDailyLeave = [];
         $roomHoursMap = []; // [room_name => total_hours]
+        $empCodeToId = [];
         foreach ($employeeIds as $id) {
-            $employeeHours[$id] = 0;
+            $employeeDailyHours[$id] = array_fill(0, $daysInPeriod, 0);
+            $employeeDailyLeave[$id] = array_fill(0, $daysInPeriod, false);
+            $empCodeToId[$employees[$id]->code] = $id;
         }
 
         foreach ($assignments as $assignment) {
@@ -150,30 +154,39 @@ class DashBoardController extends Controller
                 $aEnd = $endDate->copy();
             }
 
-            $durationMin = $aStart->diffInMinutes($aEnd);
-
             $isNoLunchBreakShift = false;
             // Sheet: 1=C1, 2=C2, 3=C3, 6=C4. Chỉ trừ nghỉ trưa cho 4=HC, 5=Khác
             if (in_array($assignment->Sheet, [1, 2, 3, 6])) {
                 $isNoLunchBreakShift = true;
             }
 
-            if (!$isNoLunchBreakShift) {
-                // Subtract lunch break (11:30 - 12:15)
-                $lunchStart = $aStart->copy()->setTime(11, 30, 0);
-                $lunchEnd = $aStart->copy()->setTime(12, 15, 0);
+            for ($d = 0; $d < $daysInPeriod; $d++) {
+                $dayStart = $startDate->copy()->addDays($d);
+                $dayEnd = $dayStart->copy()->addDays(1);
 
-                $overlapStart = $aStart->copy()->max($lunchStart);
-                $overlapEnd = $aEnd->copy()->min($lunchEnd);
+                $overlapStart = $aStart->copy()->max($dayStart);
+                $overlapEnd = $aEnd->copy()->min($dayEnd);
 
                 if ($overlapStart->lt($overlapEnd)) {
-                    $durationMin -= $overlapStart->diffInMinutes($overlapEnd);
-                }
-            }
+                    $durationMin = $overlapStart->diffInMinutes($overlapEnd);
 
-            $hours = $durationMin / 60;
-            if (isset($employeeHours[$assignment->personnel_id])) {
-                $employeeHours[$assignment->personnel_id] += $hours;
+                    if (!$isNoLunchBreakShift) {
+                        $lunchStart = $dayStart->copy()->setTime(11, 30, 0);
+                        $lunchEnd = $dayStart->copy()->setTime(12, 15, 0);
+
+                        $lOverlapStart = $overlapStart->copy()->max($lunchStart);
+                        $lOverlapEnd = $overlapEnd->copy()->min($lunchEnd);
+
+                        if ($lOverlapStart->lt($lOverlapEnd)) {
+                            $durationMin -= $lOverlapStart->diffInMinutes($lOverlapEnd);
+                        }
+                    }
+
+                    $hours = $durationMin / 60;
+                    if (isset($employeeDailyHours[$assignment->personnel_id])) {
+                        $employeeDailyHours[$assignment->personnel_id][$d] += $hours;
+                    }
+                }
             }
 
             $roomName = $assignment->room_name ?? $assignment->work_location ?? 'Khác';
@@ -199,14 +212,18 @@ class DashBoardController extends Controller
         ];
 
         $departmentId = $deptMapping[$production_code] ?? null;
-        $leaveEmployees = [];
-        $employeeOvertimeHours = []; // [employee_code => total_ot]
+        $employeeDailyHours = []; // hours array per day
+        $employeeOvertimeHours = []; // total overtime for period
+        $employeeDailyOT = []; // overtime hours per day
         $employeeRegisteredShifts = [];
         $employeeEofficeHours = [];
+        $employeeDailyLeave = [];
         foreach ($employees as $emp) {
             $employeeOvertimeHours[$emp->code] = 0;
             $employeeRegisteredShifts[$emp->code] = [];
             $employeeEofficeHours[$emp->code] = 0;
+            $employeeDailyHours[$emp->id] = array_fill(0, $daysInPeriod, 0);
+            $employeeDailyLeave[$emp->id] = array_fill(0, $daysInPeriod, false);
         }
 
         if ($departmentId) {
@@ -259,6 +276,10 @@ class DashBoardController extends Controller
 
                                 if ($shiftCode === 'P') {
                                     $pCount++;
+                                    if (isset($empCodeToId[$code])) {
+                                        $empId = $empCodeToId[$code];
+                                        $employeeDailyLeave[$empId][$d] = true;
+                                    }
                                 }
                                 if ($shiftCode && $shiftCode !== 'OFF' && $shiftCode !== '') {
                                     if ($daysInPeriod == 1) {
@@ -269,14 +290,12 @@ class DashBoardController extends Controller
                                 }
                                 $totalOT += $ot;
                                 $totalEoffice += $eoffice;
-                            }
-                        }
 
-                        if ($pCount > 0) {
-                            foreach ($employees as $empId => $emp) {
-                                if ($emp->code == $code) {
-                                    $leaveEmployees[$empId] = true;
-                                    break;
+                                if (isset($employeeOvertimeHours[$code]) && $ot > 0) {
+                                    if (!isset($employeeDailyOT[$code])) {
+                                        $employeeDailyOT[$code] = array_fill(0, $daysInPeriod, 0);
+                                    }
+                                    $employeeDailyOT[$code][$d] += $ot;
                                 }
                             }
                         }
@@ -292,8 +311,16 @@ class DashBoardController extends Controller
             }
         }
 
-        // 3. Classify personnel & aggregate overtime by group
-        $stats = [
+        $stats_laps = [
+            'on_leave' => 0,
+            'unassigned' => 0,
+            'under_8h' => 0,
+            'exact_8h' => 0,
+            'over_8h' => 0,
+            'total_ot_hours' => 0,
+        ];
+
+        $stats_people = [
             'on_leave' => 0,
             'unassigned' => 0,
             'under_8h' => 0,
@@ -305,30 +332,94 @@ class DashBoardController extends Controller
         $details = [];
         $groupOvertimeMap = []; // [group_name => total_ot]
 
-        foreach ($employeeHours as $empId => $totalHours) {
-            $avgHoursPerDay = $daysInPeriod > 0 ? ($totalHours / $daysInPeriod) : 0;
+        $stats_daily = [];
+        for ($d = 0; $d < $daysInPeriod; $d++) {
+            $stats_daily[$d] = [
+                'date' => $startDate->copy()->addDays($d)->format('d/m/Y'),
+                'on_leave' => 0,
+                'unassigned' => 0,
+                'under_8h' => 0,
+                'exact_8h' => 0,
+                'over_8h' => 0,
+                'total_ot_hours' => 0,
+            ];
+        }
+
+        foreach ($employeeDailyHours as $empId => $dailyHours) {
             $empCode = $employees[$empId]->code;
             $empOT = round($employeeOvertimeHours[$empCode] ?? 0, 2);
-            $stats['total_ot_hours'] += $empOT;
+            $stats_laps['total_ot_hours'] += $empOT;
+            $stats_people['total_ot_hours'] += $empOT;
 
-            $status = '';
-            if ($totalHours == 0) {
-                if (isset($leaveEmployees[$empId])) {
-                    $stats['on_leave']++;
-                    $status = 'Nghỉ phép (P)';
+            if (isset($employeeDailyOT[$empCode])) {
+                for ($d = 0; $d < $daysInPeriod; $d++) {
+                    $stats_daily[$d]['total_ot_hours'] += $employeeDailyOT[$empCode][$d];
+                }
+            }
+
+            $totalHours = array_sum($dailyHours);
+            $avgHoursPerDay = $daysInPeriod > 0 ? ($totalHours / $daysInPeriod) : 0;
+            
+            $assignedDays = 0;
+            $leaveDays = 0;
+
+            for ($d = 0; $d < $daysInPeriod; $d++) {
+                $h = $dailyHours[$d];
+                if ($h == 0) {
+                    if (!empty($employeeDailyLeave[$empId][$d])) {
+                        $stats_laps['on_leave']++;
+                        $stats_daily[$d]['on_leave']++;
+                        $leaveDays++;
+                    } else {
+                        $stats_laps['unassigned']++;
+                        $stats_daily[$d]['unassigned']++;
+                    }
+                } elseif ($h < 7.9) {
+                    $stats_laps['under_8h']++;
+                    $stats_daily[$d]['under_8h']++;
+                    $assignedDays++;
+                } elseif ($h <= 8.1) {
+                    $stats_laps['exact_8h']++;
+                    $stats_daily[$d]['exact_8h']++;
+                    $assignedDays++;
                 } else {
-                    $stats['unassigned']++;
-                    $status = 'Chưa phân công';
+                    $stats_laps['over_8h']++;
+                    $stats_daily[$d]['over_8h']++;
+                    $assignedDays++;
+                }
+            }
+
+            // People Classification (Dành cho các ô Inner theo yêu cầu)
+            if ($totalHours == 0) {
+                if ($leaveDays > 0) {
+                    $stats_people['on_leave']++;
+                } else {
+                    $stats_people['unassigned']++;
                 }
             } elseif ($avgHoursPerDay < 7.9) {
-                $stats['under_8h']++;
-                $status = '< 8h';
+                $stats_people['under_8h']++;
             } elseif ($avgHoursPerDay <= 8.1) {
-                $stats['exact_8h']++;
-                $status = 'Đủ 8h';
+                $stats_people['exact_8h']++;
             } else {
-                $stats['over_8h']++;
-                $status = '> 8h';
+                $stats_people['over_8h']++;
+            }
+
+            if ($daysInPeriod == 1) {
+                if ($totalHours == 0) {
+                    $status = $leaveDays > 0 ? 'Nghỉ phép (P)' : 'Chưa phân công';
+                } elseif ($totalHours < 7.9) {
+                    $status = '< 8h';
+                } elseif ($totalHours <= 8.1) {
+                    $status = 'Đủ 8h';
+                } else {
+                    $status = '> 8h';
+                }
+            } else {
+                if ($assignedDays == 0) {
+                    $status = $leaveDays == $daysInPeriod ? 'Nghỉ phép hết kỳ' : "Chưa xếp lịch ($leaveDays ngày phép)";
+                } else {
+                    $status = "Đã xếp $assignedDays / $daysInPeriod ngày";
+                }
             }
 
             $details[] = [
@@ -351,7 +442,11 @@ class DashBoardController extends Controller
             $groupOvertimeMap[$groupName]['count']++;
         }
 
-        $stats['total_ot_hours'] = round($stats['total_ot_hours'], 2);
+        $stats_laps['total_ot_hours'] = round($stats_laps['total_ot_hours'], 2);
+        $stats_people['total_ot_hours'] = round($stats_people['total_ot_hours'], 2);
+        for ($d = 0; $d < $daysInPeriod; $d++) {
+            $stats_daily[$d]['total_ot_hours'] = round($stats_daily[$d]['total_ot_hours'], 2);
+        }
 
         // Sort details by total_hours ascending
         usort($details, function ($a, $b) {
@@ -408,7 +503,10 @@ class DashBoardController extends Controller
         return response()->json([
             'success' => true,
             'total_personnel' => count($employees),
-            'stats' => $stats,
+            'stats_people' => $stats_people,
+            'stats_laps' => $stats_laps,
+            'stats_daily' => $stats_daily,
+            'stats' => $stats_people, // fallback for legacy code
             'details' => $details,
             'overtime_by_group' => $overtimeByGroup,
             'overtime_by_room' => $overtimeByRoom,
