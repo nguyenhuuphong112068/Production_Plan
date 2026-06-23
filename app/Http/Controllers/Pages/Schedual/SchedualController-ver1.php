@@ -5211,15 +5211,15 @@ class SchedualController extends Controller
             // Chỉ lấy task có ít nhất 1 ràng buộc cảnh báo NL/BB not null
             ->where(function ($q) use ($stageCode) {
                 $q->whereNotNull('plan_master.after_weigth_date')
-                  ->orWhereNotNull('plan_master.allow_weight_before_date')
-                  ->orWhereNotNull('plan_master.expired_material_date')
-                  ->orWhereNotNull('plan_master.preperation_before_date')
-                  ->orWhereNotNull('plan_master.blending_before_date')
-                  ->orWhereNotNull('plan_master.coating_before_date');
+                    ->orWhereNotNull('plan_master.allow_weight_before_date')
+                    ->orWhereNotNull('plan_master.expired_material_date')
+                    ->orWhereNotNull('plan_master.preperation_before_date')
+                    ->orWhereNotNull('plan_master.blending_before_date')
+                    ->orWhereNotNull('plan_master.coating_before_date');
                 if ($stageCode == 7) {
                     $q->orWhereNotNull('plan_master.after_parkaging_date')
-                      ->orWhereNotNull('plan_master.expired_packing_date')
-                      ->orWhereNotNull('plan_master.parkaging_before_date');
+                        ->orWhereNotNull('plan_master.expired_packing_date')
+                        ->orWhereNotNull('plan_master.parkaging_before_date');
                 }
             })
             ->where('sp.deparment_code', session('user.production_code'))
@@ -6170,9 +6170,9 @@ class SchedualController extends Controller
             if ($pred && $pred->resourceId) {
                 // Check if there is a mandatory link
                 $link = DB::table('room_links')
-                          ->where('source_room_id', $pred->resourceId)
-                          ->where('active', 1)
-                          ->first();
+                    ->where('source_room_id', $pred->resourceId)
+                    ->where('active', 1)
+                    ->first();
                 if ($link) {
                     $filtered = $rooms->where('room_id', $link->target_room_id)->values();
                     if (!$filtered->isEmpty()) {
@@ -6410,18 +6410,8 @@ class SchedualController extends Controller
 
         $now->minute($roundedMinute)->second(0)->microsecond(0);
 
-        $hasPredecessor = false;
-        foreach ($campaignTasks as $t) {
-            if (!empty($t->predecessor_code)) {
-                $hasPredecessor = true;
-                break;
-            }
-        }
-
         // Gom tất cả candidate time vào 1 mảng
-        if (!$hasPredecessor || $stageCode == 1) {
-            $candidates[] = $now;
-        }
+        $candidates[] = $now;
 
         $candidates[] = $start_date;
 
@@ -6462,7 +6452,6 @@ class SchedualController extends Controller
 
                     $pre_campaign_batch = DB::table('stage_plan')
                         ->where('campaign_code', $code)
-                        ->where('stage_code', $pred->stage_code)
                         ->orderBy('start', 'asc')
                         ->get();
 
@@ -6699,9 +6688,9 @@ class SchedualController extends Controller
                 ->value('resourceId');
             if ($resourceId_prev) {
                 $link = DB::table('room_links')
-                          ->where('source_room_id', $resourceId_prev)
-                          ->where('active', 1)
-                          ->first();
+                    ->where('source_room_id', $resourceId_prev)
+                    ->where('active', 1)
+                    ->first();
                 if ($link) {
                     $filtered = $rooms->where('room_id', $link->target_room_id)->values();
                     if (!$filtered->isEmpty()) {
@@ -6742,10 +6731,9 @@ class SchedualController extends Controller
                 + ($campaignTasks->count() - 1) * ($room->C1_time_minutes)
                 + $room->C2_time_minutes;
 
-            // Bỏ logic ghi đè bằng $totalTimeCampaign để phòng không bị booking khoảng thời gian trống sai lệch
-            // if ($totalTimeCampaign > 0 && $totalTimeCampaign > $totalMunites) {
-            //     $totalMunites = $totalTimeCampaign;
-            // }
+            if ($totalTimeCampaign > 0 && $totalTimeCampaign > $totalMunites) {
+                $totalMunites = $totalTimeCampaign;
+            }
 
             $compatibleMolds = null;
             if ($stageCode == 7 && $allCompatibleMolds && $allCompatibleMolds->isNotEmpty()) {
