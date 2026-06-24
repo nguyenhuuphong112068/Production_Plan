@@ -665,7 +665,7 @@
 
 <script>
     $(document).ready(function() {
-        $('.btn-history').off('click').on('click', function() {
+        $(document).on('click', '.btn-history', function() {
             var id = $(this).data('id');
             $.ajax({
                 url: "{{ route('pages.category.intermediate.history') }}",
@@ -680,13 +680,15 @@
                     if (current) {
                         var html =
                             '<tr style="background-color: #e8f4f8; font-weight: bold;">';
-                        html += '<td class="text-center align-middle">Hiện Hành</td>';
+                        html += '<td class="text-center align-middle">' + (current.created_at || current.updated_at || '') + '</td>';
                         html += '<td class="text-center align-middle">' + ((current
                             .created_by || current.prepareBy || current
                             .prepared_by || '')) + '</td>';
-                        html += '<td class="text-center align-middle">' + (current
-                            .active !== null && current.active !== undefined ? current
-                            .active : '') + '</td>';
+                        var activeText = '';
+                        if (current.active !== null && current.active !== undefined) {
+                            activeText = (current.active == 1 || current.active === true || current.active === '1') ? 'Hiện hành' : 'Hết hiệu lực';
+                        }
+                        html += '<td class="text-center align-middle">' + activeText + '</td>';
                         html += '<td class="text-center align-middle">' + (current
                             .product_name !== null && current.product_name !==
                             undefined ? current.product_name : '') + '</td>';
@@ -735,15 +737,12 @@
                     } else {
                         res.history.forEach(function(item) {
                             var html = '<tr>';
-                            html += '<td class="text-center align-middle">' + (item
-                                .updated_at ? item.updated_at : item.created_at
-                            ) + '</td>';
+                            html += '<td class="text-center align-middle">' + (item.created_at || item.updated_at || '') + '</td>';
                             html += '<td class="text-center align-middle">' + ((item
                                 .created_by || item.prepareBy || item
                                 .prepared_by || '')) + '</td>';
-                            html += '<td class="text-center align-middle">' + (item
-                                .active !== null && item.active !== undefined ?
-                                item.active : '') + '</td>';
+                            var activeTextItem = 'Hết hiệu lực';
+                            html += '<td class="text-center align-middle">' + activeTextItem + '</td>';
                             html += '<td class="text-center align-middle">' + (item
                                 .product_name !== null && item.product_name !==
                                 undefined ? item.product_name : '') + '</td>';
