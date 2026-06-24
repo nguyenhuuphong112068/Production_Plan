@@ -418,9 +418,9 @@
             $canAccessGroup = $group_code != 17; // Được 4 nhóm trừ HC Thiết Bị
         }
     } elseif (str_contains($userGroup, 'Calibration and Maintenance Scheduler')) {
-        $cleanCurrentName = trim(str_replace('Tổ ', '', $currentGroupName));
-        $cleanUserGroupName = trim(str_replace('Tổ ', '', $userGroupNameSession));
-        $canAccessGroup = $cleanCurrentName === $cleanUserGroupName;
+        $userStageGroup = collect($stage_groups)->firstWhere('name', $userGroupNameSession);
+        $userStageGroupCode = $userStageGroup ? $userStageGroup->code : null;
+        $canAccessGroup = ($userStageGroupCode == $group_code);
     }
 
     $hasEditPermission = $hasBasePermission && $canAccessGroup;
@@ -2075,17 +2075,25 @@
                     </td>
                     <td style="width: 26.8%" class="p-0">
                         <div class="personnel-container">
-                            <div class="personnel-row d-flex align-items-center p-1 border-bottom">
-                                <div class="personnel-label">A</div>
-                                <div style="flex: 1" class="d-flex align-items-center">
-                                    <select class="form-control form-control-sm person-select" style="width: 60%">
-                                        <option value="">-- Chọn người --</option>
-                                    </select>
-                                    <input type="text" class="form-control form-control-sm person-notif ml-1" 
-                                           style="width: 40%; font-size: 0.7rem; height: 28px; padding: 2px 5px;"
-                                           placeholder="Lưu ý...">
+                            <div class="personnel-row d-flex flex-column p-1 border-bottom">
+                                <div class="d-flex align-items-center w-100">
+                                    <div class="personnel-label">A</div>
+                                    <div style="flex: 1" class="d-flex align-items-center">
+                                        <select class="form-control form-control-sm person-select" style="width: 60%">
+                                            <option value="">-- Chọn người --</option>
+                                        </select>
+                                        <input type="text" class="form-control form-control-sm person-notif ml-1" 
+                                               style="width: 40%; font-size: 0.7rem; height: 28px; padding: 2px 5px;"
+                                               placeholder="Lưu ý...">
+                                    </div>
+                                    <i class="fas fa-times text-danger ml-1 btn-remove-person cursor-pointer"></i>
                                 </div>
-                                <i class="fas fa-times text-danger ml-1 btn-remove-person cursor-pointer"></i>
+                                <div class="d-flex align-items-center w-100 pl-4 pr-2 mt-1 mb-1 time-slider-container">
+                                    <div class="time-slider flex-grow-1"></div>
+                                    <div class="time-display ml-2 font-weight-bold" style="font-size: 0.7rem; width: 140px; text-align: right; line-height: 1.4; flex-shrink: 0;"></div>
+                                    <input type="hidden" class="p-start-input" value="">
+                                    <input type="hidden" class="p-end-input" value="">
+                                </div>
                             </div>
                         </div>
                         <div class="text-left p-1" style="border-top: 1px dashed #eee"><a href="javascript:void(0)" class="btn-add-person"><i class="fas fa-plus-square"></i></a></div>
@@ -2607,17 +2615,25 @@
                                     </td>
                                     <td style="width: 250px" class="p-0">
                                         <div class="personnel-container">
-                                            <div class="personnel-row d-flex align-items-center p-1 border-bottom">
-                                                <div class="personnel-label">A</div>
-                                                <div style="flex: 1" class="d-flex align-items-center">
-                                                    <select class="form-control form-control-sm person-select" style="width: 60%">
-                                                        <option value="">-- Chọn người --</option>${globalPersonnelOptions}
-                                                    </select>
-                                                    <input type="text" class="form-control form-control-sm person-notif ml-1" 
-                                                           style="width: 40%; font-size: 0.7rem; height: 28px; padding: 2px 5px;"
-                                                           placeholder="Lưu ý...">
+                                            <div class="personnel-row d-flex flex-column p-1 border-bottom">
+                                                <div class="d-flex align-items-center w-100">
+                                                    <div class="personnel-label">A</div>
+                                                    <div style="flex: 1" class="d-flex align-items-center">
+                                                        <select class="form-control form-control-sm person-select" style="width: 60%">
+                                                            <option value="">-- Chọn người --</option>${globalPersonnelOptions}
+                                                        </select>
+                                                        <input type="text" class="form-control form-control-sm person-notif ml-1" 
+                                                               style="width: 40%; font-size: 0.7rem; height: 28px; padding: 2px 5px;"
+                                                               placeholder="Lưu ý...">
+                                                    </div>
+                                                    <i class="fas fa-times text-danger ml-1 btn-remove-person cursor-pointer"></i>
                                                 </div>
-                                                <i class="fas fa-times text-danger ml-1 btn-remove-person cursor-pointer"></i>
+                                                <div class="d-flex align-items-center w-100 pl-4 pr-2 mt-1 mb-1 time-slider-container">
+                                                    <div class="time-slider flex-grow-1"></div>
+                                                    <div class="time-display ml-2 font-weight-bold" style="font-size: 0.7rem; width: 140px; text-align: right; line-height: 1.4; flex-shrink: 0;"></div>
+                                                    <input type="hidden" class="p-start-input" value="">
+                                                    <input type="hidden" class="p-end-input" value="">
+                                                </div>
                                             </div>
                                         </div>
                                         <div class="text-left p-1" style="border-top: 1px dashed #eee">
