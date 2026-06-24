@@ -538,58 +538,67 @@
                             <div class="card-body table-responsive" style="height: calc(100vh - 200px);">
                                 <table id="table_history_all" class="table table-bordered table-striped">
                                     <thead>
-                                        <tr>
-                                            <th>Thời gian</th>
                                             <th>Mã sản phẩm</th>
                                             <th>Tên sản phẩm</th>
                                             <th>Số Lô</th>
                                             <th>Loại</th>
-                                            <th>Người thực hiện</th>
-                                            <th>Hành động</th>
-                                            <th>Cột thay đổi</th>
-                                            <th>Ngày cũ</th>
-                                            <th>Ngày mới</th>
-                                            <th>Lý do từ chối</th>
+                                            <th style="min-width:400px">Lịch sử hành động</th>
                                             <th style="min-width:300px">Trao đổi thông tin</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         @if (isset($proposalHistories))
-                                            @foreach ($proposalHistories as $hist)
+                                            @foreach ($proposalHistories->groupBy('plan_master_id') as $plan_master_id => $histories)
+                                                @php $firstHist = $histories->first(); @endphp
                                                 <tr>
-                                                    <td>{{ \Carbon\Carbon::parse($hist->created_at)->format('d/m/Y H:i') }}
-                                                    </td>
-                                                    <td>{{ $hist->product_code }}</td>
-                                                    <td>{{ $hist->product_name }}</td>
-                                                    <td>{{ $hist->batch }}</td>
+                                                    <td>{{ $firstHist->product_code }}</td>
+                                                    <td>{{ $firstHist->product_name }}</td>
+                                                    <td>{{ $firstHist->batch }}</td>
                                                     <td>
                                                         <span
-                                                            class="badge badge-{{ $hist->type == 'KCS' ? 'info' : 'primary' }}">
-                                                            {{ $hist->type }}
+                                                            class="badge badge-{{ $firstHist->type == 'KCS' ? 'info' : 'primary' }}">
+                                                            {{ $firstHist->type }}
                                                         </span>
                                                     </td>
-                                                    <td>{{ $hist->user_name }}</td>
-                                                    <td>
-                                                        @if ($hist->action == 'PROPOSE')
-                                                            <span class="badge badge-warning">Đề nghị</span>
-                                                        @elseif ($hist->action == 'ACCEPT')
-                                                            <span class="badge badge-success">Chấp nhận</span>
-                                                        @elseif ($hist->action == 'REJECT')
-                                                            <span class="badge badge-danger">Từ chối</span>
-                                                        @else
-                                                            {{ $hist->action }}
-                                                        @endif
+                                                    <td style="min-width:400px">
+                                                        <div class="action-history-box"
+                                                            style="max-height:150px; overflow-y:auto; font-size:14px; text-align: left;">
+                                                            @foreach($histories as $hist)
+                                                                <div class="mb-2 p-2 border rounded" style="background-color: #f8f9fa; border-radius:10px;">
+                                                                    <div style="font-weight:600; display:flex; justify-content:space-between;">
+                                                                        <span>{{ $hist->user_name }}</span>
+                                                                        <small class="text-muted">{{ \Carbon\Carbon::parse($hist->created_at)->format('d/m/Y H:i') }}</small>
+                                                                    </div>
+                                                                    <div class="mt-1">
+                                                                        @if ($hist->action == 'PROPOSE')
+                                                                            <span class="badge badge-warning">Đề nghị</span>
+                                                                        @elseif ($hist->action == 'ACCEPT')
+                                                                            <span class="badge badge-success">Chấp nhận</span>
+                                                                        @elseif ($hist->action == 'REJECT')
+                                                                            <span class="badge badge-danger">Từ chối</span>
+                                                                        @else
+                                                                            <span class="badge badge-secondary">{{ $hist->action }}</span>
+                                                                        @endif
+                                                                        
+                                                                        @if($hist->old_date || $hist->new_date)
+                                                                            <span class="ml-2 font-weight-bold">
+                                                                                {{ $hist->old_date ? \Carbon\Carbon::parse($hist->old_date)->format('d/m/Y') : '' }} 
+                                                                                <i class="fas fa-arrow-right mx-1 text-muted"></i> 
+                                                                                {{ $hist->new_date ? \Carbon\Carbon::parse($hist->new_date)->format('d/m/Y') : '' }}
+                                                                            </span>
+                                                                        @endif
+                                                                    </div>
+                                                                    @if($hist->reason)
+                                                                        <div class="text-muted mt-1" style="font-size: 12px;"><i>Lý do: {{ $hist->reason }}</i></div>
+                                                                    @endif
+                                                                </div>
+                                                            @endforeach
+                                                        </div>
                                                     </td>
-                                                    <td>{{ $hist->field_name }}</td>
-                                                    <td>{{ $hist->old_date ? \Carbon\Carbon::parse($hist->old_date)->format('d/m/Y') : '' }}
-                                                    </td>
-                                                    <td>{{ $hist->new_date ? \Carbon\Carbon::parse($hist->new_date)->format('d/m/Y') : '' }}
-                                                    </td>
-                                                    <td>{{ $hist->reason }}</td>
                                                     <td style="min-width:300px">
                                                         <div class="chat-box"
                                                             style="max-height:150px; overflow-y:auto; font-size:14px; text-align: left;">
-                                                            @forelse ($commentsGrouped[$hist->plan_master_id] ?? [] as $comment)
+                                                            @forelse ($commentsGrouped[$plan_master_id] ?? [] as $comment)
                                                                 <div class="mb-2 p-2 border rounded"
                                                                     style="background-color: {{ \Illuminate\Support\Str::startsWith($comment->deparment, 'PX') ? '#d4edda' : '#d1ecf1' }}; border-radius:15px; padding:6px;">
                                                                     <div style="font-weight:600">
