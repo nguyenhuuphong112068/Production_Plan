@@ -461,10 +461,16 @@
                                                                             collect($personnel)
                                                                                 ->where('id', $pData->personnel_id)
                                                                                 ->first()->name ?? 'N/A';
+                                                                        $pTimeDisplay = '';
+                                                                        if (!empty($pData->start) && !empty($pData->end)) {
+                                                                            $pStart = \Carbon\Carbon::parse($pData->start)->format('H:i');
+                                                                            $pEnd = \Carbon\Carbon::parse($pData->end)->format('H:i');
+                                                                            $pTimeDisplay = " <small class='text-primary ml-2 font-weight-bold'>({$pStart} - {$pEnd})</small>";
+                                                                        }
                                                                     @endphp
                                                                     <li class="personnel-assigned-item"
                                                                         data-personnel-id="{{ $pData->personnel_id }}">
-                                                                        {{ $personName }}</li>
+                                                                        {{ $personName }}{!! $pTimeDisplay !!}</li>
                                                                 @endforeach
                                                             </ul>
                                                         @else

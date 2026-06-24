@@ -1,7 +1,38 @@
 <link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet">
 <link href="{{ asset('assets/vendor/select2/select2.min.css') }}" rel="stylesheet" />
+<link href="{{ asset('assets/plugins/nouislider/nouislider.min.css') }}" rel="stylesheet" />
 
 <style>
+    /* Slider Styling */
+    .time-slider .noUi-handle {
+        width: 14px !important;
+        height: 14px !important;
+        right: -7px !important;
+        top: -5px !important;
+        border-radius: 50% !important;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4) !important;
+        border: 2px solid #fff !important;
+        background: #555 !important;
+        cursor: grab;
+    }
+    .time-slider .noUi-handle:active {
+        cursor: grabbing;
+    }
+    .time-slider .noUi-handle::before,
+    .time-slider .noUi-handle::after {
+        display: none !important;
+    }
+    .time-slider {
+        border: none !important;
+        background: #e9ecef !important;
+        height: 4px !important;
+        box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1) !important;
+        margin-top: 5px;
+    }
+    .shift-1-slider .noUi-connect { background: #007bff !important; }
+    .shift-2-slider .noUi-connect { background: #28a745 !important; }
+    .shift-3-slider .noUi-connect { background: #dc3545 !important; }
+
     :root {
         --primary-gold: #007bff;
         --light-gold: #e7f3ff;
@@ -108,6 +139,11 @@
 
     .shift-p {
         background-color: #6c757d;
+    }
+
+    .selected-for-drag {
+        background-color: #e2e6ea !important;
+        border-left: 4px solid #007bff !important;
     }
 
     .table-assignment {
@@ -368,7 +404,7 @@
     $user = session('user');
     $userGroup = $user['userGroup'] ?? '';
     $department = $user['department'] ?? '';
-    $userGroupNameSession = $user['GroupName'] ?? '';
+    $userGroupNameSession = $user['group_name'] ?? '';
 
     $hasBasePermission = user_has_permission($user['userId'], 'maintenance_assignment', 'boolean');
 
@@ -445,7 +481,7 @@
                         <th style="width: 100px">Phòng / Thiết Bị</th>
                         <th style="width: 150px" class="theory-col">Lịch Lý Thuyết</th>
                         <th style="width: 100px">Ca / SL</th>
-                        <th style="width: 250px">Nhân sự</th>
+                        <th style="width: 350px">Nhân sự</th>
                         <th style="width: 600px">Hoạt Động</th>
                         {{-- <th style="width: 150px">Chi Tiết Công Việc</th> --}}
                         <th style="width: 60px">Hủy</th>
@@ -565,33 +601,42 @@
                                                 <td class="p-0" style="width: 250px">
                                                     <div class="personnel-container">
                                                         @foreach ($assignment->personnel_data as $p_info)
-                                                            <div
-                                                                class="personnel-row d-flex align-items-center p-1 border-bottom">
-                                                                <div class="personnel-label">
-                                                                    {{ chr(65 + $loop->index) }}
+                                                            <div class="personnel-row d-flex flex-column p-1 border-bottom"
+                                                                data-p-start="{{ $p_info->start ?? '' }}"
+                                                                data-p-end="{{ $p_info->end ?? '' }}">
+                                                                <div class="d-flex align-items-center w-100">
+                                                                    <div class="personnel-label">
+                                                                        {{ chr(65 + $loop->index) }}
+                                                                    </div>
+                                                                    <div style="flex: 1" class="d-flex align-items-center">
+                                                                        <select class="form-control form-control-sm person-select"
+                                                                            style="width: 40%"
+                                                                            data-selected="{{ $p_info->personnel_id }}"
+                                                                            {{ !$canEdit || ($assignment->is_foreign ?? false) ? 'disabled' : '' }}>
+                                                                            <option value="">-- Chọn người --</option>
+                                                                        </select>
+                                                                        <input type="text"
+                                                                            class="form-control form-control-sm person-notif ml-1"
+                                                                            style="width: 60%; font-size: 0.7rem; height: 28px; padding: 2px 5px;"
+                                                                            value="{{ $p_info->notification ?? '' }}"
+                                                                            placeholder="Lưu ý (nếu có)..."
+                                                                            {{ !$canEdit || ($assignment->is_foreign ?? false) ? 'disabled' : '' }}>
+                                                                    </div>
+                                                                    @if ($canEdit && !($assignment->is_foreign ?? false))
+                                                                        <i class="fas fa-times text-danger ml-1 btn-remove-person cursor-pointer"></i>
+                                                                    @endif
                                                                 </div>
-                                                                <div style="flex: 1"
-                                                                    class="d-flex align-items-center">
-                                                                    <select
-                                                                        class="form-control form-control-sm person-select"
-                                                                        style="width: 40%"
-                                                                        data-selected="{{ $p_info->personnel_id }}"
-                                                                        {{ !$canEdit || ($assignment->is_foreign ?? false) ? 'disabled' : '' }}>
-                                                                        <option value="">-- Chọn người --
-                                                                        </option>
-                                                                    </select>
-                                                                    <input type="text"
-                                                                        class="form-control form-control-sm person-notif ml-1"
-                                                                        style="width: 60%; font-size: 0.7rem; height: 28px; padding: 2px 5px;"
-                                                                        value="{{ $p_info->notification ?? '' }}"
-                                                                        placeholder="Lưu ý (nếu có)..."
-                                                                        {{ !$canEdit || ($assignment->is_foreign ?? false) ? 'disabled' : '' }}>
+                                                                <div class="d-flex align-items-center w-100 pl-4 pr-2 mt-1 mb-1 time-slider-container"
+                                                                    style="{{ !$canEdit || ($assignment->is_foreign ?? false) ? 'opacity: 0.6; pointer-events: none;' : '' }}">
+                                                                    <div class="time-slider flex-grow-1"></div>
+                                                                    <div class="time-display ml-2 font-weight-bold"
+                                                                        style="font-size: 0.7rem; width: 140px; text-align: right; line-height: 1.4; flex-shrink: 0;">
+                                                                    </div>
+                                                                    <input type="hidden" class="p-start-input"
+                                                                        value="{{ isset($p_info->start) ? \Carbon\Carbon::parse($p_info->start)->format('H:i') : '' }}">
+                                                                    <input type="hidden" class="p-end-input"
+                                                                        value="{{ isset($p_info->end) ? \Carbon\Carbon::parse($p_info->end)->format('H:i') : '' }}">
                                                                 </div>
-
-                                                                @if ($canEdit && !($assignment->is_foreign ?? false))
-                                                                    <i
-                                                                        class="fas fa-times text-danger ml-1 btn-remove-person cursor-pointer"></i>
-                                                                @endif
                                                             </div>
                                                         @endforeach
                                                     </div>
@@ -671,27 +716,36 @@
                                                 </td>
                                                 <td class="p-0" style="width: 250px">
                                                     <div class="personnel-container">
-                                                        <div
-                                                            class="personnel-row d-flex align-items-center p-1 border-bottom">
-                                                            <div class="personnel-label">A</div>
-                                                            <div style="flex: 1" class="d-flex align-items-center">
-                                                                <select
-                                                                    class="form-control form-control-sm person-select"
-                                                                    style="width: 60%"
-                                                                    {{ !$canEdit ? 'disabled' : '' }}>
-                                                                    <option value="">-- Chọn người --</option>
-                                                                </select>
-                                                                <input type="text"
-                                                                    class="form-control form-control-sm person-notif ml-1"
-                                                                    style="width: 40%; font-size: 0.7rem; height: 28px; padding: 2px 5px;"
-                                                                    placeholder="Lưu ý (nếu có)..."
-                                                                    {{ !$canEdit ? 'disabled' : '' }}>
+                                                            <div class="personnel-row d-flex flex-column p-1 border-bottom">
+                                                                <div class="d-flex align-items-center w-100">
+                                                                    <div class="personnel-label">A</div>
+                                                                    <div style="flex: 1" class="d-flex align-items-center">
+                                                                        <select
+                                                                            class="form-control form-control-sm person-select"
+                                                                            style="width: 40%"
+                                                                            {{ !$canEdit ? 'disabled' : '' }}>
+                                                                            <option value="">-- Chọn người --</option>
+                                                                        </select>
+                                                                        <input type="text"
+                                                                            class="form-control form-control-sm person-notif ml-1"
+                                                                            style="width: 60%; font-size: 0.7rem; height: 28px; padding: 2px 5px;"
+                                                                            placeholder="Lưu ý (nếu có)..."
+                                                                            {{ !$canEdit ? 'disabled' : '' }}>
+                                                                    </div>
+                                                                    @if ($canEdit)
+                                                                        <i class="fas fa-times text-danger ml-1 btn-remove-person cursor-pointer"></i>
+                                                                    @endif
+                                                                </div>
+                                                                <div class="d-flex align-items-center w-100 pl-4 pr-2 mt-1 mb-1 time-slider-container"
+                                                                    style="{{ !$canEdit ? 'opacity: 0.6; pointer-events: none;' : '' }}">
+                                                                    <div class="time-slider flex-grow-1"></div>
+                                                                    <div class="time-display ml-2 font-weight-bold"
+                                                                        style="font-size: 0.7rem; width: 140px; text-align: right; line-height: 1.4; flex-shrink: 0;">
+                                                                    </div>
+                                                                    <input type="hidden" class="p-start-input" value="">
+                                                                    <input type="hidden" class="p-end-input" value="">
+                                                                </div>
                                                             </div>
-                                                            @if ($canEdit)
-                                                                <i
-                                                                    class="fas fa-times text-danger ml-1 btn-remove-person cursor-pointer"></i>
-                                                            @endif
-                                                        </div>
                                                     </div>
                                                     @if ($canEdit)
                                                         <div class="text-left p-1"
@@ -902,6 +956,7 @@
 
 <script src="{{ asset('js/vendor/jquery-1.12.4.min.js') }}"></script>
 <script src="{{ asset('js/sweetalert2.all.min.js') }}"></script>
+<script src="{{ asset('assets/plugins/nouislider/nouislider.min.js') }}"></script>
 
 <script>
     const dbAssignments = @json($dbAssignments ?? []);
@@ -1483,22 +1538,33 @@
 
 
             const newPersonRow = $(`
-                <div class="personnel-row d-flex align-items-center p-1 border-bottom">
-                    <div class="personnel-label"></div>
-                    <div style="flex: 1" class="d-flex align-items-center">
-                        <select class="form-control form-control-sm person-select" style="width: 60%">
-                            <option value="">-- Chọn người --</option>${globalPersonnelOptions}
-                        </select>
-                        <input type="text" class="form-control form-control-sm person-notif ml-1" 
-                               style="width: 40%; font-size: 0.7rem; height: 28px; padding: 2px 5px;"
-                               placeholder="Lưu ý...">
+                <div class="personnel-row d-flex flex-column p-1 border-bottom">
+                    <div class="d-flex align-items-center w-100">
+                        <div class="personnel-label"></div>
+                        <div style="flex: 1" class="d-flex align-items-center">
+                            <select class="form-control form-control-sm person-select" style="width: 40%">
+                                <option value="">-- Chọn người --</option>${globalPersonnelOptions}
+                            </select>
+                            <input type="text" class="form-control form-control-sm person-notif ml-1" 
+                                   style="width: 60%; font-size: 0.7rem; height: 28px; padding: 2px 5px;"
+                                   placeholder="Lưu ý...">
+                        </div>
+                        <i class="fas fa-times text-danger ml-1 btn-remove-person cursor-pointer"></i>
                     </div>
-                    <i class="fas fa-times text-danger ml-1 btn-remove-person cursor-pointer"></i>
+                    <div class="d-flex align-items-center w-100 pl-4 pr-2 mt-1 mb-1 time-slider-container">
+                        <div class="time-slider flex-grow-1"></div>
+                        <div class="time-display ml-2 font-weight-bold" style="font-size: 0.7rem; width: 140px; text-align: right; line-height: 1.4; flex-shrink: 0;"></div>
+                        <input type="hidden" class="p-start-input" value="">
+                        <input type="hidden" class="p-end-input" value="">
+                    </div>
                 </div>
             `);
             container.append(newPersonRow);
             updatePersonnelLabels(container);
             initSelect2(newPersonRow.find('.person-select'));
+            if (typeof initTimeSlider === 'function') {
+                initTimeSlider(newPersonRow);
+            }
 
             if (personId) {
                 newPersonRow.find('.person-select').val(personId).trigger('change');
@@ -1507,6 +1573,16 @@
             return newPersonRow;
         }
 
+        // Click to select multiple personnel
+        $(document).on('click', '.draggable-person', function(e) {
+            if ($(e.target).closest('.custom-control, .btn-view-skills, .btn-toggle-has-assign').length > 0) {
+                return;
+            }
+            if ($(this).hasClass('person-on-leave')) return;
+
+            $(this).toggleClass('selected-for-drag');
+        });
+
         // Drag & Drop Handlers
         $(document).on('dragstart', '.draggable-person', function(e) {
             const $this = $(this);
@@ -1514,12 +1590,22 @@
                 e.preventDefault();
                 return;
             }
-            const personData = {
-                code: $this.data('code'),
-                name: $this.data('name'),
-                shiftKey: $this.data('shift-key')
-            };
-            e.originalEvent.dataTransfer.setData('text/plain', JSON.stringify(personData));
+
+            let $draggedItems = $('.draggable-person.selected-for-drag');
+            if (!$this.hasClass('selected-for-drag')) {
+                $draggedItems = $this;
+            }
+
+            const personsData = [];
+            $draggedItems.each(function() {
+                personsData.push({
+                    code: $(this).data('code'),
+                    name: $(this).data('name'),
+                    shiftKey: $(this).data('shift-key')
+                });
+            });
+
+            e.originalEvent.dataTransfer.setData('text/plain', JSON.stringify(personsData));
             e.originalEvent.dataTransfer.effectAllowed = 'copy';
         });
 
@@ -1538,7 +1624,8 @@
             const person = currentSidebarData.find(p => (p.employeeId || p.code) == personCode);
             if (!person) return null;
             const dayKey = 'day' + currentSidebarDay;
-            return (person.days && person.days[dayKey]) ? person.days[dayKey].toUpperCase() : 'HC';
+            const dayData = person.days && person.days[dayKey];
+            return dayData ? (dayData?.shift ?? dayData).toString().toUpperCase() : 'HC';
         }
 
         function checkShiftMismatch(personId, targetShiftCode, callback) {
@@ -1678,7 +1765,7 @@
             callback(true);
         }
 
-        $(document).on('drop', '.personnel-container', function(e) {
+        $(document).on('drop', '.personnel-container', async function(e) {
             e.preventDefault();
             $(this).removeClass('drag-over');
 
@@ -1686,60 +1773,71 @@
             if (!dataStr) return;
 
             try {
-                const person = JSON.parse(dataStr);
-                if (person.shiftKey === 'P') {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Không thể sắp lịch',
-                        text: `Nhân sự ${person.name} đang nghỉ phép (P), không thể sắp vào ca sản xuất.`
-                    });
-                    return;
+                let persons = JSON.parse(dataStr);
+                if (!Array.isArray(persons)) {
+                    persons = [persons];
                 }
 
-                const personId = employeeCodeToId[person.code];
-                if (personId) {
-                    const $container = $(this);
-                    const $roomRow = $container.closest('.room-row');
-                    const roomId = $roomRow.attr('data-room-id');
-                    const targetShiftCode = $container.closest('.assignment-item').find('.shift-select')
-                        .val();
+                const $container = $(this);
+                const $roomRow = $container.closest('.room-row');
+                const roomId = $roomRow.attr('data-room-id');
+                const targetShiftCode = $container.closest('.assignment-item').find('.shift-select').val();
 
-                    // 1. Kiểm tra định mức phòng (Authorization)
-                    checkRoomAuthorization(personId, roomId, function(isAuthorized) {
-                        if (!isAuthorized) return;
+                for (const person of persons) {
+                    if (person.shiftKey === 'P') {
+                        await Swal.fire({
+                            icon: 'error',
+                            title: 'Không thể sắp lịch',
+                            text: `Nhân sự ${person.name} đang nghỉ phép (P), không thể sắp vào ca sản xuất.`
+                        });
+                        continue;
+                    }
+
+                    const personId = employeeCodeToId[person.code];
+                    if (personId) {
+                        // 1. Kiểm tra định mức phòng (Authorization)
+                        const isAuthorized = await new Promise(resolve => {
+                            checkRoomAuthorization(personId, roomId, resolve);
+                        });
+                        if (!isAuthorized) continue;
 
                         // 2. Kiểm tra trùng lịch (Time Overlap)
                         const overlapCheck = checkTimeOverlapForEmployee(personId, $container.closest('.assignment-item'));
                         if (overlapCheck.overlap) {
-                            Swal.fire({
+                            await Swal.fire({
                                 icon: 'error',
                                 title: 'Không thể sắp lịch',
                                 text: overlapCheck.message
                             });
-                            return;
+                            continue;
                         }
 
                         // 3. Kiểm tra lệch ca (Shift Mismatch)
-                        checkShiftMismatch(personId, targetShiftCode, function(canProceed) {
-                            if (canProceed) {
-                                isProgrammaticChange = true;
-                                const newRow = addPersonRow($container, personId);
-                                isProgrammaticChange = false;
-
-                                if (newRow) {
-                                    markRoomDirty($container.closest('.room-row'));
-                                    updateSidebarHighlights();
-                                }
-                            }
+                        const canProceed = await new Promise(resolve => {
+                            checkShiftMismatch(personId, targetShiftCode, resolve);
                         });
-                    });
-                } else {
-                    Swal.fire({
-                        icon: 'warning',
-                        title: 'Thông báo',
-                        text: `Không tìm thấy nhân sự có mã ${person.code} trong hệ thống.`
-                    });
+
+                        if (canProceed) {
+                            isProgrammaticChange = true;
+                            const newRow = addPersonRow($container, personId);
+                            isProgrammaticChange = false;
+
+                            if (newRow) {
+                                markRoomDirty($container.closest('.room-row'));
+                            }
+                        }
+                    } else {
+                        await Swal.fire({
+                            icon: 'warning',
+                            title: 'Thông báo',
+                            text: `Không tìm thấy nhân sự có mã ${person.code} trong hệ thống.`
+                        });
+                    }
                 }
+
+                updateSidebarHighlights();
+                $('.draggable-person').removeClass('selected-for-drag');
+
             } catch (err) {
                 console.error("Drop error:", err);
             }
@@ -2108,7 +2206,9 @@
                         const pid = $(this).find('.person-select').val();
                         if (pid) p_list.push({
                             personnel_id: pid,
-                            notification: $(this).find('.person-notif').val()
+                            notification: $(this).find('.person-notif').val(),
+                            start_time: $(this).find('.p-start-input').val() || null,
+                            end_time: $(this).find('.p-end-input').val() || null
                         });
                     });
 
@@ -2285,6 +2385,15 @@
         });
 
         $(document).on('click', '#btn-print-schedule', function() {
+            if ($('.btn-save-room.is-dirty').length > 0) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Lưu thay đổi',
+                    text: 'Vui lòng "Lưu toàn bộ lịch" trước khi in để bản in được cập nhật dữ liệu mới nhất!',
+                });
+                return;
+            }
+
             const url = $(this).attr('data-url');
             
             // Hiện thông báo đang chuẩn bị trang in
@@ -2833,8 +2942,8 @@
                 };
                 currentSidebarData.forEach(person => {
                     const dayKey = 'day' + currentSidebarDay;
-                    const shiftCode = (person.days && person.days[dayKey]) ? person.days[dayKey]
-                        .toUpperCase() : 'HC';
+                    const dayData = person.days && person.days[dayKey];
+                    const shiftCode = dayData ? (dayData?.shift ?? dayData).toString().toUpperCase() : 'HC';
                     const personCode = person.employeeId || person.code || '';
                     const personId = employeeCodeToId[personCode];
                     if (!personId || shiftCode === 'P') return;
@@ -3286,5 +3395,157 @@
             icon.removeClass('fa-chevron-left').addClass('fa-chevron-right');
             fetchPersonnelShifts();
         }
+    });
+
+    function initTimeSlider(row) {
+        const sliderEl = row.find('.time-slider')[0];
+        const displayEl = row.find('.time-display');
+
+        if (!sliderEl || sliderEl.noUiSlider) return;
+
+        let assignItem = row.closest('.assignment-item');
+        if (assignItem.length === 0) assignItem = row.closest('tr');
+
+        let assignStartStr = assignItem.find('.start-time-input').val() || assignItem.find('.assign-start').val() || '06:00';
+        let assignEndStr = assignItem.find('.end-time-input').val() || assignItem.find('.assign-end').val() || '14:00';
+
+        let shiftVal = assignItem.find('.shift-select').val() || '1';
+        sliderEl.classList.add('shift-' + shiftVal + '-slider');
+
+        function timeToMinutes(t) {
+            if (t === undefined || t === null || t === '') return 0;
+            if (typeof t === 'number') return t;
+            t = String(t);
+            if (t.indexOf(':') === -1) return parseFloat(t) || 0;
+            let parts = t.split(':');
+            let h = parseInt(parts[0], 10) || 0;
+            let m = parseInt(parts[1], 10) || 0;
+            return h * 60 + m;
+        }
+
+        function minutesToTime(m) {
+            if (m < 0) m += 24 * 60;
+            let h = Math.floor(m / 60) % 24;
+            let mins = Math.floor(m % 60);
+            return String(h).padStart(2, '0') + ':' + String(mins).padStart(2, '0');
+        }
+
+        let pStart = row.find('.p-start-input').val();
+        let pEnd = row.find('.p-end-input').val();
+
+        if (pStart && pStart.length > 10) pStart = pStart.substring(11, 16);
+        if (pEnd && pEnd.length > 10) pEnd = pEnd.substring(11, 16);
+
+        let shiftStart = timeToMinutes(assignStartStr);
+        let shiftEnd = timeToMinutes(assignEndStr);
+        if (shiftEnd <= shiftStart) shiftEnd += 24 * 60;
+
+        let valStart = pStart ? timeToMinutes(pStart) : shiftStart;
+        let valEnd = pEnd ? timeToMinutes(pEnd) : shiftEnd;
+
+        if (valStart < shiftStart - 240 && valStart < 12 * 60) valStart += 24 * 60;
+        if (valEnd < valStart) valEnd += 24 * 60;
+
+        let minRange = shiftStart - 60;
+        let maxRange = shiftEnd + 60;
+        if (minRange > valStart) minRange = valStart - 60;
+        if (maxRange < valEnd) maxRange = valEnd + 60;
+
+        minRange = Math.floor(minRange / 15) * 15;
+
+        noUiSlider.create(sliderEl, {
+            start: [valStart, valEnd],
+            connect: true,
+            range: {
+                'min': minRange,
+                'max': maxRange
+            },
+            step: 15,
+            format: {
+                to: function(v) { return minutesToTime(v); },
+                from: function(v) { return timeToMinutes(v); }
+            }
+        });
+
+        sliderEl.noUiSlider.on('update', function(values) {
+            let sMin = timeToMinutes(values[0]);
+            let eMin = timeToMinutes(values[1]);
+            if (eMin <= sMin) eMin += 24 * 60;
+            let totalMins = eMin - sMin;
+
+            let assignmentItem = row.closest('.assignment-item');
+            let shiftVal = assignmentItem.find('.shift-select').val() || '1';
+            let isNoLunchBreakShift = false;
+            if (['1', '2', '3', '6'].includes(shiftVal.toString())) {
+                isNoLunchBreakShift = true;
+            }
+
+            if (!isNoLunchBreakShift) {
+                const lunchStart = 11 * 60 + 30;
+                const lunchEnd = 12 * 60 + 15;
+                const overlapStart = Math.max(sMin, lunchStart);
+                const overlapEnd = Math.min(eMin, lunchEnd);
+
+                if (overlapStart < overlapEnd) {
+                    totalMins -= (overlapEnd - overlapStart);
+                }
+            }
+
+            let totalHrs = (totalMins / 60).toFixed(1);
+            let tc = parseFloat(Math.max(0, (totalMins / 60) - 8).toFixed(1));
+
+            displayEl.html(
+                `<span style="color:#555;">${values[0]}-${values[1]}</span> ` +
+                `<span style="color:#007bff;font-weight:bold;">=${totalHrs}h</span>` +
+                (tc > 0 ? ` <span style="color:#dc3545;font-weight:bold;">TC:${tc}h</span>` : '')
+            );
+
+            row.find('.p-start-input').val(values[0]);
+            row.find('.p-end-input').val(values[1]);
+            
+            if (typeof renderOvertimeBadge === 'function') {
+                clearTimeout(window._overtimeBadgeTimer);
+                window._overtimeBadgeTimer = setTimeout(renderOvertimeBadge, 300);
+            }
+        });
+
+        sliderEl.noUiSlider.on('set', function(values) {
+            let assignmentItem = row.closest('.assignment-item');
+            let assignmentId = assignmentItem.attr('data-id');
+            let personnelId = row.find('.person-select').val();
+            let reportedDate = $('#reportedDate').val() || '';
+
+            if (assignmentId && personnelId && !assignmentItem.hasClass('foreign-assignment')) {
+                $.ajax({
+                    url: '{{ route('pages.assignment.maintenance.update_personnel_time') }}',
+                    type: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}',
+                        assignment_id: assignmentId,
+                        personnel_id: personnelId,
+                        start: values[0],
+                        end: values[1],
+                        reportedDate: reportedDate
+                    },
+                    success: function(res) {
+                        if (res.success) {
+                            if (!$('.sidebar-right').hasClass('collapsed')) {
+                                if (typeof fetchPersonnelShifts === 'function') {
+                                    fetchPersonnelShifts();
+                                } else if (typeof updateSidebarPersonnelTimes === 'function') {
+                                    updateSidebarPersonnelTimes();
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        });
+    }
+
+    $(document).ready(function() {
+        $('.personnel-row').each(function() {
+            initTimeSlider($(this));
+        });
     });
 </script>

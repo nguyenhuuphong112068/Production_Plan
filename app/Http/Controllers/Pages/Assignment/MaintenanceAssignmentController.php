@@ -51,7 +51,7 @@ class MaintenanceAssignmentController extends Controller
             ->whereDate('a.start', $reportedDate)
             ->where('a.deparment_code', $dept_code)
             ->where('a.active', 1)
-            ->select('assignment_personnel.assignment_id', 'assignment_personnel.personnel_id', 'assignment_personnel.notification')
+            ->select('assignment_personnel.assignment_id', 'assignment_personnel.personnel_id', 'assignment_personnel.notification', 'assignment_personnel.start', 'assignment_personnel.end')
             ->get()
             ->groupBy('assignment_id');
 
@@ -180,7 +180,12 @@ class MaintenanceAssignmentController extends Controller
             $assignments = $assignments->get();
 
             foreach ($assignments as $a) {
-                $a->personnel_data      = $allPersonnelData->get($a->id) ?? collect();
+                $p_data = $allPersonnelData->get($a->id) ?? collect();
+                foreach ($p_data as $p) {
+                    $p->start_time_display = $p->start ? Carbon::parse($p->start)->format('H:i') : null;
+                    $p->end_time_display = $p->end ? Carbon::parse($p->end)->format('H:i') : null;
+                }
+                $a->personnel_data      = $p_data;
                 $a->start_time_display  = $a->start ? Carbon::parse($a->start)->format('H:i') : null;
                 $a->end_time_display    = $a->end   ? Carbon::parse($a->end)->format('H:i')   : null;
             }
@@ -288,7 +293,12 @@ class MaintenanceAssignmentController extends Controller
         $mappedExtra = $extraAssignments->map(function ($group, $groupKey) use ($group_code, $allPersonnelData) {
             $first = $group->first();
             foreach ($group as $a) {
-                $a->personnel_data     = $allPersonnelData->get($a->id) ?? collect();
+                $p_data = $allPersonnelData->get($a->id) ?? collect();
+                foreach ($p_data as $p) {
+                    $p->start_time_display = $p->start ? Carbon::parse($p->start)->format('H:i') : null;
+                    $p->end_time_display = $p->end ? Carbon::parse($p->end)->format('H:i') : null;
+                }
+                $a->personnel_data     = $p_data;
                 $a->start_time_display = $a->start ? Carbon::parse($a->start)->format('H:i') : null;
                 $a->end_time_display   = $a->end   ? Carbon::parse($a->end)->format('H:i')   : null;
             }
@@ -332,20 +342,19 @@ class MaintenanceAssignmentController extends Controller
         if ($group_code) {
             $personnelQuery->whereExists(function ($query) use ($group_code) {
                 $query->select(DB::raw(1))
-                    ->from('employee_assignments as ea2')
-                    ->leftJoin('stage_groups as sg', 'ea2.group_id', '=', 'sg.id')
-                    ->whereColumn('ea2.employees_id', 'e.id')
+                    ->from('user_management as um')
+                    ->leftJoin('stage_groups as sg', 'um.groupName', '=', 'sg.name')
+                    ->whereColumn('um.userName', 'e.code')
                     ->where(function ($q) use ($group_code) {
                         if ($group_code === 'EN_ALL') {
-                            $q->where('ea2.production_code', 'EN');
+                            $q->where('um.deparment', 'EN');
                         } elseif ($group_code == 20) {
-                            $q->where('ea2.production_code', 'QA');
+                            $q->where('um.deparment', 'QA');
                         } else {
-                            $q->where('sg.code', $group_code)
-                                ->orWhere('ea2.group_id', $group_code);
+                            $q->where('sg.code', $group_code);
                         }
                     })
-                    ->where('ea2.active', 1);
+                    ->where('um.isActive', 1);
             });
         }
 
@@ -586,6 +595,8 @@ class MaintenanceAssignmentController extends Controller
                         }
                     }
 
+                    $unique_p_data = collect($p_data)->unique('personnel_id');
+
                     $assignmentId = DB::table('assignments')->insertGetId([
                         'stage_plan_id'     => $spIdString,
                         'room_id'           => $room_id,
@@ -596,21 +607,34 @@ class MaintenanceAssignmentController extends Controller
                         'start'             => $startDt,
                         'end'               => $endDt,
                         'Job_description'   => isset($row['job_description']) ? trim($row['job_description']) : null,
+                        'number_of_employes'=> count($unique_p_data),
+                        'Num_of_per_Level_3'=> 0,
                         'assigned_by'       => session('user')['userName'] ?? 'System',
                         'created_at'        => now(),
                         'updated_at'        => now(),
                         'active'            => 1
                     ]);
 
-                    $unique_p_data = collect($p_data)->unique('personnel_id');
-
                     foreach ($unique_p_data as $p) {
                         if (empty($p['personnel_id'])) continue;
+
+                        $pStart = null;
+                        $pEnd = null;
+                        if (!empty($p['start_time']) && !empty($p['end_time'])) {
+                            $pStart = Carbon::parse($reportedDate . ' ' . $p['start_time'])->format('Y-m-d H:i:s');
+                            $pEnd = Carbon::parse($reportedDate . ' ' . $p['end_time'])->format('Y-m-d H:i:s');
+                            if ($pEnd < $pStart) {
+                                $pEnd = Carbon::parse($pEnd)->addDay()->format('Y-m-d H:i:s');
+                            }
+                        }
+
                         DB::table('assignment_personnel')->insert([
                             'assignment_id' => $assignmentId,
                             'personnel_id' => $p['personnel_id'],
                             'notification' => $p['notification'] ?? null,
-                            'operation_type' => $p['operation_type'] ?? 'thủ công'
+                            'operation_type' => $p['operation_type'] ?? 'thủ công',
+                            'start' => $pStart,
+                            'end' => $pEnd
                         ]);
                     }
                 }
@@ -661,7 +685,7 @@ class MaintenanceAssignmentController extends Controller
             ->whereDate('a.start', $reportedDate)
             ->where('a.deparment_code', $dept_code)
             ->where('a.active', 1)
-            ->select('assignment_personnel.assignment_id', 'assignment_personnel.personnel_id', 'assignment_personnel.notification')
+            ->select('assignment_personnel.assignment_id', 'assignment_personnel.personnel_id', 'assignment_personnel.notification', 'assignment_personnel.start', 'assignment_personnel.end')
             ->get()
             ->groupBy('assignment_id');
 
@@ -773,7 +797,12 @@ class MaintenanceAssignmentController extends Controller
             $assignments = $assignments->get();
 
             foreach ($assignments as $a) {
-                $a->personnel_data = $allPersonnelData->get($a->id) ?? collect();
+                $p_data = $allPersonnelData->get($a->id) ?? collect();
+                foreach ($p_data as $p) {
+                    $p->start_time_display = $p->start ? Carbon::parse($p->start)->format('H:i') : null;
+                    $p->end_time_display = $p->end ? Carbon::parse($p->end)->format('H:i') : null;
+                }
+                $a->personnel_data = $p_data;
                 $a->start_time_display = $a->start ? Carbon::parse($a->start)->format('H:i') : null;
                 $a->end_time_display = $a->end ? Carbon::parse($a->end)->format('H:i') : null;
             }
@@ -826,7 +855,12 @@ class MaintenanceAssignmentController extends Controller
         foreach ($extraAssignments as $roomId => $group) {
             $first = $group->first();
             foreach ($group as $a) {
-                $a->personnel_data = $allPersonnelData->get($a->id) ?? collect();
+                $p_data = $allPersonnelData->get($a->id) ?? collect();
+                foreach ($p_data as $p) {
+                    $p->start_time_display = $p->start ? Carbon::parse($p->start)->format('H:i') : null;
+                    $p->end_time_display = $p->end ? Carbon::parse($p->end)->format('H:i') : null;
+                }
+                $a->personnel_data = $p_data;
                 $a->start_time_display = $a->start ? Carbon::parse($a->start)->format('H:i') : null;
                 $a->end_time_display = $a->end ? Carbon::parse($a->end)->format('H:i') : null;
             }
@@ -853,26 +887,24 @@ class MaintenanceAssignmentController extends Controller
         }
 
         $personnelQuery = DB::table('employees as e')
-            ->where('e.active', 1)
-            ->whereExists(function ($query) use ($dept_code) {
-                $query->select(DB::raw(1))
-                    ->from('employee_assignments as ea')
-                    ->whereColumn('ea.employees_id', 'e.id')
-                    ->where('ea.production_code', $dept_code)
-                    ->where('ea.active', 1);
-            });
+            ->where('e.active', 1);
 
-        if ($group_code && $group_code !== 'EN_ALL') {
+        if ($group_code) {
             $personnelQuery->whereExists(function ($query) use ($group_code) {
                 $query->select(DB::raw(1))
-                    ->from('employee_assignments as ea2')
-                    ->leftJoin('stage_groups as sg', 'ea2.group_id', '=', 'sg.id')
-                    ->whereColumn('ea2.employees_id', 'e.id')
+                    ->from('user_management as um')
+                    ->leftJoin('stage_groups as sg', 'um.groupName', '=', 'sg.name')
+                    ->whereColumn('um.userName', 'e.code')
                     ->where(function ($q) use ($group_code) {
-                        $q->where('sg.code', $group_code)
-                            ->orWhere('ea2.group_id', $group_code);
+                        if ($group_code === 'EN_ALL') {
+                            $q->where('um.deparment', 'EN');
+                        } elseif ($group_code == 20) {
+                            $q->where('um.deparment', 'QA');
+                        } else {
+                            $q->where('sg.code', $group_code);
+                        }
                     })
-                    ->where('ea2.active', 1);
+                    ->where('um.isActive', 1);
             });
         }
 
@@ -959,5 +991,40 @@ class MaintenanceAssignmentController extends Controller
         }
 
         return $dbAssignments;
+    }
+
+    public function updatePersonnelTime(Request $request)
+    {
+        try {
+            $assignmentId = $request->input('assignment_id');
+            $personnelId = $request->input('personnel_id');
+            $start = $request->input('start');
+            $end = $request->input('end');
+            
+            $assignment = DB::table('assignments')->where('id', $assignmentId)->first();
+            if (!$assignment) {
+                return response()->json(['success' => false, 'message' => 'Không tìm thấy phân công']);
+            }
+            
+            $reportedDate = $request->input('reportedDate') ?? Carbon::parse($assignment->start)->format('Y-m-d');
+            
+            $pStart = Carbon::parse($reportedDate . ' ' . $start)->format('Y-m-d H:i:s');
+            $pEnd = Carbon::parse($reportedDate . ' ' . $end)->format('Y-m-d H:i:s');
+            if ($pEnd < $pStart) {
+                $pEnd = Carbon::parse($pEnd)->addDay()->format('Y-m-d H:i:s');
+            }
+
+            DB::table('assignment_personnel')
+                ->where('assignment_id', $assignmentId)
+                ->where('personnel_id', $personnelId)
+                ->update([
+                    'start' => $pStart,
+                    'end' => $pEnd
+                ]);
+
+            return response()->json(['success' => true]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()]);
+        }
     }
 }
