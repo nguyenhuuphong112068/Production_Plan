@@ -120,9 +120,9 @@
                     <div class="tab-pane fade show active" id="unmet" role="tabpanel" aria-labelledby="unmet-tab">
                         <div class="card card-danger card-outline">
                             <div class="card-header">
-                                @if($can_propose)
-                                <button type="button" class="btn btn-sm btn-primary" id="btn-propose-date">Đề nghị chấp
-                                    nhận ngày đáp ứng</button>
+                                @if ($can_propose)
+                                    <button type="button" class="btn btn-sm btn-primary" id="btn-propose-date">Đề nghị chấp
+                                        nhận ngày đáp ứng</button>
                                 @endif
                             </div>
                             <div class="card-body table-responsive" style="height: calc(100vh - 200px);">
@@ -130,8 +130,8 @@
                                     <thead>
                                         <tr>
                                             <th class="text-center" style="width: 40px;">
-                                                @if($can_propose)
-                                                <input type="checkbox" id="selectAllUnmet">
+                                                @if ($can_propose)
+                                                    <input type="checkbox" id="selectAllUnmet">
                                                 @endif
                                             </th>
                                             <th>Mã Sản Phẩm</th>
@@ -162,7 +162,7 @@
                                             @endphp
                                             <tr>
                                                 <td class="text-center">
-                                                    @if($can_propose && !$item->expected_date_change)
+                                                    @if ($can_propose && !$item->expected_date_change)
                                                         <input type="checkbox" class="row-checkbox"
                                                             value="{{ $item->id }}">
                                                     @endif
@@ -211,15 +211,15 @@
                                                         @endforelse
                                                     </div>
                                                     {{-- ===== INPUT CHAT ===== --}}
-                                                    @if($can_propose || $can_approve)
-                                                    <div class="chat-input-wrapper d-flex mt-2">
-                                                        <input type="text"
-                                                            class="form-control form-control-sm chat-input"
-                                                            data-row-id="{{ $item->id }}"
-                                                            placeholder="Nhập trao đổi...">
-                                                        <button class="btn btn-sm btn-primary send-comment"
-                                                            data-row-id="{{ $item->id }}">Gửi</button>
-                                                    </div>
+                                                    @if ($can_propose || $can_approve)
+                                                        <div class="chat-input-wrapper d-flex mt-2">
+                                                            <input type="text"
+                                                                class="form-control form-control-sm chat-input"
+                                                                data-row-id="{{ $item->id }}"
+                                                                placeholder="Nhập trao đổi...">
+                                                            <button class="btn btn-sm btn-primary send-comment"
+                                                                data-row-id="{{ $item->id }}">Gửi</button>
+                                                        </div>
                                                     @endif
                                                 </td>
                                                 <td class="text-center align-middle">
@@ -247,9 +247,10 @@
                     <div class="tab-pane fade" id="material" role="tabpanel" aria-labelledby="material-tab">
                         <div class="card card-warning card-outline">
                             <div class="card-header">
-                                @if($can_propose)
-                                <button type="button" class="btn btn-sm btn-primary" id="btn-propose-material-date">Đề
-                                    nghị chấp nhận thay đổi NL/BB</button>
+                                @if ($can_propose)
+                                    <button type="button" class="btn btn-sm btn-primary"
+                                        id="btn-propose-material-date">Đề
+                                        nghị chấp nhận thay đổi NL/BB</button>
                                 @endif
                             </div>
                             <div class="card-body table-responsive" style="height: calc(100vh - 200px);">
@@ -257,8 +258,8 @@
                                     <thead>
                                         <tr>
                                             <th class="text-center" style="width: 40px;">
-                                                @if($can_propose)
-                                                <input type="checkbox" id="selectAllMaterial">
+                                                @if ($can_propose)
+                                                    <input type="checkbox" id="selectAllMaterial">
                                                 @endif
                                             </th>
                                             <th>Mã Sản Phẩm</th>
@@ -314,7 +315,7 @@
                                             @endphp
                                             <tr>
                                                 <td class="text-center">
-                                                    @if($can_propose && !$item->responsed_date_change)
+                                                    @if ($can_propose && !$item->responsed_date_change)
                                                         <input type="checkbox" class="row-checkbox-material"
                                                             value="{{ $item->id }}">
                                                     @endif
@@ -351,15 +352,15 @@
                                                         @endforelse
                                                     </div>
                                                     {{-- ===== INPUT CHAT ===== --}}
-                                                    @if($can_propose || $can_approve)
-                                                    <div class="chat-input-wrapper d-flex mt-2">
-                                                        <input type="text"
-                                                            class="form-control form-control-sm chat-input"
-                                                            data-row-id="{{ $item->id }}"
-                                                            placeholder="Nhập trao đổi...">
-                                                        <button class="btn btn-sm btn-primary send-comment"
-                                                            data-row-id="{{ $item->id }}">Gửi</button>
-                                                    </div>
+                                                    @if ($can_propose || $can_approve)
+                                                        <div class="chat-input-wrapper d-flex mt-2">
+                                                            <input type="text"
+                                                                class="form-control form-control-sm chat-input"
+                                                                data-row-id="{{ $item->id }}"
+                                                                placeholder="Nhập trao đổi...">
+                                                            <button class="btn btn-sm btn-primary send-comment"
+                                                                data-row-id="{{ $item->id }}">Gửi</button>
+                                                        </div>
                                                     @endif
                                                 </td>
                                                 <td class="text-center align-middle">
@@ -387,10 +388,11 @@
                     <div class="tab-pane fade" id="proposed" role="tabpanel" aria-labelledby="proposed-tab">
                         <div class="card card-info card-outline">
                             <div class="card-header">
-                                @if($can_approve)
-                                <button type="button" class="btn btn-sm btn-success" id="btn-accept-bulk">Chấp nhận mục
-                                    đã
-                                    chọn</button>
+                                @if ($can_approve)
+                                    <button type="button" class="btn btn-sm btn-success" id="btn-accept-bulk">Chấp nhận
+                                        mục
+                                        đã
+                                        chọn</button>
                                 @endif
                             </div>
                             <div class="card-body table-responsive" style="height: calc(100vh - 200px);">
@@ -398,8 +400,8 @@
                                     <thead>
                                         <tr>
                                             <th class="text-center" style="width: 40px;">
-                                                @if($can_approve)
-                                                <input type="checkbox" id="selectAllProposed">
+                                                @if ($can_approve)
+                                                    <input type="checkbox" id="selectAllProposed">
                                                 @endif
                                             </th>
                                             <th>Mã Sản Phẩm</th>
@@ -413,7 +415,9 @@
                                             <th>Trao đổi thông tin</th>
                                             <th>Lịch Sử</th>
                                             <th>
-                                                @if($can_approve) Hành Động @endif
+                                                @if ($can_approve)
+                                                    Hành Động
+                                                @endif
                                             </th>
                                         </tr>
                                     </thead>
@@ -436,10 +440,10 @@
                                                 @endphp
                                                 <tr>
                                                     <td class="text-center">
-                                                        @if($can_approve)
-                                                        <input type="checkbox" class="row-checkbox-proposed"
-                                                            value="{{ $item->id }}"
-                                                            data-response-date="{{ $responseDate ? $responseDate->format('Y-m-d') : '' }}">
+                                                        @if ($can_approve)
+                                                            <input type="checkbox" class="row-checkbox-proposed"
+                                                                value="{{ $item->id }}"
+                                                                data-response-date="{{ $responseDate ? $responseDate->format('Y-m-d') : '' }}">
                                                         @endif
                                                     </td>
                                                     <td>{{ $item->finished_product_code }}</td>
@@ -480,15 +484,15 @@
                                                             @endforelse
                                                         </div>
                                                         {{-- ===== INPUT CHAT ===== --}}
-                                                        @if($can_propose || $can_approve)
-                                                        <div class="chat-input-wrapper d-flex mt-2">
-                                                            <input type="text"
-                                                                class="form-control form-control-sm chat-input"
-                                                                data-row-id="{{ $item->id }}"
-                                                                placeholder="Nhập trao đổi...">
-                                                            <button class="btn btn-sm btn-primary send-comment"
-                                                                data-row-id="{{ $item->id }}">Gửi</button>
-                                                        </div>
+                                                        @if ($can_propose || $can_approve)
+                                                            <div class="chat-input-wrapper d-flex mt-2">
+                                                                <input type="text"
+                                                                    class="form-control form-control-sm chat-input"
+                                                                    data-row-id="{{ $item->id }}"
+                                                                    placeholder="Nhập trao đổi...">
+                                                                <button class="btn btn-sm btn-primary send-comment"
+                                                                    data-row-id="{{ $item->id }}">Gửi</button>
+                                                            </div>
                                                         @endif
                                                     </td>
                                                     <td class="text-center align-middle">
@@ -506,18 +510,18 @@
                                                         </button>
                                                     </td>
                                                     <td class="text-center">
-                                                        @if($can_approve)
-                                                        <button type="button"
-                                                            class="btn btn-sm btn-success btn-accept-single mb-1"
-                                                            data-id="{{ $item->id }}"
-                                                            data-response-date="{{ $responseDate ? $responseDate->format('Y-m-d') : '' }}">
-                                                            Chấp nhận
-                                                        </button>
-                                                        <button type="button"
-                                                            class="btn btn-sm btn-danger btn-reject-single mb-1"
-                                                            data-id="{{ $item->id }}">
-                                                            Không chấp nhận
-                                                        </button>
+                                                        @if ($can_approve)
+                                                            <button type="button"
+                                                                class="btn btn-sm btn-success btn-accept-single mb-1"
+                                                                data-id="{{ $item->id }}"
+                                                                data-response-date="{{ $responseDate ? $responseDate->format('Y-m-d') : '' }}">
+                                                                Chấp nhận
+                                                            </button>
+                                                            <button type="button"
+                                                                class="btn btn-sm btn-danger btn-reject-single mb-1"
+                                                                data-id="{{ $item->id }}">
+                                                                Không chấp nhận
+                                                            </button>
                                                         @endif
                                                     </td>
                                                 </tr>
@@ -536,7 +540,9 @@
                                     <thead>
                                         <tr>
                                             <th>Thời gian</th>
-                                            <th>Mã Lô</th>
+                                            <th>Mã sản phẩm</th>
+                                            <th>Tên sản phẩm</th>
+                                            <th>Số Lô</th>
                                             <th>Loại</th>
                                             <th>Người thực hiện</th>
                                             <th>Hành động</th>
@@ -544,6 +550,7 @@
                                             <th>Ngày cũ</th>
                                             <th>Ngày mới</th>
                                             <th>Lý do từ chối</th>
+                                            <th style="min-width:300px">Trao đổi thông tin</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -552,6 +559,8 @@
                                                 <tr>
                                                     <td>{{ \Carbon\Carbon::parse($hist->created_at)->format('d/m/Y H:i') }}
                                                     </td>
+                                                    <td>{{ $hist->product_code }}</td>
+                                                    <td>{{ $hist->product_name }}</td>
                                                     <td>{{ $hist->batch }}</td>
                                                     <td>
                                                         <span
@@ -577,6 +586,25 @@
                                                     <td>{{ $hist->new_date ? \Carbon\Carbon::parse($hist->new_date)->format('d/m/Y') : '' }}
                                                     </td>
                                                     <td>{{ $hist->reason }}</td>
+                                                    <td style="min-width:300px">
+                                                        <div class="chat-box"
+                                                            style="max-height:150px; overflow-y:auto; font-size:14px; text-align: left;">
+                                                            @forelse ($commentsGrouped[$hist->plan_master_id] ?? [] as $comment)
+                                                                <div class="mb-2 p-2 border rounded"
+                                                                    style="background-color: {{ \Illuminate\Support\Str::startsWith($comment->deparment, 'PX') ? '#d4edda' : '#d1ecf1' }}; border-radius:15px; padding:6px;">
+                                                                    <div style="font-weight:600">
+                                                                        {{ $comment->user_name }}
+                                                                        <small class="text-muted">
+                                                                            {{ \Carbon\Carbon::parse($comment->created_at)->format('d/m H:i') }}
+                                                                        </small>
+                                                                    </div>
+                                                                    <div>{{ $comment->message }}</div>
+                                                                </div>
+                                                            @empty
+                                                                <div class="text-muted">Chưa có trao đổi</div>
+                                                            @endforelse
+                                                        </div>
+                                                    </td>
                                                 </tr>
                                             @endforeach
                                         @endif
@@ -631,7 +659,10 @@
             $('#table_unmet').DataTable({
                 "paging": true,
                 "lengthChange": true,
-                "lengthMenu": [[10, 25, 50, 100, -1], [10, 25, 50, 100, "Tất cả"]],
+                "lengthMenu": [
+                    [10, 25, 50, 100, -1],
+                    [10, 25, 50, 100, "Tất cả"]
+                ],
                 "searching": true,
                 "ordering": true,
                 "order": [
@@ -652,7 +683,10 @@
             $('#table_material').DataTable({
                 "paging": true,
                 "lengthChange": true,
-                "lengthMenu": [[10, 25, 50, 100, -1], [10, 25, 50, 100, "Tất cả"]],
+                "lengthMenu": [
+                    [10, 25, 50, 100, -1],
+                    [10, 25, 50, 100, "Tất cả"]
+                ],
                 "searching": true,
                 "ordering": true,
                 "columnDefs": [{
@@ -670,7 +704,10 @@
             $('#table_proposed_material').DataTable({
                 "paging": true,
                 "lengthChange": true,
-                "lengthMenu": [[10, 25, 50, 100, -1], [10, 25, 50, 100, "Tất cả"]],
+                "lengthMenu": [
+                    [10, 25, 50, 100, -1],
+                    [10, 25, 50, 100, "Tất cả"]
+                ],
                 "searching": true,
                 "ordering": true,
                 "columnDefs": [{
@@ -688,7 +725,10 @@
             $('#table_proposed').DataTable({
                 "paging": true,
                 "lengthChange": true,
-                "lengthMenu": [[10, 25, 50, 100, -1], [10, 25, 50, 100, "Tất cả"]],
+                "lengthMenu": [
+                    [10, 25, 50, 100, -1],
+                    [10, 25, 50, 100, "Tất cả"]
+                ],
                 "searching": true,
                 "ordering": true,
                 "order": [
@@ -1253,7 +1293,10 @@
             $('#table_history_all').DataTable({
                 "paging": true,
                 "lengthChange": true,
-                "lengthMenu": [[10, 25, 50, 100, -1], [10, 25, 50, 100, "Tất cả"]],
+                "lengthMenu": [
+                    [10, 25, 50, 100, -1],
+                    [10, 25, 50, 100, "Tất cả"]
+                ],
                 "searching": true,
                 "ordering": true,
                 "order": [

@@ -197,7 +197,9 @@ class SchedualWarningController extends Controller
         $proposalHistories = DB::table('plan_master_proposals')
             ->join('user_management', 'plan_master_proposals.user_id', '=', 'user_management.id')
             ->join('plan_master', 'plan_master_proposals.plan_master_id', '=', 'plan_master.id')
-            ->select('plan_master_proposals.*', 'user_management.fullName as user_name', 'plan_master.batch')
+            ->leftJoin('finished_product_category', 'plan_master.product_caterogy_id', '=', 'finished_product_category.id')
+            ->leftJoin('product_name', 'finished_product_category.product_name_id', '=', 'product_name.id')
+            ->select('plan_master_proposals.*', 'user_management.fullName as user_name', 'plan_master.batch', 'finished_product_category.finished_product_code as product_code', 'product_name.name as product_name')
             ->orderBy('plan_master_proposals.created_at', 'desc')
             ->get();
 
