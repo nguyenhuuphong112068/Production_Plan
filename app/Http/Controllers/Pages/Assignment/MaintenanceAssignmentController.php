@@ -103,6 +103,9 @@ class MaintenanceAssignmentController extends Controller
                     case 20: // Tổ Hiệu chuẩn QA
                         $q->where('sp.code', 'like', '%HC%');
                         break;
+                    default:
+                        $q->whereRaw('1 = 0');
+                        break;
                 }
             });
         } elseif ($group_code === 'EN_ALL') {
@@ -674,6 +677,148 @@ class MaintenanceAssignmentController extends Controller
         }
     }
 
+    public function cloneCustomTask(Request $request)
+    {
+        $room_id = $request->room_id;
+        $work_location = null;
+        if ($room_id !== "" && !is_numeric($room_id)) {
+            $work_location = $room_id;
+            $room_id = null;
+        } else if ($room_id === "") {
+            $room_id = null;
+        }
+
+        $stage_groups_code = $request->stage_groups_code;
+        if (empty($stage_groups_code)) $stage_groups_code = 0;
+
+        $group_code = $request->group_code;
+        $final_group_code  = ($group_code && $group_code !== 'EN_ALL') ? $group_code : $stage_groups_code;
+        $dept_code         = ($final_group_code == 20) ? 'QA' : 'EN';
+
+        $assignments_data = $request->assignments ?? [];
+        $target_dates = $request->target_dates ?? [];
+
+        if (empty($target_dates)) {
+            return response()->json(['success' => false, 'message' => 'Vui lòng chọn ít nhất 1 ngày để nhân bản.']);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $prodGroups = [
+                1 => "Trung Tâm Cân",
+                3 => "Pha Chế",
+                4 => "Văn Phòng",
+                5 => "Định Hình",
+                6 => "Bao Phim",
+                7 => "ĐGSC",
+                8 => "ĐGTC",
+                9 => "VSCN + Kho BTP",
+                11 => "Tổ Điện Lạnh - B2",
+                12 => "Tổ Cơ Khí",
+                13 => "Tổ Tiện Phay",
+                14 => "ĐGTC",
+                20 => "QA"
+            ];
+
+            foreach ($target_dates as $targetDate) {
+                $spIdString = 'EXT_CLONE_' . time() . '_' . rand(1000, 9999);
+
+                foreach ($assignments_data as $row) {
+                    $p_data = $row['personnel_list'] ?? [];
+
+                    if (empty($row['start_time']) || empty($row['end_time'])) {
+                        continue;
+                    }
+
+                    $startDt = $targetDate . ' ' . $row['start_time'];
+                    $endDt = $targetDate . ' ' . $row['end_time'];
+
+                    if ($row['end_time'] < $row['start_time']) {
+                        $endDt = \Carbon\Carbon::parse($endDt)->addDay()->format('Y-m-d H:i:s');
+                    }
+
+                    foreach ($p_data as $p) {
+                        if (empty($p['personnel_id'])) continue;
+
+                        $overlap = DB::table('assignments as a')
+                            ->join('assignment_personnel as ap', 'a.id', '=', 'ap.assignment_id')
+                            ->leftJoin('room as r', 'a.room_id', '=', 'r.id')
+                            ->leftJoin('stage_groups as sg', 'a.stage_groups_code', '=', 'sg.code')
+                            ->leftJoin('employees as e', 'ap.personnel_id', '=', 'e.id')
+                            ->where('ap.personnel_id', $p['personnel_id'])
+                            ->where('a.active', 1)
+                            ->where('a.start', '<', $endDt)
+                            ->where('a.end', '>', $startDt)
+                            ->select('a.start', 'a.end', 'a.stage_groups_code', 'r.name as room_name', 'sg.name as group_name', 'a.deparment_code', 'e.name as employee_name')
+                            ->first();
+
+                        if ($overlap) {
+                            $roomName = $overlap->room_name ?: 'Công tác khác';
+                            $groupName = $overlap->group_name ?: ($prodGroups[$overlap->stage_groups_code] ?? $overlap->stage_groups_code);
+                            
+                            DB::rollBack();
+                            return response()->json([
+                                'success' => false,
+                                'message' => "Trùng lịch: {$overlap->employee_name} đã được phân công tại {$groupName} - {$roomName} từ {$overlap->start} đến {$overlap->end}."
+                            ], 400);
+                        }
+                    }
+
+                    $unique_p_data = collect($p_data)->unique('personnel_id');
+
+                    $assignmentId = DB::table('assignments')->insertGetId([
+                        'stage_plan_id'     => $spIdString,
+                        'room_id'           => $room_id,
+                        'work_location'     => $work_location,
+                        'deparment_code'    => $dept_code,
+                        'stage_groups_code' => $final_group_code,
+                        'Sheet'             => $row['shift'],
+                        'start'             => $startDt,
+                        'end'               => $endDt,
+                        'Job_description'   => isset($row['job_description']) ? trim($row['job_description']) : null,
+                        'number_of_employes'=> count($unique_p_data),
+                        'Num_of_per_Level_3'=> 0,
+                        'assigned_by'       => session('user')['userName'] ?? 'System',
+                        'created_at'        => now(),
+                        'updated_at'        => now(),
+                        'active'            => 1
+                    ]);
+
+                    foreach ($unique_p_data as $p) {
+                        if (empty($p['personnel_id'])) continue;
+
+                        $pStart = $startDt;
+                        $pEnd = $endDt;
+
+                        if (!empty($p['start_time']) && !empty($p['end_time'])) {
+                            $pStart = $targetDate . ' ' . $p['start_time'];
+                            $pEnd = $targetDate . ' ' . $p['end_time'];
+                            if ($p['end_time'] < $p['start_time']) {
+                                $pEnd = \Carbon\Carbon::parse($pEnd)->addDay()->format('Y-m-d H:i:s');
+                            }
+                        }
+
+                        DB::table('assignment_personnel')->insert([
+                            'assignment_id' => $assignmentId,
+                            'personnel_id' => $p['personnel_id'],
+                            'notification' => $p['notification'] ?? null,
+                            'operation_type' => 'nhân bản',
+                            'start' => $pStart,
+                            'end' => $pEnd
+                        ]);
+                    }
+                }
+            }
+
+            DB::commit();
+            return response()->json(['success' => true, 'message' => 'Đã nhân bản công tác thành công']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => 'Lỗi: ' . $e->getMessage()]);
+        }
+    }
+
     public function publicView(Request $request)
     {
         $group_code   = $request->group_code ?? 'EN_ALL'; // Mặc định Kỹ thuật bảo trì (Tất cả EN)
@@ -736,6 +881,9 @@ class MaintenanceAssignmentController extends Controller
                         break;
                     case 20: // Tổ Hiệu chuẩn QA
                         $q->where('sp.code', 'like', '%HC%');
+                        break;
+                    default:
+                        $q->whereRaw('1 = 0');
                         break;
                 }
             });

@@ -1,6 +1,7 @@
 <link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet">
 <link href="{{ asset('assets/vendor/select2/select2.min.css') }}" rel="stylesheet" />
 <link href="{{ asset('assets/plugins/nouislider/nouislider.min.css') }}" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 
 <style>
     /* Slider Styling */
@@ -390,6 +391,13 @@
     .theory-col {
         display: none;
     }
+
+    .room-row:has(.btn-save-room.is-dirty) .btn-clone-row,
+    .room-row:has(.btn-save-room.btn-warning) .btn-clone-row,
+    .room-row:has(.btn-save-room.is-dirty) .btn-clone-shift,
+    .room-row:has(.btn-save-room.btn-warning) .btn-clone-shift {
+        display: none !important;
+    }
 </style>
 @php
     $reportedDateObj = \Carbon\Carbon::parse($reportedDate)->startOfDay();
@@ -539,6 +547,10 @@
                                         <label class="custom-control-label" for="{{ $uniqueOsId }}"
                                             style="font-size: 11px; cursor: pointer;">Không chính qui</label>
                                     </div>
+                                    <button class="btn btn-outline-info btn-circle btn-clone-row mt-1"
+                                        title="Nhân bản toàn bộ ca" {{ !$canEdit ? 'disabled' : '' }}>
+                                        <i class="fas fa-copy"></i>
+                                    </button>
                                 @endif
                             </td>
                             <td class="theory-cell text-left position-relative theory-col">
@@ -674,7 +686,11 @@
                                                 <td style="width: 60px" class="text-center">
                                                     @if ($canEdit)
                                                         <i
-                                                            class="fas fa-times-circle btn-remove-shift cursor-pointer"></i>
+                                                            class="fas fa-times-circle btn-remove-shift cursor-pointer" style="font-size: 1.1rem" title="Xóa ca này"></i>
+                                                        <br />
+                                                        <i class="fas fa-copy btn-clone-shift cursor-pointer text-info mt-1"
+                                                            style="font-size: 1.1rem;"
+                                                            title="Nhân bản ca này"></i>
                                                     @else
                                                         <i class="fas fa-lock text-muted"
                                                             title="Không thể chỉnh sửa"></i>
@@ -769,7 +785,11 @@
                                                 <td style="width: 60px" class="text-center">
                                                     @if ($canEdit)
                                                         <i
-                                                            class="fas fa-times-circle btn-remove-shift cursor-pointer"></i>
+                                                            class="fas fa-times-circle btn-remove-shift cursor-pointer" style="font-size: 1.1rem" title="Xóa ca này"></i>
+                                                        <br />
+                                                        <i class="fas fa-copy btn-clone-shift cursor-pointer text-info mt-1"
+                                                            style="font-size: 1.1rem;"
+                                                            title="Nhân bản ca này"></i>
                                                     @else
                                                         <i class="fas fa-lock text-muted"
                                                             title="Không thể chỉnh sửa"></i>
@@ -961,6 +981,39 @@
 
 <script src="{{ asset('js/vendor/jquery-1.12.4.min.js') }}"></script>
 <script src="{{ asset('js/sweetalert2.all.min.js') }}"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<!-- Modal Clone Custom Task -->
+<div class="modal fade" id="modalCloneCustomTask" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title font-weight-bold"><i class="fas fa-copy mr-2"></i>Nhân Bản Công Tác Khác</h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group d-flex justify-content-center">
+                    <input type="text" id="clone-date-input" class="d-none">
+                </div>
+                <div class="mt-3">
+                    <label class="font-weight-bold">Các ngày đã chọn:</label>
+                    <div id="clone-dates-container" class="d-flex flex-wrap" style="gap: 8px; min-height: 40px; border: 1px dashed #ccc; padding: 10px; border-radius: 5px;">
+                        <span class="text-muted small w-100 text-center" id="clone-dates-empty">Chưa có ngày nào được chọn</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-info font-weight-bold" id="btn-confirm-clone">
+                    <i class="fas fa-check mr-1"></i> Xác nhận Clone
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script src="{{ asset('assets/plugins/nouislider/nouislider.min.js') }}"></script>
 
 <script>
@@ -2106,7 +2159,11 @@
                     <td style="width: 53.6%">
                         <div class="form-control form-control-sm job-desc" contenteditable="true" style="min-height: 80px; height: auto; white-space: pre-wrap;" placeholder="Nội dung..."></div>
                     </td>
-                    <td style="width: 5.3%" class="text-center"><i class="fas fa-times-circle btn-remove-shift cursor-pointer"></i></td>
+                    <td style="width: 5.3%" class="text-center">
+                        <i class="fas fa-times-circle btn-remove-shift cursor-pointer" style="font-size: 1.1rem" title="Xóa ca này"></i>
+                        <br />
+                        <i class="fas fa-copy btn-clone-shift cursor-pointer text-info mt-1" style="font-size: 1.1rem;" title="Nhân bản ca này"></i>
+                    </td>
                 </tr>
             `);
             container.append(newRow);
@@ -2648,7 +2705,11 @@
                                     <td style="width: 600px">
                                         <div class="form-control form-control-sm job-desc" contenteditable="true" style="min-height: 80px; height: auto; white-space: pre-wrap;" placeholder="Nội dung..."></div>
                                     </td>
-                                    <td style="width: 60px" class="text-center"><i class="fas fa-times-circle btn-remove-shift cursor-pointer"></i></td>
+                                    <td style="width: 60px" class="text-center">
+                                        <i class="fas fa-times-circle btn-remove-shift cursor-pointer" style="font-size: 1.1rem" title="Xóa ca này"></i>
+                                        <br />
+                                        <i class="fas fa-copy btn-clone-shift cursor-pointer text-info mt-1" style="font-size: 1.1rem;" title="Nhân bản ca này"></i>
+                                    </td>
                                 </tr>
                             </tbody>
                                 <tfoot class="timeline-tfoot">
@@ -3567,6 +3628,200 @@
     $(document).ready(function() {
         $('.personnel-row').each(function() {
             initTimeSlider($(this));
+        });
+    });
+
+    let cloneTargetDates = new Set();
+    let currentCloneTarget = null;
+    let cloneDateFp = null;
+
+    if ($('#clone-date-input').length > 0) {
+        cloneDateFp = flatpickr("#clone-date-input", {
+            inline: true,
+            mode: "multiple",
+            minDate: new Date(new Date("{{ $reportedDate }}").getTime() + 86400000),
+            dateFormat: "Y-m-d",
+            onChange: function(selectedDates, dateStr, instance) {
+                cloneTargetDates = new Set(dateStr.split(', ').filter(d => d));
+                renderCloneDates();
+            }
+        });
+    }
+
+    $(document).on('click', '.btn-clone-shift', function() {
+        currentCloneTarget = $(this).closest('.assignment-item');
+        cloneTargetDates.clear();
+        if(cloneDateFp) cloneDateFp.clear();
+        renderCloneDates();
+        $('#modalCloneCustomTask').modal('show');
+    });
+
+    $(document).on('click', '.btn-clone-row', function() {
+        currentCloneTarget = $(this).closest('.room-row');
+        cloneTargetDates.clear();
+        if(cloneDateFp) cloneDateFp.clear();
+        renderCloneDates();
+        $('#modalCloneCustomTask').modal('show');
+    });
+
+    $(document).on('click', '.btn-remove-clone-date', function() {
+        const dateToRemove = $(this).data('date');
+        cloneTargetDates.delete(dateToRemove);
+        if(cloneDateFp) cloneDateFp.setDate(Array.from(cloneTargetDates));
+        renderCloneDates();
+    });
+
+    function renderCloneDates() {
+        const container = $('#clone-dates-container');
+        const emptyLabel = $('#clone-dates-empty');
+
+        container.find('.badge').remove();
+
+        if (cloneTargetDates.size === 0) {
+            emptyLabel.show();
+        } else {
+            emptyLabel.hide();
+            const sortedDates = Array.from(cloneTargetDates).sort();
+            sortedDates.forEach(dateStr => {
+                if (!dateStr) return;
+                const parts = dateStr.split('-');
+                const displayDate = parts[2] + '/' + parts[1] + '/' + parts[0];
+                const badgeHtml = `
+                    <span class="badge badge-info p-2 d-flex align-items-center" style="font-size: 14px;">
+                        <i class="far fa-calendar-alt mr-2"></i> ${displayDate}
+                        <i class="fas fa-times ml-2 text-white cursor-pointer btn-remove-clone-date" data-date="${dateStr}"></i>
+                    </span>
+                `;
+                container.append(badgeHtml);
+            });
+        }
+    }
+
+    $('#btn-confirm-clone').on('click', function() {
+        if (cloneTargetDates.size === 0) {
+            Swal.fire('Lỗi', 'Vui lòng chọn ít nhất 1 ngày để nhân bản.', 'warning');
+            return;
+        }
+
+        if (!currentCloneTarget) return;
+
+        let assignments = [];
+        let roomRow = null;
+
+        if (currentCloneTarget.hasClass('assignment-item')) {
+            roomRow = currentCloneTarget.closest('.room-row');
+
+            const p_list = [];
+            currentCloneTarget.find('.personnel-row').each(function() {
+                const pid = $(this).find('.person-select').val();
+                if (pid) p_list.push({
+                    personnel_id: pid,
+                    notification: $(this).find('.person-notif').val(),
+                    operation_type: 'nhân bản'
+                });
+            });
+
+            const jobDesc = currentCloneTarget.find('.job-desc').html().trim();
+            const shiftName = currentCloneTarget.find('.shift-select option:selected').text();
+
+            if (!jobDesc || jobDesc === '<br>' || jobDesc === 'Nội dung...') {
+                Swal.fire('Thiếu thông tin', `Ca ${shiftName}: Vui lòng nhập nội dung công việc.`, 'warning');
+                return;
+            }
+            if (p_list.length === 0) return;
+
+            assignments.push({
+                shift: currentCloneTarget.find('.shift-select').val(),
+                start_time: currentCloneTarget.find('.start-time-input').val(),
+                end_time: currentCloneTarget.find('.end-time-input').val(),
+                job_description: jobDesc,
+                personnel_list: p_list
+            });
+        } else if (currentCloneTarget.hasClass('room-row')) {
+            roomRow = currentCloneTarget;
+            let isValid = true;
+            let validationError = '';
+
+            roomRow.find('.assignment-item:not(.foreign-assignment)').each(function() {
+                const jobDesc = $(this).find('.job-desc').html().trim();
+                const shiftName = $(this).find('.shift-select option:selected').text();
+
+                let pCount = 0;
+                const p_list = [];
+                $(this).find('.personnel-row').each(function() {
+                    const pid = $(this).find('.person-select').val();
+                    if (pid) {
+                        pCount++;
+                        p_list.push({
+                            personnel_id: pid,
+                            notification: $(this).find('.person-notif').val(),
+                            operation_type: 'nhân bản'
+                        });
+                    }
+                });
+
+                if (!jobDesc || jobDesc === '<br>' || jobDesc === 'Nội dung...') {
+                    validationError = `Ca ${shiftName}: Vui lòng nhập nội dung công việc.`;
+                    isValid = false;
+                    return false;
+                }
+                if (pCount === 0) return true;
+
+                assignments.push({
+                    shift: $(this).find('.shift-select').val(),
+                    start_time: $(this).find('.start-time-input').val(),
+                    end_time: $(this).find('.end-time-input').val(),
+                    job_description: jobDesc,
+                    personnel_list: p_list
+                });
+            });
+
+            if (!isValid) {
+                Swal.fire('Thiếu thông tin', validationError, 'warning');
+                return;
+            }
+            if (assignments.length === 0) {
+                Swal.fire('Lỗi', 'Không có ca nào để nhân bản.', 'warning');
+                return;
+            }
+        }
+
+        const roomId = roomRow.attr('data-room-id');
+        let roomName = '';
+        if(!roomId) {
+            roomName = roomRow.find('.room-select-custom').val();
+        }
+
+        const payload = {
+            _token: "{{ csrf_token() }}",
+            room_id: roomId || roomName,
+            group_code: "{{ $group_code ?? '' }}",
+            stage_groups_code: roomRow.attr('data-group-code'),
+            target_dates: Array.from(cloneTargetDates),
+            assignments: assignments
+        };
+
+        const btn = $(this);
+        btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Đang xử lý...');
+
+        $.ajax({
+            url: "{{ route('pages.assignment.maintenance.clone_custom_task') }}",
+            method: "POST",
+            data: payload,
+            success: function(res) {
+                btn.prop('disabled', false).html('<i class="fas fa-check mr-1"></i> Xác nhận Clone');
+                if (res.success) {
+                    $('#modalCloneCustomTask').modal('hide');
+                    Swal.fire('Thành công', res.message, 'success');
+                } else {
+                    Swal.fire('Lỗi', res.message || 'Có lỗi xảy ra', 'error');
+                }
+            },
+            error: function(err) {
+                btn.prop('disabled', false).html('<i class="fas fa-check mr-1"></i> Xác nhận Clone');
+                const msg = err.responseJSON && err.responseJSON.message ? err.responseJSON.message : 'Không thể kết nối đến máy chủ';
+                Swal.fire('Lỗi', msg, 'error');
+            }
         });
     });
 </script>

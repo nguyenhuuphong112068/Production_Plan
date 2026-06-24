@@ -46,6 +46,7 @@ Route::prefix('/assignemnt/maintenance')
         Route::post('update-has-assignment', 'updateHasAssignment')->name('update_has_assignment');
         Route::post('update-personnel-time', 'updatePersonnelTime')->name('update_personnel_time');
         Route::post('store', 'store')->name('store');
+        Route::post('clone-custom-task', 'cloneCustomTask')->name('clone_custom_task');
         Route::delete('destroy/{id}', 'destroy')->name('destroy');
     });
 
