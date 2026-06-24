@@ -417,14 +417,19 @@
         } elseif ($department === 'EN') {
             $canAccessGroup = $group_code != 17; // Được 4 nhóm trừ HC Thiết Bị
         }
+    } elseif (str_contains($userGroup, 'Engineer Manager')) {
+        $canAccessGroup = true;
     } elseif (str_contains($userGroup, 'Calibration and Maintenance Scheduler')) {
-        $userStageGroup = collect($stage_groups)->firstWhere('name', $userGroupNameSession);
+        $normalizedSessionName = trim(preg_replace('/\s+/', ' ', str_replace("\xC2\xA0", ' ', $userGroupNameSession)));
+        $userStageGroup = collect($stage_groups)->first(function($g) use ($normalizedSessionName) {
+            return trim(preg_replace('/\s+/', ' ', str_replace("\xC2\xA0", ' ', $g->name))) === $normalizedSessionName;
+        });
         $userStageGroupCode = $userStageGroup ? $userStageGroup->code : null;
         $canAccessGroup = ($userStageGroupCode == $group_code);
     }
 
     $hasEditPermission = $hasBasePermission && $canAccessGroup;
-    $canEdit = $hasEditPermission && !$isPastDate && request()->group_code !== 'EN_ALL';
+    $canEdit = $hasEditPermission && !$isPastDate && (request()->group_code !== 'EN_ALL' || str_contains($userGroup, 'Engineer Manager'));
 @endphp
 
 <div class="content-wrapper">

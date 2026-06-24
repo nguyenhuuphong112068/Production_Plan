@@ -40,7 +40,8 @@ class MaintenanceAssignmentController extends Controller
         $reportedDate = $request->reportedDate ?? Carbon::now()->format('Y-m-d');
         $group_code   = $request->group_code ?? null;
         $dept_code    = ($group_code == 20) ? 'QA' : 'EN';
-        $canEdit      = ($group_code !== 'EN_ALL');
+        $userGroup    = session('user')['userGroup'] ?? null;
+        $canEdit      = ($group_code !== 'EN_ALL') || ($userGroup === 'Engineer Manager');
 
         $startDate = Carbon::parse($reportedDate)->setTime(6, 0, 0);
         $endDate   = $startDate->copy()->addDays(1);
@@ -362,12 +363,8 @@ class MaintenanceAssignmentController extends Controller
                     $q->orWhereExists(function ($query) use ($group_code) {
                         $query->select(DB::raw(1))
                             ->from('employee_assignments as ea')
-                            ->leftJoin('stage_groups as sg', 'ea.group_id', '=', 'sg.id')
                             ->whereColumn('ea.employees_id', 'e.id')
-                            ->where(function ($sq) use ($group_code) {
-                                $sq->where('sg.code', $group_code)
-                                    ->orWhere('ea.group_id', $group_code);
-                            })
+                            ->where('ea.group_id', $group_code)
                             ->where('ea.active', 1);
                     });
                 }
@@ -536,7 +533,7 @@ class MaintenanceAssignmentController extends Controller
         $stage_groups_code = $request->stage_groups_code ?? null;
 
         // Ưu tiên dùng group_code truyền từ view để đảm bảo lưu đúng tổ đang làm việc
-        $final_group_code  = $group_code ?: $stage_groups_code;
+        $final_group_code  = ($group_code && $group_code !== 'EN_ALL') ? $group_code : $stage_groups_code;
         $dept_code         = ($final_group_code == 20) ? 'QA' : 'EN';
         $assignments_data  = $request->assignments ?? [];
 
@@ -928,12 +925,8 @@ class MaintenanceAssignmentController extends Controller
                     $q->orWhereExists(function ($query) use ($group_code) {
                         $query->select(DB::raw(1))
                             ->from('employee_assignments as ea')
-                            ->leftJoin('stage_groups as sg', 'ea.group_id', '=', 'sg.id')
                             ->whereColumn('ea.employees_id', 'e.id')
-                            ->where(function ($sq) use ($group_code) {
-                                $sq->where('sg.code', $group_code)
-                                    ->orWhere('ea.group_id', $group_code);
-                            })
+                            ->where('ea.group_id', $group_code)
                             ->where('ea.active', 1);
                     });
                 }
