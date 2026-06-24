@@ -52,6 +52,7 @@
                       <th rowspan="2">Phân Xưởng</th>
                       <th rowspan="2">Người Tạo/ Ngày Tạo</th>
                       <th rowspan="2">Chọn</th>
+                      <th rowspan="2" style="display:none;">IsHypothesis</th>
                      
                     </tr>
                     <tr>
@@ -200,7 +201,7 @@
                               <i class="fas fa-plus"></i>
                           </button>
                       </td>
-
+                      <td style="display:none;">{{ $data->IsHypothesis }}</td>
                     </tr>
                   @endforeach
 
@@ -225,7 +226,7 @@
   let currentModalTarget = '#create_modal';
   $(document).ready(function () {
       // Khởi tạo DataTable
-      $('#intermediate_category_dt').DataTable({
+      var table = $('#intermediate_category_dt').DataTable({
           paging: true,
           lengthChange: true,
           searching: true,
@@ -274,7 +275,11 @@
           const modal_type = button.data('modal_type');
           currentModalTarget = modal_type;
 
-
+          if (modal_type === '#create_hypothesis_modal') {
+              table.column(14).search('^1$', true, false).draw();
+          } else {
+              table.column(14).search('^0$', true, false).draw();
+          }
       });
 
 

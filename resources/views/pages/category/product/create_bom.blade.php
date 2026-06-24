@@ -35,6 +35,14 @@
       <div class="modal-body" style="max-height: 100%; overflow-x: auto; ">
           <div class="card-body">
 
+            <div class="mb-3 p-3" style="background-color: #f1f3f5; border-radius: 5px; display:flex; gap:10px; align-items:center;">
+                <strong style="white-space: nowrap;"><i class="fas fa-magic"></i> Gợi ý từ MMS:</strong>
+                <input type="text" id="input_mms_code" class="form-control" placeholder="Nhập Mã MMS (ví dụ: FP...)" style="flex: 1;">
+                <button type="button" class="btn btn-info" id="btn_fetch_mms" style="white-space: nowrap;">
+                    <i class="fas fa-search"></i> Lấy công thức
+                </button>
+            </div>
+
             <div class="mb-3" style="display:flex; gap:10px; align-items:center; font-size:18px;">
                 <input type="hidden" id="product_caterogy_id">
                 <input type="text" id="input_code" class="form-control" placeholder="Mã Bao Bì">
@@ -93,6 +101,65 @@
 
 <script>
   let rowIndex = 1;
+  $('#btn_fetch_mms').on('click', function() {
+      let mmsCode = $('#input_mms_code').val().trim();
+      if (!mmsCode) {
+          alert("Vui lòng nhập mã MMS để lấy công thức!");
+          return;
+      }
+      
+      let btn = $(this);
+      let originalHtml = btn.html();
+      btn.html('<i class="fas fa-spinner fa-spin"></i> Đang tải...').prop('disabled', true);
+
+      $.ajax({
+          url: "{{ route('pages.category.intermediate.recipe') }}",
+          type: "POST",
+          data: {
+              _token: "{{ csrf_token() }}",
+              intermediate_code: mmsCode,
+              IsHypothesis: 0
+          },
+          success: function(res) {
+              btn.html(originalHtml).prop('disabled', false);
+              if (res && res.length > 0) {
+                  res.forEach(function(item) {
+                      let code = item.MatID || '';
+                      let name = item.MaterialName || item.MatName || '';
+                      let qty = item.MatQty || '';
+                      let uom = item.uom || item.MatUOM || '';
+                      
+                      let newRow = `
+                          <tr>
+                              <td>${rowIndex}</td>
+                              <td><input type="text" class="form-control code" value="${code}"></td>
+                              <td><input type="text" class="form-control name" value="${name}"></td>
+                              <td><input type="number" class="form-control qty" value="${qty}"></td>
+                              <td><input type="text" class="form-control uom" value="${uom}"></td>
+                            
+                              <td>
+                                  <button class="btn btn-danger btn-sm btn_remove">
+                                      <i class="fa fa-trash"></i>
+                                  </button>
+                              </td>
+                          </tr>
+                      `;
+                      $('#data_table_create_recipe_body').append(newRow);
+                      rowIndex++;
+                  });
+                  alert("Đã lấy " + res.length + " nguyên liệu từ MMS!");
+                  $('#input_mms_code').val('');
+              } else {
+                  alert("Không tìm thấy công thức cho mã này trên MMS!");
+              }
+          },
+          error: function(err) {
+              btn.html(originalHtml).prop('disabled', false);
+              alert("Có lỗi xảy ra khi lấy dữ liệu từ MMS!");
+          }
+      });
+  });
+
   $('#btn_add_row').on('click', function () {
      
       let code = $('#input_code').val().trim();
