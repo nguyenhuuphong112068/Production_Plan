@@ -522,16 +522,10 @@
                                 @if (!$task->room_id || str_starts_with($task->sp_id, 'EXT_'))
                                     <div class="mb-1 text-primary font-weight-bold" style="font-size: 11px;">Công tác
                                         khác</div>
-                                    <input type="text" list="room-list-options-{{ $loop->index }}"
+                                    <input type="text" list="room-list-options"
                                         class="form-control form-control-sm room-select-custom mb-2"
                                         value="{{ $task->room_name !== 'Công tác khác' ? $task->room_name : '' }}"
                                         placeholder="-- Vị trí công tác --">
-                                    <datalist id="room-list-options-{{ $loop->index }}">
-                                        @foreach ($allRooms as $r)
-                                            <option value="{{ $r->name }}">{{ $r->code }} -
-                                                {{ $r->name }}</option>
-                                        @endforeach
-                                    </datalist>
                                 @else
                                     <div><b>{{ $task->room_code }}</b></div>
                                     <div>{{ $task->room_name }}</div>
@@ -662,25 +656,45 @@
                                                                     </div>
                                                                     <div style="flex: 1"
                                                                         class="d-flex align-items-center">
-                                                                        <select
-                                                                            class="form-control form-control-sm person-select"
-                                                                            style="width: 40%"
-                                                                            data-selected="{{ $p_info->personnel_id }}"
-                                                                            data-op-type="{{ $p_info->operation_type ?? 'thủ công' }}"
-                                                                            {{ !$canEdit || ($assignment->is_foreign ?? false) ? 'disabled' : '' }}>
-                                                                            <option value="">-- Chọn người --
-                                                                            </option>
-                                                                        </select>
+                                                                        <div class="form-control form-control-sm p-0 d-flex align-items-center mr-1"
+                                                                            style="width: 40%; background: #f8f9fa; border: 1px dashed #ccc;">
+                                                                            <input type="hidden"
+                                                                                class="person-select"
+                                                                                data-selected="{{ $p_info->personnel_id }}"
+                                                                                data-op-type="{{ $p_info->operation_type ?? 'thủ công' }}"
+                                                                                value="{{ $p_info->personnel_id }}"
+                                                                                {{ !$canEdit || ($assignment->is_foreign ?? false) ? 'disabled' : '' }}>
+                                                                            @php
+                                                                                $personName = '-- Chưa có NV --';
+                                                                                if (!empty($p_info->personnel_id)) {
+                                                                                    $pModel = collect(
+                                                                                        $personnel,
+                                                                                    )->firstWhere(
+                                                                                        'id',
+                                                                                        $p_info->personnel_id,
+                                                                                    );
+                                                                                    if ($pModel) {
+                                                                                        $personName = $pModel->name;
+                                                                                    }
+                                                                                }
+                                                                            @endphp
+                                                                            <input type="text"
+                                                                                class="person-name-display border-0 w-100 bg-transparent text-center font-weight-bold text-primary"
+                                                                                style="font-size: 0.75rem; outline: none; cursor: pointer;"
+                                                                                readonly value="{{ $personName }}"
+                                                                                title="{{ $personName }}"
+                                                                                {{ !$canEdit || ($assignment->is_foreign ?? false) ? 'disabled' : '' }}>
+                                                                        </div>
                                                                         @if (strtolower($p_info->operation_type ?? 'thủ công') == 'tự động')
-                                                                            <i class="fas fa-robot text-info ml-1 op-icon"
+                                                                            <i class="fas fa-robot text-info mr-1 op-icon"
                                                                                 title="Sắp tự động"
                                                                                 style="font-size: 0.8rem;"></i>
                                                                         @elseif(strtolower($p_info->operation_type ?? 'thủ công') == 'nhân bản')
-                                                                            <i class="fas fa-copy text-success ml-1 op-icon"
+                                                                            <i class="fas fa-copy text-success mr-1 op-icon"
                                                                                 title="Nhân bản"
                                                                                 style="font-size: 0.8rem;"></i>
                                                                         @else
-                                                                            <i class="fas fa-hand-paper text-secondary ml-1 op-icon"
+                                                                            <i class="fas fa-hand-paper text-secondary mr-1 op-icon"
                                                                                 title="Sắp thủ công"
                                                                                 style="font-size: 0.8rem;"></i>
                                                                         @endif
@@ -816,13 +830,18 @@
                                                                 <div class="personnel-label">A</div>
                                                                 <div style="flex: 1"
                                                                     class="d-flex align-items-center">
-                                                                    <select
-                                                                        class="form-control form-control-sm person-select"
-                                                                        style="width: 40%" data-op-type="thủ công"
-                                                                        {{ !$canEdit ? 'disabled' : '' }}>
-                                                                        <option value="">-- Chọn người --
-                                                                        </option>
-                                                                    </select>
+                                                                    <div class="form-control form-control-sm p-0 d-flex align-items-center mr-1"
+                                                                        style="width: 40%; background: #f8f9fa; border: 1px dashed #ccc;">
+                                                                        <input type="hidden" class="person-select"
+                                                                            data-op-type="thủ công" value=""
+                                                                            {{ !$canEdit ? 'disabled' : '' }}>
+                                                                        <input type="text"
+                                                                            class="person-name-display border-0 w-100 bg-transparent text-center font-weight-bold text-primary"
+                                                                            style="font-size: 0.75rem; outline: none; cursor: pointer;"
+                                                                            readonly value="-- Chưa có NV --"
+                                                                            title="-- Chưa có NV --"
+                                                                            {{ !$canEdit ? 'disabled' : '' }}>
+                                                                    </div>
                                                                     <i class="fas fa-hand-paper text-secondary ml-1 op-icon"
                                                                         title="Sắp thủ công"
                                                                         style="font-size: 0.8rem;"></i>
@@ -1108,6 +1127,13 @@
     </div>
 </div>
 
+<!-- Shared Datalist cho Công tác khác -->
+<datalist id="room-list-options">
+    @foreach ($allRooms as $r)
+        <option value="{{ $r->name }}">{{ $r->code }} - {{ $r->name }}</option>
+    @endforeach
+</datalist>
+
 <script src="{{ asset('js/vendor/jquery-1.12.4.min.js') }}"></script>
 <script src="{{ asset('js/sweetalert2.all.min.js') }}"></script>
 <script src="{{ asset('assets/plugins/nouislider/nouislider.min.js') }}"></script>
@@ -1271,7 +1297,7 @@
             if (!isNoLunchBreakShift) {
                 // Subtract lunch break (11:30 - 12:15)
                 const lunchStart = 11 * 60 + 30; // 690
-                const lunchEnd = 12 * 60 + 15;   // 735
+                const lunchEnd = 12 * 60 + 15; // 735
 
                 const overlapStart = Math.max(sMin, lunchStart);
                 const overlapEnd = Math.min(eMin, lunchEnd);
@@ -1331,13 +1357,15 @@
                             '.end-time-input').val() || '';
 
                         if (start || end) {
+                            const isSaved = !roomRow.find('.btn-save-room').hasClass('is-dirty');
                             assignments.push({
                                 assignment_id: assId,
                                 room: roomCode,
                                 start: start,
                                 end: end,
                                 is_local: true,
-                                shift: shiftVal
+                                shift: shiftVal,
+                                is_saved: isSaved
                             });
                         }
                     }
@@ -1355,7 +1383,8 @@
                             start: dbAss.start,
                             end: dbAss.end,
                             is_local: false,
-                            group_name: dbAss.group_name
+                            group_name: dbAss.group_name,
+                            is_saved: true
                         });
                     }
                 });
@@ -1366,13 +1395,17 @@
                     });
                     totalHours = Math.round(totalHours * 100) / 100;
 
+                    let hasUnsaved = assignments.some(a => a.is_local && !a.is_saved);
+                    let totalBadgeClass = hasUnsaved ? 'badge-danger' : 'badge-success';
+
                     let badgeHtml = '<div class="personnel-time-ranges mt-1">';
                     badgeHtml +=
-                        `<span class="badge badge-success text-white mr-1" style="font-size: 0.65rem; padding: 2px 4px; font-weight: bold;"><i class="fas fa-hourglass-half mr-1"></i>Tổng: ${totalHours}h</span>`;
+                        `<span class="badge ${totalBadgeClass} text-white mr-1" style="font-size: 0.65rem; padding: 2px 4px; font-weight: bold;"><i class="fas fa-hourglass-half mr-1"></i>Tổng: ${totalHours}h</span>`;
                     assignments.forEach(a => {
                         if (a.is_local) {
+                            let localBadgeClass = a.is_saved ? 'badge-info' : 'badge-danger';
                             badgeHtml +=
-                                `<span class="badge badge-info text-white mr-1" style="font-size: 0.65rem; padding: 2px 4px; font-weight: normal;"><i class="far fa-clock mr-1"></i>${a.room}: ${a.start}-${a.end}</span>`;
+                                `<span class="badge ${localBadgeClass} text-white mr-1" style="font-size: 0.65rem; padding: 2px 4px; font-weight: normal;"><i class="far fa-clock mr-1"></i>${a.room}: ${a.start}-${a.end}</span>`;
                         } else {
                             badgeHtml +=
                                 `<span class="badge text-white mr-1" style="font-size: 0.65rem; padding: 2px 4px; font-weight: normal; background-color: #6c757d;" title="Tổ khác: ${a.group_name}"><i class="fas fa-exchange-alt mr-1"></i>${a.group_name} (${a.room}): ${a.start}-${a.end}</span>`;
@@ -1723,11 +1756,6 @@
 
     $(document).ready(function() {
         const productionCode = "{{ $production_code }}";
-        const globalPersonnelOptions = @json(
-            $personnel->map(function ($p) use ($skills) {
-                    $skillStr = $skills[$p->id]->allowed_rooms_with_levels ?? '';
-                    return ['id' => $p->id, 'text' => $p->name, 'skills' => $skillStr];
-                })->values());
 
 
 
@@ -1756,73 +1784,6 @@
             updateTimelines();
             updateSidebarPersonnelTimes();
         });
-
-        function initSelect2(selector = '.person-select', roomId = null) {
-            if (!roomId) {
-                // Thử đọc roomId từ .room-row gần nhất khi gọi cho nhóm
-            }
-            $(selector).each(function() {
-                let $this = $(this);
-                const rid = roomId || $this.closest('.room-row').attr('data-room-id') || null;
-                if (!$this.hasClass("select2-hidden-accessible")) {
-                    $this.select2({
-                        placeholder: "-- Chọn người --",
-                        allowClear: true,
-                        width: '100%',
-                        data: globalPersonnelOptions,
-                        templateResult: function(option) {
-                            if (!option.id) return option.text;
-                            const r = rid || $this.closest('.room-row').attr(
-                                'data-room-id');
-                            let level = 0;
-                            if (r && option.skills) {
-                                const pairs = (option.skills + '').split('|');
-                                for (const pair of pairs) {
-                                    const parts = pair.split(':');
-                                    if (parts[0] == r) {
-                                        level = parseInt(parts[1] || 0);
-                                        break;
-                                    }
-                                }
-                            }
-                            const badge = level > 0 ?
-                                `<span class="badge badge-${level >= 3 ? 'success' : (level == 2 ? 'warning' : 'secondary')}" style="font-size:0.7rem;min-width:26px;">B${level}</span> ` :
-                                `<span class="badge badge-light" style="font-size:0.7rem;min-width:26px;border:1px solid #ccc;">-</span> `;
-                            return $(badge + $('<span>').text(option.text).prop(
-                                'outerHTML'));
-                        },
-                        templateSelection: function(option) {
-                            if (!option.id) return option.text;
-                            const r = rid || $this.closest('.room-row').attr(
-                                'data-room-id');
-                            let level = 0;
-                            if (r && option.skills) {
-                                const pairs = (option.skills + '').split('|');
-                                for (const pair of pairs) {
-                                    const parts = pair.split(':');
-                                    if (parts[0] == r) {
-                                        level = parseInt(parts[1] || 0);
-                                        break;
-                                    }
-                                }
-                            }
-                            const badge = level > 0 ?
-                                `<span class="badge badge-${level >= 3 ? 'success' : (level == 2 ? 'warning' : 'secondary')}" style="font-size:0.7rem;min-width:22px;">B${level}</span> ` :
-                                '';
-                            return $(badge + $('<span>').text(option.text).prop(
-                                'outerHTML'));
-                        }
-                    });
-
-                    let selected = $this.data('selected');
-                    if (selected) {
-                        $this.val(selected).trigger('change.select2');
-                    }
-                }
-            });
-        }
-
-        initSelect2();
 
         // Initial validation of professional requirements for all assignment items
         $('.assignment-item').each(function() {
@@ -1902,7 +1863,7 @@
 
                 if (emptySelect) {
                     emptySelect.attr('data-op-type', opType);
-                    let icon = emptySelect.siblings('.op-icon');
+                    let icon = emptySelect.parent().siblings('.op-icon');
                     if (icon.length) {
                         if ((opType || '').toLowerCase() === 'tự động') {
                             icon.removeClass('fa-hand-paper text-secondary fa-copy text-success').addClass(
@@ -1916,24 +1877,33 @@
                         }
                     }
                     emptySelect.val(personId).trigger('change');
+                    if (personId && personnelInfo[personId]) {
+                        emptySelect.siblings('.person-name-display').val(personnelInfo[personId].name).attr(
+                            'title', personnelInfo[personId].name);
+                    }
                     return emptySelect.closest('.personnel-row');
                 }
             }
 
+            let personNameHtml = '-- Chưa có NV --';
+            if (personId && personnelInfo[personId]) {
+                personNameHtml = personnelInfo[personId].name;
+            }
 
             const newPersonRow = $(`
                 <div class="personnel-row d-flex flex-column p-1 border-bottom">
                     <div class="d-flex align-items-center w-100">
                         <div class="personnel-label"></div>
                     <div style="flex: 1" class="d-flex align-items-center">
-                        <select class="form-control form-control-sm person-select" data-op-type="${opType}" style="width: 40%">
-                            <option value="">-- Chọn người --</option>${globalPersonnelOptions}
-                        </select>
+                        <div class="form-control form-control-sm p-0 d-flex align-items-center mr-1" style="width: 40%; background: #f8f9fa; border: 1px dashed #ccc;">
+                            <input type="hidden" class="person-select" data-op-type="${opType}" value="${personId || ''}">
+                            <input type="text" class="person-name-display border-0 w-100 bg-transparent text-center font-weight-bold text-primary" style="font-size: 0.75rem; outline: none; cursor: pointer;" readonly value="${personNameHtml}" title="${personNameHtml}" placeholder="-- Chưa có NV --">
+                        </div>
                         ${(opType || '').toLowerCase() === 'tự động' 
-                            ? '<i class="fas fa-robot text-info ml-1 op-icon" title="Sắp tự động" style="font-size: 0.8rem;"></i>' 
+                            ? '<i class="fas fa-robot text-info mr-1 op-icon" title="Sắp tự động" style="font-size: 0.8rem;"></i>' 
                             : ((opType || '').toLowerCase() === 'nhân bản' 
-                                ? '<i class="fas fa-copy text-success ml-1 op-icon" title="Nhân bản" style="font-size: 0.8rem;"></i>'
-                                : '<i class="fas fa-hand-paper text-secondary ml-1 op-icon" title="Sắp thủ công" style="font-size: 0.8rem;"></i>')}
+                                ? '<i class="fas fa-copy text-success mr-1 op-icon" title="Nhân bản" style="font-size: 0.8rem;"></i>'
+                                : '<i class="fas fa-hand-paper text-secondary mr-1 op-icon" title="Sắp thủ công" style="font-size: 0.8rem;"></i>')}
                         <input type="text" class="form-control form-control-sm person-notif ml-1" 
                                style="width: 50%; font-size: 0.7rem; height: 28px; padding: 2px 5px;"
                                placeholder="Lưu ý...">
@@ -1950,7 +1920,6 @@
             `);
             container.append(newPersonRow);
             updatePersonnelLabels(container);
-            initSelect2(newPersonRow.find('.person-select'));
             initTimeSlider(newPersonRow);
 
             if (personId) {
@@ -2628,7 +2597,6 @@
             // Tự động điền số lượng nhân sự định mức
             newRow.find('.shift-select').trigger('change');
 
-            initSelect2(newRow.find('.person-select'));
             updateTimelines();
             markRoomDirty($(this).closest('.room-row'));
         });
@@ -3269,9 +3237,10 @@
                                                 <div class="d-flex align-items-center w-100">
                                                     <div class="personnel-label">A</div>
                                                     <div style="flex: 1" class="d-flex align-items-center">
-                                                        <select class="form-control form-control-sm person-select" data-op-type="thủ công" style="width: 40%">
-                                                            <option value="">-- Chọn người --</option>${globalPersonnelOptions}
-                                                        </select>
+                                                        <div class="form-control form-control-sm p-0 d-flex align-items-center mr-1" style="width: 40%; background: #f8f9fa; border: 1px dashed #ccc;">
+                                                            <input type="hidden" class="person-select" data-op-type="thủ công" value="">
+                                                            <input type="text" class="person-name-display border-0 w-100 bg-transparent text-center font-weight-bold text-primary" style="font-size: 0.75rem; outline: none; cursor: pointer;" readonly value="-- Kéo thả NV --" title="-- Kéo thả NV --" placeholder="-- Kéo thả NV --">
+                                                        </div>
                                                         <i class="fas fa-hand-paper text-secondary ml-1 op-icon" title="Sắp thủ công" style="font-size: 0.8rem;"></i>
                                                         <input type="text" class="form-control form-control-sm person-notif ml-1" 
                                                                style="width: 50%; font-size: 0.7rem; height: 28px; padding: 2px 5px;"
@@ -3344,9 +3313,7 @@
                 toast: true,
                 position: 'top-end'
             });
-
-            initSelect2(newRoomRow.find('.person-select'));
-
+            initTimeSlider(newRoomRow.find('.personnel-row'));
             // Tự động cuộn xuống dưới cùng
             const container = $('.table-container');
             container.animate({
@@ -4682,7 +4649,7 @@
             if (!isNoLunchBreakShift) {
                 // Subtract lunch break (11:30 - 12:15)
                 const lunchStart = 11 * 60 + 30; // 690
-                const lunchEnd = 12 * 60 + 15;   // 735
+                const lunchEnd = 12 * 60 + 15; // 735
 
                 const overlapStart = Math.max(sMin, lunchStart);
                 const overlapEnd = Math.min(eMin, lunchEnd);

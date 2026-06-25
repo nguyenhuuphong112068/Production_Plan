@@ -607,7 +607,7 @@ class MaintenanceAssignmentController extends Controller
                             $roomName = $overlap->room_name ?: 'Công tác khác';
                             $timeRange = Carbon::parse($overlap->start)->format('H:i') . ' - ' . Carbon::parse($overlap->end)->format('H:i');
                             
-                            throw new \Exception("Nhân sự {$overlap->employee_name} đã được phân công tại {$grpName} ({$roomName}) trong khoảng thời gian {$timeRange}.");
+                            // throw new \Exception("Nhân sự {$overlap->employee_name} đã được phân công tại {$grpName} ({$roomName}) trong khoảng thời gian {$timeRange}.");
                         }
                     }
 
@@ -757,11 +757,11 @@ class MaintenanceAssignmentController extends Controller
                             $roomName = $overlap->room_name ?: 'Công tác khác';
                             $groupName = $overlap->group_name ?: ($prodGroups[$overlap->stage_groups_code] ?? $overlap->stage_groups_code);
                             
-                            DB::rollBack();
-                            return response()->json([
-                                'success' => false,
-                                'message' => "Trùng lịch: {$overlap->employee_name} đã được phân công tại {$groupName} - {$roomName} từ {$overlap->start} đến {$overlap->end}."
-                            ], 400);
+                            // DB::rollBack();
+                            // return response()->json([
+                            //     'success' => false,
+                            //     'message' => "Trùng lịch: {$overlap->employee_name} đã được phân công tại {$groupName} - {$roomName} từ {$overlap->start} đến {$overlap->end}."
+                            // ], 400);
                         }
                     }
 

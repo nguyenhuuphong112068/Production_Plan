@@ -767,7 +767,7 @@ class ProductionAssignmentController extends Controller
                             $olEnd = $overlap->p_end ?: $overlap->end;
                             $timeRange = Carbon::parse($olStart)->format('H:i') . ' - ' . Carbon::parse($olEnd)->format('H:i');
 
-                            throw new \Exception("Nhân sự {$overlap->employee_name} đã được phân công tại {$grpName} ({$roomName}) trong khoảng thời gian {$timeRange}.");
+                            // throw new \Exception("Nhân sự {$overlap->employee_name} đã được phân công tại {$grpName} ({$roomName}) trong khoảng thời gian {$timeRange}.");
                         }
                     }
 
@@ -956,7 +956,7 @@ class ProductionAssignmentController extends Controller
                             $timeRange = Carbon::parse($overlap->start)->format('H:i') . ' - ' . Carbon::parse($overlap->end)->format('H:i');
 
                             $formattedTargetDate = Carbon::parse($targetDate)->format('d/m/Y');
-                            throw new \Exception("Ngày {$formattedTargetDate}: Nhân sự {$overlap->employee_name} đã được phân công tại {$grpName} ({$roomName}) trong khoảng thời gian {$timeRange}.");
+                            // throw new \Exception("Ngày {$formattedTargetDate}: Nhân sự {$overlap->employee_name} đã được phân công tại {$grpName} ({$roomName}) trong khoảng thời gian {$timeRange}.");
                         }
                     }
 
@@ -1723,7 +1723,7 @@ class ProductionAssignmentController extends Controller
                         $roomName = $overlap->room_name ?: 'Công tác khác';
                         $timeRange = Carbon::parse($overlap->start)->format('H:i') . ' - ' . Carbon::parse($overlap->end)->format('H:i');
 
-                        throw new \Exception("Nhân sự {$overlap->employee_name} đã được phân công tại {$grpName} ({$roomName}) trong khoảng thời gian {$timeRange}.");
+                        // throw new \Exception("Nhân sự {$overlap->employee_name} đã được phân công tại {$grpName} ({$roomName}) trong khoảng thời gian {$timeRange}.");
                     }
                 }
 
