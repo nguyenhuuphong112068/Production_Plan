@@ -2848,9 +2848,11 @@ const ScheduleTest = () => {
       */
 
       // 4. Áp dụng thay đổi nếu không có lỗi
-      batchUpdates.forEach(u => {
-        const ev = calendarApi.getEventById(u.id);
-        if (ev) ev.setDates(new Date(u.start), new Date(u.end), { maintainDuration: false });
+      calendarApi.batchRendering(() => {
+        batchUpdates.forEach(u => {
+          const ev = calendarApi.getEventById(u.id);
+          if (ev) ev.setDates(new Date(u.start), new Date(u.end), { maintainDuration: false });
+        });
       });
 
       setPendingChanges(prev => {
@@ -2895,64 +2897,65 @@ const ScheduleTest = () => {
       let lastEnd = changedEvent.extendedProps.end_clearning ? new Date(changedEvent.extendedProps.end_clearning) : changedEvent.end;
       const sortedEvents = calendarApi.getEvents().sort((a, b) => a.start - b.start);
 
-      sortedEvents.forEach(otherEv => {
-        if (
-          otherEv.id !== changedEvent.id &&
-          otherEv.getResources?.()[0]?.id === resourceId &&
-          otherEv.start >= originalStart &&
-          !otherEv.extendedProps.finished // Only shift unfinished events
-        ) {
-          // 1. Dự định: 
-          // Nếu dịch chuyển/tăng size (shift > 0): Giữ nguyên (Push-only)
-          // Nếu dịch chuyển sang trái (shift < 0): Tịnh tiến theo (Parallel Pull)
-          let ns = new Date(otherEv.start.getTime());
-          if (shift < 0) {
-            ns = new Date(ns.getTime() + shift);
-          }
-
-          // 2. Đẩy nếu chồng lấn
-          if (lastEnd && ns < lastEnd) {
-            ns = new Date(lastEnd.getTime());
-          }
-
-          // 3. Né ngày nghỉ
-          ns = skipOffDays(ns, offRanges);
-
-          const actualShift = ns.getTime() - otherEv.start.getTime();
-          const ne = new Date((otherEv.end || otherEv.start).getTime() + actualShift);
-
-          // 🔹 Chỉ xử lý và lưu nếu thực sự có thay đổi
-          if (actualShift !== 0) {
-            otherEv.setDates(ns, ne, { maintainDuration: true, skipRender: true });
-
-            // 4. Cập nhật boundary cho sự kiện tiếp theo
-            // 🔹 Cập nhật props để mốc biên chuẩn
-            if (otherEv.extendedProps.start_clearning && otherEv.extendedProps.end_clearning) {
-              const sc_new = new Date(new Date(otherEv.extendedProps.start_clearning).getTime() + actualShift);
-              const ec_new = new Date(new Date(otherEv.extendedProps.end_clearning).getTime() + actualShift);
-              otherEv.setExtendedProp('start_clearning', sc_new.toISOString());
-              otherEv.setExtendedProp('end_clearning', ec_new.toISOString());
+      calendarApi.batchRendering(() => {
+        sortedEvents.forEach(otherEv => {
+          if (
+            otherEv.id !== changedEvent.id &&
+            otherEv.getResources?.()[0]?.id === resourceId &&
+            otherEv.start >= originalStart &&
+            !otherEv.extendedProps.finished // Only shift unfinished events
+          ) {
+            // 1. Dự định: 
+            // Nếu dịch chuyển/tăng size (shift > 0): Giữ nguyên (Push-only)
+            // Nếu dịch chuyển sang trái (shift < 0): Tịnh tiến theo (Parallel Pull)
+            let ns = new Date(otherEv.start.getTime());
+            if (shift < 0) {
+              ns = new Date(ns.getTime() + shift);
             }
 
-            lastEnd = otherEv.extendedProps.end_clearning
-              ? new Date(otherEv.extendedProps.end_clearning)
-              : ne;
+            // 2. Đẩy nếu chồng lấn
+            if (lastEnd && ns < lastEnd) {
+              ns = new Date(lastEnd.getTime());
+            }
 
-            updates.push({
-              id: otherEv.id,
-              start: ns.toISOString(),
-              end: ne.toISOString(),
-              resourceId: resourceId,
-              title: otherEv.title,
-              submit: otherEv.extendedProps.submit
-            });
-          } else {
-            // Nếu không đổi, vẫn cập nhật boundary cũ cho chuỗi
-            lastEnd = otherEv.extendedProps.end_clearning ? new Date(otherEv.extendedProps.end_clearning) : ne;
+            // 3. Né ngày nghỉ
+            ns = skipOffDays(ns, offRanges);
+
+            const actualShift = ns.getTime() - otherEv.start.getTime();
+            const ne = new Date((otherEv.end || otherEv.start).getTime() + actualShift);
+
+            // 🔹 Chỉ xử lý và lưu nếu thực sự có thay đổi
+            if (actualShift !== 0) {
+              otherEv.setDates(ns, ne, { maintainDuration: true });
+
+              // 4. Cập nhật boundary cho sự kiện tiếp theo
+              // 🔹 Cập nhật props để mốc biên chuẩn
+              if (otherEv.extendedProps.start_clearning && otherEv.extendedProps.end_clearning) {
+                const sc_new = new Date(new Date(otherEv.extendedProps.start_clearning).getTime() + actualShift);
+                const ec_new = new Date(new Date(otherEv.extendedProps.end_clearning).getTime() + actualShift);
+                otherEv.setExtendedProp('start_clearning', sc_new.toISOString());
+                otherEv.setExtendedProp('end_clearning', ec_new.toISOString());
+              }
+
+              lastEnd = otherEv.extendedProps.end_clearning
+                ? new Date(otherEv.extendedProps.end_clearning)
+                : ne;
+
+              updates.push({
+                id: otherEv.id,
+                start: ns.toISOString(),
+                end: ne.toISOString(),
+                resourceId: resourceId,
+                title: otherEv.title,
+                submit: otherEv.extendedProps.submit
+              });
+            } else {
+              // Nếu không đổi, vẫn cập nhật boundary cũ cho chuỗi
+              lastEnd = otherEv.extendedProps.end_clearning ? new Date(otherEv.extendedProps.end_clearning) : ne;
+            }
           }
-        }
+        });
       });
-      calendarApi.render();
     }
     return updates;
   };
@@ -6673,8 +6676,8 @@ const ScheduleTest = () => {
           ref={selectoRef}
           // ✅ Khu vực cho phép kéo chọn
           container=".calendar-wrapper"
-          // ✅ Các phần tử có thể được chọn
-          selectableTargets={[".fc-event"]}
+          // ✅ Các phần tử có thể được chọn (Bỏ qua sự kiện nền và ngày nghỉ)
+          selectableTargets={[".fc-event:not(.fc-bg-event):not(.fc-ngay-nghi)"]}
           // ✅ Phải giữ Shift mới kích hoạt (nếu không thì FullCalendar drag event)
           onDragStart={(e) => {
             if (!e.inputEvent.shiftKey) e.stop();
@@ -6687,6 +6690,7 @@ const ScheduleTest = () => {
           // 🎯 Cập nhật viền ngay lập tức trong quá trình kéo
           onSelect={(e) => {
             e.added.forEach((el) => {
+              if (el.classList.contains('fc-bg-event') || el.classList.contains('fc-ngay-nghi')) return;
               el.style.border = "5px solid yellow";
             });
             e.removed.forEach((el) => {
@@ -6706,10 +6710,12 @@ const ScheduleTest = () => {
               return;
             }
 
-            const finalSelected = e.selected.map((el) => ({
-              id: el.getAttribute("data-event-id"),
-              stage_code: el.getAttribute("data-stage_code"),
-              plan_master_id: el.getAttribute("data-plan_master_id"),
+            const finalSelected = e.selected
+              .filter(el => !el.classList.contains('fc-bg-event') && !el.classList.contains('fc-ngay-nghi'))
+              .map((el) => ({
+                id: el.getAttribute("data-event-id"),
+                stage_code: el.getAttribute("data-stage_code"),
+                plan_master_id: el.getAttribute("data-plan_master_id"),
             })).filter(item => item.id); // Đảm bảo có id hợp lệ
 
             setSelectedEvents(finalSelected);
