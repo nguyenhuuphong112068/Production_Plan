@@ -677,15 +677,27 @@ class ProductionAssignmentController extends Controller
                 ->whereDate('start', $reportedDate)
                 ->where('active', 1);
 
+            // Cũng xóa các gợi ý nhân sự đã được render để chúng không xuất hiện lại nếu người dùng đã xóa trên UI
+            $deleteSuggestQuery = DB::table('assignment_suggestions')
+                ->where('deparment_code', $production_code)
+                ->whereDate('target_date', $reportedDate);
+
             if ($spIdString && str_starts_with($spIdString, 'EXT_') && !$room_id) {
                 // Đối với công việc ngoài lịch có ID định danh riêng và không có phòng cố định
                 $deleteQuery->where('stage_plan_id', $spIdString);
+                if ($work_location) {
+                    $deleteSuggestQuery->where('work_location', $work_location);
+                } else {
+                    $deleteSuggestQuery->whereRaw('1 = 0');
+                }
             } else {
                 // Đối với công việc theo phòng (có hoặc không có sp_id)
                 if ($room_id) {
                     $deleteQuery->where('room_id', $room_id);
+                    $deleteSuggestQuery->where('room_id', $room_id);
                 } else if ($work_location) {
                     $deleteQuery->where('work_location', $work_location);
+                    $deleteSuggestQuery->where('work_location', $work_location);
                     if ($spIdString) {
                         $deleteQuery->where('stage_plan_id', $spIdString);
                     }
@@ -699,9 +711,11 @@ class ProductionAssignmentController extends Controller
             // Nếu có lọc theo tổ, chỉ xóa phân công của tổ đó
             if ($stage_groups_code) {
                 $deleteQuery->where('stage_groups_code', $stage_groups_code);
+                $deleteSuggestQuery->where('stage_groups_code', $stage_groups_code);
             }
 
             $deleteQuery->update(['active' => 0, 'updated_at' => now()]);
+            $deleteSuggestQuery->delete();
 
             // 2. Thêm mới các phân công
             $prodGroups = [
