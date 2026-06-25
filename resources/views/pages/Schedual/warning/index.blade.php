@@ -806,7 +806,7 @@
                                 if (response.success) {
                                     Swal.fire('Thành công', response.message, 'success')
                                         .then(() => {
-                                            location.reload();
+                                            removeRowsAndUpdateUI('table_unmet', 'unmet-tab', ids);
                                         });
                                 } else {
                                     Swal.fire('Lỗi', 'Có lỗi xảy ra: ' + response
@@ -823,6 +823,27 @@
                 });
             });
 
+            // Logic cập nhật UI sau khi thao tác thành công (không reload trang)
+            function removeRowsAndUpdateUI(tableId, tabId, ids) {
+                let table = $('#' + tableId).DataTable();
+                let badge = $('#' + tabId + ' .badge');
+                let currentCount = parseInt(badge.text()) || 0;
+                
+                ids.forEach(function(id) {
+                    let btn = $('#' + tableId + ' button[data-id="' + id + '"]');
+                    let chk = $('#' + tableId + ' input[value="' + id + '"]');
+                    let row = btn.length ? btn.closest('tr') : (chk.length ? chk.closest('tr') : null);
+                    
+                    if (row && row.length) {
+                        table.row(row).remove();
+                        currentCount--;
+                    }
+                });
+                
+                table.draw(false);
+                badge.text(Math.max(0, currentCount));
+            }
+
             // Logic Chấp nhận ngày cho Tab 3
             function submitAcceptDate(ids, date, rowDates) {
                 $.ajax({
@@ -837,7 +858,7 @@
                     success: function(response) {
                         if (response.success) {
                             Swal.fire('Thành công', response.message, 'success').then(() => {
-                                location.reload();
+                                removeRowsAndUpdateUI('table_proposed', 'proposed-tab', ids);
                             });
                         } else {
                             Swal.fire('Lỗi', 'Có lỗi xảy ra: ' + response.message, 'error');
@@ -1008,7 +1029,7 @@
                                 if (res.success) {
                                     Swal.fire('Thành công', res.message, 'success')
                                         .then(() => {
-                                            location.reload();
+                                            removeRowsAndUpdateUI('table_material', 'material-tab', ids);
                                         });
                                 } else {
                                     Swal.fire('Lỗi', res.message, 'error');
@@ -1073,7 +1094,7 @@
                             success: function(res) {
                                 if (res.success) {
                                     Swal.fire('Thành công', res.message, 'success').then(() => {
-                                        location.reload();
+                                        removeRowsAndUpdateUI('table_proposed_material', 'proposed-material-tab', [id]);
                                     });
                                 } else {
                                     Swal.fire('Lỗi', res.message, 'error');
@@ -1164,7 +1185,7 @@
                                 if (response.success) {
                                     Swal.fire('Thành công', response.message, 'success')
                                         .then(() => {
-                                            location.reload();
+                                            removeRowsAndUpdateUI('table_proposed', 'proposed-tab', [id]);
                                         });
                                 } else {
                                     Swal.fire('Lỗi', response.message, 'error');
@@ -1208,7 +1229,7 @@
                                 if (response.success) {
                                     Swal.fire('Thành công', response.message, 'success')
                                         .then(() => {
-                                            location.reload();
+                                            removeRowsAndUpdateUI('table_proposed_material', 'proposed-material-tab', [id]);
                                         });
                                 } else {
                                     Swal.fire('Lỗi', response.message, 'error');

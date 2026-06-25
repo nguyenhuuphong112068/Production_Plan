@@ -541,13 +541,11 @@
                                         title="Thêm ca làm việc" {{ !$canEdit ? 'disabled' : '' }}>
                                         <i class="fas fa-plus"></i> Thêm Ca
                                     </button>
-                                    @if (!$task->room_id || str_starts_with($task->sp_id, 'EXT_'))
-                                        <br>
-                                        <button class="btn btn-outline-info btn-circle btn-clone-row"
-                                            title="Nhân bản toàn bộ ca" {{ !$canEdit ? 'disabled' : '' }}>
-                                            <i class="fas fa-copy"></i>
-                                        </button>
-                                    @endif
+                                    <br>
+                                    <button class="btn btn-outline-info btn-circle btn-clone-row"
+                                        title="Nhân bản toàn bộ ca" {{ !$canEdit ? 'disabled' : '' }}>
+                                        <i class="fas fa-copy"></i>
+                                    </button>
                                 </div>
                                 @if (!$task->room_id || str_starts_with($task->sp_id, 'EXT_'))
                                     @php
@@ -656,35 +654,34 @@
                                                                     </div>
                                                                     <div style="flex: 1"
                                                                         class="d-flex align-items-center">
-                                                                        <div class="form-control form-control-sm p-0 d-flex align-items-center mr-1"
-                                                                            style="width: 40%; background: #f8f9fa; border: 1px dashed #ccc;">
-                                                                            <input type="hidden"
-                                                                                class="person-select"
-                                                                                data-selected="{{ $p_info->personnel_id }}"
-                                                                                data-op-type="{{ $p_info->operation_type ?? 'thủ công' }}"
-                                                                                value="{{ $p_info->personnel_id }}"
-                                                                                {{ !$canEdit || ($assignment->is_foreign ?? false) ? 'disabled' : '' }}>
-                                                                            @php
-                                                                                $personName = '-- Chưa có NV --';
-                                                                                if (!empty($p_info->personnel_id)) {
-                                                                                    $pModel = collect(
-                                                                                        $personnel,
-                                                                                    )->firstWhere(
-                                                                                        'id',
-                                                                                        $p_info->personnel_id,
-                                                                                    );
-                                                                                    if ($pModel) {
-                                                                                        $personName = $pModel->name;
+                                                                        <select
+                                                                            class="form-control form-control-sm person-select mr-1"
+                                                                            style="width: 65%; font-size: 0.75rem;"
+                                                                            data-selected="{{ $p_info->personnel_id }}"
+                                                                            data-op-type="{{ $p_info->operation_type ?? 'thủ công' }}"
+                                                                            {{ !$canEdit || ($assignment->is_foreign ?? false) ? 'disabled' : '' }}>
+                                                                            <option value="">-- Chọn NV --</option>
+                                                                            @foreach ($personnel as $p)
+                                                                                @php
+                                                                                    $levelStr = '';
+                                                                                    $allowed = $skills[$p->id]->allowed_rooms_with_levels ?? '';
+                                                                                    if ($allowed && isset($room->id)) {
+                                                                                        $parts = explode('|', $allowed);
+                                                                                        foreach ($parts as $part) {
+                                                                                            $subparts = explode(':', $part);
+                                                                                            if (count($subparts) >= 2 && $subparts[0] == $room->id) {
+                                                                                                $levelStr = '[B' . $subparts[1] . '] ';
+                                                                                                break;
+                                                                                            }
+                                                                                        }
                                                                                     }
-                                                                                }
-                                                                            @endphp
-                                                                            <input type="text"
-                                                                                class="person-name-display border-0 w-100 bg-transparent text-center font-weight-bold text-primary"
-                                                                                style="font-size: 0.75rem; outline: none; cursor: pointer;"
-                                                                                readonly value="{{ $personName }}"
-                                                                                title="{{ $personName }}"
-                                                                                {{ !$canEdit || ($assignment->is_foreign ?? false) ? 'disabled' : '' }}>
-                                                                        </div>
+                                                                                @endphp
+                                                                                <option value="{{ $p->id }}"
+                                                                                    {{ $p_info->personnel_id == $p->id ? 'selected' : '' }}>
+                                                                                    {{ $levelStr }}{{ $p->name }}
+                                                                                </option>
+                                                                            @endforeach
+                                                                        </select>
                                                                         @if (strtolower($p_info->operation_type ?? 'thủ công') == 'tự động')
                                                                             <i class="fas fa-robot text-info mr-1 op-icon"
                                                                                 title="Sắp tự động"
@@ -700,7 +697,7 @@
                                                                         @endif
                                                                         <input type="text"
                                                                             class="form-control form-control-sm person-notif ml-1"
-                                                                            style="width: 50%; font-size: 0.7rem; height: 28px; padding: 2px 5px;"
+                                                                            style="width: 25%; font-size: 0.7rem; height: 28px; padding: 2px 5px;"
                                                                             value="{{ $p_info->notification ?? '' }}"
                                                                             placeholder="Lưu ý (nếu có)..."
                                                                             {{ !$canEdit || ($assignment->is_foreign ?? false) ? 'disabled' : '' }}>
@@ -830,24 +827,38 @@
                                                                 <div class="personnel-label">A</div>
                                                                 <div style="flex: 1"
                                                                     class="d-flex align-items-center">
-                                                                    <div class="form-control form-control-sm p-0 d-flex align-items-center mr-1"
-                                                                        style="width: 40%; background: #f8f9fa; border: 1px dashed #ccc;">
-                                                                        <input type="hidden" class="person-select"
-                                                                            data-op-type="thủ công" value=""
-                                                                            {{ !$canEdit ? 'disabled' : '' }}>
-                                                                        <input type="text"
-                                                                            class="person-name-display border-0 w-100 bg-transparent text-center font-weight-bold text-primary"
-                                                                            style="font-size: 0.75rem; outline: none; cursor: pointer;"
-                                                                            readonly value="-- Chưa có NV --"
-                                                                            title="-- Chưa có NV --"
-                                                                            {{ !$canEdit ? 'disabled' : '' }}>
-                                                                    </div>
+                                                                    <select
+                                                                        class="form-control form-control-sm person-select mr-1"
+                                                                        style="width: 65%; font-size: 0.75rem;"
+                                                                        data-op-type="thủ công"
+                                                                        {{ !$canEdit ? 'disabled' : '' }}>
+                                                                        <option value="">-- Chọn NV --</option>
+                                                                        @foreach ($personnel as $p)
+                                                                            @php
+                                                                                $levelStr = '';
+                                                                                $allowed = $skills[$p->id]->allowed_rooms_with_levels ?? '';
+                                                                                if ($allowed && isset($room->id)) {
+                                                                                    $parts = explode('|', $allowed);
+                                                                                    foreach ($parts as $part) {
+                                                                                        $subparts = explode(':', $part);
+                                                                                        if (count($subparts) >= 2 && $subparts[0] == $room->id) {
+                                                                                            $levelStr = '[B' . $subparts[1] . '] ';
+                                                                                            break;
+                                                                                        }
+                                                                                    }
+                                                                                }
+                                                                            @endphp
+                                                                            <option value="{{ $p->id }}">
+                                                                                {{ $levelStr }}{{ $p->name }}
+                                                                            </option>
+                                                                        @endforeach
+                                                                    </select>
                                                                     <i class="fas fa-hand-paper text-secondary ml-1 op-icon"
                                                                         title="Sắp thủ công"
                                                                         style="font-size: 0.8rem;"></i>
                                                                     <input type="text"
                                                                         class="form-control form-control-sm person-notif ml-1"
-                                                                        style="width: 50%; font-size: 0.7rem; height: 28px; padding: 2px 5px;"
+                                                                        style="width: 25%; font-size: 0.7rem; height: 28px; padding: 2px 5px;"
                                                                         placeholder="Lưu ý (nếu có)..."
                                                                         {{ !$canEdit ? 'disabled' : '' }}>
                                                                 </div>
@@ -1142,6 +1153,71 @@
 <script>
     const dbAssignments = @json($dbAssignments ?? []);
     const assignmentSuggestions = @json($suggestions ?? []);
+    const person_options = `{!! implode('', array_map(function($p) { return '<option value=\"' . $p->id . '\">' . htmlspecialchars($p->name, ENT_QUOTES) . '</option>'; }, $personnel->toArray())) !!}`;
+    
+    const orderedPersonnelIds = {!! json_encode($personnel->pluck('id')) !!};
+    window.roomPersonOptionsCache = {};
+    function getPersonOptionsForRoom(roomId) {
+        if (!roomId) return '<option value="">-- Chọn NV --</option>' + person_options;
+        if (window.roomPersonOptionsCache[roomId]) return window.roomPersonOptionsCache[roomId];
+        let localPersonOptions = '<option value="">-- Chọn NV --</option>';
+        for (let i = 0; i < orderedPersonnelIds.length; i++) {
+            let pid = orderedPersonnelIds[i];
+            let name = personnelInfo[pid].name;
+            let levelStr = '';
+            if (personnelSkills[pid]) {
+                let skills = personnelSkills[pid].split('|');
+                for (let s of skills) {
+                    if (!s) continue;
+                    let parts = s.split(':');
+                    if (parts[0] == roomId) {
+                        levelStr = '[B' + parts[1] + '] ';
+                        break;
+                    }
+                }
+            }
+            localPersonOptions += `<option value="${pid}">${levelStr}${name}</option>`;
+        }
+        window.roomPersonOptionsCache[roomId] = localPersonOptions;
+        return localPersonOptions;
+    }
+
+    function formatPersonSelect2(option) {
+        if (!option.id) {
+            return option.text;
+        }
+        let text = option.text;
+        let match = text.match(/^\[B(\d+)\]\s+(.*)$/);
+        if (match) {
+            let level = match[1];
+            let name = match[2];
+            let bgClass = 'badge-success';
+            if (level == '1') bgClass = 'badge-secondary';
+            else if (level == '2') bgClass = 'badge-info';
+            else if (level == '3') bgClass = 'badge-primary';
+            else if (level == '4') bgClass = 'badge-success';
+            
+            return $(`<span><span class="badge ${bgClass} mr-1" style="padding: 3px 5px; font-size: 0.65rem">B${level}</span>${name}</span>`);
+        }
+        return option.text;
+    }
+
+    function initPersonSelect2(element) {
+        if (!element) {
+            element = $('.person-select');
+        }
+        element.select2({
+            templateResult: formatPersonSelect2,
+            templateSelection: formatPersonSelect2,
+            width: 'resolve',
+            placeholder: '-- Chọn NV --',
+            allowClear: true
+        });
+    }
+
+    $(document).ready(function() {
+        initPersonSelect2();
+    });
 
     const employeeCodeToId = {
         @foreach ($personnel as $p)
@@ -1149,7 +1225,7 @@
         @endforeach
     };
 
-    const personnelInfo = {
+    let personnelInfo = {
         @foreach ($personnel as $p)
             "{{ $p->id }}": {
                 name: {!! json_encode($p->name) !!},
@@ -1863,7 +1939,7 @@
 
                 if (emptySelect) {
                     emptySelect.attr('data-op-type', opType);
-                    let icon = emptySelect.parent().siblings('.op-icon');
+                    let icon = emptySelect.siblings('.op-icon');
                     if (icon.length) {
                         if ((opType || '').toLowerCase() === 'tự động') {
                             icon.removeClass('fa-hand-paper text-secondary fa-copy text-success').addClass(
@@ -1877,35 +1953,29 @@
                         }
                     }
                     emptySelect.val(personId).trigger('change');
-                    if (personId && personnelInfo[personId]) {
-                        emptySelect.siblings('.person-name-display').val(personnelInfo[personId].name).attr(
-                            'title', personnelInfo[personId].name);
-                    }
                     return emptySelect.closest('.personnel-row');
                 }
             }
 
-            let personNameHtml = '-- Chưa có NV --';
-            if (personId && personnelInfo[personId]) {
-                personNameHtml = personnelInfo[personId].name;
-            }
+            let roomId = container.closest('.room-row').attr('data-room-id');
+            if (!roomId) roomId = container.closest('.room-row').find('.room-select-custom').val();
+            let optionsHtml = getPersonOptionsForRoom(roomId);
 
             const newPersonRow = $(`
                 <div class="personnel-row d-flex flex-column p-1 border-bottom">
                     <div class="d-flex align-items-center w-100">
                         <div class="personnel-label"></div>
                     <div style="flex: 1" class="d-flex align-items-center">
-                        <div class="form-control form-control-sm p-0 d-flex align-items-center mr-1" style="width: 40%; background: #f8f9fa; border: 1px dashed #ccc;">
-                            <input type="hidden" class="person-select" data-op-type="${opType}" value="${personId || ''}">
-                            <input type="text" class="person-name-display border-0 w-100 bg-transparent text-center font-weight-bold text-primary" style="font-size: 0.75rem; outline: none; cursor: pointer;" readonly value="${personNameHtml}" title="${personNameHtml}" placeholder="-- Chưa có NV --">
-                        </div>
+                        <select class="form-control form-control-sm person-select mr-1" style="width: 65%; font-size: 0.75rem" data-op-type="${opType}">
+                            ${optionsHtml}
+                        </select>
                         ${(opType || '').toLowerCase() === 'tự động' 
                             ? '<i class="fas fa-robot text-info mr-1 op-icon" title="Sắp tự động" style="font-size: 0.8rem;"></i>' 
                             : ((opType || '').toLowerCase() === 'nhân bản' 
                                 ? '<i class="fas fa-copy text-success mr-1 op-icon" title="Nhân bản" style="font-size: 0.8rem;"></i>'
                                 : '<i class="fas fa-hand-paper text-secondary mr-1 op-icon" title="Sắp thủ công" style="font-size: 0.8rem;"></i>')}
                         <input type="text" class="form-control form-control-sm person-notif ml-1" 
-                               style="width: 50%; font-size: 0.7rem; height: 28px; padding: 2px 5px;"
+                               style="width: 25%; font-size: 0.7rem; height: 28px; padding: 2px 5px;"
                                placeholder="Lưu ý...">
                     </div>
                         <i class="fas fa-times text-danger ml-1 btn-remove-person cursor-pointer"></i>
@@ -1925,6 +1995,7 @@
             if (personId) {
                 newPersonRow.find('.person-select').val(personId).trigger('change');
             }
+            initPersonSelect2(newPersonRow.find('.person-select'));
 
             return newPersonRow;
         }
@@ -3237,13 +3308,13 @@
                                                 <div class="d-flex align-items-center w-100">
                                                     <div class="personnel-label">A</div>
                                                     <div style="flex: 1" class="d-flex align-items-center">
-                                                        <div class="form-control form-control-sm p-0 d-flex align-items-center mr-1" style="width: 40%; background: #f8f9fa; border: 1px dashed #ccc;">
-                                                            <input type="hidden" class="person-select" data-op-type="thủ công" value="">
-                                                            <input type="text" class="person-name-display border-0 w-100 bg-transparent text-center font-weight-bold text-primary" style="font-size: 0.75rem; outline: none; cursor: pointer;" readonly value="-- Kéo thả NV --" title="-- Kéo thả NV --" placeholder="-- Kéo thả NV --">
-                                                        </div>
+                                                        <select class="form-control form-control-sm person-select mr-1" style="width: 65%; font-size: 0.75rem" data-op-type="thủ công">
+                                                            <option value="">-- Chọn NV --</option>
+                                                            ${person_options}
+                                                        </select>
                                                         <i class="fas fa-hand-paper text-secondary ml-1 op-icon" title="Sắp thủ công" style="font-size: 0.8rem;"></i>
                                                         <input type="text" class="form-control form-control-sm person-notif ml-1" 
-                                                               style="width: 50%; font-size: 0.7rem; height: 28px; padding: 2px 5px;"
+                                                               style="width: 25%; font-size: 0.7rem; height: 28px; padding: 2px 5px;"
                                                                placeholder="Lưu ý...">
                                                     </div>
                                                     <i class="fas fa-times text-danger ml-1 btn-remove-person cursor-pointer"></i>
@@ -3303,6 +3374,7 @@
                 </tr>
             `);
             $('#main-assignment-tbody').append(newRoomRow);
+            initPersonSelect2(newRoomRow.find('.person-select'));
 
             Swal.fire({
                 icon: 'success',
@@ -4941,4 +5013,21 @@
             valid: true
         };
     }
+
+    // Dynamic select update for custom task room changes
+    $(document).on('change', '.room-select-custom', function() {
+        let roomId = $(this).val();
+        let container = $(this).closest('.room-row');
+        let optionsHtml = getPersonOptionsForRoom(roomId);
+        
+        container.find('.person-select').each(function() {
+            let currentVal = $(this).val();
+            if ($(this).hasClass('select2-hidden-accessible')) {
+                $(this).select2('destroy');
+            }
+            $(this).html(optionsHtml);
+            $(this).val(currentVal);
+            initPersonSelect2($(this));
+        });
+    });
 </script>
