@@ -1143,7 +1143,9 @@
                     }
                 }
             }
-            localPersonOptions += `<option value="${pid}">${levelStr}${name}</option>`;
+            if (levelStr !== '') {
+                localPersonOptions += `<option value="${pid}">${levelStr}${name}</option>`;
+            }
         }
         window.roomPersonOptionsCache[roomId] = localPersonOptions;
         return localPersonOptions;
