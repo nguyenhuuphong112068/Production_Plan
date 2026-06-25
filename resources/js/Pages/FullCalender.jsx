@@ -938,13 +938,13 @@ const ScheduleTest = () => {
   const detectOverlappingEvents = (changedEvent, allEvents) => {
     const resId = changedEvent.getResources?.()[0]?.id ?? changedEvent.resourceId ?? changedEvent._def?.resourceIds?.[0];
     if (!resId) {
-      console.log('detectOverlappingEvents: NO RES ID', changedEvent);
+
       return [];
     }
 
     const newStart = changedEvent.start.getTime();
     const newEnd = changedEvent.end ? changedEvent.end.getTime() : newStart;
-    console.log('detectOverlappingEvents: Target', { resId, newStart: new Date(newStart), newEnd: new Date(newEnd) });
+
 
     const conflicts = [];
     allEvents.forEach(ev => {
@@ -962,13 +962,12 @@ const ScheduleTest = () => {
 
       // Kiểm tra chồng lấn: hai khoảng [newStart, newEnd) và [evStart, evEnd) overlap khi:
       const overlaps = newStart < evEnd && newEnd > evStart;
-      console.log('detectOverlappingEvents: Checking ev', ev.id, ev.title, { evRes, evStart: new Date(evStart), evEnd: new Date(evEnd), overlaps });
 
       if (overlaps) {
         conflicts.push(ev);
       }
     });
-    console.log('detectOverlappingEvents: Conflicts found =', conflicts.length);
+
     return conflicts;
   };
 
@@ -2550,7 +2549,7 @@ const ScheduleTest = () => {
         sortedEvents.forEach(otherEv => {
           const resId = otherEv.getResources()[0]?.id;
           const minS = resourceMinStart[resId];
-          console.log(`[Cascade Trace] Checking ${otherEv.title} (id: ${otherEv.id}). minS: ${minS}, start: ${otherEv.start}, finished: ${otherEv.extendedProps.finished}, moved: ${movedIds.has(otherEv.id)}`);
+
           if (
             minS &&
             !movedIds.has(otherEv.id) &&
@@ -2563,10 +2562,10 @@ const ScheduleTest = () => {
             }
 
             const boundary = resourceLastEnd[resId];
-            console.log(`[Cascade Trace] - ns before boundary check: ${ns}, boundary: ${boundary}`);
+
             if (boundary && ns < boundary) {
               ns = new Date(boundary.getTime());
-              console.log(`[Cascade Trace] - ns forced to boundary: ${ns}`);
+
             }
 
             ns = skipOffDays(ns, offRanges);
@@ -2605,7 +2604,7 @@ const ScheduleTest = () => {
             }
 
             if (actualShift !== 0) {
-              console.log(`[Cascade Trace] - Pushing ${otherEv.title} by actualShift: ${actualShift}ms, new end: ${ne}`);
+
               batchUpdates.push({
                 id: otherEv.id,
                 start: ns.toISOString(),
@@ -2615,8 +2614,6 @@ const ScheduleTest = () => {
                 submit: otherEv.extendedProps.submit,
                 _event: otherEv
               });
-            } else {
-              console.log(`[Cascade Trace] - actualShift is 0 for ${otherEv.title}, resourceLastEnd updated to: ${newBoundary}`);
             }
           }
         });
@@ -3347,7 +3344,15 @@ const ScheduleTest = () => {
         setSumBatchByStage(lastData.sumBatchByStage);
       }
       setPendingChanges([]);
+      // ✅ Reset selectedEvents sau khi lưu thành công
+      // Tránh các event đã bỏ chọn bị kéo theo trong lần thao tác kế tiếp
+      setSelectedEvents([]);
+      selectedEventsRef.current = [];
+      // Xóa toàn bộ highlight border vàng trên calendar
+      document.querySelectorAll('.fc-event[data-event-id]')
+        .forEach(el => { el.style.border = 'none'; });
       setSaving(false);
+
 
       Swal.fire({
         icon: 'success',
@@ -3358,9 +3363,6 @@ const ScheduleTest = () => {
         timer: 1500,
         showConfirmButton: false,
       });
-
-      document.querySelectorAll('.fc-event[data-event-id]')
-        .forEach(el => { el.style.border = 'none'; });
 
     } catch (err) {
       console.error('Lỗi khi lưu events:', err.response?.data || err.message);
