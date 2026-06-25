@@ -660,17 +660,31 @@
                                                                             data-selected="{{ $p_info->personnel_id }}"
                                                                             data-op-type="{{ $p_info->operation_type ?? 'thủ công' }}"
                                                                             {{ !$canEdit || ($assignment->is_foreign ?? false) ? 'disabled' : '' }}>
-                                                                            <option value="">-- Chọn NV --</option>
+                                                                            <option value="">-- Chọn NV --
+                                                                            </option>
                                                                             @foreach ($personnel as $p)
                                                                                 @php
                                                                                     $levelStr = '';
-                                                                                    $allowed = $skills[$p->id]->allowed_rooms_with_levels ?? '';
+                                                                                    $allowed =
+                                                                                        $skills[$p->id]
+                                                                                            ->allowed_rooms_with_levels ??
+                                                                                        '';
                                                                                     if ($allowed && isset($room->id)) {
                                                                                         $parts = explode('|', $allowed);
                                                                                         foreach ($parts as $part) {
-                                                                                            $subparts = explode(':', $part);
-                                                                                            if (count($subparts) >= 2 && $subparts[0] == $room->id) {
-                                                                                                $levelStr = '[B' . $subparts[1] . '] ';
+                                                                                            $subparts = explode(
+                                                                                                ':',
+                                                                                                $part,
+                                                                                            );
+                                                                                            if (
+                                                                                                count($subparts) >= 2 &&
+                                                                                                $subparts[0] ==
+                                                                                                    $room->id
+                                                                                            ) {
+                                                                                                $levelStr =
+                                                                                                    '[B' .
+                                                                                                    $subparts[1] .
+                                                                                                    '] ';
                                                                                                 break;
                                                                                             }
                                                                                         }
@@ -836,13 +850,22 @@
                                                                         @foreach ($personnel as $p)
                                                                             @php
                                                                                 $levelStr = '';
-                                                                                $allowed = $skills[$p->id]->allowed_rooms_with_levels ?? '';
+                                                                                $allowed =
+                                                                                    $skills[$p->id]
+                                                                                        ->allowed_rooms_with_levels ??
+                                                                                    '';
                                                                                 if ($allowed && isset($room->id)) {
                                                                                     $parts = explode('|', $allowed);
                                                                                     foreach ($parts as $part) {
                                                                                         $subparts = explode(':', $part);
-                                                                                        if (count($subparts) >= 2 && $subparts[0] == $room->id) {
-                                                                                            $levelStr = '[B' . $subparts[1] . '] ';
+                                                                                        if (
+                                                                                            count($subparts) >= 2 &&
+                                                                                            $subparts[0] == $room->id
+                                                                                        ) {
+                                                                                            $levelStr =
+                                                                                                '[B' .
+                                                                                                $subparts[1] .
+                                                                                                '] ';
                                                                                             break;
                                                                                         }
                                                                                     }
@@ -1153,10 +1176,16 @@
 <script>
     const dbAssignments = @json($dbAssignments ?? []);
     const assignmentSuggestions = @json($suggestions ?? []);
-    const person_options = `{!! implode('', array_map(function($p) { return '<option value=\"' . $p->id . '\">' . htmlspecialchars($p->name, ENT_QUOTES) . '</option>'; }, $personnel->toArray())) !!}`;
-    
+    const person_options = `{!! implode(
+        '',
+        array_map(function ($p) {
+            return '<option value=\"' . $p->id . '\">' . htmlspecialchars($p->name, ENT_QUOTES) . '</option>';
+        }, $personnel->toArray()),
+    ) !!}`;
+
     const orderedPersonnelIds = {!! json_encode($personnel->pluck('id')) !!};
     window.roomPersonOptionsCache = {};
+
     function getPersonOptionsForRoom(roomId) {
         if (!roomId) return '<option value="">-- Chọn NV --</option>' + person_options;
         if (window.roomPersonOptionsCache[roomId]) return window.roomPersonOptionsCache[roomId];
@@ -1196,8 +1225,10 @@
             else if (level == '2') bgClass = 'badge-info';
             else if (level == '3') bgClass = 'badge-primary';
             else if (level == '4') bgClass = 'badge-success';
-            
-            return $(`<span><span class="badge ${bgClass} mr-1" style="padding: 3px 5px; font-size: 0.65rem">B${level}</span>${name}</span>`);
+
+            return $(
+                `<span><span class="badge ${bgClass} mr-1" style="padding: 3px 5px; font-size: 0.65rem">B${level}</span>${name}</span>`
+                );
         }
         return option.text;
     }
@@ -5019,7 +5050,7 @@
         let roomId = $(this).val();
         let container = $(this).closest('.room-row');
         let optionsHtml = getPersonOptionsForRoom(roomId);
-        
+
         container.find('.person-select').each(function() {
             let currentVal = $(this).val();
             if ($(this).hasClass('select2-hidden-accessible')) {

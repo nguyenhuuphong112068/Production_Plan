@@ -538,12 +538,12 @@
                             <div class="card-body table-responsive" style="height: calc(100vh - 200px);">
                                 <table id="table_history_all" class="table table-bordered table-striped">
                                     <thead>
-                                            <th>Mã sản phẩm</th>
-                                            <th>Tên sản phẩm</th>
-                                            <th>Số Lô</th>
-                                            <th>Loại</th>
-                                            <th style="min-width:400px">Lịch sử hành động</th>
-                                            <th style="min-width:300px">Trao đổi thông tin</th>
+                                        <th>Mã sản phẩm</th>
+                                        <th>Tên sản phẩm</th>
+                                        <th>Số Lô</th>
+                                        <th>Loại</th>
+                                        <th style="min-width:400px">Lịch sử hành động</th>
+                                        <th style="min-width:300px">Trao đổi thông tin</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -563,33 +563,42 @@
                                                     <td style="min-width:400px">
                                                         <div class="action-history-box"
                                                             style="max-height:150px; overflow-y:auto; font-size:14px; text-align: left;">
-                                                            @foreach($histories as $hist)
-                                                                <div class="mb-2 p-2 border rounded" style="background-color: #f8f9fa; border-radius:10px;">
-                                                                    <div style="font-weight:600; display:flex; justify-content:space-between;">
+                                                            @foreach ($histories as $hist)
+                                                                <div class="mb-2 p-2 border rounded"
+                                                                    style="background-color: #f8f9fa; border-radius:10px;">
+                                                                    <div
+                                                                        style="font-weight:600; display:flex; justify-content:space-between;">
                                                                         <span>{{ $hist->user_name }}</span>
-                                                                        <small class="text-muted">{{ \Carbon\Carbon::parse($hist->created_at)->format('d/m/Y H:i') }}</small>
+                                                                        <small
+                                                                            class="text-muted">{{ \Carbon\Carbon::parse($hist->created_at)->format('d/m/Y H:i') }}</small>
                                                                     </div>
                                                                     <div class="mt-1">
                                                                         @if ($hist->action == 'PROPOSE')
-                                                                            <span class="badge badge-warning">Đề nghị</span>
+                                                                            <span class="badge badge-warning">Đề
+                                                                                nghị</span>
                                                                         @elseif ($hist->action == 'ACCEPT')
-                                                                            <span class="badge badge-success">Chấp nhận</span>
+                                                                            <span class="badge badge-success">Chấp
+                                                                                nhận</span>
                                                                         @elseif ($hist->action == 'REJECT')
                                                                             <span class="badge badge-danger">Từ chối</span>
                                                                         @else
-                                                                            <span class="badge badge-secondary">{{ $hist->action }}</span>
+                                                                            <span
+                                                                                class="badge badge-secondary">{{ $hist->action }}</span>
                                                                         @endif
-                                                                        
-                                                                        @if($hist->old_date || $hist->new_date)
+
+                                                                        @if ($hist->old_date || $hist->new_date)
                                                                             <span class="ml-2 font-weight-bold">
-                                                                                {{ $hist->old_date ? \Carbon\Carbon::parse($hist->old_date)->format('d/m/Y') : '' }} 
-                                                                                <i class="fas fa-arrow-right mx-1 text-muted"></i> 
+                                                                                {{ $hist->old_date ? \Carbon\Carbon::parse($hist->old_date)->format('d/m/Y') : '' }}
+                                                                                <i
+                                                                                    class="fas fa-arrow-right mx-1 text-muted"></i>
                                                                                 {{ $hist->new_date ? \Carbon\Carbon::parse($hist->new_date)->format('d/m/Y') : '' }}
                                                                             </span>
                                                                         @endif
                                                                     </div>
-                                                                    @if($hist->reason)
-                                                                        <div class="text-muted mt-1" style="font-size: 12px;"><i>Lý do: {{ $hist->reason }}</i></div>
+                                                                    @if ($hist->reason)
+                                                                        <div class="text-muted mt-1"
+                                                                            style="font-size: 12px;"><i>Lý do:
+                                                                                {{ $hist->reason }}</i></div>
                                                                     @endif
                                                                 </div>
                                                             @endforeach
@@ -806,7 +815,8 @@
                                 if (response.success) {
                                     Swal.fire('Thành công', response.message, 'success')
                                         .then(() => {
-                                            removeRowsAndUpdateUI('table_unmet', 'unmet-tab', ids);
+                                            removeRowsAndUpdateUI('table_unmet',
+                                                'unmet-tab', ids);
                                         });
                                 } else {
                                     Swal.fire('Lỗi', 'Có lỗi xảy ra: ' + response
@@ -828,18 +838,19 @@
                 let table = $('#' + tableId).DataTable();
                 let badge = $('#' + tabId + ' .badge');
                 let currentCount = parseInt(badge.text()) || 0;
-                
+
                 ids.forEach(function(id) {
                     let btn = $('#' + tableId + ' button[data-id="' + id + '"]');
                     let chk = $('#' + tableId + ' input[value="' + id + '"]');
                     let row = btn.length ? btn.closest('tr') : (chk.length ? chk.closest('tr') : null);
-                    
+
                     if (row && row.length) {
                         table.row(row).remove();
                         currentCount--;
                     }
                 });
-                
+
+
                 table.draw(false);
                 badge.text(Math.max(0, currentCount));
             }
@@ -1029,7 +1040,8 @@
                                 if (res.success) {
                                     Swal.fire('Thành công', res.message, 'success')
                                         .then(() => {
-                                            removeRowsAndUpdateUI('table_material', 'material-tab', ids);
+                                            removeRowsAndUpdateUI('table_material',
+                                                'material-tab', ids);
                                         });
                                 } else {
                                     Swal.fire('Lỗi', res.message, 'error');
@@ -1094,7 +1106,8 @@
                             success: function(res) {
                                 if (res.success) {
                                     Swal.fire('Thành công', res.message, 'success').then(() => {
-                                        removeRowsAndUpdateUI('table_proposed_material', 'proposed-material-tab', [id]);
+                                        removeRowsAndUpdateUI('table_proposed_material',
+                                            'proposed-material-tab', [id]);
                                     });
                                 } else {
                                     Swal.fire('Lỗi', res.message, 'error');
@@ -1185,7 +1198,8 @@
                                 if (response.success) {
                                     Swal.fire('Thành công', response.message, 'success')
                                         .then(() => {
-                                            removeRowsAndUpdateUI('table_proposed', 'proposed-tab', [id]);
+                                            removeRowsAndUpdateUI('table_proposed',
+                                                'proposed-tab', [id]);
                                         });
                                 } else {
                                     Swal.fire('Lỗi', response.message, 'error');
@@ -1229,7 +1243,9 @@
                                 if (response.success) {
                                     Swal.fire('Thành công', response.message, 'success')
                                         .then(() => {
-                                            removeRowsAndUpdateUI('table_proposed_material', 'proposed-material-tab', [id]);
+                                            removeRowsAndUpdateUI(
+                                                'table_proposed_material',
+                                                'proposed-material-tab', [id]);
                                         });
                                 } else {
                                     Swal.fire('Lỗi', response.message, 'error');
