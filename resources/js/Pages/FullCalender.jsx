@@ -32,6 +32,41 @@ import NoteModal from '../Components/NoteModal';
 //import History from '../Components/History';
 //import { CheckAuthorization } from '../Components/CheckAuthorization';
 
+const calendarPlugins = [dayGridPlugin, resourceTimelinePlugin, interactionPlugin];
+
+const calendarViews = {
+  resourceTimelineDay: {
+    slotDuration: '00:15:00',
+    slotMinTime: '00:00:00',
+    slotMaxTime: '24:00:00',
+    buttonText: 'Ngày',
+    titleFormat: { year: 'numeric', month: 'short', day: 'numeric' },
+  },
+  resourceTimelineWeek: {
+    slotDuration: { days: 1 },
+    slotMinTime: '00:00:00',
+    slotMaxTime: '24:00:00',
+    buttonText: 'Tuần',
+    titleFormat: { year: 'numeric', month: 'short', day: 'numeric' },
+  },
+  resourceTimelineMonth: {
+    slotDuration: { days: 1 },
+    slotMinTime: '00:00:00',
+    slotMaxTime: '24:00:00',
+    buttonText: 'Tháng',
+    titleFormat: { year: 'numeric', month: 'short' },
+  },
+  resourceTimelineQuarter: {
+    slotDuration: { days: 1 },
+    duration: { months: 3 },
+    buttonText: 'Quý',
+    titleFormat: { year: 'numeric', month: 'short' },
+  },
+  resourceTimelineMonth1d: { type: 'resourceTimelineMonth', slotDuration: { days: 1 } },
+  resourceTimelineQuarter4h: { type: 'resourceTimelineQuarter', slotDuration: '04:00:00' },
+  resourceTimelineQuarter1d: { type: 'resourceTimelineQuarter', slotDuration: { days: 1 } },
+};
+
 const ScheduleTest = () => {
 
   const calendarRef = useRef(null);
@@ -569,6 +604,14 @@ const ScheduleTest = () => {
     const api = calendarRef.current?.getApi();
     if (!api) return;
     try {
+      Swal.fire({
+        title: "Đang tải...",
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        },
+      });
+
       // 🔹 1. Thay đổi view nếu có yêu cầu
       if (viewType && api.view.type !== viewType) {
         api.changeView(viewType);
@@ -578,9 +621,6 @@ const ScheduleTest = () => {
       if (action === "prev") api.prev();
       else if (action === "next") api.next();
       else if (action === "today") api.today();
-
-      // ✅ Đợi 1 chút để FullCalendar cập nhật hoàn tất
-      await new Promise(resolve => setTimeout(resolve, 150));
 
       // 🔹 3. Lấy khoảng thời gian hiện tại sau khi chuyển view
       const { activeStart, activeEnd, type: currentView } = api.view;
@@ -612,7 +652,7 @@ const ScheduleTest = () => {
 
       return cleanData;
     } finally {
-
+      Swal.close();
     }
   }, []);
 
@@ -5894,7 +5934,7 @@ const ScheduleTest = () => {
         schedulerLicenseKey="GPL-My-Project-Is-Open-Source"
         ref={calendarRef}
         height="calc(100vh - 130px)"
-        plugins={[dayGridPlugin, resourceTimelinePlugin, interactionPlugin]}
+        plugins={calendarPlugins}
         initialView="resourceTimelineMonth1d"
         firstDay={1}
         events={calendarEvents}
@@ -6598,41 +6638,38 @@ const ScheduleTest = () => {
           selectByClick={false}
           selectFromInside={true}
           toggleContinueSelect={["shift"]}
-          hitRate={100}
+          hitRate={0} // Changed to 0 so selection is instant upon touching
+
+          // 🎯 Cập nhật viền ngay lập tức trong quá trình kéo
+          onSelect={(e) => {
+            e.added.forEach((el) => {
+              el.style.border = "5px solid yellow";
+            });
+            e.removed.forEach((el) => {
+              el.style.border = "none";
+            });
+          }}
 
           // 🎯 Khi kết thúc kéo chọn
           onSelectEnd={(e) => {
-            const newlySelected = e.selected.map((el) => ({
+            // 🔹 Nếu kéo ra vùng trống => bỏ chọn hết
+            if (e.selected.length === 0) {
+              document.querySelectorAll(".fc-event[data-event-id]").forEach((el) => {
+                el.style.border = "none";
+              });
+              setSelectedEvents([]);
+              selectedEventsRef.current = [];
+              return;
+            }
+
+            const finalSelected = e.selected.map((el) => ({
               id: el.getAttribute("data-event-id"),
               stage_code: el.getAttribute("data-stage_code"),
               plan_master_id: el.getAttribute("data-plan_master_id"),
-            }));
+            })).filter(item => item.id); // Đảm bảo có id hợp lệ
 
-            setSelectedEvents((prev) => {
-              // ✅ Gộp với vùng chọn cũ, tránh trùng
-              const merged = [...prev, ...newlySelected].filter(
-                (v, i, arr) => arr.findIndex(o => o.id === v.id) === i
-              );
-
-              // 🔹 Nếu kéo ra vùng trống => bỏ chọn hết
-              if (e.selected.length === 0) {
-                document.querySelectorAll(".fc-event[data-event-id]").forEach((el) => {
-                  el.style.border = "none";
-                });
-                return [];
-              }
-
-              // 🔹 Reset viền cũ
-              document.querySelectorAll(".fc-event[data-event-id]").forEach((el) => {
-                const id = el.getAttribute("data-event-id");
-                el.style.border = merged.some((ev) => ev.id === id)
-                  ? "5px solid yellow"
-                  : "none";
-              });
-
-              selectedEventsRef.current = merged;
-              return merged;
-            });
+            setSelectedEvents(finalSelected);
+            selectedEventsRef.current = finalSelected;
           }}
         />
       )}
