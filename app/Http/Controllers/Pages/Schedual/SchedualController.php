@@ -2781,6 +2781,78 @@ class SchedualController extends Controller
                 }
             }
             DB::commit();
+
+            // ✅ Auto-reset expected_date_change = 0 cho các plan_master không còn vi phạm KCS
+            // Sau khi lưu lịch thành công, kiểm tra lại các lô bị ảnh hưởng:
+            // Nếu MAX(stage_plan.end) của stage_code=7 đã đáp ứng (end <= expected_date - 5 ngày),
+            // tự động reset cờ expected_date_change về 0 để lô không còn "treo" ở tab Đề Nghị.
+            try {
+                // Thu thập tất cả plan_master_id từ các stage_plan vừa được cập nhật
+                $affectedStagePlanIds = [];
+                foreach ($changes as $c) {
+                    $parts = explode('-', $c['id']);
+                    $type = $parts[1] ?? null;
+                    // Chỉ quan tâm đến stage_code=7 (đóng gói) vì đó là stage quyết định KCS
+                    if (!$type || strpos($type, 'cleaning') === false) {
+                        $idsInChange = explode(',', $parts[0]);
+                        foreach ($idsInChange as $sid) {
+                            if (is_numeric(trim($sid))) {
+                                $affectedStagePlanIds[] = (int) trim($sid);
+                            }
+                        }
+                    }
+                }
+
+                if (!empty($affectedStagePlanIds)) {
+                    // Lấy plan_master_id của các stage_plan bị ảnh hưởng và có stage_code = 7
+                    $affectedPlanMasterIds = DB::table('stage_plan')
+                        ->whereIn('id', $affectedStagePlanIds)
+                        ->where('stage_code', 7)
+                        ->pluck('plan_master_id')
+                        ->unique()
+                        ->toArray();
+
+                    if (!empty($affectedPlanMasterIds)) {
+                        // Tìm các plan_master đang có cờ expected_date_change = 1
+                        $proposedPlans = DB::table('plan_master')
+                            ->whereIn('id', $affectedPlanMasterIds)
+                            ->where('expected_date_change', 1)
+                            ->select('id', 'expected_date')
+                            ->get();
+
+                        foreach ($proposedPlans as $pm) {
+                            if (!$pm->expected_date) continue;
+
+                            // Kiểm tra xem MAX(end) của stage_code=7 có còn vi phạm không
+                            $maxEnd = DB::table('stage_plan')
+                                ->where('plan_master_id', $pm->id)
+                                ->where('stage_code', 7)
+                                ->where('active', 1)
+                                ->where('finished', 0)
+                                ->whereNotNull('start')
+                                ->max('end');
+
+                            if (!$maxEnd) continue;
+
+                            $kcsDeadline = Carbon::parse($pm->expected_date)->subDays(5)->startOfDay();
+                            $endDate = Carbon::parse($maxEnd)->startOfDay();
+
+                            // Nếu ngày kết thúc đã đáp ứng (không còn vi phạm) → reset cờ
+                            if ($endDate->lte($kcsDeadline)) {
+                                DB::table('plan_master')
+                                    ->where('id', $pm->id)
+                                    ->update(['expected_date_change' => 0]);
+
+                                Log::info("[SchedualController] Auto-reset expected_date_change=0 for plan_master_id={$pm->id} (maxEnd={$maxEnd}, deadline={$kcsDeadline})");
+                            }
+                        }
+                    }
+                }
+            } catch (\Exception $resetEx) {
+                // Lỗi reset cờ không nên làm hỏng toàn bộ response
+                Log::warning('[SchedualController] Auto-reset expected_date_change failed: ' . $resetEx->getMessage());
+            }
+
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Lỗi cập nhật sự kiện:', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
