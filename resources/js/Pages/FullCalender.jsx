@@ -190,11 +190,33 @@ const ScheduleTest = () => {
   useEffect(() => {
 
     Swal.fire({
-      title: "Đang tải...",
+      title: "Đang tải dữ liệu...",
+      html: `
+        <div style="margin-top: 10px; font-size: 14px; color: #555;">Đang lấy dữ liệu từ máy chủ...</div>
+        <div style="width: 100%; background-color: #e9ecef; border-radius: 4px; margin-top: 15px; overflow: hidden; height: 12px;">
+          <div id="swal-progress-bar" style="width: 0%; height: 100%; background-color: #3b82f6; transition: width 0.2s ease;"></div>
+        </div>
+        <div id="swal-progress-text" style="margin-top: 5px; font-size: 12px; font-weight: bold; color: #3b82f6;">0%</div>
+      `,
       allowOutsideClick: false,
       didOpen: () => {
         Swal.showLoading();
+        const progressBar = document.getElementById('swal-progress-bar');
+        const progressText = document.getElementById('swal-progress-text');
+        let currentProgress = 0;
+        
+        window.calendarFakeProgress = setInterval(() => {
+          if (currentProgress < 90) {
+            const increment = Math.max(1, Math.floor((90 - currentProgress) / 5));
+            currentProgress += increment;
+            if (progressBar) progressBar.style.width = currentProgress + '%';
+            if (progressText) progressText.textContent = currentProgress + '%';
+          }
+        }, 150);
       },
+      willClose: () => {
+        if (window.calendarFakeProgress) clearInterval(window.calendarFakeProgress);
+      }
     });
 
     const { activeStart, activeEnd } = calendarRef.current?.getApi().view;
@@ -605,11 +627,33 @@ const ScheduleTest = () => {
     if (!api) return;
     try {
       Swal.fire({
-        title: "Đang tải...",
+        title: "Đang tải dữ liệu...",
+        html: `
+          <div style="margin-top: 10px; font-size: 14px; color: #555;">Đang lấy dữ liệu từ máy chủ...</div>
+          <div style="width: 100%; background-color: #e9ecef; border-radius: 4px; margin-top: 15px; overflow: hidden; height: 12px;">
+            <div id="swal-progress-bar" style="width: 0%; height: 100%; background-color: #3b82f6; transition: width 0.2s ease;"></div>
+          </div>
+          <div id="swal-progress-text" style="margin-top: 5px; font-size: 12px; font-weight: bold; color: #3b82f6;">0%</div>
+        `,
         allowOutsideClick: false,
         didOpen: () => {
           Swal.showLoading();
+          const progressBar = document.getElementById('swal-progress-bar');
+          const progressText = document.getElementById('swal-progress-text');
+          let currentProgress = 0;
+          
+          window.calendarFakeProgress = setInterval(() => {
+            if (currentProgress < 90) {
+              const increment = Math.max(1, Math.floor((90 - currentProgress) / 5));
+              currentProgress += increment;
+              if (progressBar) progressBar.style.width = currentProgress + '%';
+              if (progressText) progressText.textContent = currentProgress + '%';
+            }
+          }, 150);
         },
+        willClose: () => {
+          if (window.calendarFakeProgress) clearInterval(window.calendarFakeProgress);
+        }
       });
 
       // 🔹 1. Thay đổi view nếu có yêu cầu
