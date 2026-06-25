@@ -660,41 +660,7 @@
                                                                             data-selected="{{ $p_info->personnel_id }}"
                                                                             data-op-type="{{ $p_info->operation_type ?? 'thủ công' }}"
                                                                             {{ !$canEdit || ($assignment->is_foreign ?? false) ? 'disabled' : '' }}>
-                                                                            <option value="">-- Chọn NV --
-                                                                            </option>
-                                                                            @foreach ($personnel as $p)
-                                                                                @php
-                                                                                    $levelStr = '';
-                                                                                    $allowed =
-                                                                                        $skills[$p->id]
-                                                                                            ->allowed_rooms_with_levels ??
-                                                                                        '';
-                                                                                    if ($allowed && isset($room->id)) {
-                                                                                        $parts = explode('|', $allowed);
-                                                                                        foreach ($parts as $part) {
-                                                                                            $subparts = explode(
-                                                                                                ':',
-                                                                                                $part,
-                                                                                            );
-                                                                                            if (
-                                                                                                count($subparts) >= 2 &&
-                                                                                                $subparts[0] ==
-                                                                                                    $room->id
-                                                                                            ) {
-                                                                                                $levelStr =
-                                                                                                    '[B' .
-                                                                                                    $subparts[1] .
-                                                                                                    '] ';
-                                                                                                break;
-                                                                                            }
-                                                                                        }
-                                                                                    }
-                                                                                @endphp
-                                                                                <option value="{{ $p->id }}"
-                                                                                    {{ $p_info->personnel_id == $p->id ? 'selected' : '' }}>
-                                                                                    {{ $levelStr }}{{ $p->name }}
-                                                                                </option>
-                                                                            @endforeach
+                                                                            <option value="">-- Chọn NV --</option>
                                                                         </select>
                                                                         @if (strtolower($p_info->operation_type ?? 'thủ công') == 'tự động')
                                                                             <i class="fas fa-robot text-info mr-1 op-icon"
@@ -847,34 +813,6 @@
                                                                         data-op-type="thủ công"
                                                                         {{ !$canEdit ? 'disabled' : '' }}>
                                                                         <option value="">-- Chọn NV --</option>
-                                                                        @foreach ($personnel as $p)
-                                                                            @php
-                                                                                $levelStr = '';
-                                                                                $allowed =
-                                                                                    $skills[$p->id]
-                                                                                        ->allowed_rooms_with_levels ??
-                                                                                    '';
-                                                                                if ($allowed && isset($room->id)) {
-                                                                                    $parts = explode('|', $allowed);
-                                                                                    foreach ($parts as $part) {
-                                                                                        $subparts = explode(':', $part);
-                                                                                        if (
-                                                                                            count($subparts) >= 2 &&
-                                                                                            $subparts[0] == $room->id
-                                                                                        ) {
-                                                                                            $levelStr =
-                                                                                                '[B' .
-                                                                                                $subparts[1] .
-                                                                                                '] ';
-                                                                                            break;
-                                                                                        }
-                                                                                    }
-                                                                                }
-                                                                            @endphp
-                                                                            <option value="{{ $p->id }}">
-                                                                                {{ $levelStr }}{{ $p->name }}
-                                                                            </option>
-                                                                        @endforeach
                                                                     </select>
                                                                     <i class="fas fa-hand-paper text-secondary ml-1 op-icon"
                                                                         title="Sắp thủ công"
@@ -1228,7 +1166,7 @@
 
             return $(
                 `<span><span class="badge ${bgClass} mr-1" style="padding: 3px 5px; font-size: 0.65rem">B${level}</span>${name}</span>`
-                );
+            );
         }
         return option.text;
     }
@@ -1247,6 +1185,16 @@
     }
 
     $(document).ready(function() {
+        $('.person-select').each(function() {
+            let roomId = $(this).closest('.room-row').attr('data-room-id');
+            if (!roomId) roomId = $(this).closest('.room-row').find('.room-select-custom').val();
+            let optionsHtml = getPersonOptionsForRoom(roomId);
+            let selectedVal = $(this).attr('data-selected');
+            $(this).html(optionsHtml);
+            if (selectedVal) {
+                $(this).val(selectedVal);
+            }
+        });
         initPersonSelect2();
     });
 
