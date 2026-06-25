@@ -840,13 +840,22 @@ const ScheduleTest = () => {
 
     const { activeStart, activeEnd, type: view_type, props: viewProps } = calendarRef.current?.getApi().view;
 
+    let finalSelectedRows = [...selectedRows];
+    if (finalSelectedRows.length === 1 && finalSelectedRows[0].main_parkaging_id && finalSelectedRows[0].stage_code === 7) {
+      const mainId = finalSelectedRows[0].main_parkaging_id;
+      const relatedRows = plan.filter(p => p.main_parkaging_id === mainId && p.stage_code === 7);
+      if (relatedRows.length > 0) {
+        finalSelectedRows = relatedRows;
+      }
+    }
+
     if (selectedRows[0].stage_code !== 8) {
 
       axios.put('/Schedual/store', {
         room_id: resourceId,
         stage_code: selectedRows[0].stage_codes,
         start: moment(start).format("YYYY-MM-DD HH:mm:ss"),
-        products: selectedRows,
+        products: finalSelectedRows,
         startDate: toLocalISOString(activeStart),
         endDate: toLocalISOString(activeEnd),
         offdate: offDays,
@@ -2313,6 +2322,7 @@ const ScheduleTest = () => {
   );
 
   /// 3 Ham sử lý thay đôi sự kiện
+
   const handleGroupEventDrop = (info, selectedEvents, toggleEventSelect, handleEventChange) => {
 
     if (!authorization) {
@@ -2369,8 +2379,14 @@ const ScheduleTest = () => {
             if (is_clearning) {
               if (event.title == "VS-II") m_time = timeToMilliseconds(quota_event.C2_time);
               else m_time = timeToMilliseconds(quota_event.C1_time);
+              trueDurMs = m_time; // Clearing time is not multiplied by percent_parkaging
+            } else {
+              let ratio = 1;
+              if (event._def.extendedProps.stage_code == 7 && event._def.extendedProps.percent_parkaging) {
+                ratio = event._def.extendedProps.percent_parkaging;
+              }
+              trueDurMs = (m_time + p_time) * ratio;
             }
-            trueDurMs = m_time + p_time;
           }
         } else {
           trueDurMs = event.end ? event.end.getTime() - event.start.getTime() : 0;
@@ -2449,7 +2465,7 @@ const ScheduleTest = () => {
             remaining = 0;
           }
         }
-        return direction > 0 ? skipOffDays(new Date(current), offRanges) : new Date(current);
+        return new Date(current);
       };
 
       const generateBatchUpdates = (currentOffset) => {
@@ -2466,6 +2482,7 @@ const ScheduleTest = () => {
 
           if (!workingSunday) {
             newStart = addWorkingTime(event_start, currentWorkingShiftMs, offRanges);
+            newStart = skipOffDays(newStart, offRanges);
             newEnd = addWorkingTime(newStart, conf.trueDurMs, offRanges);
           } else {
             newStart = new Date(event_start.getTime() + currentOffset);
@@ -2479,7 +2496,8 @@ const ScheduleTest = () => {
             resourceId: conf.resId || null,
             title: conf.event.title,
             submit: conf.event._def.extendedProps.submit,
-            _event: conf.event
+            _event: conf.event,
+            originalStart: event_start
           };
         });
       };
@@ -2495,9 +2513,10 @@ const ScheduleTest = () => {
         batchUpdates.forEach(update => {
           const resId = update.resourceId;
           if (resId) {
-            const originalStart = new Date(new Date(update.start).getTime() - offset);
-            if (!resourceMinStart[resId] || originalStart < resourceMinStart[resId]) {
-              resourceMinStart[resId] = originalStart;
+            const originalStart = new Date(update.originalStart);
+            const effectStart = new Date(Math.min(originalStart.getTime(), new Date(update.start).getTime()));
+            if (!resourceMinStart[resId] || effectStart < resourceMinStart[resId]) {
+              resourceMinStart[resId] = effectStart;
             }
           }
         });
@@ -2508,7 +2527,20 @@ const ScheduleTest = () => {
           const rId = update.resourceId;
           const ev = calendarApi.getEventById(update.id);
           if (ev) {
-            const boundary = ev.extendedProps.end_clearning ? new Date(ev.extendedProps.end_clearning) : new Date(update.end);
+            let boundary;
+            if (ev.extendedProps.end_clearning) {
+              if (!workingSunday) {
+                const clearingDur = getWorkingTimeBetween(new Date(update.originalStart), new Date(ev.extendedProps.end_clearning), offRanges);
+                boundary = addWorkingTime(new Date(update.start), clearingDur, offRanges);
+              } else {
+                boundary = new Date(new Date(ev.extendedProps.end_clearning).getTime() + (new Date(update.start).getTime() - new Date(update.originalStart).getTime()));
+              }
+              if (boundary.getTime() < new Date(update.end).getTime()) {
+                boundary = new Date(update.end);
+              }
+            } else {
+              boundary = new Date(update.end);
+            }
             if (!resourceLastEnd[rId] || (boundary && boundary > resourceLastEnd[rId])) {
               resourceLastEnd[rId] = boundary;
             }
@@ -2518,6 +2550,7 @@ const ScheduleTest = () => {
         sortedEvents.forEach(otherEv => {
           const resId = otherEv.getResources()[0]?.id;
           const minS = resourceMinStart[resId];
+          console.log(`[Cascade Trace] Checking ${otherEv.title} (id: ${otherEv.id}). minS: ${minS}, start: ${otherEv.start}, finished: ${otherEv.extendedProps.finished}, moved: ${movedIds.has(otherEv.id)}`);
           if (
             minS &&
             !movedIds.has(otherEv.id) &&
@@ -2530,21 +2563,49 @@ const ScheduleTest = () => {
             }
 
             const boundary = resourceLastEnd[resId];
+            console.log(`[Cascade Trace] - ns before boundary check: ${ns}, boundary: ${boundary}`);
             if (boundary && ns < boundary) {
               ns = new Date(boundary.getTime());
+              console.log(`[Cascade Trace] - ns forced to boundary: ${ns}`);
             }
 
             ns = skipOffDays(ns, offRanges);
 
             const actualShift = ns.getTime() - otherEv.start.getTime();
-            const ne = new Date((otherEv.end || otherEv.start).getTime() + actualShift);
+            let ne;
+
+            if (!workingSunday) {
+              const workingDur = getWorkingTimeBetween(otherEv.start, otherEv.end || otherEv.start, offRanges);
+              ne = addWorkingTime(ns, workingDur, offRanges);
+            } else {
+              ne = new Date((otherEv.end || otherEv.start).getTime() + actualShift);
+            }
+
+            // Luôn tính newBoundary (ranh giới sau khi xử lý sự kiện này)
+            // để sự kiện TIẾP THEO không bắt đầu trước khi sự kiện NÀY kết thúc
+            let newBoundary;
+            if (otherEv.extendedProps.end_clearning) {
+              if (!workingSunday) {
+                const clearingDur = getWorkingTimeBetween(otherEv.start, new Date(otherEv.extendedProps.end_clearning), offRanges);
+                newBoundary = addWorkingTime(ns, clearingDur, offRanges);
+              } else {
+                newBoundary = new Date(new Date(otherEv.extendedProps.end_clearning).getTime() + actualShift);
+              }
+              if (newBoundary.getTime() < ne.getTime()) {
+                newBoundary = ne;
+              }
+            } else {
+              newBoundary = ne;
+            }
+
+            // Cập nhật resourceLastEnd: chỉ khi newBoundary LỚN HƠN giá trị hiện tại
+            // Điều này đảm bảo ranh giới không bao giờ bị thu nhỏ bởi 1 sự kiện ngắn hơn
+            if (!resourceLastEnd[resId] || newBoundary > resourceLastEnd[resId]) {
+              resourceLastEnd[resId] = newBoundary;
+            }
 
             if (actualShift !== 0) {
-              const newBoundary = otherEv.extendedProps.end_clearning
-                ? new Date(new Date(otherEv.extendedProps.end_clearning).getTime() + actualShift)
-                : ne;
-              resourceLastEnd[resId] = newBoundary;
-
+              console.log(`[Cascade Trace] - Pushing ${otherEv.title} by actualShift: ${actualShift}ms, new end: ${ne}`);
               batchUpdates.push({
                 id: otherEv.id,
                 start: ns.toISOString(),
@@ -2555,7 +2616,7 @@ const ScheduleTest = () => {
                 _event: otherEv
               });
             } else {
-              resourceLastEnd[resId] = otherEv.extendedProps.end_clearning ? new Date(otherEv.extendedProps.end_clearning) : ne;
+              console.log(`[Cascade Trace] - actualShift is 0 for ${otherEv.title}, resourceLastEnd updated to: ${newBoundary}`);
             }
           }
         });

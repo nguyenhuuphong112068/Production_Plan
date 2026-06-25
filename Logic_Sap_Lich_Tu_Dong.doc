@@ -1,73 +1,88 @@
-
 <html>
 <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta charset='utf-8'>
     <style>
-        body { font-family: "Times New Roman", Times, serif; }
-        h1 { color: #2c3e50; border-bottom: 2px solid #2c3e50; }
-        h2 { color: #2980b9; margin-top: 20px; }
-        h3 { color: #16a085; }
-        table { border-collapse: collapse; width: 100%; margin: 15px 0; }
-        th, td { border: 1px solid #bdc3c7; padding: 10px; text-align: left; }
-        th { background-color: #ecf0f1; }
-        .highlight { background-color: #f1c40f; padding: 2px 5px; border-radius: 3px; }
+        body { font-family: 'Times New Roman', Arial; line-height: 1.5; font-size: 13pt; margin: 40px; }
+        h1 { color: #2F5496; font-size: 18pt; text-align: center; font-weight: bold; }
+        h2 { color: #2F5496; font-size: 15pt; margin-top: 20px; font-weight: bold; }
+        h3 { color: #1F3763; font-size: 14pt; margin-top: 15px; font-weight: bold; }
+        p, li { font-size: 13pt; margin-bottom: 8px; }
+        ul { margin-top: 5px; }
+        img { max-width: 100%; height: auto; display: block; margin: 20px auto; border: 1px solid #ccc; padding: 10px; }
     </style>
 </head>
 <body>
-    <h1>TÀI LIỆU GIẢI THÍCH LOGIC SẮP LỊCH TỰ ĐỘNG</h1>
-    <p><i>File: SchedualController.php | Chức năng: scheduleAll</i></p>
+<h1>TÀI LIỆU KỸ THUẬT: NGUYÊN LÝ HOẠT ĐỘNG HỆ THỐNG LẬP LỊCH SẢN XUẤT TỰ ĐỘNG</h1>
+<h2>TỔNG QUAN</h2>
+<p>Hệ thống lập lịch sản xuất tự động là một giải pháp giải quyết bài toán phân bổ tài nguyên có điều kiện ràng buộc (Constraint Satisfaction). Hệ thống thực hiện việc lập kế hoạch dựa trên việc tối ưu hóa năng suất thiết bị, thời gian chuyển đổi, ràng buộc nguyên vật liệu, cấu hình dây chuyền và mức độ ưu tiên của lệnh sản xuất.</p>
+<h3>SƠ ĐỒ THUẬT TOÁN (FLOWCHART)</h3>
+<p><i>(Sơ đồ thuật toán đã được xuất thành file ảnh riêng Sodo_Lich_Tu_Dong.png. Bạn vui lòng sử dụng tính năng Insert -> Pictures của Word để chèn ảnh này vào)</i></p>
+<hr />
+<h2>1. GIAI ĐOẠN KHỞI TẠO VÀ THIẾT LẬP THÔNG SỐ (INITIALIZATION)</h2>
+<p>Hệ thống sẽ tiếp nhận các thông số đầu vào từ người vận hành để làm cơ sở tính toán:</p>
+<ol>
+<li><strong>Mốc thời gian bắt đầu (<code>start_date</code>):</strong> Mốc thời gian sớm nhất cho phép hệ thống lập kế hoạch. Mặc định là 6:00 sáng ngày hiện tại nếu không được chỉ định.</li>
+<li><strong>Quy tắc thời gian làm việc (<code>work_sunday</code>):</strong> Thông số xác định hệ thống có phân bổ công việc vào ngày Chủ Nhật hay sẽ tự động tịnh tiến thời gian sang ngày làm việc tiếp theo.</li>
+<li><strong>Thời gian chờ luân chuyển (Wait Times):</strong> Khai báo độ trễ bắt buộc giữa các công đoạn sản xuất (dành cho mục đích lưu kho trung gian hoặc chờ kết quả kiểm nghiệm QC) bao gồm các công đoạn: Pha chế, Trộn hoàn tất, Dập/Ép, Bao phim, Đóng gói. Các lô mang tính chất thẩm định (Validation) sẽ áp dụng hệ số thời gian chờ riêng biệt.</li>
+</ol>
+<hr />
+<h2>2. TRÌNH TỰ PHÂN BỔ VÀ MỨC ĐỘ ƯU TIÊN (PRIORITY QUEUES)</h2>
+<p>Nhằm đảm bảo hiệu suất vận hành, thuật toán xử lý các lệnh sản xuất theo 4 luồng ưu tiên độc lập, được triển khai theo một trình tự nghiêm ngặt:</p>
+<h3>Ưu tiên 1: Giải phóng Bán Thành Phẩm Đang Xử Lý (WIP Clearance)</h3>
+<ul>
+<li><strong>Phương pháp duyệt:</strong> Duyệt nghịch (Backward Scheduling) từ công đoạn cuối lùi về công đoạn đầu.</li>
+<li><strong>Quy tắc:</strong> Hệ thống rà soát và ưu tiên cấp phát tài nguyên cho các lô sản xuất đã hoàn tất hoặc đang thực hiện ở công đoạn trước, nhưng chưa được lập lịch cho công đoạn tiếp theo.</li>
+<li><strong>Mục tiêu:</strong> Đẩy nhanh tiến độ hoàn thiện của các sản phẩm đang lưu kho dở dang, giảm thiểu ùn ứ bán thành phẩm (Work-In-Progress) trên chuyền sản xuất.</li>
+</ul>
+<h3>Ưu tiên 2: Xử Lý Lô Nguy Cơ Hạn Dùng / Nguyên Vật Liệu (<code>scheduleWarningMR</code>)</h3>
+<ul>
+<li><strong>Phương pháp duyệt:</strong> Duyệt nghịch (Backward Scheduling).</li>
+<li><strong>Thuật toán áp dụng:</strong> Earliest Deadline First (EDF) - Ưu tiên xử lý các tác vụ có hạn chót sớm nhất.</li>
+<li><strong>Quy tắc:</strong> Hệ thống tự động phân tích mốc thời gian hết hạn của nguyên liệu (<code>expired_material_date</code>) và thời hạn bắt buộc phải đưa vào sản xuất (<code>allow_weight_before_date</code>). Các lệnh sản xuất có rủi ro hết hạn cao nhất sẽ được hệ thống xếp lịch ưu tiên cao nhất, nhằm ngăn chặn lãng phí nguyên vật liệu.</li>
+</ul>
+<h3>Ưu tiên 3: Xử Lý Sản Phẩm Cần Thời Gian Cách Ly (<code>scheduleSensitiveProduct</code>)</h3>
+<ul>
+<li><strong>Phương pháp duyệt:</strong> Duyệt thuận (Forward Scheduling) từ công đoạn đầu đến công đoạn cuối.</li>
+<li><strong>Quy tắc:</strong> Áp dụng cho các sản phẩm yêu cầu lưu kho cách ly dài ngày (<code>quarantine_total</code> &gt; 0). Để đảm bảo tiến độ bàn giao hàng hóa (<code>responsed_date</code>), hệ thống tính toán trừ lùi thời gian cách ly để xác định ngày bắt đầu sản xuất bắt buộc, từ đó ưu tiên chỉ định thiết bị từ rất sớm.</li>
+</ul>
+<h3>Ưu tiên 4: Phân Bổ Kế Hoạch Sản Xuất Đại Trà (Normal Forward Scheduling)</h3>
+<ul>
+<li><strong>Phương pháp duyệt:</strong> Duyệt thuận (Forward Scheduling).</li>
+<li><strong>Quy tắc:</strong> Thực hiện rải đều các lệnh sản xuất tiêu chuẩn còn lại vào các khoảng thời gian trống của nhà máy. Việc sắp xếp phụ thuộc vào trật tự cấu hình thủ công (<code>order_by</code>) hoặc bám sát theo mốc thời gian hoàn tất của các công đoạn liền kề trước đó.</li>
+</ul>
+<hr />
+<h2>3. CƠ CHẾ XỬ LÝ RÀNG BUỘC THIẾT BỊ (SLOT-FINDING ENGINE)</h2>
+<p>Với mỗi lệnh sản xuất được chọn, hệ thống thực thi các thuật toán sàng lọc và phân bổ tài nguyên chi tiết:</p>
+<h3>3.1. Xác Định Mốc Thời Gian Khả Thi Sớm Nhất (Earliest Start Time)</h3>
+<p>Thời điểm bắt đầu của một công đoạn bắt buộc thỏa mãn đồng thời các điều kiện sau:</p>
+<ul>
+<li>Phải lớn hơn hoặc bằng thời điểm hiện tại và mốc <code>start_date</code>.</li>
+<li>Phải lớn hơn hoặc bằng thời điểm nguyên liệu sẵn sàng (<code>after_weigth_date</code>).</li>
+<li>Phải lớn hơn hoặc bằng <strong>thời điểm kết thúc của công đoạn trước cộng với thời gian chờ bắt buộc (<code>waite_time</code>)</strong>.</li>
+</ul>
+<h3>3.2. Sàng Lọc Thiết Bị Tương Thích (Equipment Filtering)</h3>
+<p>Hệ thống loại bỏ các thiết bị không đủ tiêu chuẩn thông qua các bước lọc:</p>
+<ul>
+<li><strong>Định mức (Quota):</strong> Thiết bị phải có bảng định mức năng suất (thời gian chuẩn bị, thời gian chạy máy) tương ứng với sản phẩm.</li>
+<li><strong>Ràng buộc Khuôn/Thiết bị phụ trợ:</strong> Đối với công đoạn Đóng gói, thiết bị phải tương thích với mã khuôn (<code>blister_type_code</code>) mà sản phẩm yêu cầu.</li>
+<li><strong>Ràng buộc Dây chuyền (Room Links):</strong> Nếu quy trình yêu cầu kết nối chuỗi cố định (Ví dụ: Sản phẩm xử lý ở Máy Pha chế A bắt buộc phải chuyển sang Máy Trộn B), hệ thống sẽ từ chối phân bổ ở các thiết bị sai quy định.</li>
+<li><strong>Ràng buộc Thẩm Định (Validation):</strong> Lô thẩm định thứ hai trở đi (<code>code_val</code>) bắt buộc thực hiện trên cùng một thiết bị với lô thẩm định đầu tiên nhằm đảm bảo tính toàn vẹn của dữ liệu thẩm định.</li>
+</ul>
+<h3>3.3. Thuật Toán Dò Tìm Khoảng Trống (Time-Slot Scanning)</h3>
+<p>Hệ thống áp dụng cơ chế rà soát trục thời gian trên từng thiết bị được chọn, từ mốc thời gian khả thi sớm nhất, nhằm tìm ra các khoảng thời gian khả dụng (Available Slot) có đủ độ lớn đáp ứng công thức: <strong>Thời gian chạy máy + Thời gian vệ sinh</strong>.</p>
+<ul>
+<li><strong>Cơ chế <code>skipOffTime</code>:</strong> Thuật toán tự động nhận diện và tịnh tiến kế hoạch qua các múi giờ phi sản xuất như giờ nghỉ giao ca, ngày lễ, hoặc ngày cuối tuần, đảm bảo kế hoạch bám sát thời gian vận hành thực tế.</li>
+</ul>
+<h3>3.4. Tối Ưu Hóa Kế Hoạch Theo Chiến Dịch (Campaign Optimization)</h3>
+<ul>
+<li>Để giảm thiểu thời gian chuyển đổi sản phẩm (Changeover Time), hệ thống tự động nhận diện và gom các mẻ cùng mã chiến dịch (<code>campaign_code</code>) vào cùng một cụm và ưu tiên xử lý liên tục trên cùng một thiết bị.</li>
+<li>Khi hoạt động theo nhóm chiến dịch, hệ thống chỉ áp dụng thời gian vệ sinh nhẹ (<code>C1_time</code>) giữa các mẻ. Thời gian vệ sinh toàn diện (<code>C2_time</code>) chỉ được kích hoạt ở mẻ cuối cùng của chiến dịch. Quy trình này trực tiếp tối đa hóa hiệu suất sử dụng thiết bị (OEE).</li>
+</ul>
+<h3>3.5. Quy Trình Chuyển Đổi Liên Tục (<code>immediately</code>)</h3>
+<p>Đối với các quy trình có yêu cầu hạn chế thời gian lưu kho giữa các bước, nếu cấu hình <code>immediately</code> được kích hoạt, hệ thống sẽ tự động thực thi đệ quy để cấp phát lịch cho công đoạn tiếp theo ngay tại thời điểm kết thúc của công đoạn hiện tại, đảm bảo luồng sản xuất liên tục không bị gián đoạn.</p>
+<hr />
+<h2>KẾT LUẬN</h2>
+<p>Thuật toán lập lịch tự động của hệ thống là sự kết hợp giữa logic Lập lịch lùi/tiến (Backward/Forward Scheduling) và Thuật toán tham lam (Greedy Algorithm) kèm chức năng rà soát không gian trống (Time-Slot Scanning). Qua việc tự động hóa quá trình tính toán hàng loạt các biến số ràng buộc từ con người, vật tư, đến thiết bị, hệ thống đảm bảo kế hoạch được khởi tạo mang tính khả thi, tối ưu công suất và ngăn chặn tối đa rủi ro tồn kho hay quá hạn nguyên liệu.</p>
 
-    <h2>1. Tổng Quan Quy Trình</h2>
-    <p>Chức năng "Sắp lịch tự động" thực hiện việc tính toán và gán thời gian sản xuất (Start, End) cho từng công đoạn của một lô hàng, dựa trên định mức năng suất, tình trạng phòng máy và các ràng buộc thời gian chờ.</p>
-
-    <h3>Các thành phần chính:</h3>
-    <ul>
-        <li><b>Điểm bắt đầu (scheduleAll):</b> Tiếp nhận yêu cầu, cấu hình thời gian chờ (waiting time), và quyết định phương thức sắp lịch (theo line, theo lô nhạy cảm, hay chạy thuận).</li>
-        <li><b>Phân tích tài nguyên (findEarliestSlot2):</b> Thuật toán cốt lõi để tìm "khe thời gian" trống sớm nhất trong các phòng sản xuất có khả năng thực hiện.</li>
-        <li><b>Ràng buộc làm việc:</b> Hệ thống tự động bỏ qua các ngày nghỉ, lễ và tính toán theo ca làm việc (Shift 1, 2, 3) thông qua hàm <code>addWorkingMinutes</code>.</li>
-    </ul>
-
-    <h2>2. Quy Trình Sắp Lịch 5 Bước</h2>
-    <table>
-        <tr>
-            <th>Bước</th>
-            <th>Tên Bước</th>
-            <th>Mô Tả Logic</th>
-        </tr>
-        <tr>
-            <td>1</td>
-            <td>Khởi tạo</td>
-            <td>Lấy danh sách các lô chưa sắp lịch, xác định ngày nghỉ và các mốc thời gian người dùng nhập vào.</td>
-        </tr>
-        <tr>
-            <td>2</td>
-            <td>Phân loại ưu tiên</td>
-            <td>Sắp xếp Bán thành phẩm (Intermediate) trước, sau đó đến Sản phẩm nhạy cảm, cuối cùng là các mặt hàng thông thường.</td>
-        </tr>
-        <tr>
-            <td>3</td>
-            <td>Tìm phòng trống</td>
-            <td>Duyệt qua các phòng có trong "Định mức sản xuất" (Quota). Tính toán thời gian cần thiết (P-Time + M-Time + Clean-Time).</td>
-        </tr>
-        <tr>
-            <td>4</td>
-            <td>Kiểm tra xung đột</td>
-            <td>Sử dụng <code>findEarliestSlot2</code> để đảm bảo không có hai lô hàng nào trùng lịch trên cùng một phòng máy. Kiểm tra giới hạn Tank pha chế.</td>
-        </tr>
-        <tr>
-            <td>5</td>
-            <td>Lưu kết quả</td>
-            <td>Ghi dữ liệu xuống bảng <code>stage_plan</code> và cập nhật trạng thái hiển thị trên lịch.</td>
-        </tr>
-    </table>
-
-    <h2>3. Logic Đặc Biệt</h2>
-    <h3>Sắp lịch theo Chiến dịch (Campaign)</h3>
-    <p>Khi các lô hàng cùng loại chạy liên tiếp, hệ thống sẽ <b>giảm thiểu thời gian vệ sinh</b>. Thay vì vệ sinh tổng thể (C2) sau mỗi lô, hệ thống chỉ vệ sinh nhẹ (C1) và chỉ vệ sinh tổng thể sau khi hoàn tất lô cuối cùng của chiến dịch.</p>
-
-    <h3>Thời gian chờ (Waiting Time)</h3>
-    <p>Logic đảm bảo một công đoạn (ví dụ: THT) chỉ có thể bắt đầu sau khi công đoạn trước đó (ví dụ: PC) kết thúc cộng thêm một khoảng thời gian chờ quy định (được tính theo ngày, chuyển đổi thành phút).</p>
-
-    <p style="margin-top: 50px;">--- Hết tài liệu ---</p>
 </body>
 </html>

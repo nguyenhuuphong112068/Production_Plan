@@ -433,6 +433,8 @@ class SchedualController extends Controller
 
                 'plan_master.parkaging_before_date',
                 'plan_master.expired_packing_date',
+                
+                'plan_master.percent_parkaging',
 
                 'plan_master.is_val',
                 'plan_master.level',
@@ -917,6 +919,25 @@ class SchedualController extends Controller
 
         $events = $otherStages->concat($groupedWeighing)->values();
 
+        $percentMap = $event_plans->pluck('percent_parkaging', 'id')->toArray();
+        $events = $events->map(function ($event) use ($percentMap) {
+            $plan_id = is_object($event) ? ($event->plan_id ?? null) : ($event['plan_id'] ?? null);
+            if ($plan_id && isset($percentMap[$plan_id])) {
+                if (is_object($event)) {
+                    $event->percent_parkaging = (float) $percentMap[$plan_id];
+                } else {
+                    $event['percent_parkaging'] = (float) $percentMap[$plan_id];
+                }
+            } else {
+                if (is_object($event)) {
+                    $event->percent_parkaging = 1;
+                } else {
+                    $event['percent_parkaging'] = 1;
+                }
+            }
+            return $event;
+        });
+
         return $this->groupMaintenanceEvents($events);
     }
 
@@ -1371,6 +1392,7 @@ class SchedualController extends Controller
                 'plan_master.material_source_id',
                 'plan_master.only_parkaging',
                 'plan_master.percent_parkaging',
+                'plan_master.main_parkaging_id',
                 'plan_list.month',
                 'market.code as market',
                 'source_material.name as source_material_name',
@@ -1856,8 +1878,8 @@ class SchedualController extends Controller
                         ->select('only_parkaging', 'percent_parkaging')
                         ->first();
 
-                    if ($pm && $pm->only_parkaging == 1) {
-                        $ratio = $pm->percent_parkaging;
+                    if ($pm) {
+                        $ratio = (float) ($pm->percent_parkaging ?? 1);
                         $p_time_adj *= $ratio;
                         $m_time_adj *= $ratio;
                     }
@@ -2492,6 +2514,10 @@ class SchedualController extends Controller
                 $allManualIds = array_merge($allManualIds, $ids);
             }
 
+            $sharedStart = null;
+            $sharedResource = null;
+            $isMoveSelectedBatches = $request->input('move_selected_batches', false);
+
             foreach ($changes as $change) {
                 $idParts = explode('-', $change['id']);
                 $realId = $idParts[0] ?? null;
@@ -2531,13 +2557,50 @@ class SchedualController extends Controller
                         $updateData['keep_dry'] = DB::raw("CASE WHEN stage_code = 8 THEN 1 ELSE keep_dry END");
                     }
 
-                    if ($request->input('update_campaign', false) && $original_event && $original_event->campaign_code) {
-                        $campaignEvents = DB::table('stage_plan')
-                            ->where('campaign_code', $original_event->campaign_code)
+                    if ($request->input('update_campaign', false) && $original_event) {
+                        $main_parkaging_id = DB::table('plan_master')->where('id', $original_event->plan_master_id)->value('main_parkaging_id');
+                        
+                        $root_event = DB::table('stage_plan')
+                            ->where('plan_master_id', $main_parkaging_id)
                             ->where('stage_code', $original_event->stage_code)
-                            ->where('finished', 0)
-                            ->orderBy('start')
+                            ->first();
+                            
+                        $baseEvents = collect();
+                        if ($root_event && $root_event->campaign_code) {
+                            $baseEvents = DB::table('stage_plan')
+                                ->where('campaign_code', $root_event->campaign_code)
+                                ->where('stage_code', $original_event->stage_code)
+                                ->where('finished', 0)
+                                ->orderBy('start')
+                                ->get();
+                        } else {
+                            if ($root_event && $root_event->finished == 0) {
+                                $baseEvents = collect([$root_event]);
+                            } else {
+                                $baseEvents = collect([$original_event]);
+                            }
+                        }
+
+                        $main_ids = $baseEvents->pluck('plan_master_id')->unique();
+
+                        $subTasks = DB::table('stage_plan')
+                            ->join('plan_master', 'stage_plan.plan_master_id', '=', 'plan_master.id')
+                            ->whereIn('plan_master.main_parkaging_id', $main_ids)
+                            ->whereNotIn('stage_plan.plan_master_id', $main_ids)
+                            ->where('stage_plan.stage_code', $original_event->stage_code)
+                            ->where('stage_plan.finished', 0)
+                            ->select('stage_plan.*', 'plan_master.main_parkaging_id', 'plan_master.id as pm_id')
+                            ->orderBy('plan_master.id')
                             ->get();
+
+                        $campaignEvents = collect();
+                        foreach ($baseEvents as $ev) {
+                            $campaignEvents->push($ev);
+                            $subs = $subTasks->where('main_parkaging_id', $ev->plan_master_id);
+                            foreach ($subs as $sub) {
+                                $campaignEvents->push($sub);
+                            }
+                        }
 
                         $currentStart = Carbon::parse($change['start']);
                         $idsArray = []; // Cập nhật danh sách ID để ghi log history ở phía dưới
@@ -2546,8 +2609,20 @@ class SchedualController extends Controller
 
                         foreach ($campaignEvents as $ev) {
                             if ($newMTime > 0) {
-                                // Tính thời lượng mới bằng newMTime + pTime (nếu là mẻ đầu hoặc VS-II)
-                                $durationHours = ($ev->first_in_campaign == 1 || $ev->title_clearning == "VS-II") ? ($newMTime + $pTime) : $newMTime;
+                                $reqMTime = $newMTime;
+                                $reqPTime = $pTime;
+                                
+                                if ($ev->stage_code == 7) {
+                                    $pm = DB::table('plan_master')->where('id', $ev->plan_master_id)->select('percent_parkaging')->first();
+                                    if ($pm) {
+                                        $ratio = (float) ($pm->percent_parkaging ?? 1);
+                                        $reqMTime = $reqMTime * $ratio;
+                                        $reqPTime = $reqPTime * $ratio;
+                                    }
+                                }
+                                
+                                // Tính thời lượng mới bằng reqMTime + reqPTime (nếu là mẻ đầu hoặc VS-II)
+                                $durationHours = ($ev->first_in_campaign == 1 || $ev->title_clearning == "VS-II") ? ($reqMTime + $reqPTime) : $reqMTime;
                                 $duration = $durationHours * 3600; // Đổi ra giây
                             } else {
                                 $duration = Carbon::parse($ev->start)->diffInSeconds(Carbon::parse($ev->end));
@@ -2574,9 +2649,44 @@ class SchedualController extends Controller
                             $idsArray[] = $ev->id;
                         }
                     } else {
-                        $updateData['start'] = $change['start'];
-                        $updateData['end'] = $change['end'];
-                        $updateData['resourceId'] = $change['resourceId'];
+                        if ($isMoveSelectedBatches && $sharedStart) {
+                            $updateData['start'] = $sharedStart->copy();
+                        } else {
+                            $updateData['start'] = Carbon::parse($change['start']);
+                        }
+                        
+                        if ($isMoveSelectedBatches && $sharedResource) {
+                            $updateData['resourceId'] = $sharedResource;
+                        } else {
+                            $updateData['resourceId'] = $change['resourceId'];
+                            if ($isMoveSelectedBatches && !$sharedResource) {
+                                $sharedResource = $change['resourceId'];
+                            }
+                        }
+
+                        $reqNewMTime = (float) $request->input('newMTime');
+                        if ($reqNewMTime > 0) {
+                            $reqPTime = (float) $request->input('pTime', 0);
+                            $task_ratio = 1;
+                            if ($original_event && $original_event->stage_code == 7) {
+                                $pm = DB::table('plan_master')->where('id', $original_event->plan_master_id)->select('percent_parkaging')->first();
+                                if ($pm) {
+                                    $task_ratio = (float) ($pm->percent_parkaging ?? 1);
+                                }
+                            }
+                            $reqNewMTime = $reqNewMTime * $task_ratio;
+                            $reqPTime = $reqPTime * $task_ratio;
+                            
+                            $durationHours = ($original_event->first_in_campaign == 1 || $original_event->title_clearning == "VS-II") ? ($reqNewMTime + $reqPTime) : $reqNewMTime;
+                            $updateData['end'] = $updateData['start']->copy()->addSeconds($durationHours * 3600);
+                        } else {
+                            if ($isMoveSelectedBatches && $sharedStart) {
+                                $duration = Carbon::parse($change['start'])->diffInSeconds(Carbon::parse($change['end']));
+                                $updateData['end'] = $updateData['start']->copy()->addSeconds($duration);
+                            } else {
+                                $updateData['end'] = Carbon::parse($change['end']);
+                            }
+                        }
 
                         DB::table('stage_plan')
                             ->whereIn('id', $idsArray)
@@ -2585,16 +2695,24 @@ class SchedualController extends Controller
                         foreach ($idsArray as $sid) {
                             $update_row = DB::table('stage_plan')->where('id', $sid)->first();
 
-                            // 🔹 [PXV1 Special Logic] Cập nhật cleaning ngay sau khi event kết thúc
-                            if (session('user.production_code') == 'PXV1' && $update_row->start_clearning && $update_row->end_clearning) {
+                            // 🔹 Cập nhật cleaning ngay sau khi event kết thúc (luôn áp dụng cho move_selected_batches hoặc PXV1)
+                            if (($isMoveSelectedBatches || session('user.production_code') == 'PXV1') && $update_row->start_clearning && $update_row->end_clearning) {
                                 $durationSeconds = Carbon::parse($update_row->start_clearning)->diffInSeconds(Carbon::parse($update_row->end_clearning));
-                                $new_start_clearning = Carbon::parse($change['end']);
+                                $new_start_clearning = $updateData['end']->copy();
                                 $new_end_clearning = $new_start_clearning->copy()->addSeconds($durationSeconds);
 
                                 DB::table('stage_plan')->where('id', $sid)->update([
                                     'start_clearning' => $new_start_clearning,
                                     'end_clearning' => $new_end_clearning,
                                 ]);
+                                
+                                if ($isMoveSelectedBatches) {
+                                    $sharedStart = $new_end_clearning->copy();
+                                }
+                            } else {
+                                if ($isMoveSelectedBatches) {
+                                    $sharedStart = $updateData['end']->copy();
+                                }
                             }
                         }
                     }
@@ -6246,6 +6364,26 @@ class SchedualController extends Controller
 
     protected function sheduleNotCampaing($task, $stageCode, int $waite_time = 0, ?Carbon $start_date = null, ?string $Line = null)
     {
+        $pm = DB::table('plan_master')->where('id', $task->plan_master_id)->first();
+        if ($pm && $pm->main_parkaging_id != $pm->id) {
+            return; // Là lô con, sẽ được xếp lịch cùng lô mẹ
+        }
+
+        $mySubs = DB::table('stage_plan')
+            ->join('plan_master', 'stage_plan.plan_master_id', '=', 'plan_master.id')
+            ->where('plan_master.main_parkaging_id', $task->plan_master_id)
+            ->where('stage_plan.plan_master_id', '!=', $task->plan_master_id)
+            ->where('stage_plan.stage_code', $stageCode)
+            ->where('stage_plan.finished', 0)
+            ->whereNull('stage_plan.start')
+            ->select('stage_plan.*', 'plan_master.main_parkaging_id as pm_main_id')
+            ->orderBy('plan_master.id')
+            ->get();
+
+        if ($mySubs->isNotEmpty()) {
+            $familyTasks = collect([$task])->concat($mySubs);
+            return $this->scheduleCampaign($familyTasks, $stageCode, $waite_time, $start_date, $Line, 0);
+        }
 
         $now = Carbon::now();
 
@@ -6501,7 +6639,7 @@ class SchedualController extends Controller
                 ->select('only_parkaging', 'percent_parkaging')
                 ->first();
 
-            if ($pm && $pm->only_parkaging == 1) {
+            if ($pm) {
                 $ratio = (float) ($pm->percent_parkaging ?? 1);
             }
         }
@@ -6692,6 +6830,29 @@ class SchedualController extends Controller
 
     protected function scheduleCampaign($campaignTasks, $stageCode, int $waite_time = 0, ?Carbon $start_date = null, ?string $Line = null, ?float $totalTimeCampaign = 0)
     {
+        $main_ids = $campaignTasks->pluck('plan_master_id')->unique();
+        $subTasks = DB::table('stage_plan')
+            ->join('plan_master', 'stage_plan.plan_master_id', '=', 'plan_master.id')
+            ->whereIn('plan_master.main_parkaging_id', $main_ids)
+            ->whereNotIn('stage_plan.plan_master_id', $main_ids)
+            ->where('stage_plan.stage_code', $stageCode)
+            ->where('stage_plan.finished', 0)
+            ->whereNull('stage_plan.start')
+            ->select('stage_plan.*', 'plan_master.main_parkaging_id as pm_main_id')
+            ->orderBy('plan_master.id')
+            ->get();
+
+        if ($subTasks->isNotEmpty()) {
+            $finalCampaignTasks = collect();
+            foreach ($campaignTasks as $ev) {
+                $finalCampaignTasks->push($ev);
+                $subs = $subTasks->where('pm_main_id', $ev->plan_master_id);
+                foreach ($subs as $sub) {
+                    $finalCampaignTasks->push($sub);
+                }
+            }
+            $campaignTasks = $finalCampaignTasks;
+        }
 
         $firstTask = $campaignTasks->first();
 
@@ -6973,8 +7134,8 @@ class SchedualController extends Controller
         $campaign_ratio = 1;
         if ($stageCode == 7) {
             $cpm = DB::table('plan_master')->where('id', $firstTask->plan_master_id)->select('only_parkaging', 'percent_parkaging')->first();
-            if ($cpm && $cpm->only_parkaging == 1) {
-                $campaign_ratio = (float) ($cpm->percent_parkaging ?? 100) / 100;
+            if ($cpm) {
+                $campaign_ratio = (float) ($cpm->percent_parkaging ?? 1);
             }
         }
 
@@ -7062,8 +7223,8 @@ class SchedualController extends Controller
             $task_ratio = 1;
             if ($stageCode == 7) {
                 $tpm = DB::table('plan_master')->where('id', $task->plan_master_id)->select('only_parkaging', 'percent_parkaging')->first();
-                if ($tpm && $tpm->only_parkaging == 1) {
-                    $task_ratio = (float) ($tpm->percent_parkaging ?? 100) / 100;
+                if ($tpm) {
+                    $task_ratio = (float) ($tpm->percent_parkaging ?? 1);
                 }
             }
 

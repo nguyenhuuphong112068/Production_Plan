@@ -607,7 +607,7 @@
             </tr>
         `;
 
-        if (prodCode === 'PXV1' && globalAvailableGroups.length > 0) {
+        if (globalAvailableGroups.length > 0) {
             globalAvailableGroups.forEach(g => {
                 const gPol = getPol(g.code);
                 tbody.innerHTML += `
