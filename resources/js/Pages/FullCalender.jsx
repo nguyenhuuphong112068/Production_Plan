@@ -5352,11 +5352,24 @@ const ScheduleTest = () => {
       if (bg === '#920000ff' || bg === '#e54a4aff' || bg === '#4d4b4bff' || violations.includes('#4d4b4bff')) {
         // Tránh trùng lặp nếu backend đã trả về
         if (!errorEvents.some(e => e.title === evt.title && moment(e.start).isSame(evt.start))) {
+          
+          const stageMap = { 1: 'Cân', 2: 'Cân', 3: 'Pha Chế', 4: 'Trộn Hoàn Tất', 5: 'Dập Viên / Nang', 6: 'Bao Phim', 7: 'Đóng Gói' };
+          const stageName = stageMap[evt.extendedProps?.stage_code] || 'Công đoạn ' + (evt.extendedProps?.stage_code || '');
+          const roomName = evt.getResources && evt.getResources().length > 0 ? evt.getResources()[0].title : (evt.extendedProps?.resourceId || 'N/A');
+          const fullTitle = `${evt.title} (${stageName} - ${roomName})`;
+          
+          let reason = evt.extendedProps?.subtitle || '';
+          if (!reason) {
+            reason = bg === '#920000ff' ? 'Cảnh Báo Ngày Đáp Ứng NL/BB' : (bg === '#4d4b4bff' || violations.includes('#4d4b4bff') ? 'Lỗi Cân Nguyên Liệu' : 'Không Đáp Ứng Ngày Cần Hàng Theo Kế Hoạch / Thiếu Khuôn');
+          } else {
+            reason = reason.replace(/\n/g, '<br/>');
+          }
+
           errorEvents.push({
-            title: evt.title,
+            title: fullTitle,
             start: evt.start,
             backgroundColor: bg,
-            reason: bg === '#920000ff' ? 'Cảnh Báo Ngày Đáp Ứng NL/BB' : (bg === '#4d4b4bff' || violations.includes('#4d4b4bff') ? 'Lỗi Cân Nguyên Liệu' : 'Không Đáp Ứng Ngày Cần Hàng Theo Kế Hoạch / Thiếu Khuôn')
+            reason: reason
           });
         }
       }

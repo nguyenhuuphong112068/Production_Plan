@@ -433,7 +433,7 @@ class SchedualController extends Controller
 
                 'plan_master.parkaging_before_date',
                 'plan_master.expired_packing_date',
-                
+
                 'plan_master.percent_parkaging',
 
                 'plan_master.is_val',
@@ -2559,12 +2559,12 @@ class SchedualController extends Controller
 
                     if ($request->input('update_campaign', false) && $original_event) {
                         $main_parkaging_id = DB::table('plan_master')->where('id', $original_event->plan_master_id)->value('main_parkaging_id');
-                        
+
                         $root_event = DB::table('stage_plan')
                             ->where('plan_master_id', $main_parkaging_id)
                             ->where('stage_code', $original_event->stage_code)
                             ->first();
-                            
+
                         $baseEvents = collect();
                         if ($root_event && $root_event->campaign_code) {
                             $baseEvents = DB::table('stage_plan')
@@ -2611,7 +2611,7 @@ class SchedualController extends Controller
                             if ($newMTime > 0) {
                                 $reqMTime = $newMTime;
                                 $reqPTime = $pTime;
-                                
+
                                 if ($ev->stage_code == 7) {
                                     $pm = DB::table('plan_master')->where('id', $ev->plan_master_id)->select('percent_parkaging')->first();
                                     if ($pm) {
@@ -2620,7 +2620,7 @@ class SchedualController extends Controller
                                         $reqPTime = $reqPTime * $ratio;
                                     }
                                 }
-                                
+
                                 // Tính thời lượng mới bằng reqMTime + reqPTime (nếu là mẻ đầu hoặc VS-II)
                                 $durationHours = ($ev->first_in_campaign == 1 || $ev->title_clearning == "VS-II") ? ($reqMTime + $reqPTime) : $reqMTime;
                                 $duration = $durationHours * 3600; // Đổi ra giây
@@ -2654,7 +2654,7 @@ class SchedualController extends Controller
                         } else {
                             $updateData['start'] = Carbon::parse($change['start']);
                         }
-                        
+
                         if ($isMoveSelectedBatches && $sharedResource) {
                             $updateData['resourceId'] = $sharedResource;
                         } else {
@@ -2676,7 +2676,7 @@ class SchedualController extends Controller
                             }
                             $reqNewMTime = $reqNewMTime * $task_ratio;
                             $reqPTime = $reqPTime * $task_ratio;
-                            
+
                             $durationHours = ($original_event->first_in_campaign == 1 || $original_event->title_clearning == "VS-II") ? ($reqNewMTime + $reqPTime) : $reqNewMTime;
                             $updateData['end'] = $updateData['start']->copy()->addSeconds($durationHours * 3600);
                         } else {
@@ -2705,7 +2705,7 @@ class SchedualController extends Controller
                                     'start_clearning' => $new_start_clearning,
                                     'end_clearning' => $new_end_clearning,
                                 ]);
-                                
+
                                 if ($isMoveSelectedBatches) {
                                     $sharedStart = $new_end_clearning->copy();
                                 }
@@ -2852,7 +2852,6 @@ class SchedualController extends Controller
                 // Lỗi reset cờ không nên làm hỏng toàn bộ response
                 Log::warning('[SchedualController] Auto-reset expected_date_change failed: ' . $resetEx->getMessage());
             }
-
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Lỗi cập nhật sự kiện:', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
@@ -4484,16 +4483,114 @@ class SchedualController extends Controller
         ]);
     }
 
-    
+
     public function createUndoRestorePoint($stage_plan_ids, $plan_master_ids = [])
     {
-        $bkcCode = 'UNDO_' . \Carbon\Carbon::now()->format('Ymd_His') . '_' . session('user.id', rand(100,999));
+        $bkcCode = 'UNDO_' . \Carbon\Carbon::now()->format('Ymd_His') . '_' . session('user.id', rand(100, 999));
         DB::table('stage_plan_bkc')->insertUsing(
             [
-                'stage_plan_id', 'bkc_code', 'plan_list_id', 'plan_master_id', 'product_caterogy_id', 'predecessor_code', 'nextcessor_code', 'campaign_code', 'code', 'order_by', 'order_by_line', 'clearning_validation', 'schedualed', 'finished', 'active', 'stage_code', 'title', 'start', 'end', 'resourceId', 'required_room_code', 'title_clearning', 'start_clearning', 'end_clearning', 'scheduling_direction', 'tank', 'keep_dry', 'immediately', 'submit', 'AHU_group', 'quarantine_time', 'schedualed_by', 'schedualed_at', 'actual_start', 'actual_end', 'actual_start_clearning', 'actual_end_clearning', 'note', 'yields', 'yields_batch_qty', 'number_of_boxes', 'Theoretical_yields', 'quarantine_room_code', 'deparment_code', 'created_date', 'created_by', 'finished_date', 'finished_by', 'quarantined_by', 'quarantined_date'
+                'stage_plan_id',
+                'bkc_code',
+                'plan_list_id',
+                'plan_master_id',
+                'product_caterogy_id',
+                'predecessor_code',
+                'nextcessor_code',
+                'campaign_code',
+                'code',
+                'order_by',
+                'order_by_line',
+                'clearning_validation',
+                'schedualed',
+                'finished',
+                'active',
+                'stage_code',
+                'title',
+                'start',
+                'end',
+                'resourceId',
+                'required_room_code',
+                'title_clearning',
+                'start_clearning',
+                'end_clearning',
+                'scheduling_direction',
+                'tank',
+                'keep_dry',
+                'immediately',
+                'submit',
+                'AHU_group',
+                'quarantine_time',
+                'schedualed_by',
+                'schedualed_at',
+                'actual_start',
+                'actual_end',
+                'actual_start_clearning',
+                'actual_end_clearning',
+                'note',
+                'yields',
+                'yields_batch_qty',
+                'number_of_boxes',
+                'Theoretical_yields',
+                'quarantine_room_code',
+                'deparment_code',
+                'created_date',
+                'created_by',
+                'finished_date',
+                'finished_by',
+                'quarantined_by',
+                'quarantined_date'
             ],
             DB::table('stage_plan')->select([
-                'id as stage_plan_id', DB::raw("'\$bkcCode' as bkc_code"), 'plan_list_id', 'plan_master_id', 'product_caterogy_id', 'predecessor_code', 'nextcessor_code', 'campaign_code', 'code', 'order_by', 'order_by_line', 'clearning_validation', 'schedualed', 'finished', 'active', 'stage_code', 'title', 'start', 'end', 'resourceId', 'required_room_code', 'title_clearning', 'start_clearning', 'end_clearning', 'scheduling_direction', 'tank', 'keep_dry', 'immediately', 'submit', 'AHU_group', 'quarantine_time', 'schedualed_by', 'schedualed_at', 'actual_start', 'actual_end', 'actual_start_clearning', 'actual_end_clearning', 'note', 'yields', 'yields_batch_qty', 'number_of_boxes', 'Theoretical_yields', 'quarantine_room_code', 'deparment_code', 'created_date', 'created_by', 'finished_date', 'finished_by', 'quarantined_by', 'quarantined_date'
+                'id as stage_plan_id',
+                DB::raw("'\$bkcCode' as bkc_code"),
+                'plan_list_id',
+                'plan_master_id',
+                'product_caterogy_id',
+                'predecessor_code',
+                'nextcessor_code',
+                'campaign_code',
+                'code',
+                'order_by',
+                'order_by_line',
+                'clearning_validation',
+                'schedualed',
+                'finished',
+                'active',
+                'stage_code',
+                'title',
+                'start',
+                'end',
+                'resourceId',
+                'required_room_code',
+                'title_clearning',
+                'start_clearning',
+                'end_clearning',
+                'scheduling_direction',
+                'tank',
+                'keep_dry',
+                'immediately',
+                'submit',
+                'AHU_group',
+                'quarantine_time',
+                'schedualed_by',
+                'schedualed_at',
+                'actual_start',
+                'actual_end',
+                'actual_start_clearning',
+                'actual_end_clearning',
+                'note',
+                'yields',
+                'yields_batch_qty',
+                'number_of_boxes',
+                'Theoretical_yields',
+                'quarantine_room_code',
+                'deparment_code',
+                'created_date',
+                'created_by',
+                'finished_date',
+                'finished_by',
+                'quarantined_by',
+                'quarantined_date'
             ])->whereIn('id', $stage_plan_ids)
         );
 
@@ -5131,10 +5228,10 @@ class SchedualController extends Controller
         }
     }
 
-    protected function saveSchedule($first_in_campaign, $stageId, $roomId, $start, $end, $start_clearning, $endCleaning, string $cleaningType, bool $direction, $blister_mold_id = null)
+    protected function saveSchedule($first_in_campaign, $stageId, $roomId, $start, $end, $start_clearning, $endCleaning, string $cleaningType, bool $direction, $blister_mold_id = null, $overlap = false)
     {
 
-        DB::transaction(function () use ($first_in_campaign, $stageId, $roomId, $start, $end, $start_clearning, $endCleaning, $cleaningType, $direction, $blister_mold_id) {
+        DB::transaction(function () use ($first_in_campaign, $stageId, $roomId, $start, $end, $start_clearning, $endCleaning, $cleaningType, $direction, $blister_mold_id, $overlap) {
 
             if ($cleaningType == 2) {
 
@@ -5178,6 +5275,7 @@ class SchedualController extends Controller
                     'receive_packaging_date' => DB::raw("CASE WHEN received = 0 AND stage_code = 7 THEN '$receiveDate' ELSE receive_packaging_date END"),
                     'receive_second_packaging_date' => DB::raw("CASE WHEN received_second_packaging = 0 AND stage_code = 7 THEN '$receiveDate' ELSE receive_second_packaging_date END"),
                     'blister_mold_id' => $blister_mold_id,
+                    'overlap' => $overlap ? 1 : 0,
                 ]);
 
             if ($blister_mold_id !== null) {
@@ -5544,7 +5642,7 @@ class SchedualController extends Controller
                 $hasWeightFix = true;
             }
         }
-        
+
         // --- XỬ LÝ LỖI STAGE 1, 2: Xếp Backward Scheduling (cân sớm nhất có thể nhưng sát ngày Pha Chế) ---
         if ($hasWeightFix) {
             $this->scheduleWeightStage($start_date);
@@ -5617,14 +5715,33 @@ class SchedualController extends Controller
 
         $tasks = DB::table('stage_plan as sp')
             ->select(
-                'sp.id', 'sp.plan_master_id', 'sp.product_caterogy_id', 'sp.predecessor_code',
-                'sp.nextcessor_code', 'sp.campaign_code', 'sp.code', 'sp.stage_code', 'sp.tank', 'sp.keep_dry',
-                'sp.order_by', 'sp.required_room_code', 'sp.immediately',
-                'plan_master.batch', 'plan_master.is_val', 'plan_master.code_val', 'plan_master.expected_date',
-                'plan_master.after_weigth_date', 'plan_master.after_parkaging_date', 'plan_master.allow_weight_before_date',
-                'finished_product_category.product_name_id', 'finished_product_category.market_id',
-                'finished_product_category.finished_product_code', 'finished_product_category.intermediate_code',
-                'product_name.name', 'market.code as market', 'prev.start as prev_start'
+                'sp.id',
+                'sp.plan_master_id',
+                'sp.product_caterogy_id',
+                'sp.predecessor_code',
+                'sp.nextcessor_code',
+                'sp.campaign_code',
+                'sp.code',
+                'sp.stage_code',
+                'sp.tank',
+                'sp.keep_dry',
+                'sp.order_by',
+                'sp.required_room_code',
+                'sp.immediately',
+                'plan_master.batch',
+                'plan_master.is_val',
+                'plan_master.code_val',
+                'plan_master.expected_date',
+                'plan_master.after_weigth_date',
+                'plan_master.after_parkaging_date',
+                'plan_master.allow_weight_before_date',
+                'finished_product_category.product_name_id',
+                'finished_product_category.market_id',
+                'finished_product_category.finished_product_code',
+                'finished_product_category.intermediate_code',
+                'product_name.name',
+                'market.code as market',
+                'prev.start as prev_start'
             )
             ->leftJoin('plan_master', 'sp.plan_master_id', 'plan_master.id')
             ->leftJoin('finished_product_category', 'sp.product_caterogy_id', 'finished_product_category.id')
@@ -5632,7 +5749,7 @@ class SchedualController extends Controller
             ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
             ->leftJoin('stage_plan as prev', function ($join) {
                 $join->on('prev.code', '=', 'sp.predecessor_code')
-                     ->whereNotIn('prev.stage_code', [1, 2]);
+                    ->whereNotIn('prev.stage_code', [1, 2]);
             })
             ->where('sp.stage_code', $stageCode)
             ->where('sp.finished', 0)
@@ -5718,7 +5835,7 @@ class SchedualController extends Controller
         }
 
         $overdueArray = array_values($overdueCampaigns);
-        usort($overdueArray, function($a, $b) {
+        usort($overdueArray, function ($a, $b) {
             return $b['tardiness'] <=> $a['tardiness'];
         });
 
@@ -5789,7 +5906,7 @@ class SchedualController extends Controller
             ->where(function ($q) {
                 // Chỉ sắp nếu predecessor đã có lịch hoặc không có predecessor (stage 3)
                 $q->whereNotNull('prev.start')
-                  ->orWhereNull('sp.predecessor_code');
+                    ->orWhereNull('sp.predecessor_code');
             })
             // Chỉ lấy task có ít nhất 1 ràng buộc cảnh báo NL/BB not null
             ->where(function ($q) use ($stageCode) {
@@ -6284,6 +6401,7 @@ class SchedualController extends Controller
                 'plan_master.after_weigth_date',
                 'plan_master.after_parkaging_date',
                 'plan_master.allow_weight_before_date',
+                'plan_master.expired_material_date',
 
                 'finished_product_category.product_name_id',
                 'finished_product_category.market_id',
@@ -6307,9 +6425,11 @@ class SchedualController extends Controller
             ->whereNull('sp.start')
             ->where('sp.finished', 0)
             ->where('next.finished', 0)
+            ->whereNotNull('next.start')
             ->where('next.start', '>', now())
             ->whereNotNull('plan_master.after_weigth_date')
             ->where('sp.deparment_code', session('user.production_code'))
+            ->orderByRaw('CASE WHEN plan_master.expired_material_date IS NOT NULL OR plan_master.allow_weight_before_date IS NOT NULL THEN 0 ELSE 1 END ASC')
             ->orderBy('next.start', 'asc')
             ->get();
 
@@ -7511,6 +7631,225 @@ class SchedualController extends Controller
         }
     }
 
+    // protected function scheduleweight($tasks, int $waite_time = 0, $mode = false, ?Carbon $start_date = null)
+    // {
+
+    //     $now = Carbon::now();
+
+    //     $minute = $now->minute;
+
+    //     $roundedMinute = ceil($minute / 15) * 15;
+
+    //     if ($roundedMinute == 60) {
+
+    //         $now->addHour();
+
+    //         $roundedMinute = 0;
+    //     }
+
+    //     $now->minute($roundedMinute)->second(0)->microsecond(0);
+
+    //     $candidates[] = $now;
+
+    //     if ($mode) {
+
+    //         $task = $tasks->first();
+
+    //         $start = Carbon::parse($tasks->min('next_start'))->setTime(6, 0, 0);
+    //     } else {
+
+    //         $task = $tasks;
+
+    //         $start = Carbon::parse($task->next_start)->setTime(6, 0, 0);
+    //     }
+
+    //     $daysToSubtract = 3;
+
+    //     while ($daysToSubtract > 0) {
+
+    //         $start->subDay();
+
+    //         // nếu không phải ngày nghỉ → tính là 1 ngày làm việc
+    //         if (! in_array($start->toDateString(), $this->selectedDates, true)) {
+
+    //             $daysToSubtract--;
+    //         }
+    //     }
+
+    //     $candidates[] = $start;
+
+    //     $candidates[] = $start_date;
+
+    //     // nếu có after_weigth_date
+    //     if (! empty($task->after_weigth_date)) {
+
+    //         $candidates[] = Carbon::parse($task->after_weigth_date);
+    //     }
+
+    //     if (! empty($task->allow_weight_before_date)) {
+
+    //         $candidates[] = Carbon::parse($task->allow_weight_before_date);
+    //     }
+
+    //     // Lấy max
+    //     $earliestStart = collect($candidates)->max();
+
+    //     // chọn phòng sx
+    //     if ($task->required_room_code != null) {
+
+    //         if ($task->required_room_code != null) {
+
+    //             $room_code = $task->required_room_code;
+    //         }
+
+    //         $room_id = DB::table('room')->where('code', $room_code)->value('id');
+
+    //         $rooms = DB::table('quota')->select(
+    //             'room_id',
+    //             'campaign_index',
+    //             'maxofbatch_campaign',
+    //             DB::raw('(TIME_TO_SEC(p_time)/60) as p_time_minutes'),
+    //             DB::raw('(TIME_TO_SEC(m_time)/60) as m_time_minutes'),
+    //             DB::raw('(TIME_TO_SEC(C1_time)/60) as C1_time_minutes'),
+    //             DB::raw('(TIME_TO_SEC(C2_time)/60) as C2_time_minutes')
+    //         )
+    //             ->where('intermediate_code', $task->intermediate_code)
+    //             ->where('stage_code', $task->stage_code)
+    //             ->where('room_id', $room_id)
+    //             ->get();
+    //     } else {
+
+    //         $rooms = DB::table('quota')->select(
+    //             'room_id',
+    //             'campaign_index',
+    //             'maxofbatch_campaign',
+    //             DB::raw('(TIME_TO_SEC(p_time)/60) as p_time_minutes'),
+    //             DB::raw('(TIME_TO_SEC(m_time)/60) as m_time_minutes'),
+    //             DB::raw('(TIME_TO_SEC(C1_time)/60) as C1_time_minutes'),
+    //             DB::raw('(TIME_TO_SEC(C2_time)/60) as C2_time_minutes')
+    //         )
+    //             ->where('intermediate_code', $task->intermediate_code)
+    //             ->where('stage_code', $task->stage_code)
+    //             ->where('active', 1)
+    //             ->orderBy('room_id', 'desc')
+    //             ->get();
+    //     }
+
+    //     // phòng phù hợp (quota)
+
+    //     $bestRoom = null;
+
+    //     $bestStart = null;
+
+    //     $clearning_type = 2;
+
+    //     $maxofbatch_campaign = 1;
+
+    //     // tim phòng tối ưu
+    //     foreach ($rooms as $room) {
+
+    //         if ($mode) {
+
+    //             $campaign_index = 1 + ($room->campaign_index - 1) * $tasks->count();
+    //         } else {
+
+    //             $campaign_index = 1;
+    //         }
+
+    //         $intervalTimeMinutes = (float) $room->p_time_minutes + ((float) $room->m_time_minutes) * (float) $campaign_index;
+
+    //         if ((float) $room->C2_time_minutes > 0) {
+
+    //             $C2_time_minutes = (float) $room->C2_time_minutes;
+
+    //             $clearning_type = 2;
+    //         } else {
+
+    //             $C2_time_minutes = (float) $room->C1_time_minutes;
+
+    //             $clearning_type = 1;
+    //         }
+
+    //         $candidateStart = $this->findEarliestSlot2(
+    //             $room->room_id,
+    //             $earliestStart,
+    //             $intervalTimeMinutes,
+    //             $C2_time_minutes,
+    //             $task->tank,
+    //             $task->keep_dry,
+    //             'stage_plan',
+    //             2,
+    //             60
+    //         );
+
+    //         if ($bestStart === null || $candidateStart->lt($bestStart)) {
+
+    //             $bestRoom = $room->room_id;
+
+    //             $bestStart = $candidateStart;
+
+    //             $bestEnd = $bestStart->copy()->addMinutes($intervalTimeMinutes);
+
+    //             $start_clearning = $bestEnd->copy();
+
+    //             $end_clearning = $bestStart->copy()->addMinutes($intervalTimeMinutes + $C2_time_minutes);
+
+    //             $maxofbatch_campaign = $room->maxofbatch_campaign;
+    //         }
+    //     }
+
+    //     $bestStart = $this->skipOffTime($bestStart, $this->offDate, $bestRoom);
+
+    //     $bestEnd = $this->addWorkingMinutes($bestStart->copy(), (float) $intervalTimeMinutes, $bestRoom, $this->work_sunday);
+
+    //     $start_clearning = $bestEnd->copy();
+
+    //     $end_clearning = $this->addWorkingMinutes($start_clearning->copy(), (float) $C2_time_minutes, $bestRoom, $this->work_sunday);
+
+    //     if ($mode) {
+
+    //         $count_max = 1;
+
+    //         foreach ($tasks as $task) {
+
+    //             $this->saveSchedule(
+    //                 1,
+    //                 $task->id,
+    //                 $bestRoom,
+    //                 $bestStart,
+    //                 $bestEnd,
+    //                 $start_clearning,
+    //                 $end_clearning,
+    //                 $clearning_type,
+    //                 1,
+    //             );
+
+    //             $count_max++;
+
+    //             $this->processed_stage_code_Id[] = $task->id;
+
+    //             if ($count_max > $maxofbatch_campaign) {
+    //                 return;
+    //             }
+    //         }
+    //     } else {
+
+    //         $this->saveSchedule(
+    //             1,
+    //             $task->id,
+    //             $bestRoom,
+    //             $bestStart,
+    //             $bestEnd,
+    //             $start_clearning,
+    //             $end_clearning,
+    //             $clearning_type,
+    //             1,
+    //         );
+
+    //         $this->processed_stage_code_Id[] = $task->id;
+    //     }
+    // }
+
     protected function scheduleweight($tasks, int $waite_time = 0, $mode = false, ?Carbon $start_date = null)
     {
 
@@ -7531,19 +7870,31 @@ class SchedualController extends Controller
 
         $candidates[] = $now;
 
+        $exactNextStartStr = null;
+        $expiredDate = null;
         if ($mode) {
 
             $task = $tasks->first();
 
-            $start = Carbon::parse($tasks->min('next_start'))->setTime(6, 0, 0);
+            $exactNextStartStr = $tasks->min('next_start');
+            $start = Carbon::parse($exactNextStartStr)->setTime(6, 0, 0);
+            $exactNextStart = $exactNextStartStr ? Carbon::parse($exactNextStartStr) : null;
+            
+            $expiredDateStr = $tasks->min('expired_material_date');
+            $expiredDate = $expiredDateStr ? Carbon::parse($expiredDateStr)->startOfDay() : null;
         } else {
 
             $task = $tasks;
 
-            $start = Carbon::parse($task->next_start)->setTime(6, 0, 0);
+            $exactNextStartStr = $task->next_start;
+            $start = Carbon::parse($exactNextStartStr)->setTime(6, 0, 0);
+            $exactNextStart = $exactNextStartStr ? Carbon::parse($exactNextStartStr) : null;
+            
+            $expiredDateStr = $task->expired_material_date ?? null;
+            $expiredDate = $expiredDateStr ? Carbon::parse($expiredDateStr)->startOfDay() : null;
         }
 
-        $daysToSubtract = 3;
+        $daysToSubtract = 7;
 
         while ($daysToSubtract > 0) {
 
@@ -7682,6 +8033,41 @@ class SchedualController extends Controller
 
         $bestEnd = $this->addWorkingMinutes($bestStart->copy(), (float) $intervalTimeMinutes, $bestRoom, $this->work_sunday);
 
+        $isOverlap = false;
+
+        // Upper Bound 1: Không được bắt đầu sau khi NL hết hạn
+        if ($expiredDate && $bestStart->startOfDay()->gt($expiredDate)) {
+            $bestStart = $expiredDate->copy()->setTime(8, 0); 
+            // Tránh ngày nghỉ bằng cách lùi về (subDay) cho đến khi gặp ngày làm việc
+            while (in_array($bestStart->toDateString(), $this->selectedDates, true) || in_array($bestStart->toDateString(), $this->offDate)) {
+                $bestStart->subDay();
+            }
+            $bestEnd = $this->addWorkingMinutes($bestStart->copy(), (float) $intervalTimeMinutes, $bestRoom, $this->work_sunday);
+            $isOverlap = true;
+        }
+
+        // Upper Bound 2: Không được kết thúc sau khi công đoạn tiếp theo bắt đầu
+        if (isset($exactNextStart) && $exactNextStart && $bestEnd->gt($exactNextStart)) {
+            $isOverlap = true;
+            $bestEnd = $exactNextStart->copy();
+            $bestStart = $bestEnd->copy()->subMinutes((int) $intervalTimeMinutes);
+            while (in_array($bestStart->toDateString(), $this->selectedDates, true) || in_array($bestStart->toDateString(), $this->offDate)) {
+                $bestStart->subDay();
+            }
+        }
+
+        // Lower Bound: Đảm bảo không bị lùi về quá khứ hoặc trước earliestStart (ngày nguyên liệu về)
+        if (isset($earliestStart) && $bestStart->lt($earliestStart)) {
+            $bestStart = $earliestStart->copy();
+            $bestEnd = $this->addWorkingMinutes($bestStart->copy(), (float) $intervalTimeMinutes, $bestRoom, $this->work_sunday);
+            $isOverlap = true;
+        }
+        
+        if ($bestStart->lt($now)) {
+            $bestStart = $now->copy();
+            $bestEnd = $this->addWorkingMinutes($bestStart->copy(), (float) $intervalTimeMinutes, $bestRoom, $this->work_sunday);
+        }
+
         $start_clearning = $bestEnd->copy();
 
         $end_clearning = $this->addWorkingMinutes($start_clearning->copy(), (float) $C2_time_minutes, $bestRoom, $this->work_sunday);
@@ -7702,6 +8088,8 @@ class SchedualController extends Controller
                     $end_clearning,
                     $clearning_type,
                     1,
+                    null,
+                    $isOverlap
                 );
 
                 $count_max++;
@@ -7724,6 +8112,8 @@ class SchedualController extends Controller
                 $end_clearning,
                 $clearning_type,
                 1,
+                null,
+                $isOverlap
             );
 
             $this->processed_stage_code_Id[] = $task->id;
@@ -8289,7 +8679,3 @@ function minutesToHoursMinutes(int $minutes): array
 
     return [$hours,  $mins];
 }
-
-
-
-
