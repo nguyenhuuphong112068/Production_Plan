@@ -660,7 +660,8 @@
                                                                             data-selected="{{ $p_info->personnel_id }}"
                                                                             data-op-type="{{ $p_info->operation_type ?? 'thủ công' }}"
                                                                             {{ !$canEdit || ($assignment->is_foreign ?? false) ? 'disabled' : '' }}>
-                                                                            <option value="">-- Chọn NV --</option>
+                                                                            <option value="">-- Chọn NV --
+                                                                            </option>
                                                                         </select>
                                                                         @if (strtolower($p_info->operation_type ?? 'thủ công') == 'tự động')
                                                                             <i class="fas fa-robot text-info mr-1 op-icon"
@@ -1124,8 +1125,8 @@
     const orderedPersonnelIds = {!! json_encode($personnel->pluck('id')) !!};
     window.roomPersonOptionsCache = {};
 
-    function getPersonOptionsForRoom(roomId) {
-        if (!roomId) return '<option value="">-- Chọn NV --</option>' + person_options;
+    function getPersonOptionsForRoom(roomId, isCustom = false) {
+        if (!roomId || isCustom) return '<option value="">-- Chọn NV --</option>' + person_options;
         if (window.roomPersonOptionsCache[roomId]) return window.roomPersonOptionsCache[roomId];
         let localPersonOptions = '<option value="">-- Chọn NV --</option>';
         for (let i = 0; i < orderedPersonnelIds.length; i++) {
@@ -1189,8 +1190,9 @@
     $(document).ready(function() {
         $('.person-select').each(function() {
             let roomId = $(this).closest('.room-row').attr('data-room-id');
+            let isCustom = $(this).closest('.room-row').find('.room-select-custom').length > 0;
             if (!roomId) roomId = $(this).closest('.room-row').find('.room-select-custom').val();
-            let optionsHtml = getPersonOptionsForRoom(roomId);
+            let optionsHtml = getPersonOptionsForRoom(roomId, isCustom);
             let selectedVal = $(this).attr('data-selected');
             $(this).html(optionsHtml);
             if (selectedVal) {
@@ -1939,8 +1941,9 @@
             }
 
             let roomId = container.closest('.room-row').attr('data-room-id');
+            let isCustom = container.closest('.room-row').find('.room-select-custom').length > 0;
             if (!roomId) roomId = container.closest('.room-row').find('.room-select-custom').val();
-            let optionsHtml = getPersonOptionsForRoom(roomId);
+            let optionsHtml = getPersonOptionsForRoom(roomId, isCustom);
 
             const newPersonRow = $(`
                 <div class="personnel-row d-flex flex-column p-1 border-bottom">
@@ -2341,7 +2344,6 @@
                         'padding-bottom': '0',
                         'border-bottom': 'none'
                     });
-                    $itm.find('.time-text').remove();
                     $itm.find('.btn-copy-plan').remove();
                     $target.append($itm);
                 });
@@ -3167,7 +3169,6 @@
                         'padding-bottom': '0',
                         'border-bottom': 'none'
                     });
-                    $itm.find('.time-text').remove(); // Loại bỏ phần thời gian
                     $itm.find('.btn-copy-plan').remove();
                     $target.append($itm);
                 });
@@ -3219,7 +3220,6 @@
                         'padding-bottom': '0',
                         'border-bottom': 'none'
                     });
-                    $itm.find('.time-text').remove();
                     $itm.find('.btn-copy-plan').remove();
                     $target.append($itm);
                 });
@@ -4999,7 +4999,7 @@
     $(document).on('change', '.room-select-custom', function() {
         let roomId = $(this).val();
         let container = $(this).closest('.room-row');
-        let optionsHtml = getPersonOptionsForRoom(roomId);
+        let optionsHtml = getPersonOptionsForRoom(roomId, true);
 
         container.find('.person-select').each(function() {
             let currentVal = $(this).val();
