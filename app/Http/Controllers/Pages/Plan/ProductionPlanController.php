@@ -1414,13 +1414,33 @@ class ProductionPlanController extends Controller
 
                         // Vòng 1: gom các stage có tồn tại cho plan này
                         foreach ($stages as $index => $stage) {
-                                if ($plan->$stage) {
-                                        $stageList[] = [
-                                                'w2'            => $plan->w2,
-                                                'code'          => $plan->id . "_" . $stage_code[$stage],
-                                                'stage_code'    => $stage_code[$stage],
-                                                'order_by'      => $index,
-                                        ];
+                                $stageValue = $plan->$stage;
+                                if ($stageValue) {
+                                        $ratios = [];
+                                        if (is_string($stageValue) && strpos($stageValue, ':') !== false) {
+                                                $ratios = explode(':', $stageValue);
+                                        } else {
+                                                $loopCount = (int) $stageValue;
+                                                $ratios = array_fill(0, $loopCount, 1);
+                                        }
+                                        
+                                        $loopCount = count($ratios);
+                                        $totalRatio = array_sum($ratios);
+
+                                        foreach ($ratios as $kIndex => $ratioPart) {
+                                                $k = $kIndex + 1;
+                                                $codeSuffix = ($loopCount > 1) ? "_" . $k : "";
+                                                $stageList[] = [
+                                                        'w2'            => $plan->w2,
+                                                        'code'          => $plan->id . "_" . $stage_code[$stage] . $codeSuffix,
+                                                        'stage_code'    => $stage_code[$stage],
+                                                        'sub_index'     => $k,
+                                                        'total_splits'  => $loopCount,
+                                                        'ratio_part'    => (float) $ratioPart,
+                                                        'total_ratio'   => (float) $totalRatio,
+                                                        'order_by'      => $index,
+                                                ];
+                                        }
                                 }
                         }
 
@@ -1429,40 +1449,49 @@ class ProductionPlanController extends Controller
                         foreach ($stageList as $i => $stageItem) {
                                 $prevCode = null;
                                 $nextCode = null;
+                                $subIdx = $stageItem['sub_index'];
+                                $stageCode = $stageItem['stage_code'];
 
                                 // ✅ set prevCode
-                                if ($i > 0) {
-                                        $prevItem = $stageList[$i - 1];
-
-                                        if ($stageItem['stage_code'] >= 3 && $prevItem['stage_code'] == 2) {
-                                                $prevCode = collect($stageList)->firstWhere('stage_code', 1)['code'] ?? null;
-                                        } elseif ($stageItem['stage_code'] == 2) {
-                                                $prevCode = null;
-                                        } else {
-                                                $prevCode = $prevItem['code'];
+                                if ($stageCode == 2) {
+                                        $prevCode = null;
+                                } else {
+                                        $prevStageCandidates = collect($stageList)
+                                                ->where('stage_code', '<', $stageCode)
+                                                ->where('stage_code', '!=', 2);
+                                        
+                                        if ($prevStageCandidates->isNotEmpty()) {
+                                                $maxPrevStageCode = $prevStageCandidates->max('stage_code');
+                                                $prevStageItems = $prevStageCandidates->where('stage_code', $maxPrevStageCode);
+                                                $prevItem = $prevStageItems->firstWhere('sub_index', $subIdx) ?? $prevStageItems->last();
+                                                $prevCode = $prevItem['code'] ?? null;
                                         }
                                 }
 
-
-
                                 // ✅ set nextCode
-                                if ($i < count($stageList) - 1) {
-                                        $nextItem = $stageList[$i + 1];
-                                        // nếu stage hiện tại = 1 và next là 2 thì bỏ qua, tìm stage_code >= 3
-                                        if ($stageItem['stage_code'] == 1 && ($nextItem['stage_code'] == 2)) {
-                                                $nextCode = collect($stageList)->first(fn($s) => $s['stage_code'] >= 3)['code'] ?? null;
-                                        } elseif ($stageItem['stage_code'] == 2) {
-                                                if (session('user')['production_code'] == 'PXTN' && $plan->weight_2 == 1) {
-                                                        $nextCode = explode("_", $nextItem['code'])[0] . "_7";
-                                                } else {
-                                                        if ($stageItem['w2'] == 1) {
-                                                                $nextCode = explode("_", $nextItem['code'])[0] . "_6";
-                                                        } else {
-                                                                $nextCode = explode("_", $nextItem['code'])[0] . "_5";
-                                                        }
-                                                }
+                                if ($stageCode == 2) {
+                                        if (session('user')['production_code'] == 'PXTN' && $plan->weight_2 >= 1) {
+                                                $nextStageCode = 7;
                                         } else {
+                                                $nextStageCode = ($stageItem['w2'] == 1) ? 6 : 5;
+                                        }
+                                        $nextStageItems = collect($stageList)->where('stage_code', $nextStageCode);
+                                        if ($nextStageItems->isNotEmpty()) {
+                                                $nextItem = $nextStageItems->firstWhere('sub_index', $subIdx) ?? $nextStageItems->last();
                                                 $nextCode = $nextItem['code'];
+                                        } else {
+                                                $nextCode = $plan->id . "_" . $nextStageCode . ($stageItem['total_splits'] > 1 ? "_" . $subIdx : "");
+                                        }
+                                } else {
+                                        $nextStageCandidates = collect($stageList)
+                                                ->where('stage_code', '>', $stageCode)
+                                                ->where('stage_code', '!=', 2);
+                                        
+                                        if ($nextStageCandidates->isNotEmpty()) {
+                                                $minNextStageCode = $nextStageCandidates->min('stage_code');
+                                                $nextStageItems = $nextStageCandidates->where('stage_code', $minNextStageCode);
+                                                $nextItem = $nextStageItems->firstWhere('sub_index', $subIdx) ?? $nextStageItems->last();
+                                                $nextCode = $nextItem['code'] ?? null;
                                         }
                                 }
 
@@ -1494,8 +1523,10 @@ class ProductionPlanController extends Controller
                                         'keep_dry'            => $tank->keep_dry ?? 0,
                                         'deparment_code'      => session('user')['production_code'],
                                         'created_date'        => now(),
-                                        'Theoretical_yields' => $stageItem['stage_code'] <= 4 ? $plan->batch_size : $plan->batch_qty,
-                                        'Theoretical_yields_qty'        => $plan->batch_qty
+                                        'Theoretical_yields'  => $stageItem['stage_code'] <= 4 ? 
+                                                                    ($plan->batch_size * $stageItem['ratio_part'] / $stageItem['total_ratio']) : 
+                                                                    ($plan->batch_qty * $stageItem['ratio_part'] / $stageItem['total_ratio']),
+                                        'Theoretical_yields_qty' => $plan->batch_qty
                                 ];
 
                                 if ($plan->percent_parkaging  < 1 && $stageItem['stage_code'] == 7) {
@@ -1514,8 +1545,10 @@ class ProductionPlanController extends Controller
                                                         'keep_dry'            => $tank->keep_dry ?? 0,
                                                         'deparment_code'      => session('user')['production_code'],
                                                         'created_date'        => now(),
-                                                        'Theoretical_yields' => $stageItem['stage_code'] <= 4 ? $plan_packaging->batch_size : $plan_packaging->batch_qty,
-                                                        'Theoretical_yields_qty'        => $plan->batch_qty
+                                                        'Theoretical_yields'  => $stageItem['stage_code'] <= 4 ? 
+                                                                    ($plan_packaging->batch_size * $stageItem['ratio_part'] / $stageItem['total_ratio']) : 
+                                                                    ($plan_packaging->batch_qty * $stageItem['ratio_part'] / $stageItem['total_ratio']),
+                                                        'Theoretical_yields_qty' => $plan->batch_qty
                                                 ];
                                         }
                                 }

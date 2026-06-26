@@ -159,13 +159,14 @@
 
                                 <!-- Cân Nguyên Liệu -->
                                 <div class="form-group row align-items-center mb-2">
-                                    <div class="col-md-6">
-                                        <div class="icheck-primary">
-                                            <input type="checkbox" class="step-checkbox" id="update_checkbox1"
-                                                name = "weight_1">
-                                            <label for="update_checkbox1">Cân Nguyên Liệu</label>
-                                        </div>
-                                    </div>
+                                      <div class="col-md-6 d-flex align-items-center">
+                                          <div class="icheck-primary mr-2 mb-0" style="min-width: 130px;">
+                                              <input type="checkbox" class="step-checkbox" id="update_checkbox1"
+                                                  name = "weight_1_chk">
+                                              <label for="update_checkbox1">Cân Nguyên Liệu</label>
+                                          </div>
+                                          <input type="text" class="form-control form-control-sm step-ratio" name="weight_1" value="1" placeholder="Tỷ lệ (VD: 1:4)" oninput="this.value = this.value.replace(/[^0-9:]/g, '')" pattern="^[0-9]+(:[0-9]+)*$">
+                                      </div>
                                     <div class="col-md-6">
                                         <input type="number" min="0" class="form-control step-input"
                                             placeholder="Biệt trữ sau cân" name ="quarantine_weight">
@@ -186,13 +187,14 @@
 
                                 <!-- Pha Chế -->
                                 <div class="form-group row align-items-center mb-2">
-                                    <div class="col-md-6">
-                                        <div class="icheck-primary">
-                                            <input type="checkbox" class="step-checkbox" id="update_checkbox2"
-                                                name = "prepering">
-                                            <label for="update_checkbox2">Pha Chế</label>
-                                        </div>
-                                    </div>
+                                      <div class="col-md-6 d-flex align-items-center">
+                                          <div class="icheck-primary mr-2 mb-0" style="min-width: 130px;">
+                                              <input type="checkbox" class="step-checkbox" id="update_checkbox2"
+                                                  name = "prepering_chk">
+                                              <label for="update_checkbox2">Pha Chế</label>
+                                          </div>
+                                          <input type="text" class="form-control form-control-sm step-ratio" name="prepering" value="1" placeholder="Tỷ lệ (VD: 1:4)" oninput="this.value = this.value.replace(/[^0-9:]/g, '')" pattern="^[0-9]+(:[0-9]+)*$">
+                                      </div>
                                     <div class="col-md-6">
                                         <input type="number" min="0" class="form-control step-input"
                                             placeholder="Biệt trữ sau pha chế" name ="quarantine_preparing">
@@ -201,13 +203,14 @@
 
                                 <!-- Trộn Hoàn Tất -->
                                 <div class="form-group row align-items-center mb-2">
-                                    <div class="col-md-6">
-                                        <div class="icheck-primary">
-                                            <input type="checkbox" class="step-checkbox" id="update_checkbox3"
-                                                name = "blending">
-                                            <label for="update_checkbox3">Trộn Hoàn Tất</label>
-                                        </div>
-                                    </div>
+                                      <div class="col-md-6 d-flex align-items-center">
+                                          <div class="icheck-primary mr-2 mb-0" style="min-width: 130px;">
+                                              <input type="checkbox" class="step-checkbox" id="update_checkbox3"
+                                                  name = "blending_chk">
+                                              <label for="update_checkbox3">Trộn Hoàn Tất</label>
+                                          </div>
+                                          <input type="text" class="form-control form-control-sm step-ratio" name="blending" value="1" placeholder="Tỷ lệ (VD: 1:4)" oninput="this.value = this.value.replace(/[^0-9:]/g, '')" pattern="^[0-9]+(:[0-9]+)*$">
+                                      </div>
                                     <div class="col-md-6">
                                         <input type="number" min="0" class="form-control step-input"
                                             placeholder="Biệt trữ sau trộn hoàn tất" name ="quarantine_blending">
@@ -216,13 +219,14 @@
 
                                 <!-- Định Hình -->
                                 <div class="form-group row align-items-center mb-2">
-                                    <div class="col-md-6">
-                                        <div class="icheck-primary">
-                                            <input type="checkbox" class="step-checkbox" id="update_checkbox4"
-                                                name = "forming">
-                                            <label for="update_checkbox4">Định Hình</label>
-                                        </div>
-                                    </div>
+                                      <div class="col-md-6 d-flex align-items-center">
+                                          <div class="icheck-primary mr-2 mb-0" style="min-width: 130px;">
+                                              <input type="checkbox" class="step-checkbox" id="update_checkbox4"
+                                                  name = "forming_chk">
+                                              <label for="update_checkbox4">Định Hình</label>
+                                          </div>
+                                          <input type="text" class="form-control form-control-sm step-ratio" name="forming" value="1" placeholder="Tỷ lệ (VD: 1:4)" oninput="this.value = this.value.replace(/[^0-9:]/g, '')" pattern="^[0-9]+(:[0-9]+)*$">
+                                      </div>
                                     <div class="col-md-6">
                                         <input type="number" min="0" class="form-control step-input"
                                             placeholder="Biệt trữ sau định hình" name ="quarantine_forming">
@@ -231,13 +235,14 @@
 
                                 <!-- Bao Phim -->
                                 <div class="form-group row align-items-center mb-2">
-                                    <div class="col-md-6">
-                                        <div class="icheck-primary">
-                                            <input type="checkbox" class="step-checkbox" id="update_checkbox5"
-                                                name = "coating">
-                                            <label for="update_checkbox5">Bao Phim</label>
-                                        </div>
-                                    </div>
+                                      <div class="col-md-6 d-flex align-items-center">
+                                          <div class="icheck-primary mr-2 mb-0" style="min-width: 130px;">
+                                              <input type="checkbox" class="step-checkbox" id="update_checkbox5"
+                                                  name = "coating_chk">
+                                              <label for="update_checkbox5">Bao Phim</label>
+                                          </div>
+                                          <input type="text" class="form-control form-control-sm step-ratio" name="coating" value="1" placeholder="Tỷ lệ (VD: 1:4)" oninput="this.value = this.value.replace(/[^0-9:]/g, '')" pattern="^[0-9]+(:[0-9]+)*$">
+                                      </div>
                                     <div class="col-md-6">
                                         <input type="number" min="0" class="form-control step-input"
                                             placeholder="Biệt trữ sau bao phim" name ="quarantine_coating">
@@ -333,8 +338,10 @@
 
                     if (cb.is(":checked")) {
                         input.prop("readonly", false);
+                        cb.closest(".form-group.row").find(".step-ratio").show();
                     } else {
                         input.val(0).prop("readonly", true);
+                        cb.closest(".form-group.row").find(".step-ratio").hide();
                     }
                 }
                 $("#update_checkbox6").closest(".form-group.row").find(".step-input").val(0).prop("readonly",

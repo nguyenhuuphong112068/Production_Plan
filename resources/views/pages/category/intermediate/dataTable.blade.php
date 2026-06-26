@@ -125,8 +125,11 @@
 
                             <td class="text-center align-middle">
                                 <div class="d-flex flex-column align-items-center">
-                                    @if ($data->weight_1)
+                                    @if ($data->weight_1 && $data->weight_1 != '0')
                                         <i class="fas fa-check-circle text-primary fs-4"></i>
+                                        @if ($data->weight_1 != '1')
+                                            <span class="badge badge-info mt-1">{{ $data->weight_1 }}</span>
+                                        @endif
                                         <span>
                                             {{ $data->quarantine_weight . ' ' . $quarantine_time_unit }}
 
@@ -152,8 +155,11 @@
 
                             <td class="text-center align-middle">
                                 <div class="d-flex flex-column align-items-center">
-                                    @if ($data->prepering)
+                                    @if ($data->prepering && $data->prepering != '0')
                                         <i class="fas fa-check-circle text-primary fs-4"></i>
+                                        @if ($data->prepering != '1')
+                                            <span class="badge badge-info mt-1">{{ $data->prepering }}</span>
+                                        @endif
                                         <span>
                                             @if ($data->quarantine_total == 0)
                                                 {{ $data->quarantine_preparing . ' ' . $quarantine_time_unit }}
@@ -165,8 +171,11 @@
 
                             <td class="text-center align-middle">
                                 <div class="d-flex flex-column align-items-center">
-                                    @if ($data->blending)
+                                    @if ($data->blending && $data->blending != '0')
                                         <i class="fas fa-check-circle text-primary fs-4"></i>
+                                        @if ($data->blending != '1')
+                                            <span class="badge badge-info mt-1">{{ $data->blending }}</span>
+                                        @endif
                                         <span>
                                             @if ($data->quarantine_total == 0)
                                                 {{ $data->quarantine_blending . ' ' . $quarantine_time_unit }}
@@ -179,8 +188,11 @@
 
                             <td class="text-center align-middle">
                                 <div class="d-flex flex-column align-items-center">
-                                    @if ($data->forming)
+                                    @if ($data->forming && $data->forming != '0')
                                         <i class="fas fa-check-circle text-primary fs-4"></i>
+                                        @if ($data->forming != '1')
+                                            <span class="badge badge-info mt-1">{{ $data->forming }}</span>
+                                        @endif
                                         <span>
                                             @if ($data->quarantine_total == 0)
                                                 {{ $data->quarantine_forming . ' ' . $quarantine_time_unit }}
@@ -193,8 +205,11 @@
 
                             <td class="text-center align-middle">
                                 <div class="d-flex flex-column align-items-center">
-                                    @if ($data->coating)
+                                    @if ($data->coating && $data->coating != '0')
                                         <i class="fas fa-check-circle text-primary fs-4"></i>
+                                        @if ($data->coating != '1')
+                                            <span class="badge badge-info mt-1">{{ $data->coating }}</span>
+                                        @endif
                                         <span>
                                             @if ($data->quarantine_total == 0)
                                                 {{ $data->quarantine_coating . ' ' . $quarantine_time_unit }}
@@ -378,13 +393,25 @@
             modal.find('select[name="dosage_id"]').val(button.data('dosage_id'));
 
 
-            modal.find('input[name="weight_1"]').prop('checked', button.data('weight_1'));
-            modal.find('input[name="has_packaging_process"]').prop('checked', button.data('weight_2') ==
-                2);
-            modal.find('input[name="prepering"]').prop('checked', button.data('prepering'));
-            modal.find('input[name="blending"]').prop('checked', button.data('blending'));
-            modal.find('input[name="forming"]').prop('checked', button.data('forming'));
-            modal.find('input[name="coating"]').prop('checked', button.data('coating'));
+            const isChecked = (val) => val && val != '0';
+            const setCheckboxAndRatio = (name, dataVal) => {
+                const chk = modal.find('input[name="' + name + '_chk"]');
+                const valInput = modal.find('input[name="' + name + '"]');
+                if (isChecked(dataVal)) {
+                    chk.prop('checked', true);
+                    valInput.val(dataVal).show();
+                } else {
+                    chk.prop('checked', false);
+                    valInput.val('1').hide();
+                }
+            };
+
+            setCheckboxAndRatio('weight_1', button.data('weight_1'));
+            modal.find('input[name="has_packaging_process"]').prop('checked', button.data('weight_2') == 2);
+            setCheckboxAndRatio('prepering', button.data('prepering'));
+            setCheckboxAndRatio('blending', button.data('blending'));
+            setCheckboxAndRatio('forming', button.data('forming'));
+            setCheckboxAndRatio('coating', button.data('coating'));
 
 
 
@@ -407,15 +434,15 @@
             } else {
 
                 modal.find('input[name="quarantine_weight"]').val(button.data('quarantine_weight'))
-                    .prop('readonly', !button.data('weight_1'));;
+                    .prop('readonly', !isChecked(button.data('weight_1')));
                 modal.find('input[name="quarantine_preparing"]').val(button.data(
-                    'quarantine_preparing')).prop('readonly', !button.data('prepering'));;
+                    'quarantine_preparing')).prop('readonly', !isChecked(button.data('prepering')));
                 modal.find('input[name="quarantine_blending"]').val(button.data('quarantine_blending'))
-                    .prop('readonly', !button.data('blending'));;
+                    .prop('readonly', !isChecked(button.data('blending')));
                 modal.find('input[name="quarantine_forming"]').val(button.data('quarantine_forming'))
-                    .prop('readonly', !button.data('forming'));;
+                    .prop('readonly', !isChecked(button.data('forming')));
                 modal.find('input[name="quarantine_coating"]').val(button.data('quarantine_coating'))
-                    .prop('readonly', !button.data('coating'));;
+                    .prop('readonly', !isChecked(button.data('coating')));
 
                 modal.find('input[name="quarantine_total"]').val(0).prop('readonly', true);
                 modal.find('input[name="quarantine_total_checked"]').prop('checked', false)
