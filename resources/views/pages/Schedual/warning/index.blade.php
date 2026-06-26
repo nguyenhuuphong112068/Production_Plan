@@ -532,6 +532,168 @@
                             </div>
                         </div>
                     </div>
+                    <!-- Tab 4: Xem Xét Đổi Ngày NL/BB -->
+                    <div class="tab-pane fade" id="proposed-material" role="tabpanel" aria-labelledby="proposed-material-tab">
+                        <div class="card card-primary card-outline">
+                            <div class="card-header">
+                                @if ($can_approve)
+                                    <button type="button" class="btn btn-sm btn-success" id="btn-accept-bulk-material">Chấp nhận
+                                        mục
+                                        đã
+                                        chọn</button>
+                                @endif
+                            </div>
+                            <div class="card-body table-responsive" style="height: calc(100vh - 200px);">
+                                <table id="table_proposed_material" class="table table-bordered table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th class="text-center" style="width: 40px;">
+                                                @if ($can_approve)
+                                                    <input type="checkbox" id="selectAllProposedMaterial">
+                                                @endif
+                                            </th>
+                                            <th>Mã Sản Phẩm</th>
+                                            <th>Tên Sản Phẩm</th>
+                                            <th>Mã Lô</th>
+                                            <th>Công đoạn</th>
+                                            <th>Bắt Đầu (Dự Kiến)</th>
+                                            <th>Loại Ngày Cảnh Báo</th>
+                                            <th>Trao đổi thông tin</th>
+                                            <th>Lịch Sử</th>
+                                            <th>
+                                                @if ($can_approve)
+                                                    Hành Động
+                                                @endif
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @if (isset($proposedMaterialChanges))
+                                            @foreach ($proposedMaterialChanges as $item)
+                                                @php
+                                                    $violations = is_array($item->violations)
+                                                        ? $item->violations
+                                                        : json_decode($item->violations, true) ?? [];
+                                                    $types = [];
+                                                    $stages = [];
+                                                    $stage_name = [
+                                                        1 => 'Cân Nguyên Liệu',
+                                                        3 => 'Pha Chế',
+                                                        4 => 'Trộn Hoàn Tất',
+                                                        5 => 'Định Hình',
+                                                        6 => 'Bao Phim',
+                                                        7 => 'ĐGSC - ĐGTC',
+                                                    ];
+                                                    foreach ($violations as $violation) {
+                                                        $types[] =
+                                                            $violation['label'] .
+                                                            ' (' .
+                                                            \Carbon\Carbon::parse($violation['date'])->format('d/m/Y') .
+                                                            ')';
+                                                        if (isset($violation['stage_code'])) {
+                                                            $sCode = $violation['stage_code'];
+                                                            $sName = isset($stage_name[$sCode])
+                                                                ? $stage_name[$sCode]
+                                                                : 'CĐ ' . $sCode;
+                                                            if (!in_array($sName, $stages)) {
+                                                                $stages[] = $sName;
+                                                            }
+                                                        }
+                                                    }
+                                                    $typeStr = implode('<br>', $types);
+                                                    $stageStr = implode('<br>', $stages);
+                                                    if (empty($typeStr)) {
+                                                        $typeStr = 'Khác';
+                                                    }
+                                                    if (empty($stageStr)) {
+                                                        $stageStr = '-';
+                                                    }
+                                                    $firstField = !empty($violations) ? array_keys($violations)[0] : '';
+                                                    $defaultDateStr = !empty($item->min_start) ? \Carbon\Carbon::parse($item->min_start)->format('Y-m-d') : '';
+                                                @endphp
+                                                <tr>
+                                                    <td class="text-center">
+                                                        @if ($can_approve)
+                                                            <input type="checkbox" class="row-checkbox-proposed-material"
+                                                                value="{{ $item->id }}" data-field="{{ $firstField }}" data-date="{{ $defaultDateStr }}">
+                                                        @endif
+                                                    </td>
+                                                    <td>{{ $item->finished_product_code }}</td>
+                                                    <td>{{ $item->product_name }}</td>
+                                                    <td>{{ $item->batch }}</td>
+                                                    <td class="font-weight-bold text-secondary text-center">
+                                                        {{ $stageStr }}
+                                                    </td>
+                                                    <td class="text-danger font-weight-bold">
+                                                        {{ $item->min_start ? \Carbon\Carbon::parse($item->min_start)->format('d/m/Y H:i') : '' }}
+                                                    </td>
+                                                    <td class="font-weight-bold text-info">
+                                                        {!! $typeStr !!}
+                                                    </td>
+                                                    <td style="min-width:300px">
+                                                        {{-- ===== LIST COMMENT ===== --}}
+                                                        <div class="chat-box"
+                                                            style="max-height:150px; overflow-y:auto; font-size:14px; text-align: left;">
+                                                            @forelse ($commentsGrouped[$item->id] ?? [] as $comment)
+                                                                <div class="mb-2 p-2 border rounded"
+                                                                    style="background-color: {{ \Illuminate\Support\Str::startsWith($comment->deparment, 'PX') ? '#d4edda' : '#d1ecf1' }}; border-radius:15px; padding:6px;">
+                                                                    <div style="font-weight:600">
+                                                                        {{ $comment->user_name }}
+                                                                        <small class="text-muted">
+                                                                            {{ \Carbon\Carbon::parse($comment->created_at)->format('d/m H:i') }}
+                                                                        </small>
+                                                                    </div>
+                                                                    <div>{{ $comment->message }}</div>
+                                                                </div>
+                                                            @empty
+                                                                <div class="text-muted">Chưa có trao đổi</div>
+                                                            @endforelse
+                                                        </div>
+                                                        {{-- ===== INPUT CHAT ===== --}}
+                                                        @if ($can_propose || $can_approve)
+                                                            <div class="chat-input-wrapper d-flex mt-2">
+                                                                <input type="text"
+                                                                    class="form-control form-control-sm chat-input"
+                                                                    data-row-id="{{ $item->id }}"
+                                                                    placeholder="Nhập trao đổi...">
+                                                                <button class="btn btn-sm btn-primary send-comment"
+                                                                    data-row-id="{{ $item->id }}">Gửi</button>
+                                                            </div>
+                                                        @endif
+                                                    </td>
+                                                    <td class="text-center align-middle">
+                                                        <button type="button"
+                                                            class="btn btn-sm btn-info btn-view-history mb-1"
+                                                            style="position: relative;" data-id="{{ $item->id }}"
+                                                            title="Lịch sử đề nghị">
+                                                            <i class="fas fa-history"></i>
+                                                            @if (isset($proposalHistoryCounts) && isset($proposalHistoryCounts[$item->id]) && $proposalHistoryCounts[$item->id] > 0)
+                                                                <span class="badge badge-danger"
+                                                                    style="position: absolute; top: -8px; right: -8px; border-radius: 50%; font-size: 10px; padding: 3px 5px;">
+                                                                    {{ $proposalHistoryCounts[$item->id] }}
+                                                                </span>
+                                                            @endif
+                                                        </button>
+                                                    </td>
+                                                    <td class="text-center">
+                                                        @if ($can_approve)
+                                                            <button type="button"
+                                                                class="btn btn-sm btn-danger btn-reject-material-single mb-1"
+                                                                data-id="{{ $item->id }}">
+                                                                Không chấp nhận
+                                                            </button>
+                                                        @endif
+                                                    </td>
+                                                </tr>
+                                            @endforeach
+                                        @endif
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+
                     <!-- Tab 5: Lịch sử đề nghị -->
                     <div class="tab-pane fade" id="history-tab-pane" role="tabpanel" aria-labelledby="history-tab">
                         <div class="card card-secondary card-outline">
@@ -694,7 +856,7 @@
                 "autoWidth": false,
                 "responsive": true,
                 "language": {
-                    "url": "//cdn.datatables.net/plug-ins/1.10.21/i18n/Vietnamese.json"
+                    "url": "/js/Vietnamese.json"
                 }
             });
 
@@ -715,7 +877,7 @@
                 "autoWidth": false,
                 "responsive": true,
                 "language": {
-                    "url": "//cdn.datatables.net/plug-ins/1.10.21/i18n/Vietnamese.json"
+                    "url": "/js/Vietnamese.json"
                 }
             });
 
@@ -736,7 +898,7 @@
                 "autoWidth": false,
                 "responsive": true,
                 "language": {
-                    "url": "//cdn.datatables.net/plug-ins/1.10.21/i18n/Vietnamese.json"
+                    "url": "/js/Vietnamese.json"
                 }
             });
 
@@ -760,7 +922,7 @@
                 "autoWidth": false,
                 "responsive": true,
                 "language": {
-                    "url": "//cdn.datatables.net/plug-ins/1.10.21/i18n/Vietnamese.json"
+                    "url": "/js/Vietnamese.json"
                 }
             });
 
@@ -1055,6 +1217,33 @@
                 });
             });
 
+            function submitAcceptBulkMaterialDate(items) {
+                $.ajax({
+                    url: '{{ route('pages.Schedual.warning.acceptBulkMaterialDate') }}',
+                    method: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}',
+                        items: items
+                    },
+                    success: function(res) {
+                        if (res.success) {
+                            Swal.fire('Thành công', 'Đã cập nhật ngày thành công!', 'success').then(() => {
+                                let ids = items.map(function(item) {
+                                    return item.id;
+                                });
+                                removeRowsAndUpdateUI('table_proposed_material', 'proposed-material-tab', ids);
+                            });
+                        } else {
+                            Swal.fire('Lỗi', res.message || 'Có lỗi xảy ra', 'error');
+                        }
+                    },
+                    error: function(err) {
+                        Swal.fire('Lỗi', 'Không thể kết nối đến máy chủ', 'error');
+                        console.error(err);
+                    }
+                });
+            }
+
             function acceptMaterialDate(id, defaultDate, violations) {
                 let optionsHtml = '';
                 if (violations && typeof violations === 'object') {
@@ -1137,32 +1326,45 @@
             });
 
             $('#btn-accept-bulk-material').on('click', function() {
-                let ids = [];
+                let items = [];
                 $('.row-checkbox-proposed-material:checked').each(function() {
-                    ids.push($(this).val());
+                    let id = $(this).val();
+                    let field = $(this).data('field');
+                    let defaultDate = $(this).data('date');
+                    items.push({ id: id, field: field, date: defaultDate });
                 });
 
-                if (ids.length === 0) {
+                if (items.length === 0) {
                     Swal.fire('Thông báo', 'Vui lòng chọn ít nhất 1 mục để chấp nhận!', 'warning');
                     return;
                 }
 
-                if (ids.length > 1) {
-                    Swal.fire('Tính năng đang phát triển',
-                        'Chấp nhận hàng loạt cần thiết kế lại UI, vui lòng duyệt từng lô.', 'info');
-                    return;
-                }
-
-                let id = ids[0];
-                let defaultText = $('#min-start-material-' + id).text().trim();
-                let defaultDate = '';
-                if (defaultText) {
-                    let parts = defaultText.split(' ')[0].split('/');
-                    if (parts.length === 3) {
-                        defaultDate = parts[2] + '-' + parts[1] + '-' + parts[0];
+                Swal.fire({
+                    title: 'Chấp nhận đổi ngày NL/BB hàng loạt',
+                    html: '<p>Đang áp dụng cho <b>' + items.length + '</b> mục.</p>' +
+                        '<p class="text-danger"><small>Lưu ý: Mặc định hệ thống sẽ lấy "Ngày Bắt Đầu Dự Kiến" làm ngày mới cho từng mục. Hoặc bạn có thể nhập ngày chung bên dưới:</small></p>' +
+                        '<label for="swal-input-date-bulk-material" class="form-label">Chọn ngày mới chung (Để trống sẽ lấy ngày mặc định):</label>' +
+                        '<input id="swal-input-date-bulk-material" class="form-control" type="date">',
+                    focusConfirm: false,
+                    showCancelButton: true,
+                    confirmButtonText: 'Lưu',
+                    cancelButtonText: 'Huỷ',
+                    preConfirm: () => {
+                        return document.getElementById('swal-input-date-bulk-material').value;
                     }
-                }
-                acceptMaterialDate(id, defaultDate);
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        let commonDate = result.value;
+                        let payloadItems = items.map(function(item) {
+                            return {
+                                id: item.id,
+                                field: item.field,
+                                date: commonDate ? commonDate : item.date
+                            };
+                        });
+                        submitAcceptBulkMaterialDate(payloadItems);
+                    }
+                });
             });
 
             // Logic Reject KCS
@@ -1352,9 +1554,13 @@
                 "autoWidth": false,
                 "responsive": true,
                 "language": {
-                    "url": "//cdn.datatables.net/plug-ins/1.10.21/i18n/Vietnamese.json"
+                    "url": "/js/Vietnamese.json"
                 }
             });
         });
     </script>
 @endsection
+
+
+
+

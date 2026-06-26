@@ -4509,12 +4509,12 @@ class SchedualController extends Controller
     {
         $lastUndo = session()->get('last_undo');
         if (!$lastUndo) {
-            return response()->json(['success' => false, 'message' => 'Không có d? li?u khôi ph?c ho?c phiên làm vi?c dã h?t h?n.']);
+            return response()->json(['success' => false, 'message' => 'Khï¿½ng cï¿½ d? li?u khï¿½i ph?c ho?c phiï¿½n lï¿½m vi?c dï¿½ h?t h?n.']);
         }
 
         DB::beginTransaction();
         try {
-            // Khôi ph?c stage_plan
+            // Khï¿½i ph?c stage_plan
             $bkcData = DB::table('stage_plan_bkc')->where('bkc_code', $lastUndo['bkc_code'])->get();
             foreach ($bkcData as $row) {
                 $updateData = (array) $row;
@@ -4522,7 +4522,7 @@ class SchedualController extends Controller
                 DB::table('stage_plan')->where('id', $row->stage_plan_id)->update($updateData);
             }
 
-            // Xóa history rác m?i sinh
+            // Xï¿½a history rï¿½c m?i sinh
             DB::table('stage_plan_history')
                 ->whereIn('stage_plan_id', $lastUndo['stage_plan_ids'])
                 ->where('created_at', '>=', $lastUndo['timestamp'])
@@ -8289,6 +8289,7 @@ function minutesToHoursMinutes(int $minutes): array
 
     return [$hours,  $mins];
 }
+
 
 
 

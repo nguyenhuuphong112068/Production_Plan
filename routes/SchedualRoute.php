@@ -66,6 +66,7 @@ Route::prefix('/Schedual')
                 Route::post('checkMissingMoldQuotas', 'checkMissingMoldQuotas')->name('checkMissingMoldQuotas');
                 Route::post('autoAllocateMold', 'autoAllocateMold')->name('autoAllocateMold');
                 Route::put('updateBlisterMold', 'updateBlisterMold')->name('updateBlisterMold');
+                Route::post('validate_submit', 'validateSubmit')->name('validate_submit');
 
 
                 //Route::put('updateOffdays','updateOffdays')->name('updateOffdays');
@@ -154,6 +155,7 @@ Route::prefix('/Schedual')
                                 Route::post('reject_date_change', 'rejectDateChange')->name('rejectDateChange');
                                 Route::post('propose_material_date_change', 'proposeMaterialDateChange')->name('proposeMaterialDateChange');
                                 Route::post('accept_material_date_change', 'acceptMaterialDateChange')->name('acceptMaterialDateChange');
+                                Route::post('accept_bulk_material_date', 'acceptBulkMaterialDateChange')->name('acceptBulkMaterialDate');
                                 Route::post('reject_material_date_change', 'rejectMaterialDateChange')->name('rejectMaterialDateChange');
                                 Route::get('comments/{planMasterId}', 'getComments')->name('getComments');
                                 Route::get('history/{planMasterId}', 'getProposalHistory')->name('getProposalHistory');

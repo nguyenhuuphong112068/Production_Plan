@@ -106,6 +106,7 @@ class SchedualWarningController extends Controller
             ->where('stage_plan.finished', 0)
             ->whereNotNull('stage_plan.start')
             ->where('stage_plan.deparment_code', $production)
+            ->whereRaw('DATE(stage_plan.start) >= CURDATE()')
             ->orderBy('stage_plan.start', 'asc')
             ->get();
 
@@ -441,20 +442,109 @@ class SchedualWarningController extends Controller
                 ]);
             }
 
-            app('App\Http\Controllers\System\NotificationController')->createNotification(
-                'Phòng Kế Hoạch Đề Nghị Thay Đổi Ngày Đáp Ứng NL/BB',
+            \App\Http\Controllers\General\NotificationController::sendNotification(
                 'Có một số đề nghị thay đổi ngày đáp ứng NL/BB.',
-                route('pages.Schedual.warning.index'),
-                $userId,
-                [
-                    ['department' => 'PL'],
-                    ['department' => 'COMP'],
-                    ['department' => $production, 'is_schedual' => 1]
-                ]
+                'Phòng Kế Hoạch Đề Nghị Thay Đổi Ngày Đáp Ứng NL/BB',
+                null,
+                'all',
+                [],
+                route('pages.Schedual.warning.index')
             );
             return response()->json(['success' => true, 'message' => 'Đã gửi đề nghị thành công.']);
         }
         return response()->json(['success' => false, 'message' => 'Vui lòng chọn ít nhất 1 dòng.']);
+    }
+
+    public function acceptBulkMaterialDateChange(Request $request)
+    {
+        $items = $request->input('items');
+        $userId = session('user')['userId'];
+        $userName = session('user')['fullName'] ?? 'Unknown';
+
+        if (empty($items) || !is_array($items)) {
+            return response()->json(['success' => false, 'message' => 'Thiếu dữ liệu.']);
+        }
+
+        $production = session('user')['production_code'];
+        $count = 0;
+
+        foreach ($items as $item) {
+            $id = $item['id'] ?? null;
+            $field = $item['field'] ?? null;
+            $newDate = $item['date'] ?? null;
+
+            if (!$id || !$field || !$newDate) continue;
+
+            $plan = DB::table('plan_master')->where('id', $id)->first();
+            if ($plan) {
+                DB::table('plan_master_proposals')->insert([
+                    'plan_master_id' => $id,
+                    'type' => 'NL_BB',
+                    'action' => 'ACCEPT',
+                    'field_name' => $field,
+                    'old_date' => $plan->$field,
+                    'new_date' => $newDate,
+                    'user_id' => $userId,
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+
+                $lastVersion = DB::table('plan_master_history')->where('plan_master_id', $id)->max('version');
+                $newVersion = $lastVersion ? $lastVersion + 1 : 1;
+
+                DB::table('plan_master_history')->insert([
+                    'plan_master_id' => $plan->id,
+                    'plan_list_id' => $plan->plan_list_id,
+                    'product_caterogy_id' => $plan->product_caterogy_id,
+                    'version' => $newVersion,
+                    'level' => $plan->level,
+                    'batch' => $plan->batch,
+                    'expected_date' => $plan->expected_date,
+                    'is_val' => $plan->is_val,
+                    'after_weigth_date' => $plan->after_weigth_date,
+                    'after_parkaging_date' => $plan->after_parkaging_date,
+                    'allow_weight_before_date' => $plan->allow_weight_before_date ?? null,
+                    'expired_material_date' => $plan->expired_material_date ?? null,
+                    'preperation_before_date' => $plan->preperation_before_date ?? null,
+                    'blending_before_date' => $plan->blending_before_date ?? null,
+                    'coating_before_date' => $plan->coating_before_date ?? null,
+                    'material_source_id' => $plan->material_source_id,
+                    'percent_parkaging' => $plan->percent_parkaging,
+                    'only_parkaging' => $plan->only_parkaging,
+                    'number_parkaging' => $plan->number_parkaging,
+                    'note' => $plan->note ?? "NA",
+                    'reason' => "Cập nhật ngày NL/BB theo đề nghị ($field)",
+                    'deparment_code' => $plan->deparment_code,
+                    'prepared_by' => session('user')['fullName'] ?? 'System',
+                    $field => $newDate,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+
+                DB::table('plan_master')
+                    ->where('id', $id)
+                    ->update([
+                        $field => $newDate,
+                        'responsed_date_change' => 0
+                    ]);
+
+                \App\Http\Controllers\General\NotificationController::sendNotification(
+                    'Lô ' . $plan->batch . ' đã được cập nhật ' . $field . ' thành: ' . \Carbon\Carbon::parse($newDate)->format('d/m/Y'),
+                    'Đã Chấp Nhận Thay Đổi Ngày Đáp Ứng NL/BB (Hàng loạt)',
+                    null,
+                    'all',
+                    [],
+                    route('pages.Schedual.warning.index')
+                );
+                $count++;
+            }
+        }
+
+        if ($count > 0) {
+            return response()->json(['success' => true, 'message' => 'Đã cập nhật thành công ' . $count . ' mục.']);
+        }
+
+        return response()->json(['success' => false, 'message' => 'Không có mục nào được cập nhật.']);
     }
 
     public function acceptMaterialDateChange(Request $request)
@@ -483,6 +573,38 @@ class SchedualWarningController extends Controller
                 'updated_at' => now()
             ]);
 
+            $lastVersion = DB::table('plan_master_history')->where('plan_master_id', $id)->max('version');
+            $newVersion = $lastVersion ? $lastVersion + 1 : 1;
+
+            DB::table('plan_master_history')->insert([
+                'plan_master_id' => $plan->id,
+                'plan_list_id' => $plan->plan_list_id,
+                'product_caterogy_id' => $plan->product_caterogy_id,
+                'version' => $newVersion,
+                'level' => $plan->level,
+                'batch' => $plan->batch,
+                'expected_date' => $plan->expected_date,
+                'is_val' => $plan->is_val,
+                'after_weigth_date' => $plan->after_weigth_date,
+                'after_parkaging_date' => $plan->after_parkaging_date,
+                'allow_weight_before_date' => $plan->allow_weight_before_date ?? null,
+                'expired_material_date' => $plan->expired_material_date ?? null,
+                'preperation_before_date' => $plan->preperation_before_date ?? null,
+                'blending_before_date' => $plan->blending_before_date ?? null,
+                'coating_before_date' => $plan->coating_before_date ?? null,
+                'material_source_id' => $plan->material_source_id,
+                'percent_parkaging' => $plan->percent_parkaging,
+                'only_parkaging' => $plan->only_parkaging,
+                'number_parkaging' => $plan->number_parkaging,
+                'note' => $plan->note ?? "NA",
+                'reason' => "Cập nhật ngày NL/BB theo đề nghị ($field)",
+                'deparment_code' => $plan->deparment_code,
+                'prepared_by' => session('user')['fullName'] ?? 'System',
+                $field => $newDate,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
             DB::table('plan_master')
                 ->where('id', $id)
                 ->update([
@@ -491,16 +613,13 @@ class SchedualWarningController extends Controller
                 ]);
 
             $production = session('user')['production_code'];
-            app('App\Http\Controllers\System\NotificationController')->createNotification(
-                'Đã Chấp Nhận Thay Đổi Ngày Đáp Ứng NL/BB',
+            \App\Http\Controllers\General\NotificationController::sendNotification(
                 'Lô ' . $plan->batch . ' đã được cập nhật ' . $field . ' thành: ' . Carbon::parse($newDate)->format('d/m/Y'),
-                route('pages.Schedual.warning.index'),
-                $userId,
-                [
-                    ['department' => 'PL'],
-                    ['department' => 'COMP'],
-                    ['department' => $production, 'is_schedual' => 1]
-                ]
+                'Đã Chấp Nhận Thay Đổi Ngày Đáp Ứng NL/BB',
+                null,
+                'all',
+                [],
+                route('pages.Schedual.warning.index')
             );
 
             return response()->json(['success' => true, 'message' => 'Đã cập nhật dữ liệu thành công.']);
@@ -551,3 +670,4 @@ class SchedualWarningController extends Controller
         return response()->json(['success' => true, 'data' => $history]);
     }
 }
+

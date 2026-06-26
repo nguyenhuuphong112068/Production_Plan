@@ -5319,28 +5319,50 @@ const ScheduleTest = () => {
     const calYear = activeStart ? new Date(activeStart).getFullYear() : new Date().getFullYear();
     const calMonth = activeStart ? new Date(activeStart).getMonth() + 1 : new Date().getMonth() + 1;
 
-    // 🔹 1. BẮT ĐẦU CHẶN LỖI LỊCH NGHIÊM TRỌNG
+    Swal.fire({
+      title: 'Đang kiểm tra dữ liệu...',
+      allowOutsideClick: false,
+      didOpen: () => Swal.showLoading()
+    });
+
+    let checkResult = null;
+    let validateResult = { errors: [] };
+    
+    try {
+      const [resYield, resValidate] = await Promise.all([
+        axios.post('/Schedual/yield_policy/check', { year: calYear, month: calMonth }),
+        axios.post('/Schedual/validate_submit', { submit_type: 'production' })
+      ]);
+      checkResult = resYield.data;
+      validateResult = resValidate.data;
+    } catch (err) {
+      console.warn('Lỗi kiểm tra submit:', err);
+    }
+
+    Swal.close();
+
+    // 🔹 1. BẮT ĐẦU CHẶN LỖI LỊCH NGHIÊM TRỌNG (Gộp Frontend & Backend)
+    const errorEvents = [...validateResult.errors];
     const allEvents = api?.getEvents() || [];
-    const errorEvents = [];
-    // Tạm thời comment phần chặn lỗi lịch nghiêm trọng sẽ mở lại sau
 
     allEvents.forEach(evt => {
+      if (moment(evt.start).isBefore(moment())) return; // Bỏ qua các sự kiện trong quá khứ
       const bg = (evt.backgroundColor || '').toLowerCase();
-      if (bg === '#920000ff' || bg === '#e54a4aff') {
-        errorEvents.push(evt);
+      const violations = evt.extendedProps?.violation_colors || [];
+      if (bg === '#920000ff' || bg === '#e54a4aff' || bg === '#4d4b4bff' || violations.includes('#4d4b4bff')) {
+        // Tránh trùng lặp nếu backend đã trả về
+        if (!errorEvents.some(e => e.title === evt.title && moment(e.start).isSame(evt.start))) {
+          errorEvents.push({
+            title: evt.title,
+            start: evt.start,
+            backgroundColor: bg,
+            reason: bg === '#920000ff' ? 'Cảnh Báo Ngày Đáp Ứng NL/BB' : (bg === '#4d4b4bff' || violations.includes('#4d4b4bff') ? 'Lỗi Cân Nguyên Liệu' : 'Không Đáp Ứng Ngày Cần Hàng Theo Kế Hoạch / Thiếu Khuôn')
+          });
+        }
       }
     });
 
     const hasEventErrors = errorEvents.length > 0;
-
-    // 🔹 2. Gọi API kiểm tra sản lượng lý thuyết
-    let checkResult = null;
-    try {
-      const res = await axios.post('/Schedual/yield_policy/check', { year: calYear, month: calMonth });
-      checkResult = res.data;
-    } catch (err) {
-      console.warn('Không thể kiểm tra chính sách sản lượng:', err);
-    }
     const hasYieldErrors = checkResult && checkResult.can_submit === false;
 
     // 🔹 3. Tổng hợp và hiển thị nếu có lỗi
@@ -5351,12 +5373,15 @@ const ScheduleTest = () => {
       if (hasEventErrors) {
         const rows = errorEvents.map(evt => {
           const bg = (evt.backgroundColor || '').toLowerCase();
-          const reason = bg === '#920000ff' ? 'Cảnh Báo Ngày Đáp Ứng NL/BB' : 'Không Đáp Ứng Ngày Cần Hàng Theo Kế Hoạch';
+          const reason = evt.reason || 'Lỗi không xác định';
           const dateStr = evt.start ? moment(evt.start).format('DD/MM/YYYY') : '';
           return `<tr>
             <td style="padding:8px;border-bottom:1px solid #f1f5f9;text-align:left;color:#334155;">${evt.title}</td>
             <td style="padding:8px;border-bottom:1px solid #f1f5f9;text-align:center;color:#64748b;">${dateStr}</td>
-            <td style="padding:8px;border-bottom:1px solid #f1f5f9;color:${bg.substring(0, 7)};font-weight:600;text-align:left;">${reason}</td>
+            <td style="padding:8px;border-bottom:1px solid #f1f5f9;color:${bg.substring(0, 7)};font-weight:600;text-align:left;">
+              <span style="display:inline-block; width:12px; height:12px; background-color:${bg.substring(0, 7)}; border-radius:50%; margin-right:6px; vertical-align:middle;"></span>
+              ${reason}
+            </td>
           </tr>`;
         }).join('');
 
