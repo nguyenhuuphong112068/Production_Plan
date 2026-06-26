@@ -76,6 +76,8 @@ const ScheduleTest = () => {
   const [showSidebar, setShowSidebar] = useState(false);
   const [viewConfig, setViewConfig] = useState({ timeView: 'resourceTimelineWeek', slotDuration: '00:15:00', is_clearning: true });
   const [pendingChanges, setPendingChanges] = useState([]);
+  const [undoStack, setUndoStack] = useState([]);
+  const currentSnapshotRef = useRef(null);
   const [saving, setSaving] = useState(false);
   const [selectedEvents, setSelectedEvents] = useState([]);
   const [percentShow, setPercentShow] = useState("100%");
@@ -204,7 +206,7 @@ const ScheduleTest = () => {
         const progressBar = document.getElementById('swal-progress-bar');
         const progressText = document.getElementById('swal-progress-text');
         let currentProgress = 0;
-        
+
         window.calendarFakeProgress = setInterval(() => {
           if (currentProgress < 90) {
             const increment = Math.max(1, Math.floor((90 - currentProgress) / 5));
@@ -641,7 +643,7 @@ const ScheduleTest = () => {
           const progressBar = document.getElementById('swal-progress-bar');
           const progressText = document.getElementById('swal-progress-text');
           let currentProgress = 0;
-          
+
           window.calendarFakeProgress = setInterval(() => {
             if (currentProgress < 90) {
               const increment = Math.max(1, Math.floor((90 - currentProgress) / 5));
@@ -2406,6 +2408,87 @@ const ScheduleTest = () => {
 
   /// 3 Ham sử lý thay đôi sự kiện
 
+  // --- FRONTEND UNDO LOGIC ---
+  const takeSnapshot = () => {
+    if (!calendarRef.current) return;
+    const allEvents = calendarRef.current.getApi().getEvents().map(ev => ({
+      id: ev.id,
+      start: ev.start ? ev.start.toISOString() : null,
+      end: ev.end ? ev.end.toISOString() : null,
+      resourceId: ev.getResources()[0]?.id,
+      start_clearning: ev.extendedProps.start_clearning,
+      end_clearning: ev.extendedProps.end_clearning
+    }));
+    currentSnapshotRef.current = { events: allEvents, pendingChanges: [...pendingChanges] };
+  };
+
+  const commitSnapshot = () => {
+    const snapshotToCommit = currentSnapshotRef.current;
+    if (snapshotToCommit) {
+      setUndoStack(prev => {
+        const newStack = [...prev, snapshotToCommit];
+        if (newStack.length > 5) newStack.shift();
+        return newStack;
+      });
+      currentSnapshotRef.current = null;
+    }
+  };
+
+  const handleUndoFrontend = () => {
+    if (undoStack.length === 0) {
+      Swal.fire({ title: 'Ho�n t�c nh�p', text: 'Kh�ng c� thao t�c k�o th? n�o d? ho�n t�c.', icon: 'info', timer: 1500, showConfirmButton: false });
+      return;
+    }
+    const lastState = undoStack[undoStack.length - 1];
+
+    const calendarApi = calendarRef.current.getApi();
+    const currentEvents = calendarApi.getEvents();
+    const currentEventsMap = new Map();
+    currentEvents.forEach(ev => currentEventsMap.set(String(ev.id), ev));
+
+    calendarApi.batchRendering(() => {
+      lastState.events.forEach(item => {
+        const ev = currentEventsMap.get(String(item.id));
+        if (ev) {
+          const currentStart = ev.start ? ev.start.toISOString() : null;
+          const currentEnd = ev.end ? ev.end.toISOString() : null;
+          const currentRes = ev.getResources()[0]?.id || null;
+
+          if (currentStart !== item.start || currentEnd !== item.end) {
+            if (item.start && item.end) {
+              ev.setDates(new Date(item.start), new Date(item.end), { maintainDuration: false });
+            }
+          }
+
+          if (currentRes !== item.resourceId && item.resourceId) {
+            ev.setResources([item.resourceId]);
+          }
+
+          if (ev.extendedProps.start_clearning !== item.start_clearning) {
+            ev.setExtendedProp('start_clearning', item.start_clearning);
+          }
+          if (ev.extendedProps.end_clearning !== item.end_clearning) {
+            ev.setExtendedProp('end_clearning', item.end_clearning);
+          }
+        }
+      });
+    });
+    setPendingChanges(lastState.pendingChanges);
+    setUndoStack(prev => prev.slice(0, -1));
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.ctrlKey && (e.key === 'z' || e.key === 'Z')) {
+        e.preventDefault();
+        handleUndoFrontend();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [undoStack, pendingChanges]);
+  // --- END FRONTEND UNDO LOGIC ---
+
   const handleGroupEventDrop = (info, selectedEvents, toggleEventSelect, handleEventChange) => {
 
     if (!authorization) {
@@ -2862,6 +2945,8 @@ const ScheduleTest = () => {
         return [...filtered, ...cleanUpdates];
       });
 
+
+      commitSnapshot();
       if (isUnselected) {
         toggleEventSelect(draggedEvent);
       }
@@ -3006,6 +3091,7 @@ const ScheduleTest = () => {
               const ids = new Set(updates.map(u => u.id));
               return [...prev.filter(e => !ids.has(e.id)), ...updates];
             });
+            commitSnapshot();
             Swal.close();
           }, 50);
         } else {
@@ -3013,6 +3099,7 @@ const ScheduleTest = () => {
             const ids = new Set(updates.map(u => u.id));
             return [...prev.filter(e => !ids.has(e.id)), ...updates];
           });
+          commitSnapshot();
         }
       };
 
@@ -6035,6 +6122,8 @@ const ScheduleTest = () => {
 
         eventClick={authorization ? handleEventClick : false}
         eventResize={authorization ? handleEventChange : false}
+        eventResizeStart={(info) => takeSnapshot()}
+        eventDragStart={(info) => takeSnapshot()}
         eventDrop={authorization ? (info) => handleGroupEventDrop(info, selectedEvents, toggleEventSelect, handleEventChange) : false}
         eventReceive={authorization ? handleEventReceive : false}
         eventMouseEnter={(info) => handleEventMouseEnter(info)}
@@ -6322,6 +6411,13 @@ const ScheduleTest = () => {
         }}
 
         customButtons={{
+
+          undoFrontend: {
+            text: `Nháp (${undoStack.length})`,
+
+            click: handleUndoFrontend,
+            hint: 'Khôi phục thao tác kéo thả vừa rồi (Ctrl+Z)'
+          },
 
           customNext: {
             text: '⏵',
@@ -6716,7 +6812,7 @@ const ScheduleTest = () => {
                 id: el.getAttribute("data-event-id"),
                 stage_code: el.getAttribute("data-stage_code"),
                 plan_master_id: el.getAttribute("data-plan_master_id"),
-            })).filter(item => item.id); // Đảm bảo có id hợp lệ
+              })).filter(item => item.id); // Đảm bảo có id hợp lệ
 
             setSelectedEvents(finalSelected);
             selectedEventsRef.current = finalSelected;
@@ -6787,3 +6883,14 @@ const ScheduleTest = () => {
 };
 
 export default ScheduleTest;
+
+
+
+
+
+
+
+
+
+
+

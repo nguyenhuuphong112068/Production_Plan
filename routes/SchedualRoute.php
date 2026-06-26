@@ -222,3 +222,5 @@ Route::prefix('/Schedual')
                                 Route::get('getHistory', 'getHistory')->name('getHistory');
                         });
         });
+
+
