@@ -362,7 +362,7 @@
                 </li>
 
                 <!-- Droplist MMS-->
-                @if (user_has_permission(session('user')['userId'], 'layout_assignment', 'boolean'))
+                @if (user_has_permission(session('user')['userId'], 'layout_MMS', 'boolean'))
                     <li class="nav-item has-treeview {{ str_contains(url()->current(), 'MMS') ? 'menu-open' : '' }}">
                         <a href="#"
                             class="nav-link {{ str_contains(url()->current(), 'MMS') ? 'active' : '' }}">
