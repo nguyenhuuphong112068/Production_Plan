@@ -132,6 +132,8 @@ const ScheduleTest = () => {
   const [plan, setPlan] = useState([]);
   const [quota, setQuota] = useState([]);
   const [roomLinks, setRoomLinks] = useState([]);
+  const [blisterMolds, setBlisterMolds] = useState([]);
+  const [finishedProductMolds, setFinishedProductMolds] = useState([]);
   const [stageMap, setStageMap] = useState({});
   const [contextMenuInfo, setContextMenuInfo] = useState({ visible: false, x: 0, y: 0, event: null });
   const [type, setType] = useState(true);
@@ -261,6 +263,8 @@ const ScheduleTest = () => {
           setCurrentPassword(data.currentPassword ?? '')
           setQuota(data.quota);
           setRoomLinks(data.room_links ?? []);
+          setBlisterMolds(data.blister_molds ?? []);
+          setFinishedProductMolds(data.finished_product_molds ?? []);
           setOffDays(data.off_days);
           setBkcCode(data.bkc_code);
           setUserID(data.UesrID);
@@ -1060,10 +1064,11 @@ const ScheduleTest = () => {
   const findNextAvailableSlot = (machineId, durationMs, earliestStart, allEvents, offRanges, ignoreIds = [], updatedTimesById = {}) => {
     let currentStart = new Date(earliestStart);
     currentStart = skipOffDays(currentStart, offRanges);
+    const ignoreIdsSet = new Set(ignoreIds.map(id => String(id)));
 
     const machineEvents = allEvents.filter(e => {
       if (e.getResources && e.getResources()[0]?.id !== machineId && e.resourceId !== machineId) return false;
-      if (ignoreIds.includes(e.id)) return false;
+      if (ignoreIdsSet.has(String(e.id))) return false;
 
       let eEnd = new Date(e.end);
       if (updatedTimesById[e.id]) {
@@ -1090,7 +1095,9 @@ const ScheduleTest = () => {
 
       let remainingMs = durationMs;
       let tempStart = new Date(currentStart);
+      let loopCount = 0;
       while (remainingMs > 0) {
+        if (++loopCount > 2000) { console.error("Infinite loop in findNextAvailableSlot"); break; }
         let tempEnd = new Date(tempStart.getTime() + remainingMs);
         let crossedOff = offRanges.find(off => off.end > tempStart && off.start < tempEnd);
         if (crossedOff) {
@@ -1150,10 +1157,11 @@ const ScheduleTest = () => {
   const findPreviousAvailableSlot = (machineId, durationMs, latestEnd, allEvents, offRanges, ignoreIds = [], updatedTimesById = {}) => {
     let currentEnd = new Date(latestEnd);
     currentEnd = skipOffDaysBackward(currentEnd, offRanges);
+    const ignoreIdsSet = new Set(ignoreIds.map(id => String(id)));
 
     const machineEvents = allEvents.filter(e => {
       if (e.getResources && String(e.getResources()[0]?.id) !== String(machineId) && String(e.resourceId) !== String(machineId)) return false;
-      if (ignoreIds.includes(e.id)) return false;
+      if (ignoreIdsSet.has(String(e.id))) return false;
 
       let eStart = new Date(e.start);
       if (updatedTimesById[e.id]) {
@@ -1177,7 +1185,9 @@ const ScheduleTest = () => {
 
       let remainingMs = durationMs;
       let tempEnd = new Date(currentEnd);
+      let loopCount = 0;
       while (remainingMs > 0) {
+        if (++loopCount > 2000) { console.error("Infinite loop in findPreviousAvailableSlot"); break; }
         let tempStart = new Date(tempEnd.getTime() - remainingMs);
         let crossedOff = offRanges.find(off => off.start < tempEnd && off.end > tempStart);
         if (crossedOff) {
@@ -1221,7 +1231,7 @@ const ScheduleTest = () => {
 
   const handlePreviewChain = async (targetEvent) => {
     const calendarApi = calendarRef.current.getApi();
-    const allEvents = calendarApi.getEvents();
+    const allEvents = calendarApi.getEvents().filter(e => e.display !== 'background' && !e.extendedProps?.is_personnel && !String(e.id).startsWith('personnel-'));
 
     let isSelected = selectedEvents.some(e => String(e.id) === String(targetEvent.id));
     let anchors = isSelected && selectedEvents.length > 0
@@ -1314,7 +1324,7 @@ const ScheduleTest = () => {
   const scrollToFirstBlackViolation = () => {
     const calendarApi = calendarRef.current?.getApi();
     if (!calendarApi) return;
-    const allEvents = calendarApi.getEvents();
+    const allEvents = calendarApi.getEvents().filter(e => e.display !== 'background' && !e.extendedProps?.is_personnel && !String(e.id).startsWith('personnel-'));
     const firstViolation = allEvents.find(e => (e.backgroundColor && e.backgroundColor.toLowerCase() === '#4d4b4bff') || (e.extendedProps?.violation_colors?.includes('#4d4b4bff')));
     if (firstViolation) {
       scrollToSpecificEvent(firstViolation.id, firstViolation.start);
@@ -1338,7 +1348,7 @@ const ScheduleTest = () => {
     await new Promise(resolve => setTimeout(resolve, 50));
 
     const calendarApi = calendarRef.current.getApi();
-    const allEvents = calendarApi.getEvents();
+    const allEvents = calendarApi.getEvents().filter(e => e.display !== 'background' && !e.extendedProps?.is_personnel && !String(e.id).startsWith('personnel-'));
 
     let isSelected = selectedEvents.some(e => String(e.id) === String(targetEvent.id));
     let anchors = isSelected && selectedEvents.length > 0
@@ -1530,7 +1540,22 @@ const ScheduleTest = () => {
         if (updates.length > 0) {
           let newPending = [...pendingChanges];
           calendarApi.batchRendering(() => {
-            updates.forEach(u => {
+            
+      // Build a map of all events combining DOM events and new updates for color evaluation
+      const eventMap = {};
+      calendarApi.getEvents().forEach(e => {
+        if (e.extendedProps?.code) {
+          eventMap[e.extendedProps.code] = { start: e.start, end: e.end, quarantine_time_limit_hour: e.extendedProps.quarantine_time_limit_hour };
+        }
+      });
+      updates.forEach(u => {
+        const ev = calendarApi.getEventById(u.id);
+        if (ev && ev.extendedProps?.code) {
+          eventMap[ev.extendedProps.code] = { start: u.start, end: u.end, quarantine_time_limit_hour: ev.extendedProps.quarantine_time_limit_hour };
+        }
+      });
+
+      updates.forEach(u => {
               const ev = calendarApi.getEventById(u.id);
               if (ev) {
                 if (u.start && u.end) ev.setDates(u.start, u.end);
@@ -1542,7 +1567,7 @@ const ScheduleTest = () => {
               if (u.start && u.end && ev) {
                 const changeObj = {
                   id: u.id, start: u.start, end: u.end,
-                  resourceId: u.resourceId || (ev.getResources ? ev.getResources()[0]?.id : ev.resourceId),
+                  resourceId: u.resourceId || (ev.getResources && ev.getResources().length ? ev.getResources()[0]?.id : (ev.extendedProps?.resourceId || ev._def?.resourceIds?.[0] || ev.resourceId)),
                   title: ev.title, submit: ev.extendedProps?.submit, C_end: ev.extendedProps?.C_end || false
                 };
                 const existIdx = newPending.findIndex(p => String(p.id) === String(u.id));
@@ -1694,13 +1719,32 @@ const ScheduleTest = () => {
     if (updates.length > 0) {
       let newPending = [...pendingChanges];
       calendarApi.batchRendering(() => {
-        updates.forEach(u => {
+        
+      // Build a map of all events combining DOM events and new updates for color evaluation
+      const eventMap = {};
+      calendarApi.getEvents().forEach(e => {
+        if (e.extendedProps?.code) {
+          eventMap[e.extendedProps.code] = { start: e.start, end: e.end, quarantine_time_limit_hour: e.extendedProps.quarantine_time_limit_hour };
+        }
+      });
+      updates.forEach(u => {
+        const ev = calendarApi.getEventById(u.id);
+        if (ev && ev.extendedProps?.code) {
+          eventMap[ev.extendedProps.code] = { start: u.start, end: u.end, quarantine_time_limit_hour: ev.extendedProps.quarantine_time_limit_hour };
+        }
+      });
+
+      updates.forEach(u => {
           const ev = calendarApi.getEventById(u.id);
           if (ev) {
             if (u.start && u.end) ev.setDates(u.start, u.end);
             if (u.clearWarnings) {
+              const fullPlanInfo = { ...ev.extendedProps, start: u.start, end: u.end };
+              const newColors = calculateFrontendColors(fullPlanInfo, eventMap);
               ev.setExtendedProp('warning_text', '');
-              ev.setExtendedProp('violation_colors', []);
+              ev.setExtendedProp('violation_colors', newColors.violation_colors);
+              ev.setProp('backgroundColor', newColors.backgroundColor);
+              ev.setProp('textColor', newColors.textColor);
             }
           }
           if (u.start && u.end && ev) {
@@ -1708,7 +1752,7 @@ const ScheduleTest = () => {
               id: u.id,
               start: u.start,
               end: u.end,
-              resourceId: u.resourceId || (ev.getResources ? ev.getResources()[0]?.id : ev.resourceId),
+              resourceId: u.resourceId || (ev.getResources && ev.getResources().length ? ev.getResources()[0]?.id : (ev.extendedProps?.resourceId || ev._def?.resourceIds?.[0] || ev.resourceId)),
               title: ev.title,
               submit: ev.extendedProps?.submit,
               C_end: ev.extendedProps?.C_end || false
@@ -1731,147 +1775,354 @@ const ScheduleTest = () => {
   // ==========================================================================
   // SUA LOI CHONG CHAT SU KIEN
   // ==========================================================================
-  const handleFixOverlappingEvents = async () => {
-    const confirmed = await Swal.fire({
-      title: 'Sửa Lỗi Chồng Chất Sự Kiện',
-      html: `<div style="text-align:left;font-size:14px">
-        <p>Chức năng này sẽ:</p>
-        <ul style="margin:8px 0;padding-left:20px">
-          <li>🔍 <b>Quét</b> tất cả sự kiện đang chồng lấn trên cùng phòng sản xuất</li>
-          <li>↔️ <b>Tịnh tuyến</b> chúng vào vị trí trống gần nhất (trước hoặc sau)</li>
-          <li>✅ <b>Đảm bảo</b> không vi phạm ngày nghỉ</li>
-        </ul>
-        <p style="color:#e67e22;margin-top:8px">⚠️ Chỉ di chuyển sự kiện <b>chưa hoàn thành</b>.</p>
-      </div>`,
-      icon: 'question',
-      showCancelButton: true,
-      confirmButtonText: '🔧 Chạy sửa lỗi',
-      cancelButtonText: 'Hủy',
-      confirmButtonColor: '#f39c12'
-    });
-    if (!confirmed.isConfirmed) return;
+  
+  // ==========================================================================
+  // SỬA LỖI CHỒNG CHẤT NHÓM SỰ KIỆN (RIGHT CLICK)
+  // ==========================================================================
+  const handleFixOverlaps = async (clickedEvent) => {
+    let targetEvents = selectedEvents.length > 0 ? 
+      selectedEvents.map(e => allEvents.find(ev => String(ev.id) === String(e.id))).filter(Boolean) :
+      [clickedEvent];
+
+    if (targetEvents.length === 0) return;
 
     Swal.fire({
-      title: 'Đang quét và sửa lỗi...',
-      html: 'Hệ thống đang tìm và tịnh tuyến các sự kiện chồng lấn...',
-      allowOutsideClick: false, allowEscapeKey: false, showConfirmButton: false,
+      title: "Đang xử lý...",
+      html: "Vui lòng đợi trong khi hệ thống sửa chồng chất.",
+      allowOutsideClick: false,
+      showConfirmButton: false,
       didOpen: () => Swal.showLoading()
     });
-    await new Promise(resolve => setTimeout(resolve, 80));
+    await new Promise(resolve => setTimeout(resolve, 50));
 
-    const calendarApi = calendarRef.current?.getApi();
-    if (!calendarApi) return;
-    const allEvents = calendarApi.getEvents();
+    const calendarApi = calendarRef.current.getApi();
+    const allEvents = calendarApi.getEvents().filter(e => e.display !== 'background' && !e.extendedProps?.is_personnel && !String(e.id).startsWith('personnel-'));
+    
+    let groups = {};
+    targetEvents.forEach(ev => {
+      if (String(ev.id).endsWith('-cleaning')) return;
+      const resId = ev.getResources()[0]?.id || ev.extendedProps?.resourceId;
+      const campaign = ev.extendedProps?.campaign_code || '';
+      const productName = ev.extendedProps?.product_name || ev.title || '';
+      const key = `${resId}_${campaign}_${productName}`;
+      if (!groups[key]) groups[key] = { resId, campaign, productName, events: [] };
+      groups[key].events.push(ev);
+    });
+
+    let updates = [];
+    let updatedTimesById = {};
+
     const offRanges = offDays.map(d => {
       const start = new Date(`${d}T06:00:00`);
       const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
       return { start, end };
     }).sort((a, b) => a.start - b.start);
 
-    let updates = [];
-    let updatedTimesById = {};
-
-    // Lock events da hoan thanh
-    allEvents.forEach(e => {
-      if (e.extendedProps?.finished == 1) {
-        updatedTimesById[String(e.id)] = { start: new Date(e.start), end: new Date(e.end) };
-      }
+    // Xử lý từng phòng riêng biệt
+    const resGroups = {};
+    Object.values(groups).forEach(g => {
+      if (!resGroups[g.resId]) resGroups[g.resId] = [];
+      resGroups[g.resId].push(g);
     });
 
-    // Nhom MAIN events theo resource
-    const eventsByResource = {};
-    allEvents.forEach(e => {
-      if (String(e.id).endsWith('-cleaning')) return;
-      if (updatedTimesById[String(e.id)]) return;
-      const rid = e.getResources()[0]?.id;
-      if (!rid) return;
-      if (!eventsByResource[rid]) eventsByResource[rid] = [];
-      eventsByResource[rid].push(e);
+    Object.keys(resGroups).forEach(resId => {
+      let roomGroups = resGroups[resId];
+      
+      // Sắp xếp các nhóm trong phòng: 
+      // Uu tiên các sp cùng mã chiến dịch trước, nếu không thì theo tên, tiếp theo là theo thức tự. ở các nhóm thì nhóm nào có 1 sp bắt đầu trước thì sắp trước
+      roomGroups.forEach(g => {
+        g.earliestStart = Math.min(...g.events.map(e => new Date(e.start).getTime()));
+      });
+
+      roomGroups.sort((a, b) => {
+        if (a.campaign && !b.campaign) return -1;
+        if (!a.campaign && b.campaign) return 1;
+        if (a.campaign && b.campaign && a.campaign !== b.campaign) return a.campaign.localeCompare(b.campaign);
+        if (a.productName !== b.productName) return a.productName.localeCompare(b.productName);
+        return a.earliestStart - b.earliestStart;
+      });
+
+      roomGroups.forEach(group => {
+        group.events.sort((a, b) => new Date(a.start) - new Date(b.start));
+
+        let currentEarliestStart = new Date(group.events[0].start);
+        
+        group.events.forEach((ev) => {
+          const evId = String(ev.id);
+          const duration = new Date(ev.end).getTime() - new Date(ev.start).getTime();
+          
+          const ignoreIds = allEvents.map(e => String(e.id)).filter(id => !updatedTimesById[id]); 
+          const newSlot = findNextAvailableSlot(group.resId, duration, currentEarliestStart, allEvents, offRanges, ignoreIds, updatedTimesById);
+          
+          updatedTimesById[evId] = { start: newSlot.start, end: newSlot.end };
+          updates.push({ id: evId, start: newSlot.start, end: newSlot.end, resourceId: group.resId, clearWarnings: true });
+
+          let currentEnd = newSlot.end;
+          const cleaningEv = allEvents.find(e => String(e.id) === evId.replace('-main', '-cleaning'));
+          if (cleaningEv) {
+            const cId = String(cleaningEv.id);
+            const cDur = new Date(cleaningEv.end).getTime() - new Date(cleaningEv.start).getTime();
+            const cStart = currentEnd;
+            const cleanSlot = findNextAvailableSlot(group.resId, cDur, cStart, allEvents, offRanges, ignoreIds, updatedTimesById);
+            updatedTimesById[cId] = { start: cleanSlot.start, end: cleanSlot.end };
+            updates.push({ id: cId, start: cleanSlot.start, end: cleanSlot.end, resourceId: group.resId, clearWarnings: true });
+            currentEnd = cleanSlot.end;
+          }
+
+          currentEarliestStart = currentEnd;
+        });
+      });
     });
 
-    for (const [resourceId, events] of Object.entries(eventsByResource)) {
-      events.sort((a, b) => new Date(a.start) - new Date(b.start));
-      for (const ev of events) {
-        const evId = String(ev.id);
-        const cleaningId = evId.replace('-main', '-cleaning');
-        const cleaningEv = allEvents.find(e => String(e.id) === cleaningId);
-        const evStart = new Date(ev.start);
-        const duration = new Date(ev.end).getTime() - evStart.getTime();
-        const cleaningDur = cleaningEv ? (new Date(cleaningEv.end).getTime() - new Date(cleaningEv.start).getTime()) : 0;
-
-        const unprocessed = events.filter(e => !updatedTimesById[String(e.id)] && String(e.id) !== evId).map(e => String(e.id));
-        const unprocessedCleaning = unprocessed.map(id => id.replace('-main', '-cleaning'));
-        const ignoreIds = [...unprocessed, ...unprocessedCleaning, evId, cleaningId].filter(Boolean);
-
-        const newSlot = findNextAvailableSlot(resourceId, duration, evStart, allEvents, offRanges, ignoreIds, updatedTimesById);
-        const moved = Math.abs(newSlot.start.getTime() - evStart.getTime()) > 60000;
-
-        updatedTimesById[evId] = { start: newSlot.start, end: newSlot.end };
-        if (moved) updates.push({ id: evId, start: newSlot.start, end: newSlot.end, resourceId });
-
-        if (cleaningEv) {
-          const cStart = newSlot.end;
-          const cEnd = new Date(cStart.getTime() + cleaningDur);
-          updatedTimesById[cleaningId] = { start: cStart, end: cEnd };
-          if (moved) updates.push({ id: cleaningId, start: cStart, end: cEnd, resourceId });
+    // Ripple shift cho các event unselected bị đè
+    let pushQueue = [];
+    allEvents.forEach(ev => {
+      const evId = String(ev.id);
+      if (updatedTimesById[evId] || evId.endsWith('-cleaning')) return;
+      const resId = ev.getResources()[0]?.id || ev.extendedProps?.resourceId;
+      const start = new Date(ev.start);
+      const end = new Date(ev.end);
+      
+      for (const [updId, updTimes] of Object.entries(updatedTimesById)) {
+        const updEv = allEvents.find(e => String(e.id) === updId);
+        if (updEv && (updEv.getResources()[0]?.id || updEv.extendedProps?.resourceId) === resId) {
+          if (start < updTimes.end && end > updTimes.start) {
+            pushQueue.push(ev);
+            break;
+          }
         }
       }
+    });
+
+    pushQueue.sort((a, b) => new Date(a.start) - new Date(b.start));
+
+    while (pushQueue.length > 0) {
+      const ev = pushQueue.shift();
+      const evId = String(ev.id);
+      if (updatedTimesById[evId]) continue;
+
+      const resId = ev.getResources()[0]?.id || ev.extendedProps?.resourceId;
+      const duration = new Date(ev.end).getTime() - new Date(ev.start).getTime();
+      
+      let ignoreIds = allEvents.map(e => String(e.id)).filter(id => !updatedTimesById[id]);
+      const earliestStart = new Date(ev.start); 
+      const newSlot = findNextAvailableSlot(resId, duration, earliestStart, allEvents, offRanges, ignoreIds, updatedTimesById);
+      
+      updatedTimesById[evId] = { start: newSlot.start, end: newSlot.end };
+      updates.push({ id: evId, start: newSlot.start, end: newSlot.end, resourceId: resId, clearWarnings: true });
+
+      const cleaningEv = allEvents.find(e => String(e.id) === evId.replace('-main', '-cleaning'));
+      if (cleaningEv) {
+        const cId = String(cleaningEv.id);
+        const cDur = new Date(cleaningEv.end).getTime() - new Date(cleaningEv.start).getTime();
+        const cleanSlot = findNextAvailableSlot(resId, cDur, newSlot.end, allEvents, offRanges, ignoreIds, updatedTimesById);
+        updatedTimesById[cId] = { start: cleanSlot.start, end: cleanSlot.end };
+        updates.push({ id: cId, start: cleanSlot.start, end: cleanSlot.end, resourceId: resId, clearWarnings: true });
+      }
+
+      allEvents.forEach(otherEv => {
+        const otherId = String(otherEv.id);
+        if (updatedTimesById[otherId] || otherId.endsWith('-cleaning')) return;
+        const otherResId = otherEv.getResources()[0]?.id || otherEv.extendedProps?.resourceId;
+        if (otherResId !== resId) return;
+
+        const oStart = new Date(otherEv.start);
+        const oEnd = new Date(otherEv.end);
+        
+        if (oStart < newSlot.end && oEnd > newSlot.start) {
+          if (!pushQueue.find(e => String(e.id) === otherId)) {
+            pushQueue.push(otherEv);
+          }
+        }
+      });
+      
+      pushQueue.sort((a, b) => new Date(a.start) - new Date(b.start));
     }
 
     if (updates.length > 0) {
       let newPending = [...pendingChanges];
       calendarApi.batchRendering(() => {
-        updates.forEach(u => {
+        
+      // Build a map of all events combining DOM events and new updates for color evaluation
+      const eventMap = {};
+      calendarApi.getEvents().forEach(e => {
+        if (e.extendedProps?.code) {
+          eventMap[e.extendedProps.code] = { start: e.start, end: e.end, quarantine_time_limit_hour: e.extendedProps.quarantine_time_limit_hour };
+        }
+      });
+      updates.forEach(u => {
+        const ev = calendarApi.getEventById(u.id);
+        if (ev && ev.extendedProps?.code) {
+          eventMap[ev.extendedProps.code] = { start: u.start, end: u.end, quarantine_time_limit_hour: ev.extendedProps.quarantine_time_limit_hour };
+        }
+      });
+
+      updates.forEach(u => {
           const ev = calendarApi.getEventById(u.id);
-          if (ev && u.start && u.end) ev.setDates(u.start, u.end);
           if (ev) {
-            const changeObj = { id: u.id, start: u.start, end: u.end, resourceId: u.resourceId || ev.getResources()[0]?.id, title: ev.title, submit: ev.extendedProps?.submit, C_end: ev.extendedProps?.C_end || false };
-            const idx = newPending.findIndex(p => String(p.id) === String(u.id));
-            if (idx >= 0) newPending[idx] = { ...newPending[idx], ...changeObj };
-            else newPending.push(changeObj);
+            if (u.start && u.end) ev.setDates(u.start, u.end);
+            ev.setExtendedProp('violation_colors', []);
+            const resource = ev.getResources()[0];
+            if (resource && String(resource.id) !== String(u.resourceId)) {
+              ev.setResources([u.resourceId]);
+            }
           }
+          const existingIdx = newPending.findIndex(p => p.id === u.id);
+          if (existingIdx > -1) newPending[existingIdx] = u;
+          else newPending.push(u);
         });
       });
       setPendingChanges(newPending);
-      const mainMoved = updates.filter(u => !String(u.id).endsWith('-cleaning')).length;
-      Swal.fire('Hoàn thành!', `Đã dịch chuyển <b>${mainMoved}</b> sự kiện khỏi vị trí chồng lấn.<br>Nhấn 💾 để lưu thay đổi.`, 'success');
+      
+      axios.post('/Schedual/updateBatchEvents', { updates })
+        .then(res => {
+          Swal.fire({ icon: 'success', title: 'Đã dồn lịch thành công', timer: 1500, showConfirmButton: false });
+          setPendingChanges([]);
+          handleViewChange();
+        })
+        .catch(err => {
+          Swal.fire({ icon: 'error', title: 'Lỗi', text: 'Có lỗi xảy ra khi lưu.' });
+          console.error(err);
+        });
     } else {
-      Swal.fire('Thông báo', 'Không tìm thấy sự kiện nào bị chồng lấn. Lịch đang sạch!', 'info');
+      Swal.fire({ icon: 'info', title: 'Không có sự kiện nào bị dời', timer: 1500, showConfirmButton: false });
     }
   };
 
+
   // ==========================================================================
-  // TỰ ĐỘNG SỬA LỖI ĐEN THEO PHA CHẾ
-  // Cố định stage_code 3 & 4 (chưa xong, chưa bắt đầu) làm anchor
-  // Backward cascade: kéo stage 1, 2 về sớm hơn (kết thúc trước stage 3)
-  // Forward cascade: đẩy stage 5+ về sau (bắt đầu sau stage 4)
+  // TỐI ƯU HOÁ & LẤP ĐẦY KHOẢNG TRỐNG (THEO PHA CHẾ)
+  // Kết hợp sửa lỗi chồng lấn, sửa lỗi đen và dồn lịch
   // ==========================================================================
-  const handleAutoFixByPhaChe = async () => {
+  // ==========================================================================
+  // TỐI ƯU HOÁ & LẤP ĐẦY KHOẢNG TRỐNG (THEO PHA CHẾ)
+  // Kết hợp sửa lỗi chồng lấn, sửa lỗi đen và dồn lịch
+  // ==========================================================================
+
+  const calculateFrontendColors = (plan, allEventsMap) => {
+    let violation_colors = [];
+    let textColor = '#fefefee2';
+    let color_event = '#eb0cb3ff'; // default
+
+    if (plan.finished == 1) {
+      return { backgroundColor: '#002af9ff', textColor: '#fefefee2', violation_colors: [] };
+    }
+
+    if (plan.stage_code <= 7) {
+      color_event = '#4CAF50';
+    } else if (plan.stage_code == 8) {
+      color_event = '#003A4F';
+      if (plan.code) {
+        if (plan.code.endsWith('HC')) color_event = '#9a1b72ff';
+        else if (plan.code.endsWith('TI')) color_event = '#830cbfff';
+      }
+    }
+
+    if (plan.is_val == 1) {
+      color_event = '#40E0D0';
+    }
+
+    if (plan.clearning_validation == 1) {
+      color_event = '#e4e405e2';
+      textColor = '#fb0101e2';
+      violation_colors.push('#e4e405e2');
+    }
+
+    if (plan.quarantine_total === 0 && plan.stage_code > 3 && plan.stage_code < 7 && plan.accept_quarantine == 0) {
+      if (plan.predecessor_code && allEventsMap[plan.predecessor_code]) {
+        let prev = allEventsMap[plan.predecessor_code];
+        if (plan.start && prev.end) {
+          let diffMinutes = dayjs(plan.start).diff(dayjs(prev.end), 'minute');
+          let limitMinutes = (prev.quarantine_time_limit_hour || 0) * 60;
+          if (limitMinutes > 0 && diffMinutes > limitMinutes) {
+            color_event = '#bda124ff';
+            textColor = '#ffffff';
+            violation_colors.push('#bda124ff');
+          }
+        }
+      }
+    }
+
+    let plan_start = plan.start;
+    let plan_end = plan.end;
+
+    if (plan.predecessor_code && allEventsMap[plan.predecessor_code]) {
+      let pre = allEventsMap[plan.predecessor_code];
+      if (dayjs(plan_start).isBefore(dayjs(pre.end)) && dayjs(plan_end).isBefore(dayjs(pre.end))) {
+        color_event = '#4d4b4bff';
+        textColor = '#ffffff';
+        violation_colors.push('#4d4b4bff');
+      }
+    }
+
+    if (plan.nextcessor_code && allEventsMap[plan.nextcessor_code]) {
+      let next = allEventsMap[plan.nextcessor_code];
+      if (dayjs(plan_end).isAfter(dayjs(next.start)) && dayjs(plan_start).isAfter(dayjs(next.start))) {
+        color_event = '#4d4b4bff';
+        textColor = '#ffffff';
+        violation_colors.push('#4d4b4bff');
+      }
+    }
+
+    const criticalChecks = [
+      [1, 3, 'after_weigth_date', '>'],
+      [1, 3, 'allow_weight_before_date', '>'],
+      [1, 3, 'expired_material_date', '<'],
+      [7, 7, 'expired_packing_date', '<'],
+      [3, 3, 'preperation_before_date', '<'],
+      [4, 4, 'blending_before_date', '<'],
+      [6, 6, 'coating_before_date', '<'],
+      [7, 7, 'parkaging_before_date', '<'],
+      [7, 7, 'after_parkaging_date', '>']
+    ];
+
+    criticalChecks.forEach(([from, to, field, operator]) => {
+      if (plan.stage_code >= from && plan.stage_code <= to && plan[field]) {
+        let left = dayjs(plan[field]).startOf('day');
+        let right = dayjs(plan.start).startOf('day');
+        let matched = false;
+        if (operator === '<') matched = left.isBefore(right);
+        else if (operator === '>') matched = left.isAfter(right);
+        
+        if (matched) {
+          color_event = '#920000ff';
+          textColor = '#ffffff';
+          violation_colors.push('#920000ff');
+        }
+      }
+    });
+    
+    violation_colors = [...new Set(violation_colors)].filter(c => c !== color_event);
+    return { backgroundColor: color_event, textColor: textColor, violation_colors: violation_colors };
+  };
+
+  const handleOptimizeSchedule = async () => {
     const confirmed = await Swal.fire({
-      title: 'Tự Động Sửa Lỗi Đen Theo Pha Chế',
+      title: 'Tối Ưu Hóa Toàn Bộ Lịch',
       html: `
         <div style="text-align:left;font-size:14px">
           <p>Chức năng này sẽ:</p>
           <ul style="margin:8px 0;padding-left:20px">
-            <li>🔒 <b>Cố định</b> các công đoạn <b>Pha Chế</b> (giai đoạn 3 & 4) chưa bắt đầu</li>
-            <li>⬅️ <b>Kéo lùi</b> các công đoạn trước (Cân, ...) để kết thúc đúng hạn</li>
-            <li>➡️ <b>Đẩy tới</b> các công đoạn sau (Nén, Đóng gói...) để bắt đầu sau Pha Chế</li>
+            <li>🔒 <b>Cố định</b> các công đoạn <b>Đã hoàn thành</b> và <b>Pha Chế</b> (3 & 4)</li>
+            <li>⬅️ <b>Dồn lịch lùi</b> các công đoạn trước (Cân, Cấp Phát) sát Pha Chế</li>
+            <li>➡️ <b>Dồn lịch tiến</b> các công đoạn sau (Nén, Bao, Đóng gói)</li>
+            <li>✨ <b>Tối ưu hóa</b>: Điền vào các khoảng trống trên phòng để lấp đầy lịch, đảm bảo không vi phạm lỗi Nguyên liệu (NL/BB) và không lỗi đen.</li>
           </ul>
-          <p style="color:#e74c3c;margin-top:8px">⚠️ Thao tác này ảnh hưởng đến <b>toàn bộ lịch hiện tại</b>.</p>
+          <p style="color:#e74c3c;margin-top:8px">⚠️ Thao tác này sẽ cấu trúc lại toàn bộ lịch chưa hoàn thành.</p>
         </div>
       `,
-      icon: 'question',
+      icon: 'warning',
       showCancelButton: true,
-      confirmButtonText: 'Chạy tự động',
+      confirmButtonText: '🚀 Chạy Tối Ưu',
       cancelButtonText: 'Hủy',
-      confirmButtonColor: '#8e44ad'
+      confirmButtonColor: '#27ae60'
     });
 
     if (!confirmed.isConfirmed) return;
 
     Swal.fire({
-      title: 'Đang xử lý...',
-      html: 'Vui lòng đợi trong khi hệ thống điều chỉnh lịch theo Pha Chế.',
+      title: 'Đang tối ưu hóa...',
+      html: 'Hệ thống đang quét và sắp xếp lại toàn bộ lịch sản xuất...',
       allowOutsideClick: false,
       showConfirmButton: false,
       didOpen: () => Swal.showLoading()
@@ -1881,55 +2132,143 @@ const ScheduleTest = () => {
 
     const calendarApi = calendarRef.current?.getApi();
     if (!calendarApi) return;
-    const allEvents = calendarApi.getEvents();
-    const now = new Date();
+    const allEvents = calendarApi.getEvents().filter(e => e.display !== 'background' && !e.extendedProps?.is_personnel && !String(e.id).startsWith('personnel-'));
 
-    // ----------------------------------------------------------------
-    // BƯỚC 1: Xác định anchors
-    // Stage 3 (chưa hoàn thành) → LUÔN là anchor (cố định)
-    // Stage 4 (chưa hoàn thành) → chỉ là anchor nếu KHÔNG có stage 3 trong chuỗi predecessor
-    //   (nếu sản phẩm có cả 3 và 4: stage 3 cố định, stage 4 được forward cascade đặt sau stage 3)
-    // ----------------------------------------------------------------
-    const stage3Anchors = allEvents.filter(e => {
-      if (String(e.id).endsWith('-cleaning')) return false;
-      if (Number(e.extendedProps?.stage_code) !== 3) return false;
-      if (e.extendedProps?.finished == 1) return false;
-      return true;
-    });
+    const getDurationForEvent = (ev, roomId) => {
+        let q = quota.find(item => String(item.room_id) === String(roomId) && Number(item.stage_code) === Number(ev.extendedProps?.stage_code) && (
+            (ev.extendedProps?.process_code && String(item.process_code).startsWith(String(ev.extendedProps?.process_code))) ||
+            (ev.extendedProps?.intermediate_code && String(item.intermediate_code) === String(ev.extendedProps?.intermediate_code)) ||
+            (ev.extendedProps?.finished_product_code && String(item.finished_product_code) === String(ev.extendedProps?.finished_product_code))
+        ));
+        
+        if (q) {
+             let pTime = parseFloat(q.p_time) || 0;
+             let mTime = parseFloat(q.m_time) || 0;
+             
+             let ratio = 1;
+             if (ev.extendedProps?.percent_parkaging && (Number(ev.extendedProps?.stage_code) === 7 || Number(ev.extendedProps?.stage_code) === 1)) {
+                 ratio = parseFloat(ev.extendedProps.percent_parkaging);
+             }
+             pTime = pTime * ratio;
+             mTime = mTime * ratio;
 
-    // Tập hợp code của tất cả stage 3 anchors để tra cứu nhanh
-    const stage3AnchorCodes = new Set(stage3Anchors.map(a => String(a.extendedProps?.code)).filter(Boolean));
+             let isFirst = ev.extendedProps?.first_in_campaign === 1 || ev.extendedProps?.title_clearning === "VS-II";
+             let durationHours = isFirst ? (pTime + mTime) : mTime;
+             return durationHours * 3600000;
+        }
+        let currentDur = new Date(ev.end).getTime() - new Date(ev.start).getTime();
+        let start = new Date(ev.start);
+        let end = new Date(ev.end);
+        for (let off of offRanges) {
+            if (off.start < end && off.end > start) {
+                let overlapStart = new Date(Math.max(start.getTime(), off.start.getTime()));
+                let overlapEnd = new Date(Math.min(end.getTime(), off.end.getTime()));
+                if (overlapEnd > overlapStart) {
+                    currentDur -= (overlapEnd.getTime() - overlapStart.getTime());
+                }
+            }
+        }
+        return currentDur;
+    };
 
-    // Helper: kiểm tra xem một event có stage 3 ancestor không (trace theo predecessor_code)
+    const getAllowedRooms = (ev) => {
+        let allowed = new Set();
+        const currentRoomId = ev.getResources()[0]?.id || ev.extendedProps?.resourceId || ev.resourceId;
+        if (currentRoomId) allowed.add(String(currentRoomId));
+
+        let matches = quota.filter(item => Number(item.stage_code) === Number(ev.extendedProps?.stage_code) && (
+            (ev.extendedProps?.process_code && String(item.process_code).startsWith(String(ev.extendedProps?.process_code))) ||
+            (ev.extendedProps?.intermediate_code && String(item.intermediate_code) === String(ev.extendedProps?.intermediate_code)) ||
+            (ev.extendedProps?.finished_product_code && String(item.finished_product_code) === String(ev.extendedProps?.finished_product_code))
+        ));
+        for (let m of matches) {
+            allowed.add(String(m.room_id));
+        }
+        return Array.from(allowed);
+    };
+
+    const getCompatibleMolds = (ev, roomId) => {
+        let catId = ev.extendedProps?.product_caterogy_id;
+        if (!catId) return [];
+        let room = allEvents.find(e => e.getResources && String(e.getResources()[0]?.id) === String(roomId))?.getResources()[0] || resources.find(r => String(r.id) === String(roomId));
+        let rType = room?.extendedProps?.blister_type_code || room?.blister_type_code;
+        
+        let moldIds = finishedProductMolds.filter(f => String(f.finished_product_category_id) === String(catId)).map(f => String(f.blister_mold_id));
+        let compatible = blisterMolds.filter(m => moldIds.includes(String(m.id)));
+        if (rType) {
+            compatible = compatible.filter(m => m.blister_type_code === rType || (m.blister_type_code && m.blister_type_code.includes(rType)) || !m.blister_type_code);
+        }
+        return compatible;
+    };
+
+    const isMoldAvailable = (moldId, tempStart, tempEnd, evId, currentUpdates, updatedTimes) => {
+        let mold = blisterMolds.find(m => String(m.id) === String(moldId));
+        if (!mold) return true; 
+        let amount = Number(mold.amount) || 0;
+        
+        let concurrent = 0;
+        for (let e of allEvents) {
+            if (String(e.id) === String(evId) || String(e.id).endsWith('-cleaning')) continue;
+            if (Number(e.extendedProps?.stage_code) === 7) {
+                 let eStart, eEnd;
+                 if (updatedTimes[e.id]) {
+                     eStart = new Date(updatedTimes[e.id].start);
+                     eEnd = new Date(updatedTimes[e.id].end);
+                 } else {
+                     eStart = new Date(e.start);
+                     eEnd = new Date(e.end);
+                 }
+                 let eMoldId = currentUpdates.find(u => String(u.id) === String(e.id))?.blister_mold_id || e.extendedProps?.blister_mold_id;
+                 if (String(eMoldId) === String(moldId)) {
+                     if (tempStart < eEnd && tempEnd > eStart) {
+                         concurrent++;
+                     }
+                 }
+            }
+        }
+        return concurrent < amount;
+    };
+
+    const campaignRoomMap = {}; // key: campaign_code_stage_code -> roomId
+
+
+    const getMaterialStartDate = (ev) => {
+      let dates = [];
+      if (ev.extendedProps?.after_weigth_date) dates.push(new Date(ev.extendedProps.after_weigth_date));
+      if (ev.extendedProps?.allow_weight_before_date) dates.push(new Date(ev.extendedProps.allow_weight_before_date));
+      if (ev.extendedProps?.after_parkaging_date) dates.push(new Date(ev.extendedProps.after_parkaging_date));
+      if (dates.length === 0) return null;
+      return new Date(Math.max(...dates.map(d => d.getTime())));
+    };
+
+    // Tập hợp mã của các stage 3 để xét stage 4
+    const stage3AnchorCodes = new Set(
+      allEvents
+        .filter(e => Number(e.extendedProps?.stage_code) === 3 && !String(e.id).endsWith('-cleaning'))
+        .map(a => String(a.extendedProps?.code))
+        .filter(Boolean)
+    );
+
     const hasStage3Ancestor = (ev) => {
       let code = ev.extendedProps?.predecessor_code;
       let depth = 0;
       while (code && depth++ < 20) {
         if (stage3AnchorCodes.has(String(code))) return true;
-        const predEv = allEvents.find(e =>
-          String(e.extendedProps?.code) === String(code) &&
-          !String(e.id).endsWith('-cleaning')
-        );
+        const predEv = allEvents.find(e => String(e.extendedProps?.code) === String(code) && !String(e.id).endsWith('-cleaning'));
         if (!predEv) break;
         code = predEv.extendedProps?.predecessor_code;
       }
       return false;
     };
 
-    // Stage 4: chỉ anchor nếu không có stage 3 ancestor
-    const stage4AnchorsList = allEvents.filter(e => {
+    // Xác định anchors: Đã hoàn thành, HOẶC Pha chế (3, 4) chưa hoàn thành
+    const anchors = allEvents.filter(e => {
       if (String(e.id).endsWith('-cleaning')) return false;
-      if (Number(e.extendedProps?.stage_code) !== 4) return false;
-      if (e.extendedProps?.finished == 1) return false;
-      return !hasStage3Ancestor(e); // Không phải anchor nếu có stage 3 ở trước
+      if (e.extendedProps?.finished == 1) return true;
+      if (Number(e.extendedProps?.stage_code) === 3) return true;
+      if (Number(e.extendedProps?.stage_code) === 4 && !hasStage3Ancestor(e)) return true;
+      return false;
     });
-
-    const anchors = [...stage3Anchors, ...stage4AnchorsList];
-
-    if (anchors.length === 0) {
-      Swal.fire('Thông báo', 'Không tìm thấy công đoạn Pha Chế nào phù hợp (chưa hoàn thành).', 'info');
-      return;
-    }
 
     const anchorIds = new Set(anchors.map(a => String(a.id)));
     const offRanges = offDays.map(d => {
@@ -1941,7 +2280,7 @@ const ScheduleTest = () => {
     let updates = [];
     let updatedTimesById = {};
 
-    // Đăng ký anchors + cleaning vào updatedTimesById (lock)
+    // Khóa các sự kiện anchor
     anchors.forEach(a => {
       updatedTimesById[String(a.id)] = { start: new Date(a.start), end: new Date(a.end) };
       const cleaningA = allEvents.find(e => String(e.id) === String(a.id).replace('-main', '-cleaning'));
@@ -1950,91 +2289,56 @@ const ScheduleTest = () => {
       }
     });
 
-    // Các event không di chuyển: chỉ finished=1 (đã hoàn thành)
-    // Event trong quá khứ nhưng chưa hoàn thành VẪN được di chuyển
-    allEvents.forEach(e => {
-      const eId = String(e.id);
-      if (updatedTimesById[eId]) return; // đã lock
-      if (e.extendedProps?.finished == 1) {
-        updatedTimesById[eId] = { start: new Date(e.start), end: new Date(e.end) };
-      }
-    });
-
-    // ----------------------------------------------------------------
-    // Helper: Build predecessor chain (ngược lên)
-    // ----------------------------------------------------------------
     const buildPredChain = (startId) => {
       const chain = [];
       const visited = new Set();
       let queue = [startId];
       while (queue.length > 0) {
         const cId = queue.shift();
-        if (visited.has(cId) || anchorIds.has(cId) || updatedTimesById[cId]) continue;
+        if (visited.has(cId) || updatedTimesById[cId]) continue; // Ngừng nếu đã bị khóa
         visited.add(cId);
         const ev = allEvents.find(e => String(e.id) === cId && !String(e.id).endsWith('-cleaning'));
         if (!ev) continue;
-        if (ev.extendedProps?.finished == 1) continue; // Không di chuyển event đã hoàn thành
         chain.push(ev);
         const pCode = ev.extendedProps.predecessor_code;
         if (pCode) {
-          const pEv = allEvents.find(e =>
-            String(e.extendedProps.code) === String(pCode) &&
-            !String(e.id).endsWith('-cleaning') &&
-            !anchorIds.has(String(e.id)) &&
-            !visited.has(String(e.id))
-          );
+          const pEv = allEvents.find(e => String(e.extendedProps.code) === String(pCode) && !String(e.id).endsWith('-cleaning') && !visited.has(String(e.id)));
           if (pEv) queue.push(String(pEv.id));
         }
       }
-      // Sắp xếp GIẢM dần theo stage_code (gần anchor nhất xử lý trước)
       return chain.sort((a, b) => (b.extendedProps.stage_code || 0) - (a.extendedProps.stage_code || 0));
     };
 
-    // ----------------------------------------------------------------
-    // Helper: Build successor chain (xuôi xuống)
-    // ----------------------------------------------------------------
     const buildSuccChain = (startId) => {
       const chain = [];
       const visited = new Set();
       let queue = [startId];
       while (queue.length > 0) {
         const cId = queue.shift();
-        if (visited.has(cId) || anchorIds.has(cId) || updatedTimesById[cId]) continue;
+        if (visited.has(cId) || updatedTimesById[cId]) continue; // Ngừng nếu đã bị khóa
         visited.add(cId);
         const ev = allEvents.find(e => String(e.id) === cId && !String(e.id).endsWith('-cleaning'));
         if (!ev) continue;
-        if (ev.extendedProps?.finished == 1) continue; // Không di chuyển event đã hoàn thành
         chain.push(ev);
         const myCode = ev.extendedProps.code;
         if (myCode) {
           allEvents.forEach(e => {
             const eId = String(e.id);
-            if (String(e.extendedProps.predecessor_code) === String(myCode) &&
-              !String(e.id).endsWith('-cleaning') &&
-              !anchorIds.has(eId) &&
-              !visited.has(eId)
-            ) {
+            if (String(e.extendedProps.predecessor_code) === String(myCode) && !String(e.id).endsWith('-cleaning') && !visited.has(eId)) {
               queue.push(eId);
             }
           });
         }
       }
-      // Sắp xếp TĂNG dần theo stage_code (gần anchor nhất xử lý trước)
       return chain.sort((a, b) => (a.extendedProps.stage_code || 0) - (b.extendedProps.stage_code || 0));
     };
 
-    // ----------------------------------------------------------------
-    // BƯỚC 2: BACKWARD CASCADE từ mỗi anchor stage_code = 3
-    // Kéo predecessors (stage 1, 2) về sớm hơn để kết thúc trước anchor.start
-    // ----------------------------------------------------------------
-    for (const anchor of stage3Anchors) {
+    // 1. BACKWARD CASCADE (Kéo các predecessor về sát Pha Chế / Finished)
+    for (const anchor of anchors) {
       const predCode = anchor.extendedProps.predecessor_code;
       if (!predCode) continue;
 
-      const predEv = allEvents.find(e =>
-        String(e.extendedProps.code) === String(predCode) &&
-        !String(e.id).endsWith('-cleaning')
-      );
+      const predEv = allEvents.find(e => String(e.extendedProps.code) === String(predCode) && !String(e.id).endsWith('-cleaning'));
       if (!predEv) continue;
 
       const predChain = buildPredChain(String(predEv.id));
@@ -2043,171 +2347,209 @@ const ScheduleTest = () => {
       const chainIds = new Set(predChain.map(e => String(e.id)));
 
       for (const ev of predChain) {
+        await new Promise(r => setTimeout(r, 0)); // Yield thread to avoid freezing UI
+
         const evId = String(ev.id);
         const cleaningEv = allEvents.find(e => String(e.id) === evId.replace('-main', '-cleaning'));
-
-        // latestEnd = start của successor (event có predecessor_code = ev.code)
         const myCode = ev.extendedProps.code;
+        
         let latestEnd = null;
         if (myCode) {
-          const succEv = allEvents.find(e =>
-            String(e.extendedProps.predecessor_code) === String(myCode) &&
-            !String(e.id).endsWith('-cleaning')
-          );
+          const succEv = allEvents.find(e => String(e.extendedProps.predecessor_code) === String(myCode) && !String(e.id).endsWith('-cleaning'));
           if (succEv) {
             const succId = String(succEv.id);
             latestEnd = updatedTimesById[succId]?.start || new Date(succEv.start);
           }
         }
-        // Nếu không tìm được successor, dùng anchor.start
         if (!latestEnd) latestEnd = new Date(anchor.start);
 
-        const duration = new Date(ev.end).getTime() - new Date(ev.start).getTime();
+        const duration = getDurationForEvent(ev, ev.getResources()[0]?.id);
         const resourceId = ev.getResources()[0]?.id;
 
-        // Cleaning phải đặt SAU main → trừ cleaning duration khỏi latestEnd
-        const cleaningDur = cleaningEv
-          ? (new Date(cleaningEv.end).getTime() - new Date(cleaningEv.start).getTime())
-          : 0;
+        const cleaningDur = cleaningEv ? (new Date(cleaningEv.end).getTime() - new Date(cleaningEv.start).getTime()) : 0;
         const adjustedLatestEnd = new Date(latestEnd.getTime() - cleaningDur);
 
-        // Kiểm tra xem đã hợp lệ chưa
-        const currentEnd = updatedTimesById[evId]?.end || new Date(ev.end);
-        if (currentEnd <= latestEnd) {
-          updatedTimesById[evId] = { start: updatedTimesById[evId]?.start || new Date(ev.start), end: currentEnd };
-          if (cleaningEv) {
-            const cId = String(cleaningEv.id);
-            if (!updatedTimesById[cId]) updatedTimesById[cId] = { start: new Date(cleaningEv.start), end: new Date(cleaningEv.end) };
-          }
-          continue;
+        const unprocessed = [...chainIds].filter(id => id !== evId && !updatedTimesById[id]);
+        const unprocessedCleaning = unprocessed.map(id => id.replace('-main', '-cleaning')).filter(cid => !updatedTimesById[cid]);
+        
+        // TẤT CẢ các event (chưa bị khóa) không thuộc chuỗi hiện tại đang xét đều phải được né (tránh chồng lấn)
+        // Vì vậy ignoreIds sẽ bao gồm các event chưa khóa TRONG CHUỖI NÀY
+        // Bất kỳ event nào khác trên lịch chưa khóa mà không nằm trong ignoreIds sẽ ĐƯỢC CÓ COI LÀ CHƯỚNG NGẠI VẬT!
+        // Nhưng nếu chúng chưa khóa, chúng có thể bị kéo đi ở bước sau. Nếu coi chúng là chướng ngại vật, ta sẽ bị kẹt.
+        // Giải pháp: ignoreIds MỞ RỘNG bao gồm TOÀN BỘ CÁC EVENT CHƯA KHÓA!
+        // Như vậy Backward Cascade sẽ coi các event chưa khóa khác như "không tồn tại" và lấp vào chỗ của chúng.
+        // Khi đến lượt các event đó, chúng sẽ bị Forward Cascade đẩy đi chỗ khác (vị trí trống tiếp theo).
+        const allUnprocessed = allEvents.filter(e => !updatedTimesById[String(e.id)] && String(e.id) !== evId && (!cleaningEv || String(e.id) !== String(cleaningEv.id))).map(e => String(e.id));
+
+        let ignoreIds = allUnprocessed; // Né mọi event đang bị khóa. Ignored mọi event chưa khóa.
+        const stageCode = Number(ev.extendedProps?.stage_code);
+        if (stageCode === 1 || stageCode === 2) {
+            // Cho phép chồng chất đối với công đoạn Cân/Cấp phát để đảm bảo không lỗi
+            ignoreIds = allEvents.map(e => String(e.id));
         }
 
-        // Ignore: chỉ bỏ qua các chain events CHƯА xử lý + event hiện tại
-        // QUAN TRỌNG: KHAI anchorIds không nằm trong ignoreIds
-        // (anchor đã trong updatedTimesById → findPreviousAvailableSlot tự động dùng vị trí làm obstacle)
-        const unprocessed = [...chainIds].filter(id => id !== evId && !updatedTimesById[id]);
-        const ignoreIds = [...unprocessed, evId, cleaningEv ? String(cleaningEv.id) : null].filter(Boolean);
+        let newSlot = findPreviousAvailableSlot(resourceId, duration, adjustedLatestEnd, allEvents, offRanges, ignoreIds, updatedTimesById);
 
-        const newSlot = findPreviousAvailableSlot(resourceId, duration, adjustedLatestEnd, allEvents, offRanges, ignoreIds, updatedTimesById);
+        // Ràng buộc Ngày NL: Không được kéo quá sát về quá khứ nếu vượt ngày NL
+        const matDate = getMaterialStartDate(ev);
+        if (matDate && newSlot.start < matDate) {
+           // Nếu bị lố quá ngày nguyên liệu, buộc phải forward cascade từ ngày NL
+           // Để đơn giản, ta tìm slot trống gần nhất sau ngày NL nhưng VẪN PHẢI kẹt trước adjustedLatestEnd (không đè lên successor)
+           // Tuy nhiên findNextAvailableSlot có thể vượt quá adjustedLatestEnd. 
+           // Tạm thời nếu chạm giới hạn NL, chúng ta giới hạn cứng tại matDate.
+           newSlot.start = matDate;
+           newSlot.end = new Date(matDate.getTime() + duration);
+        }
 
         updatedTimesById[evId] = { start: newSlot.start, end: newSlot.end };
         updates.push({ id: evId, start: newSlot.start, end: newSlot.end, resourceId, clearWarnings: true });
 
         if (cleaningEv) {
           const cId = String(cleaningEv.id);
-          const cStart = newSlot.end;
-          const cEnd = new Date(cStart.getTime() + cleaningDur);
-          updatedTimesById[cId] = { start: cStart, end: cEnd };
-          updates.push({ id: cId, start: cStart, end: cEnd, resourceId, clearWarnings: true });
+          const cleanSlot = findPreviousAvailableSlot(resourceId, cleaningDur, latestEnd, allEvents, offRanges, ignoreIds, updatedTimesById);
+          updatedTimesById[cId] = { start: cleanSlot.start, end: cleanSlot.end };
+          updates.push({ id: cId, start: cleanSlot.start, end: cleanSlot.end, resourceId, clearWarnings: true });
         }
       }
     }
 
-    // ----------------------------------------------------------------
-    // BƯỚC 3: FORWARD CASCADE
-    // Điểm xuất phát:
-    //   - Nếu sản phẩm có stage 3 anchor và stage 4 (không phải anchor) → cascade từ stage 3
-    //     (stage 4 sẽ được dịch chuyển ngay sau stage 3, rồi stage 5, 6, 7 theo sau)
-    //   - Nếu chỉ có stage 4 anchor (không có stage 3) → cascade từ stage 4
-    // ----------------------------------------------------------------
-    // Tạo danh sách tất cả điểm xuất phát forward cascade
-    // = stage3Anchors (có thể có stage 4 kế tiếp) + stage4AnchorsList (không có stage 3 ancestor)
-    const forwardAnchors = [...stage3Anchors, ...stage4AnchorsList];
+    // Lọc lại các sản phẩm/chuỗi CHƯA CÓ ANCHOR (Không có Pha Chế, Không có Hoàn Thành)
+    // Các chuỗi này sẽ lấy event đầu tiên (stage_code nhỏ nhất) làm gốc và bắt đầu Forward Cascade từ NOW
+    const unanchoredFirstEvents = allEvents.filter(e => {
+        if (String(e.id).endsWith('-cleaning')) return false;
+        if (updatedTimesById[String(e.id)]) return false;
+        // Kiểm tra xem nó có predecessor không? Nếu KHÔNG có predecessor thì nó là sự kiện đầu tiên của chuỗi
+        const pCode = e.extendedProps?.predecessor_code;
+        if (!pCode) return true;
+        const hasPred = allEvents.some(p => String(p.extendedProps?.code) === String(pCode));
+        return !hasPred; // Nếu không có event predecessor nào trên lịch -> nó là khởi đầu
+    });
 
-    for (const anchor of forwardAnchors) {
-      const myCode = anchor.extendedProps.code;
-      if (!myCode) continue;
+    // 2. FORWARD CASCADE (Đẩy các successor và chuỗi tự do về phía tương lai vào các khoảng trống)
+    // Tạo danh sách gốc phát: anchors + unanchoredFirstEvents
+    console.log('forwardRoots size:', anchors.length, unanchoredFirstEvents.length);
+    const forwardRoots = [...anchors, ...unanchoredFirstEvents].sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
 
-      const succEv = allEvents.find(e =>
-        String(e.extendedProps.predecessor_code) === String(myCode) &&
-        !String(e.id).endsWith('-cleaning') &&
-        !anchorIds.has(String(e.id))
-      );
-      if (!succEv) continue;
-      if (updatedTimesById[String(succEv.id)]) continue; // đã xử lý
+    for (const anchor of forwardRoots) {
+      // Đối với unanchoredFirstEvents, ta Forward Cascade từ chính nó trước
+      let chain = [];
+      if (unanchoredFirstEvents.some(e => String(e.id) === String(anchor.id))) {
+          chain = [anchor, ...buildSuccChain(String(anchor.id))];
+      } else {
+          const myCode = anchor.extendedProps.code;
+          if (!myCode) continue;
+          const succEv = allEvents.find(e => String(e.extendedProps.predecessor_code) === String(myCode) && !String(e.id).endsWith('-cleaning'));
+          if (!succEv) continue;
+          if (updatedTimesById[String(succEv.id)]) continue;
+          chain = buildSuccChain(String(succEv.id));
+      }
 
-      const succChain = buildSuccChain(String(succEv.id));
-      if (succChain.length === 0) continue;
+      if (chain.length === 0) continue;
 
-      const chainIds = new Set(succChain.map(e => String(e.id)));
+      for (const ev of chain) {
+        await new Promise(r => setTimeout(r, 0)); // Yield thread to avoid freezing UI
 
-      for (const ev of succChain) {
         const evId = String(ev.id);
         if (updatedTimesById[evId]) continue;
 
         const cleaningEv = allEvents.find(e => String(e.id) === evId.replace('-main', '-cleaning'));
-
-        // earliestStart = end của predecessor (+ cleaning nếu có)
         const predCode = ev.extendedProps.predecessor_code;
-        let earliestStart = null;
+        let earliestStart = new Date(); // Mặc định không được xếp trong quá khứ
+        
         if (predCode) {
-          const predEv = allEvents.find(e =>
-            String(e.extendedProps.code) === String(predCode) &&
-            !String(e.id).endsWith('-cleaning')
-          );
+          const predEv = allEvents.find(e => String(e.extendedProps.code) === String(predCode) && !String(e.id).endsWith('-cleaning'));
           if (predEv) {
             const predId = String(predEv.id);
-            earliestStart = updatedTimesById[predId]?.end || new Date(predEv.end);
-            // Tính cả cleaning của predecessor
+            const predEnd = updatedTimesById[predId]?.end || new Date(predEv.end);
+            earliestStart = new Date(Math.max(earliestStart.getTime(), predEnd.getTime()));
             const predCleaningId = predId.replace('-main', '-cleaning');
             if (updatedTimesById[predCleaningId]) {
-              earliestStart = updatedTimesById[predCleaningId].end;
+              earliestStart = new Date(Math.max(earliestStart.getTime(), updatedTimesById[predCleaningId].end.getTime()));
             } else {
               const predCleaning = allEvents.find(e => String(e.id) === predCleaningId);
-              if (predCleaning) earliestStart = new Date(predCleaning.end);
+              if (predCleaning) earliestStart = new Date(Math.max(earliestStart.getTime(), new Date(predCleaning.end).getTime()));
             }
           }
         }
 
-        const currentStart = updatedTimesById[evId]?.start || new Date(ev.start);
-        if (!earliestStart || currentStart >= earliestStart) {
-          updatedTimesById[evId] = { start: currentStart, end: updatedTimesById[evId]?.end || new Date(ev.end) };
-          if (cleaningEv) {
-            const cId = String(cleaningEv.id);
-            if (!updatedTimesById[cId]) updatedTimesById[cId] = { start: new Date(cleaningEv.start), end: new Date(cleaningEv.end) };
-          }
-          continue;
+        const matDate = getMaterialStartDate(ev);
+        if (matDate && matDate > earliestStart) earliestStart = matDate;
+
+        const resourceId = ev.getResources()[0]?.id;
+        const duration = getDurationForEvent(ev, resourceId);
+
+        // Tương tự, coi các event chưa khóa khác như "không tồn tại" để lấp vào chỗ của chúng
+        const allUnprocessed = allEvents.filter(e => !updatedTimesById[String(e.id)] && String(e.id) !== evId && (!cleaningEv || String(e.id) !== String(cleaningEv.id))).map(e => String(e.id));
+        const ignoreIds = allUnprocessed;
+
+        let newSlot = findNextAvailableSlot(resourceId, duration, earliestStart, allEvents, offRanges, ignoreIds, updatedTimesById);
+        let moldId = ev.extendedProps?.blister_mold_id;
+             
+        if (Number(ev.extendedProps?.stage_code) === 7) {
+            let compatibleMolds = getCompatibleMolds(ev, resourceId);
+            let foundMold = false;
+            
+            if (compatibleMolds && compatibleMolds.length > 0) {
+                let tries = 0;
+                while (!foundMold && tries < 200 && newSlot.start.getTime() < new Date("2050-01-01").getTime()) {
+                    for (let m of compatibleMolds) {
+                        if (isMoldAvailable(m.id, newSlot.start, newSlot.end, evId, updates, updatedTimesById)) {
+                            moldId = m.id;
+                            foundMold = true;
+                            break;
+                        }
+                    }
+                    if (foundMold) break;
+                    // jump ahead by 12 hours to speed up search and prevent freeze
+                    newSlot = findNextAvailableSlot(resourceId, duration, new Date(newSlot.start.getTime() + 12 * 3600000), allEvents, offRanges, ignoreIds, updatedTimesById);
+                    tries++;
+                }
+            }
         }
 
-        const duration = new Date(ev.end).getTime() - new Date(ev.start).getTime();
-        const resourceId = ev.getResources()[0]?.id;
-
-        // Ignore: chỉ bỏ qua các chain events CHƯА xử lý + event hiện tại
-        // QUAN TRỌNG: anchorIds không nằm trong ignoreIds
-        // (anchor đã trong updatedTimesById → findNextAvailableSlot tự động dùng vị trí làm obstacle)
-        const unprocessed = [...chainIds].filter(id => id !== evId && !updatedTimesById[id]);
-        const unprocessedCleaning = unprocessed.map(id => id.replace('-main', '-cleaning')).filter(cid => !updatedTimesById[cid]);
-        const ignoreIds = [...unprocessed, ...unprocessedCleaning, evId, cleaningEv ? String(cleaningEv.id) : null].filter(Boolean);
-
-        const newSlot = findNextAvailableSlot(resourceId, duration, earliestStart, allEvents, offRanges, ignoreIds, updatedTimesById);
-
         updatedTimesById[evId] = { start: newSlot.start, end: newSlot.end };
-        updates.push({ id: evId, start: newSlot.start, end: newSlot.end, resourceId, clearWarnings: true });
+        updates.push({ id: evId, start: newSlot.start, end: newSlot.end, resourceId, blister_mold_id: moldId, clearWarnings: true });
 
         if (cleaningEv) {
           const cId = String(cleaningEv.id);
-          const cDur = new Date(cleaningEv.end).getTime() - new Date(cleaningEv.start).getTime();
-          const cStart = newSlot.end;
-          const cEnd = new Date(cStart.getTime() + cDur);
-          updatedTimesById[cId] = { start: cStart, end: cEnd };
-          updates.push({ id: cId, start: cStart, end: cEnd, resourceId, clearWarnings: true });
+          const cleaningDur = new Date(cleaningEv.end).getTime() - new Date(cleaningEv.start).getTime();
+          const cleanSlot = findNextAvailableSlot(resourceId, cleaningDur, newSlot.end, allEvents, offRanges, ignoreIds, updatedTimesById);
+          updatedTimesById[cId] = { start: cleanSlot.start, end: cleanSlot.end };
+          updates.push({ id: cId, start: cleanSlot.start, end: cleanSlot.end, resourceId, clearWarnings: true });
         }
       }
     }
 
-    // ----------------------------------------------------------------
-    // BƯỚC 4: Apply tất cả thay đổi
-    // ----------------------------------------------------------------
     if (updates.length > 0) {
       let newPending = [...pendingChanges];
       calendarApi.batchRendering(() => {
-        updates.forEach(u => {
+        
+      // Build a map of all events combining DOM events and new updates for color evaluation
+      const eventMap = {};
+      calendarApi.getEvents().forEach(e => {
+        if (e.extendedProps?.code) {
+          eventMap[e.extendedProps.code] = { start: e.start, end: e.end, quarantine_time_limit_hour: e.extendedProps.quarantine_time_limit_hour };
+        }
+      });
+      updates.forEach(u => {
+        const ev = calendarApi.getEventById(u.id);
+        if (ev && ev.extendedProps?.code) {
+          eventMap[ev.extendedProps.code] = { start: u.start, end: u.end, quarantine_time_limit_hour: ev.extendedProps.quarantine_time_limit_hour };
+        }
+      });
+
+      updates.forEach(u => {
           const ev = calendarApi.getEventById(u.id);
           if (ev) {
             if (u.start && u.end) ev.setDates(u.start, u.end);
             if (u.clearWarnings) {
+              const fullPlanInfo = { ...ev.extendedProps, start: u.start, end: u.end };
+              const newColors = calculateFrontendColors(fullPlanInfo, eventMap);
               ev.setExtendedProp('warning_text', '');
-              ev.setExtendedProp('violation_colors', []);
+              if (u.blister_mold_id) ev.setExtendedProp('blister_mold_id', u.blister_mold_id);
+              ev.setExtendedProp('violation_colors', newColors.violation_colors);
+              ev.setProp('backgroundColor', newColors.backgroundColor);
+              ev.setProp('textColor', newColors.textColor);
             }
           }
           if (u.start && u.end && ev) {
@@ -2215,7 +2557,8 @@ const ScheduleTest = () => {
               id: u.id,
               start: u.start,
               end: u.end,
-              resourceId: u.resourceId || (ev.getResources ? ev.getResources()[0]?.id : ev.resourceId),
+              blister_mold_id: u.blister_mold_id !== undefined ? u.blister_mold_id : ev.extendedProps?.blister_mold_id,
+              resourceId: u.resourceId || (ev.getResources && ev.getResources().length ? ev.getResources()[0]?.id : (ev.extendedProps?.resourceId || ev._def?.resourceIds?.[0] || ev.resourceId)),
               title: ev.title,
               submit: ev.extendedProps?.submit,
               C_end: ev.extendedProps?.C_end || false
@@ -2227,15 +2570,19 @@ const ScheduleTest = () => {
         });
       });
       setPendingChanges(newPending);
-      Swal.fire(
-        'Hoàn thành!',
-        `Đã điều chỉnh <b>${updates.filter(u => u.start).length}</b> sự kiện theo Pha Chế.<br>Nhấn 💾 để lưu thay đổi.`,
-        'success'
-      );
+      
+      // Khôi phục lại trạng thái frontend, không lưu lên server vội
+      Swal.fire({
+        icon: 'success',
+        title: 'Hoàn thành dồn lịch!',
+        html: `Đã dời vị trí và tạm thời xóa lỗi cho <b>${newPending.length}</b> sự kiện.<br>Hãy xem lại kết quả trên lịch và nhấn 💾 để LƯU THAY ĐỔI.`,
+        timer: 3000
+      });
     } else {
-      Swal.fire('Thông báo', 'Tất cả các công đoạn đã hợp lệ, không cần điều chỉnh.', 'info');
+      Swal.fire('Thông báo', 'Lịch đã được tối ưu hóa tối đa, không cần điều chỉnh.', 'info');
     }
   };
+
 
   const handleFixAllWeighingViolations = async (targetEvent = null) => {
 
@@ -2251,7 +2598,7 @@ const ScheduleTest = () => {
 
     const calendarApi = calendarRef.current?.getApi();
     if (!calendarApi) return;
-    const allEvents = calendarApi.getEvents();
+    const allEvents = calendarApi.getEvents().filter(e => e.display !== 'background' && !e.extendedProps?.is_personnel && !String(e.id).startsWith('personnel-'));
 
     const offRanges = offDays.map(d => {
       const start = new Date(`${d}T06:00:00`);
@@ -2346,15 +2693,34 @@ const ScheduleTest = () => {
       let newPending = [...pendingChanges];
 
       calendarApi.batchRendering(() => {
-        updates.forEach(u => {
+        
+      // Build a map of all events combining DOM events and new updates for color evaluation
+      const eventMap = {};
+      calendarApi.getEvents().forEach(e => {
+        if (e.extendedProps?.code) {
+          eventMap[e.extendedProps.code] = { start: e.start, end: e.end, quarantine_time_limit_hour: e.extendedProps.quarantine_time_limit_hour };
+        }
+      });
+      updates.forEach(u => {
+        const ev = calendarApi.getEventById(u.id);
+        if (ev && ev.extendedProps?.code) {
+          eventMap[ev.extendedProps.code] = { start: u.start, end: u.end, quarantine_time_limit_hour: ev.extendedProps.quarantine_time_limit_hour };
+        }
+      });
+
+      updates.forEach(u => {
           const ev = calendarApi.getEventById(u.id);
           if (ev) {
             if (u.start && u.end) {
               ev.setDates(u.start, u.end);
             }
             if (u.clearWarnings) {
+              const fullPlanInfo = { ...ev.extendedProps, start: u.start, end: u.end };
+              const newColors = calculateFrontendColors(fullPlanInfo, eventMap);
               ev.setExtendedProp('warning_text', '');
-              ev.setExtendedProp('violation_colors', []);
+              ev.setExtendedProp('violation_colors', newColors.violation_colors);
+              ev.setProp('backgroundColor', newColors.backgroundColor);
+              ev.setProp('textColor', newColors.textColor);
             }
           }
           if (u.start && u.end && ev) {
@@ -2362,7 +2728,7 @@ const ScheduleTest = () => {
               id: u.id,
               start: u.start,
               end: u.end,
-              resourceId: u.resourceId || (ev.getResources ? ev.getResources()[0]?.id : ev.resourceId),
+              resourceId: u.resourceId || (ev.getResources && ev.getResources().length ? ev.getResources()[0]?.id : (ev.extendedProps?.resourceId || ev._def?.resourceIds?.[0] || ev.resourceId)),
               title: ev.title,
               submit: ev.extendedProps?.submit,
               C_end: ev.extendedProps?.C_end || false
@@ -2548,7 +2914,7 @@ const ScheduleTest = () => {
               trueDurMs = m_time; // Clearing time is not multiplied by percent_parkaging
             } else {
               let ratio = 1;
-              if (event._def.extendedProps.stage_code == 7 && event._def.extendedProps.percent_parkaging) {
+              if ((event._def.extendedProps.stage_code == 7 || event._def.extendedProps.stage_code == 1) && event._def.extendedProps.percent_parkaging) {
                 ratio = event._def.extendedProps.percent_parkaging;
               }
               trueDurMs = (m_time + p_time) * ratio;
@@ -2655,8 +3021,45 @@ const ScheduleTest = () => {
             newEnd = new Date(isDragged ? (info.oldEvent.end ? info.oldEvent.end.getTime() + currentOffset : event_start.getTime() + currentOffset) : (conf.event.end ? conf.event.end.getTime() + currentOffset : event_start.getTime() + currentOffset));
           }
 
+          let moldId = conf.event._def.extendedProps.blister_mold_id;
+          if (Number(conf.event._def.extendedProps.stage_code) === 7) {
+              let catId = conf.event._def.extendedProps.product_caterogy_id;
+              if (catId) {
+                  let rType = resources.find(r => String(r.id) === String(conf.resId))?.blister_type_code;
+                  let mIds = finishedProductMolds.filter(f => String(f.finished_product_category_id) === String(catId)).map(f => String(f.blister_mold_id));
+                  let compatible = blisterMolds.filter(m => mIds.includes(String(m.id)));
+                  if (rType) {
+                      compatible = compatible.filter(m => m.blister_type_code === rType || (m.blister_type_code && m.blister_type_code.includes(rType)) || !m.blister_type_code);
+                  }
+                  
+                  let concurrentCount = (mId) => {
+                       let c = 0;
+                       for (let e of calendarApi.getEvents()) {
+                           if (String(e.id) === String(conf.event.id) || String(e.id).endsWith('-cleaning')) continue;
+                           if (Number(e.extendedProps?.stage_code) === 7 && String(e.extendedProps?.blister_mold_id) === String(mId)) {
+                               if (newStart < e.end && newEnd > e.start) c++;
+                           }
+                       }
+                       return c;
+                  };
+
+                  if (moldId) {
+                       let mold = blisterMolds.find(m => String(m.id) === String(moldId));
+                       if (mold && concurrentCount(moldId) >= (Number(mold.amount) || 0)) {
+                           for (let m of compatible) {
+                               if (concurrentCount(m.id) < (Number(m.amount) || 0)) {
+                                   moldId = m.id;
+                                   break;
+                               }
+                           }
+                       }
+                  }
+              }
+          }
+
           return {
             id: conf.event.id,
+            blister_mold_id: moldId,
             start: newStart.toISOString(),
             end: newEnd.toISOString(),
             resourceId: conf.resId || null,
@@ -3474,9 +3877,10 @@ const ScheduleTest = () => {
       id: change.id,
       start: dayjs(change.start).format('YYYY-MM-DD HH:mm:ss'),
       end: dayjs(change.end).format('YYYY-MM-DD HH:mm:ss'),
-      resourceId: change.resourceId,
+      resourceId: change.resourceId || null,
       title: change.title,
-      C_end: change.C_end || false
+      C_end: change.C_end || false,
+      blister_mold_id: change.blister_mold_id || null
     }));
 
     const totalBatches = Math.ceil(allChanges.length / BATCH_SIZE);
@@ -4420,19 +4824,14 @@ const ScheduleTest = () => {
           </h5>
           <div style="display:flex;flex-direction:column;gap:12px;flex:1">
 
-            <button type="button" id="btn-fix-overlap"
-              style="background:#e67e22;color:white;border:none;border-radius:6px;padding:12px 10px;text-align:left;cursor:pointer;font-size:12px;line-height:1.5;transition:opacity .2s"
+            ${(userID == 1) ? `
+            <button type="button" id="btn-optimize-schedule"
+              style="background:#27ae60;color:white;border:none;border-radius:6px;padding:12px 10px;text-align:left;cursor:pointer;font-size:12px;line-height:1.5;transition:opacity .2s"
               onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
-              <div style="font-weight:700;font-size:13px">📦 Sửa Lỗi Chồng Chất</div>
-              <div style="opacity:.9;margin-top:3px">Quét và tịnh tuyến sự kiện chồng lấn vào vị trí trống</div>
+              <div style="font-weight:700;font-size:13px">🚀 Sửa lịch tự động</div>
+              <div style="opacity:.9;margin-top:3px">Dồn lịch, điền khoảng trống, tự động sửa các lỗi (đen, chồng chất) theo mốc Pha Chế</div>
             </button>
-
-            <button type="button" id="btn-fix-phache-modal"
-              style="background:#8e44ad;color:white;border:none;border-radius:6px;padding:12px 10px;text-align:left;cursor:pointer;font-size:12px;line-height:1.5;transition:opacity .2s"
-              onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
-              <div style="font-weight:700;font-size:13px">🧬 Sửa Lỗi Đen Theo Pha Chế</div>
-              <div style="opacity:.9;margin-top:3px">Cố định Pha Chế (3&4), sắp xếp công đoạn khác thoát đen</div>
-            </button>
+            ` : ''}
             <!--
             <button type="button" id="btn-fix-pass2"
               style="background:#27ae60;color:white;border:none;border-radius:6px;padding:12px 10px;text-align:left;cursor:pointer;font-size:12px;line-height:1.5;transition:opacity .2s"
@@ -4837,19 +5236,11 @@ const ScheduleTest = () => {
         }
 
         // ================= Sửa lỗi tự động =================
-        const btnFixOverlap = document.getElementById('btn-fix-overlap');
-        const btnFixPhaCheModal = document.getElementById('btn-fix-phache-modal');
-
-        if (btnFixOverlap) {
-          btnFixOverlap.addEventListener('click', () => {
+        const btnOptimizeSchedule = document.getElementById('btn-optimize-schedule');
+        if (btnOptimizeSchedule) {
+          btnOptimizeSchedule.addEventListener('click', () => {
             Swal.close();
-            setTimeout(() => handleFixOverlappingEvents(), 200);
-          });
-        }
-        if (btnFixPhaCheModal) {
-          btnFixPhaCheModal.addEventListener('click', () => {
-            Swal.close();
-            setTimeout(() => handleAutoFixByPhaChe(), 200);
+            setTimeout(() => handleOptimizeSchedule(), 200);
           });
         }
 

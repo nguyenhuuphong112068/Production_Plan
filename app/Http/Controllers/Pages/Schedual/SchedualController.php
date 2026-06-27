@@ -1689,6 +1689,9 @@ class SchedualController extends Controller
                 ->select('room_links.source_room_id', 'room_links.target_room_id')
                 ->get();
 
+            $blister_molds = DB::table('blister_mold')->where('active', 1)->get();
+            $finished_product_molds = DB::table('finished_product_mold')->get();
+
             return response()->json([
                 'title' => $title,
                 'events' => $events,
@@ -1710,6 +1713,8 @@ class SchedualController extends Controller
                 'UesrID' => $UesrID,
                 'personnel_events' => $personnelEvents,
                 'room_links' => $room_links,
+                'blister_molds' => $blister_molds,
+                'finished_product_molds' => $finished_product_molds,
             ]);
         } catch (\Throwable  $e) {
 
@@ -2658,9 +2663,12 @@ class SchedualController extends Controller
                         if ($isMoveSelectedBatches && $sharedResource) {
                             $updateData['resourceId'] = $sharedResource;
                         } else {
-                            $updateData['resourceId'] = $change['resourceId'];
+                            $updateData['resourceId'] = $change['resourceId'] ?? null;
+                            if (array_key_exists('blister_mold_id', $change)) {
+                                $updateData['blister_mold_id'] = $change['blister_mold_id'];
+                            }
                             if ($isMoveSelectedBatches && !$sharedResource) {
-                                $sharedResource = $change['resourceId'];
+                                $sharedResource = $updateData['resourceId'];
                             }
                         }
 
@@ -4494,6 +4502,7 @@ class SchedualController extends Controller
                 'plan_list_id',
                 'plan_master_id',
                 'product_caterogy_id',
+                'blister_mold_id',
                 'predecessor_code',
                 'nextcessor_code',
                 'campaign_code',
@@ -4506,6 +4515,7 @@ class SchedualController extends Controller
                 'active',
                 'stage_code',
                 'title',
+                'first_in_campaign',
                 'start',
                 'end',
                 'resourceId',
@@ -4546,6 +4556,7 @@ class SchedualController extends Controller
                 'plan_list_id',
                 'plan_master_id',
                 'product_caterogy_id',
+                'blister_mold_id',
                 'predecessor_code',
                 'nextcessor_code',
                 'campaign_code',
@@ -4558,6 +4569,7 @@ class SchedualController extends Controller
                 'active',
                 'stage_code',
                 'title',
+                'first_in_campaign',
                 'start',
                 'end',
                 'resourceId',
@@ -4651,6 +4663,7 @@ class SchedualController extends Controller
                 'plan_list_id',
                 'plan_master_id',
                 'product_caterogy_id',
+                'blister_mold_id',
                 'predecessor_code',
                 'nextcessor_code',
                 'campaign_code',
@@ -4663,6 +4676,7 @@ class SchedualController extends Controller
                 'active',
                 'stage_code',
                 'title',
+                'first_in_campaign',
                 'start',
                 'end',
                 'resourceId',
@@ -4704,6 +4718,7 @@ class SchedualController extends Controller
                     'plan_list_id',
                     'plan_master_id',
                     'product_caterogy_id',
+                    'blister_mold_id',
                     'predecessor_code',
                     'nextcessor_code',
                     'campaign_code',
@@ -4716,6 +4731,7 @@ class SchedualController extends Controller
                     'active',
                     'stage_code',
                     'title',
+                    'first_in_campaign',
                     'start',
                     'end',
                     'resourceId',
@@ -4815,6 +4831,8 @@ class SchedualController extends Controller
                     'sp.order_by_line' => DB::raw('bkc.order_by_line'),
                     'sp.campaign_code' => DB::raw('bkc.campaign_code'),
                     'sp.immediately' => DB::raw('bkc.immediately'),
+                    'sp.blister_mold_id' => DB::raw('bkc.blister_mold_id'),
+                    'sp.first_in_campaign' => DB::raw('bkc.first_in_campaign'),
 
                 ]);
 

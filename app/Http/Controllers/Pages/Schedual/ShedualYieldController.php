@@ -45,6 +45,7 @@ class ShedualYieldController extends Controller
             ->whereNotNull('sp.start')
             ->where('sp.stage_code', '<=', 7)
             ->where('sp.deparment_code', session('user')['production_code'])
+            ->where('sp.active', 1)
             ->select(
                 "sp.$group_By",
                 //'sp.start',
@@ -69,6 +70,7 @@ class ShedualYieldController extends Controller
             ->whereNotNull('sp.start')
             ->where('sp.stage_code', '<=', 7)
             ->where('sp.deparment_code', session('user')['production_code'])
+            ->where('sp.active', 1)
             ->select(
                 "sp.$group_By",
                 DB::raw('
@@ -165,6 +167,7 @@ class ShedualYieldController extends Controller
                 ->leftJoin('plan_master', 'sp.plan_master_id', '=', 'plan_master.id')
                 ->join('room as r', 'sp.resourceId', '=', 'r.id') // 👈 JOIN thêm bảng room
                 ->where('sp.deparment_code', session('user')['production_code'])
+            ->where('sp.active', 1)
                 ->where('r.deparment_code', session('user')['production_code'])
                 ->whereNotNull('sp.start')
                 ->whereRaw('(sp.start <= ? AND sp.end >= ?)', [$dayEnd, $dayStart])
@@ -238,6 +241,7 @@ class ShedualYieldController extends Controller
             ->leftJoin('room as r', 'sp.resourceId', '=', 'r.id')
 
             ->where('sp.deparment_code', session('user')['production_code'])
+            ->where('sp.active', 1)
             ->whereNotNull('sp.resourceId')
             ->where('sp.stage_code', '<=', 7)
             // overlap yield time
@@ -327,6 +331,7 @@ class ShedualYieldController extends Controller
                 ->leftJoin('room as r', 'sp.resourceId', '=', 'r.id')
 
                 ->where('sp.deparment_code', session('user')['production_code'])
+            ->where('sp.active', 1)
                 ->whereNotNull('sp.resourceId')
 
                 ->whereRaw('(y.start < ? AND y.end > ?)', [$dayEndStr, $dayStartStr])
