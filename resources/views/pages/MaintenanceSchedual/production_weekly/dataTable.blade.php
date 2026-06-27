@@ -5,6 +5,8 @@
     // Group rooms by stage_name for the table display
     $groupedByStage = $groupedByRoom->groupBy(function ($rooms) {
         return $rooms->first()->stage_name ?? 'Không xác định';
+    })->sortBy(function ($roomsInStage) {
+        return $roomsInStage->first()->first()->room_stage_code ?? 999;
     });
 @endphp
 
@@ -33,6 +35,9 @@
                 <div class="col-md-4 text-right">
                     <button type="button" class="btn btn-info mr-2" onclick="$('.theory-time').toggle()">
                         <i class="fas fa-eye"></i> Hiện/Ẩn Lý Thuyết
+                    </button>
+                    <button class="btn btn-success mr-2" onclick="exportTableToExcel('excel_export_table', 'Ke_Hoach_Tuan_{{ $selectedDate }}')">
+                        <i class="fas fa-file-excel"></i> Xuất Excel
                     </button>
                     <button class="btn btn-primary" onclick="window.print()">
                         <i class="fas fa-print"></i> In Kế Hoạch
@@ -212,6 +217,103 @@
     </div>
 </div>
 
+    <table id="excel_export_table" style="display: none;">
+        <thead>
+            <tr>
+                <th rowspan="2">#</th>
+                <th rowspan="2">Phòng SX / Khu Vực</th>
+                @foreach ($weekDays as $day)
+                    <th colspan="4">{{ $day['label'] }} ({{ $day['display'] }})</th>
+                @endforeach
+            </tr>
+            <tr>
+                @foreach ($weekDays as $day)
+                    <th>Tên Sản Phẩm</th>
+                    <th>Số Lô</th>
+                    <th>Tình trạng</th>
+                    <th>Thời gian</th>
+                @endforeach
+            </tr>
+        </thead>
+        <tbody>
+            @php
+                $roomIndexExport = 1;
+                $stageCountExport = 0;
+            @endphp
+            @forelse($groupedByStage as $stageName => $roomsInStage)
+                <tr>
+                    <td colspan="30" style="font-weight: bold; background-color: #CDC717;">
+                        Công đoạn: {{ $stageName }}
+                    </td>
+                </tr>
+                @foreach ($roomsInStage as $roomId => $events)
+                    @php
+                        $firstEvent = $events->first();
+                        $validEventsFlat = $events->whereNotNull('sp_id');
+                        
+                        $dayEventsMap = [];
+                        $maxEvents = 1;
+                        foreach ($weekDays as $day) {
+                            $dayEvents = $validEventsFlat->where('day_key', $day['date'])->values();
+                            $dayEventsMap[$day['date']] = $dayEvents;
+                            if ($dayEvents->count() > $maxEvents) {
+                                $maxEvents = $dayEvents->count();
+                            }
+                        }
+                    @endphp
+                    @for ($i = 0; $i < $maxEvents; $i++)
+                        <tr>
+                            @if ($i == 0)
+                                <td rowspan="{{ $maxEvents }}">{{ $roomIndexExport++ }}</td>
+                                <td rowspan="{{ $maxEvents }}">{{ $firstEvent->room_code }} - {{ $firstEvent->room_name }}</td>
+                            @endif
+                            @foreach ($weekDays as $day)
+                                @php
+                                    $e = $dayEventsMap[$day['date']][$i] ?? null;
+                                @endphp
+                                @if ($e)
+                                    @php
+                                        $start = \Carbon\Carbon::parse($e->slot_start ?? $e->planned_start);
+                                        $end = \Carbon\Carbon::parse($e->slot_end ?? $e->planned_end);
+                                        
+                                        $timeStr = $start->format('H:i') . ' -> ' . $end->format('H:i');
+                                        
+                                        $batchDisplay = $e->actual_batch ?? $e->batch;
+                                        
+                                        $bgColor = '';
+                                        if (!(isset($e->is_actual) && $e->is_actual)) {
+                                            $status = 'Lý Thuyết';
+                                            $bgColor = '#d4edda'; // Xanh lá nhạt
+                                        } elseif (isset($e->is_cleaning) && $e->is_cleaning) {
+                                            $status = 'Vệ sinh';
+                                            $bgColor = '#fff3cd'; // Vàng nhạt
+                                        } else {
+                                            $status = $e->finished ? 'Hoàn thành' : 'Thực tế';
+                                            $bgColor = $e->finished ? '#e3f2fd' : '#f0fdf4';
+                                        }
+                                    @endphp
+                                    <td style="background-color: {{ $bgColor }};">{{ $e->display_title }}</td>
+                                    <td style="background-color: {{ $bgColor }}; mso-number-format:'\@';">{{ $batchDisplay }}</td>
+                                    <td style="background-color: {{ $bgColor }};">{{ $status }}</td>
+                                    <td style="background-color: {{ $bgColor }};">{{ $timeStr }}</td>
+                                @else
+                                    <td></td>
+                                    <td></td>
+                                    <td></td>
+                                    <td></td>
+                                @endif
+                            @endforeach
+                        </tr>
+                    @endfor
+                @endforeach
+            @empty
+                <tr>
+                    <td colspan="30" class="text-center">Dữ liệu không tồn tại.</td>
+                </tr>
+            @endforelse
+        </tbody>
+    </table>
+
 <style>
     /* Professional Sticky Header */
     #production_weekly_table thead th {
@@ -336,4 +438,28 @@
             $('#filterForm').submit();
         });
     });
+
+    function exportTableToExcel(tableID, filename = ''){
+        var downloadLink;
+        var dataType = 'application/vnd.ms-excel';
+        var tableSelect = document.getElementById(tableID);
+        var tableHTML = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8" /><style>table { border-collapse: collapse; } th, td { border: 1px solid black; white-space: nowrap; }</style></head><body>' + tableSelect.outerHTML + '</body></html>';
+        
+        filename = filename ? filename + '.xls' : 'KeHoachTuan.xls';
+        
+        var blob = new Blob(['\ufeff' + tableHTML], {
+            type: dataType
+        });
+        
+        if (navigator.msSaveOrOpenBlob) {
+            navigator.msSaveOrOpenBlob(blob, filename);
+        } else {
+            downloadLink = document.createElement("a");
+            document.body.appendChild(downloadLink);
+            downloadLink.href = URL.createObjectURL(blob);
+            downloadLink.download = filename;
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+        }
+    }
 </script>
