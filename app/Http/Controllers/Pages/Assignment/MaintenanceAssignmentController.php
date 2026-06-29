@@ -344,32 +344,22 @@ class MaintenanceAssignmentController extends Controller
             });
 
         if ($group_code) {
-            $personnelQuery->where(function ($q) use ($group_code) {
-                $q->whereExists(function ($query) use ($group_code) {
-                    $query->select(DB::raw(1))
-                        ->from('user_management as um')
-                        ->leftJoin('stage_groups as sg', 'um.groupName', '=', 'sg.name')
-                        ->whereColumn('um.userName', 'e.code')
-                        ->where(function ($sq) use ($group_code) {
-                            if ($group_code === 'EN_ALL') {
-                                $sq->where('um.deparment', 'EN');
-                            } elseif ($group_code == 20) {
-                                $sq->where('um.deparment', 'QA');
-                            } else {
-                                $sq->where('sg.code', $group_code);
-                            }
-                        })
-                        ->where('um.isActive', 1);
-                });
+            $personnelQuery->whereExists(function ($query) use ($group_code) {
+                $query->select(DB::raw(1))
+                    ->from('employee_assignments as ea')
+                    ->whereColumn('ea.employees_id', 'e.id')
+                    ->where('ea.active', 1);
 
-                if ($group_code !== 'EN_ALL' && $group_code != 20) {
-                    $q->orWhereExists(function ($query) use ($group_code) {
-                        $query->select(DB::raw(1))
-                            ->from('employee_assignments as ea')
-                            ->whereColumn('ea.employees_id', 'e.id')
-                            ->where('ea.group_id', $group_code)
-                            ->where('ea.active', 1);
-                    });
+                if ($group_code === 'EN_ALL') {
+                    $query->where('ea.production_code', 'EN');
+                } elseif ($group_code == 20) {
+                    $query->where('ea.production_code', 'QA');
+                } else {
+                    $query->leftJoin('stage_groups as sg', 'ea.group_id', '=', 'sg.id')
+                        ->where(function ($q2) use ($group_code) {
+                            $q2->where('sg.code', $group_code)
+                               ->orWhere('ea.group_id', $group_code);
+                        });
                 }
             });
         }
@@ -1051,32 +1041,22 @@ class MaintenanceAssignmentController extends Controller
             ->where('e.active', 1);
 
         if ($group_code) {
-            $personnelQuery->where(function ($q) use ($group_code) {
-                $q->whereExists(function ($query) use ($group_code) {
-                    $query->select(DB::raw(1))
-                        ->from('user_management as um')
-                        ->leftJoin('stage_groups as sg', 'um.groupName', '=', 'sg.name')
-                        ->whereColumn('um.userName', 'e.code')
-                        ->where(function ($sq) use ($group_code) {
-                            if ($group_code === 'EN_ALL') {
-                                $sq->where('um.deparment', 'EN');
-                            } elseif ($group_code == 20) {
-                                $sq->where('um.deparment', 'QA');
-                            } else {
-                                $sq->where('sg.code', $group_code);
-                            }
-                        })
-                        ->where('um.isActive', 1);
-                });
+            $personnelQuery->whereExists(function ($query) use ($group_code) {
+                $query->select(DB::raw(1))
+                    ->from('employee_assignments as ea')
+                    ->whereColumn('ea.employees_id', 'e.id')
+                    ->where('ea.active', 1);
 
-                if ($group_code !== 'EN_ALL' && $group_code != 20) {
-                    $q->orWhereExists(function ($query) use ($group_code) {
-                        $query->select(DB::raw(1))
-                            ->from('employee_assignments as ea')
-                            ->whereColumn('ea.employees_id', 'e.id')
-                            ->where('ea.group_id', $group_code)
-                            ->where('ea.active', 1);
-                    });
+                if ($group_code === 'EN_ALL') {
+                    $query->where('ea.production_code', 'EN');
+                } elseif ($group_code == 20) {
+                    $query->where('ea.production_code', 'QA');
+                } else {
+                    $query->leftJoin('stage_groups as sg', 'ea.group_id', '=', 'sg.id')
+                        ->where(function ($q2) use ($group_code) {
+                            $q2->where('sg.code', $group_code)
+                               ->orWhere('ea.group_id', $group_code);
+                        });
                 }
             });
         }

@@ -470,6 +470,10 @@
                     title="Xem báo cáo tình hình nhân sự hiện tại">
                     <i class="fas fa-chart-bar"></i> Xem báo cáo
                 </button>
+                <button class="btn btn-sm btn-success shadow-sm ml-2" id="btn-export-excel"
+                    title="Xuất file Excel lịch công tác">
+                    <i class="fas fa-file-excel"></i> Xuất Excel
+                </button>
                 @if ($canEdit)
                     <button class="btn btn-sm btn-primary shadow-sm ml-2" id="btn-save-all">
                         <i class="fas fa-save"></i> Lưu toàn bộ lịch
@@ -3220,6 +3224,151 @@
         }
 
         $(document).on('click', '#btn-view-report', showAssignmentReport);
+
+        $(document).on('click', '#btn-export-excel', function() {
+            let groupName = '';
+            if ($('select[name="group_code"]').length > 0) {
+                const selectedText = $('select[name="group_code"] option:selected').text().trim();
+                if (selectedText && selectedText !== '-- Tất cả --') {
+                    groupName = selectedText;
+                }
+            } else if ($('a[href*="portal"]').length > 0) {
+                const text = $('a[href*="portal"]').text().trim();
+                if (text && text !== 'Chọn Tổ') {
+                    groupName = text;
+                }
+            }
+
+            let titleHtml = `
+                <tr>
+                    <th colspan="6" style="font-size: 16px; border: none; text-align: left;">Lịch Công Tác Bảo Trì</th>
+                </tr>
+            `;
+            if (groupName) {
+                titleHtml += `
+                <tr>
+                    <th colspan="6" style="border: none; text-align: left;">Tổ: ${groupName}</th>
+                </tr>`;
+            }
+            titleHtml += `
+                <tr>
+                    <th colspan="6" style="border: none; text-align: left;">Ngày: ${$('#reportedDate').val() || $('input[name="reportedDate"]').val() || ''}</th>
+                </tr>
+            `;
+
+            let tableHtml = `
+                <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+                <head>
+                    <meta charset="utf-8" />
+                    <style>
+                        table { border-collapse: collapse; } 
+                        th, td { border: 1px solid black; padding: 5px; vertical-align: top; }
+                        th { background-color: #f2f2f2; font-weight: bold; text-align: center; }
+                    </style>
+                </head>
+                <body>
+                    <table>
+                        <thead>
+                            ${titleHtml}
+                            <tr>
+                                <th>Phòng / Vị trí</th>
+                                <th>Ca</th>
+                                <th>Số lượng Đã xếp</th>
+                                <th>Nhân sự</th>
+                                <th>Giờ làm việc</th>
+                                <th>Chi tiết công việc</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            const shiftSummary = {};
+
+            $('.room-row').each(function() {
+                const $row = $(this);
+                if ($row.css('display') === 'none') return; // Skip hidden rows
+
+                let roomName = '';
+                if ($row.find('.room-select-custom').length > 0) {
+                    roomName = $row.find('.room-select-custom').val() || 'Công tác khác';
+                } else {
+                    roomName = $row.find('.room-name-cell b').text() + ' - ' + $row.find('.room-name-cell div').eq(1).text();
+                    const eqName = $row.find('.room-name-cell .text-muted').text().trim();
+                    if (eqName) roomName += ' (' + eqName + ')';
+                }
+
+                $row.find('.assignment-item').each(function() {
+                    const $item = $(this);
+                    
+                    const shiftVal = $item.find('.shift-select').val();
+                    let shiftName = 'Khác';
+                    if (shiftVal === '1') shiftName = 'Ca 1';
+                    else if (shiftVal === '2') shiftName = 'Ca 2';
+                    else if (shiftVal === '3') shiftName = 'Ca 3';
+                    else if (shiftVal === '6') shiftName = 'Ca 4';
+                    else if (shiftVal === '4') shiftName = 'Hành chính';
+
+                    const personnel = [];
+                    $item.find('.personnel-container .person-select').each(function() {
+                        const val = $(this).val();
+                        if (val) {
+                            const name = $(this).find('option:selected').text();
+                            personnel.push(name);
+                        }
+                    });
+                    const personnelStr = personnel.join('<br>');
+                    const assignedCount = personnel.length;
+
+                    const startTime = $item.find('.start-time-input').val() || '';
+                    const endTime = $item.find('.end-time-input').val() || '';
+                    const timeStr = (startTime && endTime) ? `${startTime} - ${endTime}` : '';
+
+                    const workDetail = $item.find('.work-detail-input').val() || '';
+
+                    if (!shiftSummary[shiftName]) shiftSummary[shiftName] = 0;
+                    shiftSummary[shiftName] += assignedCount;
+
+                    tableHtml += `
+                        <tr>
+                            <td>${roomName}</td>
+                            <td style="text-align:center">${shiftName}</td>
+                            <td style="text-align:center">${assignedCount}</td>
+                            <td>${personnelStr}</td>
+                            <td style="text-align:center">${timeStr}</td>
+                            <td>${workDetail}</td>
+                        </tr>
+                    `;
+                });
+            });
+
+            tableHtml += `</tbody></table>`;
+
+            tableHtml += `
+                <br>
+                <table>
+                    <thead>
+                        <tr><th colspan="2" style="background-color: #e2e3e5; font-size: 14px; text-align: left;">Tổng kết số người đã sắp theo ca</th></tr>
+                        <tr><th>Ca</th><th>Số người đã sắp</th></tr>
+                    </thead>
+                    <tbody>
+            `;
+            let totalAssignedAllShifts = 0;
+            for (const shift in shiftSummary) {
+                tableHtml += `<tr><td style="text-align:center">${shift}</td><td style="text-align:center; font-weight:bold">${shiftSummary[shift]}</td></tr>`;
+                totalAssignedAllShifts += shiftSummary[shift];
+            }
+            tableHtml += `<tr><td style="text-align:center; font-weight:bold">Tổng cộng</td><td style="text-align:center; font-weight:bold; color: red;">${totalAssignedAllShifts}</td></tr>`;
+            tableHtml += `</tbody></table></body></html>`;
+
+            const blob = new Blob(['\ufeff' + tableHtml], { type: 'application/vnd.ms-excel;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = "Lich_Cong_Tac_" + ($('input[name="reportedDate"]').val() || "Export") + ".xls";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
 
         $(document).on('click', '#btn-auto-assign', autoAssign);
         // --------------------------------------------------------

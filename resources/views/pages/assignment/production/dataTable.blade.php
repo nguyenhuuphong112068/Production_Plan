@@ -456,16 +456,20 @@
                 @if ($hasAuthorizeOvertime && !$isOvertimeApproved)
                     <button class="btn btn-sm btn-warning shadow-sm ml-2" id="btn-approve-overtime"
                         title="Chấp Nhân Vượt Trần Chính Sách Tăng ca ">
-                        <i class="fas fa-check-circle"></i> Chấp Nhân Vượt Trần Tăng ca
+                        <i class="fas fa-check-circle"></i> Chấp Nhân Tăng ca
                     </button>
                 @endif
                 <button class="btn btn-sm btn-secondary shadow-sm ml-2" id="btn-view-report"
                     title="Xem báo cáo tình hình nhân sự hiện tại">
                     <i class="fas fa-chart-bar"></i> Xem báo cáo
                 </button>
+                <button class="btn btn-sm btn-success shadow-sm ml-2" id="btn-export-excel"
+                    title="Xuất file Excel lịch công tác">
+                    <i class="fas fa-file-excel"></i> Xuất Excel
+                </button>
 
                 @if ($canEdit)
-                    <button class="btn btn-sm btn-success shadow-sm" id="btn-add-custom-task">
+                    <button class="btn btn-sm btn-success shadow-sm ml-2" id="btn-add-custom-task">
                         <i class="fas fa-plus"></i> Thêm Công Tác Khác
                     </button>
                     <button class="btn btn-sm btn-info shadow-sm ml-2" id="btn-auto-assign"
@@ -1418,6 +1422,7 @@
                         if (start || end) {
                             const isSaved = !roomRow.find('.btn-save-room').hasClass('is-dirty');
                             assignments.push({
+                                element: foundPersonRow,
                                 assignment_id: assId,
                                 room: roomCode,
                                 start: start,
@@ -1449,10 +1454,43 @@
                 });
 
                 if (assignments.length > 0) {
-                    assignments.forEach(a => {
-                        totalHours += calculateDurationHours(a.start, a.end, a.shift);
+                    // Sort by start time chronologically
+                    assignments.sort((a, b) => {
+                        const startA = a.start ? timeStrToMins(a.start) : 0;
+                        const startB = b.start ? timeStrToMins(b.start) : 0;
+                        return startA - startB;
                     });
-                    totalHours = Math.round(totalHours * 100) / 100;
+
+                    let cumulativeHours = 0;
+
+                    assignments.forEach(a => {
+                        let duration = calculateDurationHours(a.start, a.end, a.shift);
+
+                        if (a.element) {
+                            const displayEl = a.element.find('.time-display');
+                            let tc = 0;
+                            if (cumulativeHours >= 8) {
+                                tc = duration; // Toàn bộ ca này là TC
+                            } else if (cumulativeHours + duration > 8) {
+                                tc = cumulativeHours + duration - 8;
+                            }
+
+                            let html = displayEl.html() || '';
+                            // Xóa span TC cũ (nếu có) để tránh bị lặp lại
+                            html = html.replace(/<span style="color:#dc3545[^>]*>.*?<\/span>/g, '')
+                                .trim();
+
+                            if (tc > 0.01) {
+                                html +=
+                                    ` <span style="color:#dc3545;font-weight:bold;">TC:${tc.toFixed(1)}h</span>`;
+                            }
+                            displayEl.html(html);
+                        }
+
+                        cumulativeHours += duration;
+                    });
+
+                    totalHours = Math.round(cumulativeHours * 100) / 100;
 
                     let hasUnsaved = assignments.some(a => a.is_local && !a.is_saved);
                     let totalBadgeClass = hasUnsaved ? 'badge-danger' : 'badge-success';
@@ -2208,7 +2246,7 @@
             const skillData = personnelSkills[personId];
             if (!skillData) {
                 Swal.fire({
-                    icon: 'error',
+                    icon: 'warning',
                     title: 'Không được phép',
                     text: 'Nhân sự này chưa được định mức (phân quyền) làm việc tại bất kỳ phòng nào.'
                 });
@@ -2222,7 +2260,7 @@
             if (!allowedRoomIds.includes(roomId.toString())) {
                 const roomName = roomNames[roomId] || 'phòng này';
                 Swal.fire({
-                    icon: 'error',
+                    icon: 'warning',
                     title: 'Không được phép',
                     text: `Nhân sự này chưa được phép để làm việc tại: ${roomName}.`
                 });
@@ -2254,7 +2292,7 @@
                 for (const person of persons) {
                     if (person.shiftKey === 'P') {
                         await Swal.fire({
-                            icon: 'error',
+                            icon: 'warning',
                             title: 'Không thể sắp lịch',
                             text: `Nhân sự ${person.name} đang nghỉ phép (P), không thể sắp vào ca sản xuất.`
                         });
@@ -3038,16 +3076,19 @@
             });
         });
 
-        $(document).on('click', '#btn-print-schedule', function() {
-            let checkPol = checkOvertimePolicyBeforeSave();
-            if (!checkPol.valid && !isOvertimeApproved) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Không thể In',
-                    html: 'Có cảnh báo vượt mức trần tăng ca. Vui lòng bấm <b>Phê duyệt Tăng ca</b> trước khi in.<br><br>' +
-                        checkPol.message
-                });
-                return;
+        $(document).on('click', '#btn-print-schedule', function(e) {
+            e.preventDefault();
+            if ('{{ trim($production_code) }}' === 'PXV1') {
+                let otData = calculateTotalOvertime();
+                let hasOvertime = otData.dept.persons > 0;
+                if (hasOvertime && !isOvertimeApproved) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Không thể In',
+                        html: 'Có nhân sự tăng ca (làm việc > 8h). Vui lòng bấm <b>Chấp Nhận Tăng ca</b> trước khi in lịch.'
+                    });
+                    return;
+                }
             }
 
             const url = $(this).attr('data-url');
@@ -4014,6 +4055,172 @@
 
         $(document).on('click', '#btn-view-report', showAssignmentReport);
 
+        $(document).on('click', '#btn-export-excel', function(e) {
+            e.preventDefault();
+            if ('{{ trim($production_code) }}' === 'PXV1') {
+                let otData = calculateTotalOvertime();
+                let hasOvertime = otData.dept.persons > 0;
+                if (hasOvertime && !isOvertimeApproved) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Không thể Xuất Excel',
+                        html: 'Có nhân sự tăng ca (làm việc > 8h). Vui lòng bấm <b>Chấp Nhận Tăng ca</b> trước khi xuất file Excel.'
+                    });
+                    return;
+                }
+            }
+
+            let groupName = '';
+            if ($('select[name="group_code"]').length > 0) {
+                const selectedText = $('select[name="group_code"] option:selected').text().trim();
+                if (selectedText && selectedText !== '-- Tất cả --') {
+                    groupName = selectedText;
+                }
+            } else if ($('a[href*="portal"]').length > 0) {
+                const text = $('a[href*="portal"]').text().trim();
+                if (text && text !== 'Chọn Tổ') {
+                    groupName = text;
+                }
+            }
+
+            let titleHtml = `
+                <tr>
+                    <th colspan="6" style="font-size: 16px; border: none; text-align: left;">Lịch Công Tác Phân Xưởng</th>
+                </tr>
+            `;
+            if (groupName) {
+                titleHtml += `
+                <tr>
+                    <th colspan="6" style="border: none; text-align: left;">Tổ: ${groupName}</th>
+                </tr>`;
+            }
+            titleHtml += `
+                <tr>
+                    <th colspan="6" style="border: none; text-align: left;">Ngày: ${$('#reportedDate').val() || $('input[name="reportedDate"]').val() || ''}</th>
+                </tr>
+            `;
+
+            let tableHtml = `
+                <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+                <head>
+                    <meta charset="utf-8" />
+                    <style>
+                        table { border-collapse: collapse; } 
+                        th, td { border: 1px solid black; padding: 5px; vertical-align: top; }
+                        th { background-color: #f2f2f2; font-weight: bold; text-align: center; }
+                    </style>
+                </head>
+                <body>
+                    <table>
+                        <thead>
+                            ${titleHtml}
+                            <tr>
+                                <th>Phòng / Vị trí</th>
+                                <th>Ca</th>
+                                <th>Số lượng Đã xếp</th>
+                                <th>Nhân sự</th>
+                                <th>Giờ làm việc</th>
+                                <th>Chi tiết công việc</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            const shiftSummary = {};
+
+            $('.room-row').each(function() {
+                const $row = $(this);
+                if ($row.css('display') === 'none') return; // Skip hidden rows
+
+                let roomName = '';
+                if ($row.find('.room-select-custom').length > 0) {
+                    roomName = $row.find('.room-select-custom').val() || 'Công tác khác';
+                } else {
+                    roomName = $row.find('.room-name-cell b').text() + ' - ' + $row.find(
+                        '.room-name-cell div').eq(1).text();
+                    const eqName = $row.find('.room-name-cell .text-muted').text().trim();
+                    if (eqName) roomName += ' (' + eqName + ')';
+                }
+
+                $row.find('.assignment-item').each(function() {
+                    const $item = $(this);
+
+                    const shiftVal = $item.find('.shift-select').val();
+                    let shiftName = 'Khác';
+                    if (shiftVal === '1') shiftName = 'Ca 1';
+                    else if (shiftVal === '2') shiftName = 'Ca 2';
+                    else if (shiftVal === '3') shiftName = 'Ca 3';
+                    else if (shiftVal === '6') shiftName = 'Ca 4';
+                    else if (shiftVal === '4') shiftName = 'Hành chính';
+
+                    const personnel = [];
+                    $item.find('.personnel-container .person-select').each(function() {
+                        const val = $(this).val();
+                        if (val) {
+                            const name = $(this).find('option:selected').text();
+                            personnel.push(name);
+                        }
+                    });
+                    const personnelStr = personnel.join('<br>');
+                    const assignedCount = personnel.length;
+
+                    const startTime = $item.find('.start-time-input').val() || '';
+                    const endTime = $item.find('.end-time-input').val() || '';
+                    const timeStr = (startTime && endTime) ?
+                        `${startTime} - ${endTime}` : '';
+
+                    const workDetail = $item.find('.work-detail-input').val() || '';
+
+                    if (!shiftSummary[shiftName]) shiftSummary[shiftName] = 0;
+                    shiftSummary[shiftName] += assignedCount;
+
+                    tableHtml += `
+                        <tr>
+                            <td>${roomName}</td>
+                            <td style="text-align:center">${shiftName}</td>
+                            <td style="text-align:center">${assignedCount}</td>
+                            <td>${personnelStr}</td>
+                            <td style="text-align:center">${timeStr}</td>
+                            <td>${workDetail}</td>
+                        </tr>
+                    `;
+                });
+            });
+
+            tableHtml += `</tbody></table>`;
+
+            tableHtml += `
+                <br>
+                <table>
+                    <thead>
+                        <tr><th colspan="2" style="background-color: #e2e3e5; font-size: 14px; text-align: left;">Tổng kết số người đã sắp theo ca</th></tr>
+                        <tr><th>Ca</th><th>Số người đã sắp</th></tr>
+                    </thead>
+                    <tbody>
+            `;
+            let totalAssignedAllShifts = 0;
+            for (const shift in shiftSummary) {
+                tableHtml +=
+                    `<tr><td style="text-align:center">${shift}</td><td style="text-align:center; font-weight:bold">${shiftSummary[shift]}</td></tr>`;
+                totalAssignedAllShifts += shiftSummary[shift];
+            }
+            tableHtml +=
+                `<tr><td style="text-align:center; font-weight:bold">Tổng cộng</td><td style="text-align:center; font-weight:bold; color: red;">${totalAssignedAllShifts}</td></tr>`;
+            tableHtml += `</tbody></table></body></html>`;
+
+            const blob = new Blob(['\ufeff' + tableHtml], {
+                type: 'application/vnd.ms-excel;charset=utf-8'
+            });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = "Lich_Cong_Tac_" + ($('input[name="reportedDate"]').val() || "Export") +
+                ".xls";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+
         $(document).on('click', '#btn-auto-assign', autoAssign);
         // --------------------------------------------------------
 
@@ -4117,8 +4324,9 @@
             };
 
             data.forEach(person => {
-                if (person.on_maternity_leave == 1) return; // Ẩn nhân sự thai sản hoàn toàn khỏi sidebar
-                
+                if (person.on_maternity_leave == 1)
+                    return; // Ẩn nhân sự thai sản hoàn toàn khỏi sidebar
+
                 const dayKey = 'day' + currentDay;
                 let shiftCode = 'HC';
                 if (person.days && person.days[dayKey]) {
@@ -4802,9 +5010,11 @@
     function timeStrToMins(t) {
         if (!t) return 0;
         t = t.toString().trim();
-        if (t.length > 5) t = t.substring(11, 16); // Handle datetime strings
+        if (t.includes(' ')) {
+            t = t.split(' ')[1]; // Extract time part from datetime
+        }
         const parts = t.split(':');
-        return (parseInt(parts[0]) || 0) * 60 + (parseInt(parts[1]) || 0);
+        return (parseInt(parts[0], 10) || 0) * 60 + (parseInt(parts[1], 10) || 0);
     }
 
     function calculateTotalOvertime() {
@@ -4813,6 +5023,7 @@
 
         $('.room-row').each(function() {
             const $roomRow = $(this);
+            if ($roomRow.css('display') === 'none') return; // Bỏ qua các dòng bị ẩn
             // data-group-code = code của tổ (khớp với stage_groups.code = pol.group_code_value)
             const groupCode = ($roomRow.attr('data-group-code') || '').toString();
 
@@ -4835,20 +5046,37 @@
                     const pEndStr = $(this).find('.p-end-input').val();
 
                     let personMins = shiftEnd - shiftStart;
-                    if (pStartStr && pEndStr) {
+
+                    // Đọc từ span hiển thị (ví dụ: =8.0h) để đảm bảo giống hệt logic tính toán ở Frontend (kể cả nghỉ trưa)
+                    const displayHtml = $(this).find('.time-display').html() || '';
+                    const match = displayHtml.match(/=([0-9\.]+)h/);
+
+                    if (match) {
+                        personMins = parseFloat(match[1]) * 60;
+                    } else if (pStartStr && pEndStr) {
                         let pS = timeStrToMins(pStartStr);
                         let pE = timeStrToMins(pEndStr);
                         if (pE <= pS) pE += 24 * 60;
                         personMins = pE - pS;
                     }
 
+                    const personName = $(this).find('.person-select option:selected').text()
+                        .trim() || 'Unknown';
+                    const roomName = $roomRow.find('.room-name-cell').text().trim().replace(
+                        /\s+/g, ' ');
+                    const shiftVal = $item.find('.shift-select').val() || '1';
+
                     if (!personData[pid]) {
                         personData[pid] = {
+                            name: personName,
                             totalMins: 0,
-                            groupCodes: new Set()
+                            groupCodes: new Set(),
+                            details: []
                         };
                     }
                     personData[pid].totalMins += personMins;
+                    personData[pid].details.push(
+                        `Phòng: ${roomName}, Ca: ${shiftVal}, Mins: ${personMins}`);
                     if (groupCode) personData[pid].groupCodes.add(groupCode);
                 });
             });
@@ -4863,7 +5091,10 @@
         for (let pid in personData) {
             const p = personData[pid];
             const totalHrs = p.totalMins / 60;
-            if (totalHrs > 8) {
+            if (totalHrs > 8.01) {
+                console.log('Overtime detected for pid:', pid, 'Name:', p.name, 'totalMins:', p.totalMins, 'totalHrs:',
+                    totalHrs);
+                console.log('Details:', p.details.join(' | '));
                 const otHrs = parseFloat((totalHrs - 8).toFixed(2));
                 totalHoursDept += otHrs;
                 totalPersonsDept++;
