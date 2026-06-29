@@ -444,6 +444,19 @@ class PersonnelController extends Controller
         return redirect()->back()->with('success', 'Đã thay đổi trạng thái thành công!');
     }
 
+    public function toggleMaternityLeave(Request $request)
+    {
+        $employeeId = $request->id;
+        $status = $request->status;
+
+        DB::table('employees')->where('id', $employeeId)->update([
+            'on_maternity_leave' => $status,
+            'updated_at' => now(),
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'Cập nhật trạng thái thai sản thành công!']);
+    }
+
     public function updatePermissions(Request $request)
     {
         \Illuminate\Support\Facades\Log::info($request->all());

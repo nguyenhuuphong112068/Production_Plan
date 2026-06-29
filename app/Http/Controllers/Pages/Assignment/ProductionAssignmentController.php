@@ -579,7 +579,7 @@ class ProductionAssignmentController extends Controller
                 }
 
                 // Lấy thông tin hasAssignment từ bảng employees local
-                $localEmployees = DB::table('employees')->select('code', 'hasAssignment')->get()->keyBy('code');
+                $localEmployees = DB::table('employees')->select('code', 'hasAssignment', 'on_maternity_leave')->get()->keyBy('code');
 
                 foreach ($personnelData as &$person) {
                     $code = $person['employeeId'] ?? $person['code'] ?? null;
@@ -612,8 +612,10 @@ class ProductionAssignmentController extends Controller
                     // Gán hasAssignment
                     if ($code && isset($localEmployees[$code])) {
                         $person['hasAssignment'] = $localEmployees[$code]->hasAssignment;
+                        $person['on_maternity_leave'] = $localEmployees[$code]->on_maternity_leave;
                     } else {
                         $person['hasAssignment'] = 1; // Mặc định là 1 (có sắp lịch)
+                        $person['on_maternity_leave'] = 0;
                     }
                 }
             }

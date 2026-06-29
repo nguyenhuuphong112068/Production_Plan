@@ -19,6 +19,22 @@
         padding: 4px 8px !important;
     }
 
+    /* Professional Maternity Switch */
+    .maternity-switch.custom-switch .custom-control-input:checked~.custom-control-label::before {
+        background-color: #e83e8c;
+        border-color: #e83e8c;
+    }
+
+    .maternity-switch .custom-control-label {
+        font-weight: 500;
+        transition: color 0.2s ease-in-out;
+    }
+
+    .maternity-switch .custom-control-input:checked~.custom-control-label {
+        color: #e83e8c !important;
+        font-weight: 600;
+    }
+
     /* Style Phân nhóm Tổ - Phòng */
     .group-segment {
         border-bottom: 2px solid #dee2e6 !important;
@@ -512,7 +528,20 @@
                                 @endif
                             </td>
                             <td>{{ $data->code }}</td>
-                            <td>{{ $data->name }}</td>
+                            <td>
+                                <div class="font-weight-bold">{{ $data->name }}</div>
+                                <div class="custom-control custom-switch maternity-switch mt-2 mx-4">
+                                    <input type="checkbox" class="custom-control-input toggle-maternity-leave"
+                                        id="maternity_{{ $data->id }}" data-id="{{ $data->id }}"
+                                        {{ $data->on_maternity_leave ? 'checked' : '' }} {{ $disabled }}>
+                                    <label class="custom-control-label small text-muted"
+                                        for="maternity_{{ $data->id }}" style="cursor:pointer;"
+                                        title="Đánh dấu nếu nhân sự này đang nghỉ thai sản">
+                                        <i class="fas fa-baby mr-1" style="font-size: 0.9em; opacity: 0.8;"></i>Đang
+                                        nghỉ thai sản
+                                    </label>
+                                </div>
+                            </td>
 
                             <td class="text-center">
                                 <span class="badge badge-info shadow-sm">{{ $data->main_production }}</span>
@@ -676,16 +705,39 @@
                                                                     data-active="{{ $rActive }}"
                                                                     data-group-id="{{ $rGrpId }}"
                                                                     data-priority="{{ $rPriorityLevel }}">
-                                                                    <i class="fas fa-grip-vertical text-muted mr-2 cursor-grab" style="cursor: grab;" title="Kéo thả để sắp xếp độ ưu tiên"></i>
-                                                                    <span class="badge badge-secondary priority-badge mr-1" style="width: 20px; text-align: center;" title="Ưu tiên {{ $rPriorityLevel }}">{{ $rPriorityLevel }}</span>
-                                                                    <div class="input-group input-group-sm mr-1" style="width: 250px;">
+                                                                    <i class="fas fa-grip-vertical text-muted mr-2 cursor-grab"
+                                                                        style="cursor: grab;"
+                                                                        title="Kéo thả để sắp xếp độ ưu tiên"></i>
+                                                                    <span
+                                                                        class="badge badge-secondary priority-badge mr-1"
+                                                                        style="width: 20px; text-align: center;"
+                                                                        title="Ưu tiên {{ $rPriorityLevel }}">{{ $rPriorityLevel }}</span>
+                                                                    <div class="input-group input-group-sm mr-1"
+                                                                        style="width: 250px;">
                                                                         @php
-                                                                            $roomNameDisp = $rId && isset($roomsById[$rId]) ? ($roomsById[$rId]->code . ' - ' . $roomsById[$rId]->name . ' - ' . $roomsById[$rId]->main_equiment_name) : '-- Phòng --';
+                                                                            $roomNameDisp =
+                                                                                $rId && isset($roomsById[$rId])
+                                                                                    ? $roomsById[$rId]->code .
+                                                                                        ' - ' .
+                                                                                        $roomsById[$rId]->name .
+                                                                                        ' - ' .
+                                                                                        $roomsById[$rId]
+                                                                                            ->main_equiment_name
+                                                                                    : '-- Phòng --';
                                                                         @endphp
-                                                                        <input type="text" class="form-control room-name-display" readonly value="{{ $roomNameDisp }}" style="font-size: 0.8rem; background-color: #fff; cursor: pointer;" title="{{ $roomNameDisp }}">
-                                                                        <input type="hidden" class="room-id-select" value="{{ $rId }}">
+                                                                        <input type="text"
+                                                                            class="form-control room-name-display"
+                                                                            readonly value="{{ $roomNameDisp }}"
+                                                                            style="font-size: 0.8rem; background-color: #fff; cursor: pointer;"
+                                                                            title="{{ $roomNameDisp }}">
+                                                                        <input type="hidden" class="room-id-select"
+                                                                            value="{{ $rId }}">
                                                                         <div class="input-group-append">
-                                                                            <button class="btn btn-outline-info btn-edit-room-modal" type="button" {{ $disabled }} title="Đổi phòng"><i class="fas fa-edit"></i></button>
+                                                                            <button
+                                                                                class="btn btn-outline-info btn-edit-room-modal"
+                                                                                type="button" {{ $disabled }}
+                                                                                title="Đổi phòng"><i
+                                                                                    class="fas fa-edit"></i></button>
                                                                         </div>
                                                                     </div>
                                                                     <select
@@ -732,12 +784,12 @@
                                                                         class="btn btn-sm btn-{{ $rActive == 1 ? 'danger' : 'success' }} btn-toggle-room-active ml-1"
                                                                         {{ $disabled }}
                                                                         title="{{ $rActive == 1 ? 'Vô hiệu hóa' : 'Kích hoạt' }}">
-                                                                        <i class="fas fa-{{ $rActive == 1 ? 'times' : 'undo' }}"></i>
+                                                                        <i
+                                                                            class="fas fa-{{ $rActive == 1 ? 'times' : 'undo' }}"></i>
                                                                     </button>
                                                                     <button
                                                                         class="btn btn-sm btn-danger btn-remove-room-row ml-1"
-                                                                        {{ $disabled }}
-                                                                        title="Xóa phòng">
+                                                                        {{ $disabled }} title="Xóa phòng">
                                                                         <i class="fas fa-trash"></i>
                                                                     </button>
                                                                 </div>
@@ -777,16 +829,37 @@
                                                                 data-active="{{ $rActive }}"
                                                                 data-group-id="{{ $rGrpId }}"
                                                                 data-priority="{{ $rPriorityLevel }}">
-                                                                <i class="fas fa-grip-vertical text-muted mr-2 cursor-grab" style="cursor: grab;" title="Kéo thả để sắp xếp độ ưu tiên"></i>
-                                                                <span class="badge badge-secondary priority-badge mr-1" style="width: 20px; text-align: center;" title="Ưu tiên {{ $rPriorityLevel }}">{{ $rPriorityLevel }}</span>
-                                                                <div class="input-group input-group-sm mr-1" style="width: 250px;">
+                                                                <i class="fas fa-grip-vertical text-muted mr-2 cursor-grab"
+                                                                    style="cursor: grab;"
+                                                                    title="Kéo thả để sắp xếp độ ưu tiên"></i>
+                                                                <span class="badge badge-secondary priority-badge mr-1"
+                                                                    style="width: 20px; text-align: center;"
+                                                                    title="Ưu tiên {{ $rPriorityLevel }}">{{ $rPriorityLevel }}</span>
+                                                                <div class="input-group input-group-sm mr-1"
+                                                                    style="width: 250px;">
                                                                     @php
-                                                                        $roomNameDisp = $rId && isset($roomsById[$rId]) ? ($roomsById[$rId]->code . ' - ' . $roomsById[$rId]->name . ' - ' . $roomsById[$rId]->main_equiment_name) : '-- Phòng --';
+                                                                        $roomNameDisp =
+                                                                            $rId && isset($roomsById[$rId])
+                                                                                ? $roomsById[$rId]->code .
+                                                                                    ' - ' .
+                                                                                    $roomsById[$rId]->name .
+                                                                                    ' - ' .
+                                                                                    $roomsById[$rId]->main_equiment_name
+                                                                                : '-- Phòng --';
                                                                     @endphp
-                                                                    <input type="text" class="form-control room-name-display" readonly value="{{ $roomNameDisp }}" style="font-size: 0.8rem; background-color: #fff; cursor: pointer;" title="{{ $roomNameDisp }}">
-                                                                    <input type="hidden" class="room-id-select" value="{{ $rId }}">
+                                                                    <input type="text"
+                                                                        class="form-control room-name-display" readonly
+                                                                        value="{{ $roomNameDisp }}"
+                                                                        style="font-size: 0.8rem; background-color: #fff; cursor: pointer;"
+                                                                        title="{{ $roomNameDisp }}">
+                                                                    <input type="hidden" class="room-id-select"
+                                                                        value="{{ $rId }}">
                                                                     <div class="input-group-append">
-                                                                        <button class="btn btn-outline-info btn-edit-room-modal" type="button" {{ $disabled }} title="Đổi phòng"><i class="fas fa-edit"></i></button>
+                                                                        <button
+                                                                            class="btn btn-outline-info btn-edit-room-modal"
+                                                                            type="button" {{ $disabled }}
+                                                                            title="Đổi phòng"><i
+                                                                                class="fas fa-edit"></i></button>
                                                                     </div>
                                                                 </div>
                                                                 <select
@@ -891,7 +964,8 @@
 
 
 <!-- Modal Chọn Phòng -->
-<div class="modal fade" id="editRoomModal" tabindex="-1" role="dialog" aria-hidden="true" style="z-index: 1060;">
+<div class="modal fade" id="editRoomModal" tabindex="-1" role="dialog" aria-hidden="true"
+    style="z-index: 1060;">
     <div class="modal-dialog modal-dialog-centered" role="document">
         <div class="modal-content">
             <div class="modal-header bg-info text-white">
@@ -1133,7 +1207,8 @@
             let newRoomText = '-- Chọn phòng --';
             let newRoomVal = '';
             if (availableRoom) {
-                newRoomText = `${availableRoom.code} - ${availableRoom.name} - ${availableRoom.main_equiment_name}`;
+                newRoomText =
+                    `${availableRoom.code} - ${availableRoom.name} - ${availableRoom.main_equiment_name}`;
                 newRoomVal = availableRoom.id;
             }
 
@@ -1192,8 +1267,10 @@
                 const $newSelect = $list.find('.room-id-select').last();
                 $newSelect.val(availableRoom.id);
                 // Cập nhật text hiển thị
-                $newSelect.siblings('.room-name-display').val(`${availableRoom.code} - ${availableRoom.name} - ${availableRoom.main_equiment_name}`);
-                
+                $newSelect.siblings('.room-name-display').val(
+                    `${availableRoom.code} - ${availableRoom.name} - ${availableRoom.main_equiment_name}`
+                );
+
                 // Dùng mode=add để chỉ INSERT/UPDATE phòng mới, không xóa phòng cũ
                 const $trMain = $btn.closest('.main-employee-row');
                 const empId = $trMain.find('.room-assignments-container').first().data('employee-id');
@@ -1209,8 +1286,16 @@
                     },
                     success: function(res) {
                         if (res.success) {
-                            Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 })
-                                .fire({ icon: 'success', title: res.message });
+                            Swal.mixin({
+                                    toast: true,
+                                    position: 'top-end',
+                                    showConfirmButton: false,
+                                    timer: 2000
+                                })
+                                .fire({
+                                    icon: 'success',
+                                    title: res.message
+                                });
                         }
                     }
                 });
@@ -1272,7 +1357,8 @@
                 const $row = $(this);
                 const rPriorityLevel = index + 1;
                 $row.attr('data-priority', rPriorityLevel);
-                $row.find('.priority-badge').text(rPriorityLevel).attr('title', 'Ưu tiên ' + rPriorityLevel);
+                $row.find('.priority-badge').text(rPriorityLevel).attr('title', 'Ưu tiên ' +
+                    rPriorityLevel);
 
                 const rId = $row.find('.room-id-select').val();
                 const rLvl = $row.find('.room-level-select').val();
@@ -1285,7 +1371,8 @@
                         duplicateFound = true;
                     } else {
                         selectedRoomIds.add(uniqueKey);
-                        idsWithLevels.push(rId + ':' + rLvl + ':' + rActive + ':' + rGroupId + ':' + rPriorityLevel);
+                        idsWithLevels.push(rId + ':' + rLvl + ':' + rActive + ':' + rGroupId + ':' +
+                            rPriorityLevel);
                     }
                 }
             });
@@ -1356,7 +1443,7 @@
                         ':visible')) {
                     renderLocalDashboard();
                 }
-                
+
                 // Khởi tạo lại Sortable khi chuyển trang hoặc thay đổi số dòng
                 if (typeof initSortable === 'function') {
                     initSortable();
@@ -1726,33 +1813,34 @@
             if (!canEdit) return;
             $currentEditingRow = $(this).closest('.room-assignment-row');
             let currentRoomId = $currentEditingRow.find('.room-id-select').val();
-            
+
             $('#modalRoomSelect').val(currentRoomId).trigger('change');
             $('#editRoomModal').modal('show');
         });
 
         $('#btn-save-room-modal').on('click', function() {
             if (!$currentEditingRow) return;
-            
+
             let selectedRoomId = $('#modalRoomSelect').val();
             let selectedRoomText = $('#modalRoomSelect option:selected').text();
-            
+
             if (!selectedRoomId) {
                 Swal.fire('Lỗi', 'Vui lòng chọn một phòng', 'error');
                 return;
             }
-            
+
             $currentEditingRow.find('.room-id-select').val(selectedRoomId);
-            $currentEditingRow.find('.room-name-display').val(selectedRoomText).attr('title', selectedRoomText);
-            
+            $currentEditingRow.find('.room-name-display').val(selectedRoomText).attr('title',
+                selectedRoomText);
+
             $('#editRoomModal').modal('hide');
-            
+
             // Trigger update
             const $container = $currentEditingRow.closest('.room-assignments-container');
             triggerRoomUpdate($container);
         });
-        
-        $('#editRoomModal').on('shown.bs.modal', function () {
+
+        $('#editRoomModal').on('shown.bs.modal', function() {
             $('#modalRoomSelect').select2({
                 dropdownParent: $('#editRoomModal')
             });
@@ -1767,15 +1855,50 @@
                         handle: '.cursor-grab',
                         animation: 150,
                         onEnd: function(evt) {
-                            const $container = $(evt.item).closest('.room-assignments-container');
+                            const $container = $(evt.item).closest(
+                                '.room-assignments-container');
                             triggerRoomUpdate($container);
                         }
                     });
                 });
             }
         }
-        
+
         initSortable();
+
+        $(document).on('change', '.toggle-maternity-leave', function() {
+            if (!canEdit) return;
+            const $checkbox = $(this);
+            const employeeId = $checkbox.data('id');
+            const status = $checkbox.is(':checked') ? 1 : 0;
+
+            $.ajax({
+                url: "{{ route('pages.quota.personnel.toggleMaternityLeave') }}",
+                type: 'POST',
+                data: {
+                    _token: '{{ csrf_token() }}',
+                    id: employeeId,
+                    status: status
+                },
+                success: function(res) {
+                    if (res.success) {
+                        Swal.mixin({
+                            toast: true,
+                            position: 'top-end',
+                            showConfirmButton: false,
+                            timer: 2000
+                        }).fire({
+                            icon: 'success',
+                            title: res.message
+                        });
+                    }
+                },
+                error: function() {
+                    $checkbox.prop('checked', !status);
+                    Swal.fire('Lỗi', 'Không thể cập nhật trạng thái!', 'error');
+                }
+            });
+        });
 
     });
 </script>

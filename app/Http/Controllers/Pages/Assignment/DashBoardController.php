@@ -70,8 +70,8 @@ class DashBoardController extends Controller
         }
 
         $personnelList = $personnelQuery
-            ->select('e.id', 'e.code', 'e.name', DB::raw('GROUP_CONCAT(DISTINCT ea.group_id SEPARATOR ",") as group_ids'))
-            ->groupBy('e.id', 'e.code', 'e.name')
+            ->select('e.id', 'e.code', 'e.name', 'e.on_maternity_leave', DB::raw('GROUP_CONCAT(DISTINCT ea.group_id SEPARATOR ",") as group_ids'))
+            ->groupBy('e.id', 'e.code', 'e.name', 'e.on_maternity_leave')
             ->get();
 
         $isENorQA = in_array($production_code, ['EN', 'QA']);
@@ -326,6 +326,7 @@ class DashBoardController extends Controller
 
         $stats_laps = [
             'on_leave' => 0,
+            'maternity_leave' => 0,
             'unassigned' => 0,
             'under_8h' => 0,
             'exact_8h' => 0,
@@ -335,6 +336,7 @@ class DashBoardController extends Controller
 
         $stats_people = [
             'on_leave' => 0,
+            'maternity_leave' => 0,
             'unassigned' => 0,
             'under_8h' => 0,
             'exact_8h' => 0,
@@ -350,6 +352,7 @@ class DashBoardController extends Controller
             $stats_daily[$d] = [
                 'date' => $startDate->copy()->addDays($d)->format('d/m/Y'),
                 'on_leave' => 0,
+                'maternity_leave' => 0,
                 'unassigned' => 0,
                 'under_8h' => 0,
                 'exact_8h' => 0,
@@ -376,10 +379,15 @@ class DashBoardController extends Controller
             $assignedDays = 0;
             $leaveDays = 0;
 
+            $isMaternity = !empty($employees[$empId]->on_maternity_leave);
+
             for ($d = 0; $d < $daysInPeriod; $d++) {
                 $h = $dailyHours[$d];
                 if ($h == 0) {
-                    if (!empty($employeeDailyLeave[$empId][$d])) {
+                    if ($isMaternity) {
+                        $stats_laps['maternity_leave']++;
+                        $stats_daily[$d]['maternity_leave']++;
+                    } elseif (!empty($employeeDailyLeave[$empId][$d])) {
                         $stats_laps['on_leave']++;
                         $stats_daily[$d]['on_leave']++;
                         $leaveDays++;
@@ -403,7 +411,9 @@ class DashBoardController extends Controller
             }
 
             // People Classification (Dành cho các ô Inner theo yêu cầu)
-            if ($totalHours == 0) {
+            if ($isMaternity) {
+                $stats_people['maternity_leave']++;
+            } elseif ($totalHours == 0) {
                 if ($leaveDays > 0) {
                     $stats_people['on_leave']++;
                 } else {
@@ -417,7 +427,9 @@ class DashBoardController extends Controller
                 $stats_people['over_8h']++;
             }
 
-            if ($daysInPeriod == 1) {
+            if ($isMaternity) {
+                $status = 'Thai sản';
+            } elseif ($daysInPeriod == 1) {
                 if ($totalHours == 0) {
                     $status = $leaveDays > 0 ? 'Nghỉ phép (P)' : 'Chưa phân công';
                 } elseif ($totalHours < 7.9) {

@@ -85,8 +85,8 @@
 
                 <!-- KPI Cards -->
                 <div class="row">
-                    <div class="col-lg-2 col-6">
-                        <div class="small-box bg-info">
+                    <div class="col-lg col-md-4 col-6 mb-3">
+                        <div class="small-box bg-info h-100 mb-0">
                             <div class="inner">
                                 <h3 id="kpi_total">0</h3>
                                 <p id="kpi_total_label">Tổng nhân sự</p>
@@ -94,8 +94,17 @@
                             <div class="icon"><i class="fas fa-users"></i></div>
                         </div>
                     </div>
-                    <div class="col-lg-2 col-6">
-                        <div class="small-box bg-secondary" onclick="showDailyStats('on_leave', 'Nghỉ phép (P)', 'bg-secondary')" style="cursor:pointer;" title="Click để xem chi tiết theo ngày">
+                    <div class="col-lg col-md-4 col-6 mb-3">
+                        <div class="small-box bg-maroon h-100 mb-0" onclick="showDailyStats('maternity_leave', 'Nghỉ thai sản', 'bg-maroon')" style="cursor:pointer;" title="Click để xem chi tiết theo ngày">
+                            <div class="inner">
+                                <h3 id="kpi_maternity">0</h3>
+                                <p id="kpi_maternity_label">Nghỉ thai sản</p>
+                            </div>
+                            <div class="icon"><i class="fas fa-baby"></i></div>
+                        </div>
+                    </div>
+                    <div class="col-lg col-md-4 col-6 mb-3">
+                        <div class="small-box bg-secondary h-100 mb-0" onclick="showDailyStats('on_leave', 'Nghỉ phép (P)', 'bg-secondary')" style="cursor:pointer;" title="Click để xem chi tiết theo ngày">
                             <div class="inner">
                                 <h3 id="kpi_on_leave">0</h3>
                                 <p id="kpi_on_leave_label">Nghỉ phép (P)</p>
@@ -103,8 +112,8 @@
                             <div class="icon"><i class="fas fa-bed"></i></div>
                         </div>
                     </div>
-                    <div class="col-lg-2 col-6">
-                        <div class="small-box bg-danger" onclick="showDailyStats('unassigned', 'Chưa xếp lịch (0h)', 'bg-danger')" style="cursor:pointer;" title="Click để xem chi tiết theo ngày">
+                    <div class="col-lg col-md-4 col-6 mb-3">
+                        <div class="small-box bg-danger h-100 mb-0" onclick="showDailyStats('unassigned', 'Chưa xếp lịch (0h)', 'bg-danger')" style="cursor:pointer;" title="Click để xem chi tiết theo ngày">
                             <div class="inner">
                                 <h3 id="kpi_unassigned">0</h3>
                                 <p id="kpi_unassigned_label">Chưa xếp lịch (0h)</p>
@@ -112,8 +121,8 @@
                             <div class="icon"><i class="fas fa-user-times"></i></div>
                         </div>
                     </div>
-                    <div class="col-lg-2 col-6">
-                        <div class="small-box bg-warning" onclick="showDailyStats('under_8h', '< 8h / ngày', 'bg-warning')" style="cursor:pointer;" title="Click để xem chi tiết theo ngày">
+                    <div class="col-lg col-md-4 col-6 mb-3">
+                        <div class="small-box bg-warning h-100 mb-0" onclick="showDailyStats('under_8h', '< 8h / ngày', 'bg-warning')" style="cursor:pointer;" title="Click để xem chi tiết theo ngày">
                             <div class="inner">
                                 <h3 id="kpi_under8">0</h3>
                                 <p id="kpi_under8_label">< 8h / ngày</p>
@@ -121,8 +130,8 @@
                             <div class="icon"><i class="fas fa-battery-half"></i></div>
                         </div>
                     </div>
-                    <div class="col-lg-2 col-6">
-                        <div class="small-box bg-success" onclick="showDailyStats('exact_8h', 'Đủ 8h / ngày', 'bg-success')" style="cursor:pointer;" title="Click để xem chi tiết theo ngày">
+                    <div class="col-lg col-md-4 col-6 mb-3">
+                        <div class="small-box bg-success h-100 mb-0" onclick="showDailyStats('exact_8h', 'Đủ 8h / ngày', 'bg-success')" style="cursor:pointer;" title="Click để xem chi tiết theo ngày">
                             <div class="inner">
                                 <h3 id="kpi_exact8">0</h3>
                                 <p id="kpi_exact8_label">Đủ 8h / ngày</p>
@@ -130,8 +139,8 @@
                             <div class="icon"><i class="fas fa-battery-full"></i></div>
                         </div>
                     </div>
-                    <div class="col-lg-2 col-6">
-                        <div class="small-box" onclick="showDailyStats('total_ot_hours', 'Tổng Tăng Ca (TC)', '', 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)')" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: #fff; cursor:pointer;" title="Click để xem chi tiết theo ngày">
+                    <div class="col-lg col-md-4 col-6 mb-3">
+                        <div class="small-box h-100 mb-0" onclick="showDailyStats('total_ot_hours', 'Tổng Tăng Ca (TC)', '', 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)')" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: #fff; cursor:pointer;" title="Click để xem chi tiết theo ngày">
                             <div class="inner">
                                 <h3 id="kpi_total_ot">0h</h3>
                                 <p id="kpi_total_ot_label"><i class="fas fa-clock mr-1"></i>Tổng Tăng Ca (TC)</p>
@@ -404,6 +413,7 @@
         
         // Luôn hiển thị Số Người ở h3 (to)
         document.getElementById('kpi_total').innerText = data.total_personnel;
+        document.getElementById('kpi_maternity').innerText = data.stats_people.maternity_leave || 0;
         document.getElementById('kpi_on_leave').innerText = data.stats_people.on_leave;
         document.getElementById('kpi_unassigned').innerText = data.stats_people.unassigned;
         document.getElementById('kpi_under8').innerText = data.stats_people.under_8h;
@@ -413,6 +423,7 @@
         // Hiển thị Số Lượt (Laps) ở thẻ p (nhỏ)
         if (days > 1) {
             document.getElementById('kpi_total_label').innerText = 'Tổng nhân sự (' + totalLaps + ' lượt)';
+            document.getElementById('kpi_maternity_label').innerText = 'Nghỉ thai sản - ' + (data.stats_laps.maternity_leave || 0) + ' lượt';
             document.getElementById('kpi_on_leave_label').innerText = 'Nghỉ phép (P) - ' + data.stats_laps.on_leave + ' lượt';
             document.getElementById('kpi_unassigned_label').innerText = 'Chưa xếp lịch - ' + data.stats_laps.unassigned + ' lượt';
             document.getElementById('kpi_under8_label').innerText = '< 8h/ngày - ' + data.stats_laps.under_8h + ' lượt';
@@ -420,6 +431,7 @@
             document.getElementById('kpi_total_ot_label').innerHTML = '<i class="fas fa-clock mr-1"></i>Tổng Tăng Ca (' + (data.stats_laps.total_ot_hours || 0) + 'h)';
         } else {
             document.getElementById('kpi_total_label').innerText = 'Tổng nhân sự';
+            document.getElementById('kpi_maternity_label').innerText = 'Nghỉ thai sản';
             document.getElementById('kpi_on_leave_label').innerText = 'Nghỉ phép (P)';
             document.getElementById('kpi_unassigned_label').innerText = 'Chưa xếp lịch (0h)';
             document.getElementById('kpi_under8_label').innerText = '< 8h / ngày';
@@ -528,6 +540,7 @@
             else if (item.status === '< 8h') badgeClass = 'badge-warning';
             else if (item.status === 'Đủ 8h') badgeClass = 'badge-success';
             else if (item.status === '> 8h') badgeClass = 'badge-primary';
+            else if (item.status === 'Thai sản') badgeClass = 'badge-danger';
 
             const ot = item.overtime_hours || 0;
             const otCell = ot > 0
@@ -550,11 +563,15 @@
 
             const eoffice = item.eoffice_hours || 0;
             const eofficeTotal = Math.round((eoffice + ot) * 100) / 100;
+            
+            const nameHtml = item.status === 'Thai sản' 
+                ? `${item.name} <span class="badge badge-danger text-white ml-1" style="font-size:0.6rem; padding:1px 3px;" title="Nghỉ thai sản dài hạn"><i class="fas fa-baby"></i> Thai sản</span>`
+                : item.name;
 
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>${item.code}</td>
-                <td>${item.name}</td>
+                <td>${nameHtml}</td>
                 <td><small class="text-muted">${item.group || '-'}</small></td>
                 <td style="min-width: 150px; max-width: 250px;">${shiftHtml}</td>
                 <td><strong>${item.total_hours} h</strong></td>
