@@ -22,6 +22,7 @@ Route::prefix('/plan')
                 Route::post('create_plan_list', 'create_plan_list')->name('create_plan_list');
 
                 // các hàm xử lý plan_master
+                Route::get('search_all', 'search_all')->name('search_all');
                 Route::get('open', 'open')->name('open');
                 Route::get('open_stock', 'open_stock')->name('open_stock');
                 Route::post('backup_stock', 'backup_stock')->name('backup_stock');

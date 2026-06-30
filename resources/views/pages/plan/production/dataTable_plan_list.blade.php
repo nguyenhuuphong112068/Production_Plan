@@ -29,8 +29,54 @@
     <div class="p-3">
         <!-- Bảng Kế hoạch gom theo tháng -->
 
+        <!-- Form Tìm Kiếm Sản Phẩm Toàn Cục -->
+        {{-- <div class="card card-primary mt-5">
+            <div class="card-header">
+                <h3 class="card-title">Tìm Kiếm Kế Hoạch Sản Phẩm (Toàn Cục)</h3>
+                <div class="card-tools">
+                    <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                        <i class="fas fa-minus"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <form action="{{ route('pages.plan.production.search_all') }}" method="GET">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label>Từ khoá (Mã hoặc Tên Sản Phẩm)</label>
+                                <input type="text" class="form-control" name="keyword"
+                                    value="{{ request('keyword') }}" placeholder="Nhập mã hoặc tên..." required>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label>Từ Tháng</label>
+                                <input type="month" class="form-control" name="from_month"
+                                    value="{{ request('from_month') }}">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label>Đến Tháng</label>
+                                <input type="month" class="form-control" name="to_month"
+                                    value="{{ request('to_month') }}">
+                            </div>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <div class="form-group w-100">
+                                <button type="submit" class="btn btn-primary w-100">
+                                    <i class="fas fa-search"></i> Tìm Kiếm
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div> --}}
+
         <!-- Bảng Kế hoạch gốc -->
-        <div class="card card-success mt-5">
+        <div class="card card-success mt-2">
             <div class="card-header">
                 <h3 class="card-title">Danh Sách Kế Hoạch Chi Tiết</h3>
                 <div class="card-tools">
@@ -47,12 +93,69 @@
                         'disabled',
                     );
                 @endphp
-                @if (user_has_permission(session('user')['userId'], 'plan_production_create_plan_list', 'boolean'))
-                    <button class="btn btn-success btn-create mb-2" data-toggle="modal"
-                        data-target="#create_plan_list_modal" style="width: 155px">
-                        <i class="fas fa-plus"></i> Thêm
-                    </button>
-                @endif
+                <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 p-3" style="background-color: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.04);">
+                    <!-- Nút Thêm Kế Hoạch -->
+                    <div class="mb-2 mb-xl-0 pr-4" style="border-right: 2px solid #e9ecef;">
+                        @if (user_has_permission(session('user')['userId'], 'plan_production_create_plan_list', 'boolean'))
+                            <button class="btn btn-success btn-create" data-toggle="modal"
+                                data-target="#create_plan_list_modal" style="height: 40px; border-radius: 6px; font-weight: 600; letter-spacing: 0.3px; padding: 0 20px; box-shadow: 0 2px 4px rgba(40,167,69,0.2);">
+                                <i class="fas fa-plus-circle mr-2"></i>Thêm Kế Hoạch
+                            </button>
+                        @endif
+                    </div>
+
+                    <!-- Form Tìm kiếm Nâng Cao -->
+                    <form action="{{ route('pages.plan.production.search_all') }}" method="GET" class="flex-grow-1 m-0 pl-4">
+                        <div class="d-flex flex-wrap align-items-center justify-content-end">
+                            
+                            <!-- Nhãn Toàn cục -->
+                            <div class="mr-3 text-info font-weight-bold d-none d-lg-block" style="font-size: 15px; letter-spacing: 0.5px;">
+                                <i class="fas fa-globe-asia mr-1"></i> Tra Cứu Toàn Cục:
+                            </div>
+                            
+                            <!-- Ô Tìm kiếm -->
+                            <div class="mr-3 mb-2 mb-md-0" style="flex: 1; min-width: 250px; max-width: 350px;">
+                                <div class="input-group shadow-sm" style="border-radius: 6px; overflow: hidden;">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text bg-white border-right-0 text-muted" style="border-color: #ced4da;"><i class="fas fa-search"></i></span>
+                                    </div>
+                                    <input type="text" class="form-control border-left-0" name="keyword"
+                                        value="{{ request('keyword') }}" placeholder="Nhập mã / tên sản phẩm..." required 
+                                        style="height: 40px; box-shadow: none; border-color: #ced4da; padding-left: 0;">
+                                </div>
+                            </div>
+
+                            <!-- Tháng Bắt đầu -->
+                            <div class="mr-3 mb-2 mb-md-0" style="width: 170px;">
+                                <div class="input-group shadow-sm" style="border-radius: 6px; overflow: hidden;">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text bg-light text-secondary font-weight-bold" style="border-color: #ced4da; font-size: 13px;">Từ</span>
+                                    </div>
+                                    <input type="month" class="form-control" name="from_month"
+                                        value="{{ request('from_month', date('Y') . '-01') }}" style="height: 40px; border-color: #ced4da; box-shadow: none; cursor: pointer;">
+                                </div>
+                            </div>
+
+                            <!-- Tháng Kết thúc -->
+                            <div class="mr-3 mb-2 mb-md-0" style="width: 170px;">
+                                <div class="input-group shadow-sm" style="border-radius: 6px; overflow: hidden;">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text bg-light text-secondary font-weight-bold" style="border-color: #ced4da; font-size: 13px;">Đến</span>
+                                    </div>
+                                    <input type="month" class="form-control" name="to_month"
+                                        value="{{ request('to_month', date('Y-m')) }}" style="height: 40px; border-color: #ced4da; box-shadow: none; cursor: pointer;">
+                                </div>
+                            </div>
+
+                            <!-- Submit -->
+                            <div class="mb-2 mb-md-0">
+                                <button type="submit" class="btn btn-info shadow-sm" style="height: 40px; border-radius: 6px; font-weight: 600; letter-spacing: 0.3px; padding: 0 25px;">
+                                    Tìm Kiếm <i class="fas fa-arrow-right ml-2"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
                 <table id="example1" class="table table-bordered table-striped" style="font-size: 20px">
                     <thead>
                         <tr>
@@ -98,7 +201,8 @@
                                 {{-- <td>{{ $data->code}}</td> --}}
                                 <td>
                                     {{ $data->name }}
-                                    <span style="display: none;">{{ $data->product_names }} {{ $data->product_codes }} {{ $data->intermediate_codes }}</span>
+                                    <span style="display: none;">{{ $data->product_names }} {{ $data->product_codes }}
+                                        {{ $data->intermediate_codes }}</span>
                                 </td>
                                 <td>{{ $data->deparment_code }}
                                     @if (session('user')['userGroup'] == 'Admin')
@@ -172,7 +276,9 @@
                                 </td>
 
                                 <td class="text-center align-middle">
-                                    <button type="button" class="btn btn-info btn-equipment-allocation" data-plan-list-id="{{ $data->id }}" data-plan-name="{{ $data->name }}" title="Xem phân bổ thiết bị">
+                                    <button type="button" class="btn btn-info btn-equipment-allocation"
+                                        data-plan-list-id="{{ $data->id }}" data-plan-name="{{ $data->name }}"
+                                        title="Xem phân bổ thiết bị">
                                         <i class="fas fa-chart-pie"></i>
                                     </button>
                                 </td>
@@ -709,11 +815,13 @@
 @endif
 
 <!-- Modal Phân bổ thiết bị -->
-<div class="modal fade" id="equipmentAllocationModal" tabindex="-1" role="dialog" aria-labelledby="equipmentAllocationModalLabel" aria-hidden="true">
+<div class="modal fade" id="equipmentAllocationModal" tabindex="-1" role="dialog"
+    aria-labelledby="equipmentAllocationModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl" role="document" style="max-width: 90%;">
         <div class="modal-content">
             <div class="modal-header bg-info text-white">
-                <h5 class="modal-title" id="equipmentAllocationModalLabel"><i class="fas fa-chart-pie mr-2"></i>Phân bổ thiết bị cho kế hoạch</h5>
+                <h5 class="modal-title" id="equipmentAllocationModalLabel"><i class="fas fa-chart-pie mr-2"></i>Phân
+                    bổ thiết bị cho kế hoạch</h5>
                 <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
@@ -723,11 +831,14 @@
                 <div class="d-flex justify-content-center align-items-center mb-4 flex-wrap">
                     <div class="custom-control custom-switch mr-4">
                         <input type="checkbox" class="custom-control-input" id="groupByLineSwitch">
-                        <label class="custom-control-label font-weight-bold text-secondary" style="cursor: pointer;" for="groupByLineSwitch">Thống kê theo dòng máy</label>
+                        <label class="custom-control-label font-weight-bold text-secondary" style="cursor: pointer;"
+                            for="groupByLineSwitch">Thống kê theo dòng máy</label>
                     </div>
                     <div class="form-group mb-0 d-flex align-items-center">
-                        <label for="stageCodeSelect" class="font-weight-bold text-secondary mb-0 mr-2">Công đoạn:</label>
-                        <select id="stageCodeSelect" class="form-control form-control-sm" style="width: auto; min-width: 150px;">
+                        <label for="stageCodeSelect" class="font-weight-bold text-secondary mb-0 mr-2">Công
+                            đoạn:</label>
+                        <select id="stageCodeSelect" class="form-control form-control-sm"
+                            style="width: auto; min-width: 150px;">
                             <option value="all">Tất cả</option>
                             <option value="3">Pha chế</option>
                             <option value="4">Trộn hoàn tất</option>
@@ -766,15 +877,18 @@
 
         function loadEquipmentAllocation() {
             if (!currentPlanListId) return;
-            
+
             var isGroupByLine = $('#groupByLineSwitch').is(':checked');
             var stageCode = $('#stageCodeSelect').val();
-            var url = '{{ url("plan/production/equipment_allocation") }}/' + currentPlanListId + '?stage_code=' + stageCode + '&department_code={{ $production_code }}';
+            var url = '{{ url('plan/production/equipment_allocation') }}/' + currentPlanListId +
+                '?stage_code=' + stageCode + '&department_code={{ $production_code }}';
             if (isGroupByLine) {
                 url += '&group_by=line';
             }
-            
-            $('#equipmentAllocationTable tbody').html('<tr><td colspan="5" class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x text-info"></i><br>Đang tải dữ liệu...</td></tr>');
+
+            $('#equipmentAllocationTable tbody').html(
+                '<tr><td colspan="5" class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x text-info"></i><br>Đang tải dữ liệu...</td></tr>'
+            );
 
             $.ajax({
                 url: url,
@@ -783,12 +897,14 @@
                     if (response.success) {
                         var tbody = '';
                         if (response.data.length === 0) {
-                            tbody = '<tr><td colspan="5" class="text-center py-4">Không có dữ liệu định mức thiết bị cho kế hoạch này.</td></tr>';
+                            tbody =
+                                '<tr><td colspan="5" class="text-center py-4">Không có dữ liệu định mức thiết bị cho kế hoạch này.</td></tr>';
                         } else {
                             // Sort data: blister_type_code -> room_order_by -> total_batches
                             response.data.sort(function(a, b) {
                                 // 1. Sort by blister_type_code
-                                if (a.blister_type_code !== null && b.blister_type_code !== null) {
+                                if (a.blister_type_code !== null && b.blister_type_code !==
+                                    null) {
                                     if (a.blister_type_code !== b.blister_type_code) {
                                         return a.blister_type_code - b.blister_type_code;
                                     }
@@ -797,102 +913,150 @@
                                 } else if (b.blister_type_code !== null) {
                                     return 1;
                                 }
-                                
+
                                 // 2. Sort by room_order_by
-                                var orderA = (a.room_order_by !== null && a.room_order_by !== undefined) ? parseInt(a.room_order_by) : 9999;
-                                var orderB = (b.room_order_by !== null && b.room_order_by !== undefined) ? parseInt(b.room_order_by) : 9999;
+                                var orderA = (a.room_order_by !== null && a
+                                    .room_order_by !== undefined) ? parseInt(a
+                                    .room_order_by) : 9999;
+                                var orderB = (b.room_order_by !== null && b
+                                    .room_order_by !== undefined) ? parseInt(b
+                                    .room_order_by) : 9999;
                                 if (orderA !== orderB) {
                                     return orderA - orderB;
                                 }
-                                
+
                                 // 3. Fallback to total_batches descending
                                 return b.total_batches - a.total_batches;
                             });
-                            
+
                             var maxBatches = 0;
                             var maxQty = 0;
                             response.data.forEach(function(item) {
-                                if (item.total_batches > maxBatches) maxBatches = item.total_batches;
-                                if (item.total_quantity > maxQty) maxQty = item.total_quantity;
+                                if (item.total_batches > maxBatches) maxBatches = item
+                                    .total_batches;
+                                if (item.total_quantity > maxQty) maxQty = item
+                                    .total_quantity;
                             });
                             if (maxBatches === 0) maxBatches = 1;
                             if (maxQty === 0) maxQty = 1;
 
                             response.data.forEach(function(item) {
-                                var qty = (item.total_quantity || 0).toLocaleString('en-US');
-                                
+                                var qty = (item.total_quantity || 0).toLocaleString(
+                                    'en-US');
+
                                 var widthBatches = (item.total_batches / maxBatches) * 100;
                                 var widthQty = (item.total_quantity / maxQty) * 100;
-                                
-                                var batchBarHtml = '<div style="width: 100%; height: 24px; position: relative;">' +
-                                    '<div style="background-color: #e83e8c; width: ' + Math.max(widthBatches, 5) + '%; height: 100%; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: width 0.5s ease; min-width: fit-content; padding: 0 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">' +
-                                    '<span style="color: white; font-weight: bold; font-size: 0.85rem; white-space: nowrap;">' + item.total_batches + '</span>' +
-                                    '</div>' +
-                                    '</div>';
-                                    
-                                var qtyBarHtml = '<div style="width: 100%; height: 24px; position: relative;">' +
-                                    '<div style="background-color: #28a745; width: ' + Math.max(widthQty, 5) + '%; height: 100%; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: width 0.5s ease; min-width: fit-content; padding: 0 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">' +
-                                    '<span style="color: white; font-weight: bold; font-size: 0.85rem; white-space: nowrap;">' + qty + '</span>' +
+
+                                var batchBarHtml =
+                                    '<div style="width: 100%; height: 24px; position: relative;">' +
+                                    '<div style="background-color: #e83e8c; width: ' + Math
+                                    .max(widthBatches, 5) +
+                                    '%; height: 100%; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: width 0.5s ease; min-width: fit-content; padding: 0 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">' +
+                                    '<span style="color: white; font-weight: bold; font-size: 0.85rem; white-space: nowrap;">' +
+                                    item.total_batches + '</span>' +
                                     '</div>' +
                                     '</div>';
 
-                                var isUnfinishedPlan = (currentPlanListId == -1 || currentPlanListId === '-1');
+                                var qtyBarHtml =
+                                    '<div style="width: 100%; height: 24px; position: relative;">' +
+                                    '<div style="background-color: #28a745; width: ' + Math
+                                    .max(widthQty, 5) +
+                                    '%; height: 100%; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: width 0.5s ease; min-width: fit-content; padding: 0 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">' +
+                                    '<span style="color: white; font-weight: bold; font-size: 0.85rem; white-space: nowrap;">' +
+                                    qty + '</span>' +
+                                    '</div>' +
+                                    '</div>';
+
+                                var isUnfinishedPlan = (currentPlanListId == -1 ||
+                                    currentPlanListId === '-1');
                                 var rowspan = isUnfinishedPlan ? 4 : 2;
 
                                 tbody += '<tr>' +
-                                    '<td class="text-center font-weight-bold align-middle" rowspan="' + rowspan + '" style="border-bottom: 2px solid #dee2e6;">' + (item.equipment_code || 'NA') + '</td>' +
-                                    '<td class="align-middle" rowspan="' + rowspan + '" style="border-bottom: 2px solid #dee2e6;">' + (item.equipment_name || 'NA') + '</td>' +
-                                    '<td class="text-center align-middle" rowspan="' + rowspan + '" style="border-bottom: 2px solid #dee2e6;">' + (item.main_equipment_name || 'NA') + '</td>' +
+                                    '<td class="text-center font-weight-bold align-middle" rowspan="' +
+                                    rowspan +
+                                    '" style="border-bottom: 2px solid #dee2e6;">' + (item
+                                        .equipment_code || 'NA') + '</td>' +
+                                    '<td class="align-middle" rowspan="' + rowspan +
+                                    '" style="border-bottom: 2px solid #dee2e6;">' + (item
+                                        .equipment_name || 'NA') + '</td>' +
+                                    '<td class="text-center align-middle" rowspan="' +
+                                    rowspan +
+                                    '" style="border-bottom: 2px solid #dee2e6;">' + (item
+                                        .main_equipment_name || 'NA') + '</td>' +
                                     '<td class="text-right align-middle border-bottom-0 text-secondary pr-4 py-1" style="width: 15%; font-size: 0.9rem;">Tổng số Lô Có Thể Sắp</td>' +
-                                    '<td class="align-middle border-bottom-0 p-1" style="width: 30%;">' + batchBarHtml + '</td>' +
+                                    '<td class="align-middle border-bottom-0 p-1" style="width: 30%;">' +
+                                    batchBarHtml + '</td>' +
                                     '</tr>' +
                                     '<tr>' +
-                                    '<td class="text-right align-middle border-top-0 text-secondary pr-4 py-1" style="' + (isUnfinishedPlan ? 'border-bottom-0' : 'border-bottom: 2px solid #dee2e6;') + ' font-size: 0.9rem;">Sản lượng lý thuyết</td>' +
-                                    '<td class="align-middle border-top-0 p-1" style="' + (isUnfinishedPlan ? 'border-bottom-0' : 'border-bottom: 2px solid #dee2e6;') + '">' + qtyBarHtml + '</td>' +
+                                    '<td class="text-right align-middle border-top-0 text-secondary pr-4 py-1" style="' +
+                                    (isUnfinishedPlan ? 'border-bottom-0' :
+                                        'border-bottom: 2px solid #dee2e6;') +
+                                    ' font-size: 0.9rem;">Sản lượng lý thuyết</td>' +
+                                    '<td class="align-middle border-top-0 p-1" style="' + (
+                                        isUnfinishedPlan ? 'border-bottom-0' :
+                                        'border-bottom: 2px solid #dee2e6;') + '">' +
+                                    qtyBarHtml + '</td>' +
                                     '</tr>';
 
                                 if (isUnfinishedPlan) {
                                     var scheduled = item.scheduled_batches || 0;
                                     var inventory = item.inventory_qty || 0;
-                                    
-                                    var widthScheduled = maxBatches > 0 ? (scheduled / maxBatches) * 100 : 0;
-                                    var widthInventory = maxQty > 0 ? (inventory / maxQty) * 100 : 0;
-                                    
+
+                                    var widthScheduled = maxBatches > 0 ? (scheduled /
+                                        maxBatches) * 100 : 0;
+                                    var widthInventory = maxQty > 0 ? (inventory / maxQty) *
+                                        100 : 0;
+
                                     if (widthScheduled > 100) widthScheduled = 100;
                                     if (widthInventory > 100) widthInventory = 100;
-                                    
-                                    var invDisplay = parseFloat(inventory).toLocaleString('en-US');
 
-                                    var schedBarHtml = '<div style="width: 100%; height: 24px; position: relative;">' +
-                                        '<div style="background-color: #17a2b8; width: ' + Math.max(widthScheduled, 5) + '%; height: 100%; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: width 0.5s ease; min-width: fit-content; padding: 0 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">' +
-                                        '<span style="color: white; font-weight: bold; font-size: 0.85rem; white-space: nowrap;">' + scheduled + '</span>' +
+                                    var invDisplay = parseFloat(inventory).toLocaleString(
+                                        'en-US');
+
+                                    var schedBarHtml =
+                                        '<div style="width: 100%; height: 24px; position: relative;">' +
+                                        '<div style="background-color: #17a2b8; width: ' +
+                                        Math.max(widthScheduled, 5) +
+                                        '%; height: 100%; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: width 0.5s ease; min-width: fit-content; padding: 0 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">' +
+                                        '<span style="color: white; font-weight: bold; font-size: 0.85rem; white-space: nowrap;">' +
+                                        scheduled + '</span>' +
                                         '</div></div>';
 
-                                    var invBarHtml = '<div style="width: 100%; height: 24px; position: relative;">' +
-                                        '<div style="background-color: #ffc107; width: ' + Math.max(widthInventory, 5) + '%; height: 100%; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: width 0.5s ease; min-width: fit-content; padding: 0 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">' +
-                                        '<span style="color: white; font-weight: bold; font-size: 0.85rem; white-space: nowrap;">' + invDisplay + '</span>' +
+                                    var invBarHtml =
+                                        '<div style="width: 100%; height: 24px; position: relative;">' +
+                                        '<div style="background-color: #ffc107; width: ' +
+                                        Math.max(widthInventory, 5) +
+                                        '%; height: 100%; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: width 0.5s ease; min-width: fit-content; padding: 0 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">' +
+                                        '<span style="color: white; font-weight: bold; font-size: 0.85rem; white-space: nowrap;">' +
+                                        invDisplay + '</span>' +
                                         '</div></div>';
 
                                     tbody += '<tr>' +
                                         '<td class="text-right align-middle border-top-0 text-secondary pr-4 py-1" style="border-bottom-0; font-size: 0.9rem;">Số lượng lô đã sắp</td>' +
-                                        '<td class="align-middle border-top-0 p-1" style="border-bottom-0;">' + schedBarHtml + '</td>' +
+                                        '<td class="align-middle border-top-0 p-1" style="border-bottom-0;">' +
+                                        schedBarHtml + '</td>' +
                                         '</tr>' +
                                         '<tr>' +
                                         '<td class="text-right align-middle border-top-0 text-secondary pr-4 py-1" style="border-bottom: 2px solid #dee2e6; font-size: 0.9rem;">Sản lượng tồn kho (công đoạn trước)</td>' +
-                                        '<td class="align-middle border-top-0 p-1" style="border-bottom: 2px solid #dee2e6;">' + invBarHtml + '</td>' +
+                                        '<td class="align-middle border-top-0 p-1" style="border-bottom: 2px solid #dee2e6;">' +
+                                        invBarHtml + '</td>' +
                                         '</tr>';
                                 }
                             });
                         }
                         $('#equipmentAllocationTable tbody').html(tbody);
                     } else {
-                        $('#equipmentAllocationTable tbody').html('<tr><td colspan="5" class="text-center text-danger">Có lỗi xảy ra khi tải dữ liệu.</td></tr>');
+                        $('#equipmentAllocationTable tbody').html(
+                            '<tr><td colspan="5" class="text-center text-danger">Có lỗi xảy ra khi tải dữ liệu.</td></tr>'
+                        );
 
 
                     }
                 },
                 error: function() {
-                    $('#equipmentAllocationTable tbody').html('<tr><td colspan="5" class="text-center text-danger">Lỗi kết nối máy chủ.</td></tr>');
+                    $('#equipmentAllocationTable tbody').html(
+                        '<tr><td colspan="5" class="text-center text-danger">Lỗi kết nối máy chủ.</td></tr>'
+                    );
                 }
             });
         }
@@ -900,11 +1064,11 @@
         $(document).on('click', '.btn-equipment-allocation', function() {
             currentPlanListId = $(this).data('plan-list-id');
             var planName = $(this).data('plan-name');
-            
+
             $('#equipmentAllocationPlanName').text('Kế hoạch: ' + planName);
             $('#groupByLineSwitch').prop('checked', false);
             $('#equipmentAllocationModal').modal('show');
-            
+
             loadEquipmentAllocation();
         });
 
@@ -1162,9 +1326,11 @@
                     labels.push(item.month);
                     yieldData.push(item.status_yields ? (item.status_yields[stage] || 0) : 0);
                     batchCounts.push(item.status_counts ? (item.status_counts[stage] || 0) : 0);
-                    
-                    let pMin = item.status_production_minutes ? (item.status_production_minutes[stage] || 0) : 0;
-                    let cMin = item.status_cleaning_minutes ? (item.status_cleaning_minutes[stage] || 0) : 0;
+
+                    let pMin = item.status_production_minutes ? (item.status_production_minutes[
+                        stage] || 0) : 0;
+                    let cMin = item.status_cleaning_minutes ? (item.status_cleaning_minutes[stage] ||
+                        0) : 0;
                     prodHours.push((pMin / 60).toFixed(1));
                     cleanHours.push((cMin / 60).toFixed(1));
 
@@ -1178,8 +1344,7 @@
                     type: 'bar',
                     data: {
                         labels: labels,
-                        datasets: [
-                            {
+                        datasets: [{
                                 label: 'Sản lượng (Kg/ĐVL)',
                                 type: 'bar',
                                 backgroundColor: 'rgba(54, 162, 235, 0.6)',
@@ -1243,8 +1408,7 @@
                             intersect: false,
                         },
                         scales: {
-                            yAxes: [
-                                {
+                            yAxes: [{
                                     id: 'y-axis-yield',
                                     type: 'linear',
                                     position: 'left',
@@ -1252,7 +1416,9 @@
                                         display: true,
                                         labelString: 'Sản lượng'
                                     },
-                                    ticks: { beginAtZero: true }
+                                    ticks: {
+                                        beginAtZero: true
+                                    }
                                 },
                                 {
                                     id: 'y-axis-batch',
@@ -1262,8 +1428,12 @@
                                         display: true,
                                         labelString: 'Số lô'
                                     },
-                                    ticks: { beginAtZero: true },
-                                    gridLines: { drawOnChartArea: false }
+                                    ticks: {
+                                        beginAtZero: true
+                                    },
+                                    gridLines: {
+                                        drawOnChartArea: false
+                                    }
                                 },
                                 {
                                     id: 'y-axis-time',
@@ -1273,8 +1443,12 @@
                                         display: true,
                                         labelString: 'Thời gian (Giờ)'
                                     },
-                                    ticks: { beginAtZero: true },
-                                    gridLines: { drawOnChartArea: false }
+                                    ticks: {
+                                        beginAtZero: true
+                                    },
+                                    gridLines: {
+                                        drawOnChartArea: false
+                                    }
                                 },
                                 {
                                     id: 'y-axis-days',
@@ -1284,8 +1458,12 @@
                                         display: true,
                                         labelString: 'Số ngày'
                                     },
-                                    ticks: { beginAtZero: true },
-                                    gridLines: { drawOnChartArea: false }
+                                    ticks: {
+                                        beginAtZero: true
+                                    },
+                                    gridLines: {
+                                        drawOnChartArea: false
+                                    }
                                 }
                             ]
                         }
@@ -1293,8 +1471,9 @@
                 });
             }
 
-            document.getElementById('correlationStageSelect').addEventListener('change', renderCorrelationChart);
-            
+            document.getElementById('correlationStageSelect').addEventListener('change',
+                renderCorrelationChart);
+
             // Init chart
             renderCorrelationChart();
         @endif

@@ -455,6 +455,150 @@ class ProductionPlanController extends Controller
                 ]);
                 return redirect()->back()->with('success', "Tạo Mới $request->name Thành Công!");
         }
+        public function search_all(Request $request)
+        {
+                $keyword = $request->keyword;
+                $from_month = $request->from_month;
+                $to_month = $request->to_month;
+
+                $maxStageFinished = DB::table('stage_plan')
+                        ->where('finished', 1)
+                        ->where('stage_code', '!=', 8)
+                        ->select('plan_master_id', DB::raw('MAX(stage_code) as max_stage_code'))
+                        ->groupBy('plan_master_id');
+
+                $maxPossibleStage = DB::table('stage_plan')
+                        ->where('active', 1)
+                        ->where('stage_code', '!=', 8)
+                        ->select('plan_master_id', DB::raw('MAX(stage_code) as max_possible_stage_code'))
+                        ->groupBy('plan_master_id');
+
+                $query = DB::table('plan_master')
+                        ->join('plan_list as pl', 'plan_master.plan_list_id', '=', 'pl.id')
+                        ->select(
+                                'plan_master.*',
+                                'finished_product_category.intermediate_code',
+                                'finished_product_category.finished_product_code',
+                                'finished_product_category.IsHypothesis',
+                                DB::raw('fp_name.name AS finished_product_name'),
+                                DB::raw('im_name.name AS intermediate_product_name'),
+                                'market.name as market',
+                                'specification.name as specification',
+                                'finished_product_category.batch_qty',
+                                'finished_product_category.unit_batch_qty',
+                                'finished_product_category.deparment_code',
+                                'source_material.name as source_material_name',
+                                DB::raw("CASE
+                                        WHEN plan_master.cancel = 1 THEN 'Hủy'
+                                        WHEN stage_plan.finished = 1 AND sp_max.max_stage_code = sp_possible.max_possible_stage_code THEN 'Hoàn Tất'
+                                        WHEN stage_plan.finished = 1 AND sp_max.max_stage_code = 1 THEN 'Đã Cân'
+                                        WHEN stage_plan.finished = 1 AND sp_max.max_stage_code = 3 THEN 'Đã Pha chế'
+                                        WHEN stage_plan.finished = 1 AND sp_max.max_stage_code = 4 THEN 'Đã THT'
+                                        WHEN stage_plan.finished = 1 AND sp_max.max_stage_code = 5 THEN 'Đã định hình'
+                                        WHEN stage_plan.finished = 1 AND sp_max.max_stage_code = 6 THEN 'Đã Bao phim'
+                                        WHEN stage_plan.finished = 1 AND sp_max.max_stage_code = 7 THEN 'Hoàn Tất ĐG'
+                                        ELSE 'Chưa làm' END AS status")
+                        )
+                        ->where('plan_master.active', 1)
+                        ->where('pl.type', 1)
+                        ->leftJoin('finished_product_category', 'plan_master.product_caterogy_id', '=', 'finished_product_category.id')
+                        ->leftJoin('intermediate_category', 'finished_product_category.intermediate_code', '=', 'intermediate_category.intermediate_code')
+                        ->leftJoin('source_material', 'plan_master.material_source_id', '=', 'source_material.id')
+                        ->leftJoin('product_name as fp_name', 'finished_product_category.product_name_id', '=', 'fp_name.id')
+                        ->leftJoin('product_name as im_name', 'intermediate_category.product_name_id', '=', 'im_name.id')
+                        ->leftJoin('market', 'finished_product_category.market_id', '=', 'market.id')
+                        ->leftJoin('specification', 'finished_product_category.specification_id', '=', 'specification.id')
+                        ->leftJoinSub($maxStageFinished, 'sp_max', function ($join) {
+                                $join->on('plan_master.main_parkaging_id', '=', 'sp_max.plan_master_id');
+                        })
+                        ->leftJoinSub($maxPossibleStage, 'sp_possible', function ($join) {
+                                $join->on('plan_master.main_parkaging_id', '=', 'sp_possible.plan_master_id');
+                        })
+                        ->leftJoin('stage_plan', function ($join) {
+                                $join->on('plan_master.main_parkaging_id', '=', 'stage_plan.plan_master_id')
+                                        ->on('stage_plan.stage_code', '=', 'sp_max.max_stage_code');
+                        });
+
+                if ($keyword) {
+                        $query->where(function ($q) use ($keyword) {
+                                $q->where('finished_product_category.intermediate_code', 'LIKE', '%' . $keyword . '%')
+                                  ->orWhere('finished_product_category.finished_product_code', 'LIKE', '%' . $keyword . '%')
+                                  ->orWhere('fp_name.name', 'LIKE', '%' . $keyword . '%')
+                                  ->orWhere('im_name.name', 'LIKE', '%' . $keyword . '%');
+                        });
+                }
+
+                if ($from_month) {
+                        $from_date = $from_month . '-01';
+                        $query->whereRaw("STR_TO_DATE(CONCAT('01-', pl.month, '-', pl.year), '%d-%c-%Y') >= ?", [$from_date]);
+                }
+
+                if ($to_month) {
+                        $to_date = $to_month . '-01';
+                        $query->whereRaw("STR_TO_DATE(CONCAT('01-', pl.month, '-', pl.year), '%d-%c-%Y') <= ?", [$to_date]);
+                }
+
+                $datas = $query->orderBy('pl.month', 'desc')
+                        ->orderBy('expected_date', 'asc')
+                        ->orderBy('level', 'asc')
+                        ->orderBy('batch', 'asc')
+                        ->get();
+
+                $planMasterIds = $datas->pluck('id')->toArray();
+                
+                $historyCounts = [];
+                if (!empty($planMasterIds)) {
+                        $historyCounts = DB::table('plan_master_history')
+                                ->select('plan_master_id', DB::raw('COUNT(*) as total'))
+                                ->whereIn('plan_master_id', $planMasterIds)
+                                ->groupBy('plan_master_id')
+                                ->pluck('total', 'plan_master_id')
+                                ->toArray();
+                }
+                
+                $datas = $datas->map(function ($item) use ($historyCounts) {
+                        $item->history_count = $historyCounts[$item->id] ?? 0;
+                        return $item;
+                });
+
+                $plan_list_id_title = DB::table('plan_list')->pluck('name', 'id');
+                
+                $production = 'Tất cả phân xưởng';
+                session()->put(['title' => "Tìm Kiếm Nâng Cao - Toàn Cục"]);
+
+                $finished_product_category = DB::table('finished_product_category')
+                        ->select(
+                                'finished_product_category.*',
+                                'product_name.name',
+                                'market.name as market',
+                                'specification.name as specification',
+                                'intermediate_category.id as intermediate_caterogy_id'
+                        )
+                        ->leftJoin('intermediate_category', 'finished_product_category.intermediate_code', '=', 'intermediate_category.intermediate_code')
+                        ->leftJoin('product_name', 'finished_product_category.product_name_id', '=', 'product_name.id')
+                        ->leftJoin('market', 'finished_product_category.market_id', '=', 'market.id')
+                        ->leftJoin('specification', 'finished_product_category.specification_id', '=', 'specification.id')
+                        ->where('finished_product_category.active', 1)
+                        ->orderBy('name', 'asc')
+                        ->get();
+
+                $source_materials = DB::table('source_material')->where('active', 1)->get();
+                $intermediate_category = DB::table('intermediate_category')->where('active', 1)->get();
+                $equipment_allocation = [];
+
+                return view('pages.plan.production.list', [
+                        'datas' => $datas,
+                        'plan_list_id' => -1,
+                        'plan_list_id_title' => $plan_list_id_title,
+                        'production' => $production,
+                        'month' => '',
+                        'send' => 1,
+                        'finished_product_category' => $finished_product_category,
+                        'source_materials' => $source_materials,
+                        'intermediate_category' => $intermediate_category,
+                        'equipment_allocation' => $equipment_allocation
+                ]);
+        }
 
         public function open(Request  $request)
         {
