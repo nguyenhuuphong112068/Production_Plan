@@ -141,6 +141,9 @@
                             </button>
                         @endif
                     </form>
+                    <button class="btn btn-success mb-2" onclick="exportPlanToExcel()" style="width: 177px;">
+                        <i class="fas fa-file-excel"></i> Xuất Excel
+                    </button>
 
                 </div>
             </div>
@@ -542,7 +545,131 @@
         </script>
     @endif
 
+    <table id="export_hidden_table" style="display:none;">
+        <thead>
+            <tr>
+                <th>STT</th>
+                <th>Tình Trạng</th>
+                @if ($plan_list_id < 0) <th>Tháng</th> @endif
+                <th>Mã BTP</th>
+                <th>Mã TP</th>
+                <th>Tên BTP</th>
+                <th>Tên TP</th>
+                <th>Cỡ lô</th>
+                <th>Số Lô Dự Kiến</th>
+                <th>Số Lô Thực Tế</th>
+                <th>Số lượng ĐG</th>
+                <th>Thị Trường</th>
+                <th>Qui Cách</th>
+                <th>Ngày dự kiến KCS</th>
+                <th>Ưu Tiên</th>
+                <th>Lô Thẩm định</th>
+                <th>Ngày có đủ NL</th>
+                <th>Ngày có đủ BB</th>
+                <th>Ngày được phép cân</th>
+                <th>Ngày HH NL chính</th>
+                <th>Ngày HH BB</th>
+                <th>PC trước</th>
+                <th>THT trước</th>
+                <th>BP trước</th>
+                <th>ĐG trước</th>
+                <th>Ghi Chú</th>
+                <th>Người Tạo</th>
+                <th>Ngày Tạo</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach ($datas as $data)
+                <tr>
+                    <td>{{ $loop->iteration }}</td>
+                    <td>{{ $data->IsHypothesis ? 'Lô Giả Định' : $data->status }}</td>
+                    @if ($plan_list_id < 0) <td>{{ $plan_list_id_title[$data->plan_list_id] ?? 'NA' }}</td> @endif
+                    <td>{{ $data->intermediate_code }}</td>
+                    <td>{{ $data->finished_product_code }}</td>
+                    <td>{{ $data->intermediate_product_name }}</td>
+                    <td>{{ trim($data->finished_product_name) == trim($data->intermediate_product_name) ? '' : trim($data->finished_product_name) }}</td>
+                    <td>{{ $data->batch_qty . ' ' . $data->unit_batch_qty }}</td>
+                    <td>{{ $data->batch }}</td>
+                    <td>{{ $data->actual_batch }}</td>
+                    <td>{{ $data->number_parkaging > 0 ? ($data->number_parkaging . ' ' . $data->unit_batch_qty) : '' }}</td>
+                    <td>{{ $data->market }}</td>
+                    <td>{{ $data->specification }}</td>
+                    <td>{{ $data->expected_date ? \Carbon\Carbon::parse($data->expected_date)->format('d/m/Y') : '' }}</td>
+                    <td>{{ $data->level }}</td>
+                    <td>{{ $data->is_val ? '1' : '0' }}</td>
+                    <td>{{ $data->after_weigth_date ? \Carbon\Carbon::parse($data->after_weigth_date)->format('d/m/Y') : '' }}</td>
+                    <td>{{ $data->after_parkaging_date ? \Carbon\Carbon::parse($data->after_parkaging_date)->format('d/m/Y') : '' }}</td>
+                    <td>{{ $data->allow_weight_before_date ? \Carbon\Carbon::parse($data->allow_weight_before_date)->format('d/m/Y') : '' }}</td>
+                    <td>{{ $data->expired_material_date ? \Carbon\Carbon::parse($data->expired_material_date)->format('d/m/Y') : '' }}</td>
+                    <td>{{ $data->expired_packing_date ? \Carbon\Carbon::parse($data->expired_packing_date)->format('d/m/Y') : '' }}</td>
+                    <td>{{ $data->preperation_before_date ? \Carbon\Carbon::parse($data->preperation_before_date)->format('d/m/Y') : '' }}</td>
+                    <td>{{ $data->blending_before_date ? \Carbon\Carbon::parse($data->blending_before_date)->format('d/m/Y') : '' }}</td>
+                    <td>{{ $data->coating_before_date ? \Carbon\Carbon::parse($data->coating_before_date)->format('d/m/Y') : '' }}</td>
+                    <td>{{ $data->parkaging_before_date ? \Carbon\Carbon::parse($data->parkaging_before_date)->format('d/m/Y') : '' }}</td>
+                    <td>{{ $data->note ?? '' }}</td>
+                    <td>{{ $data->prepared_by }}</td>
+                    <td>{{ $data->created_at ? \Carbon\Carbon::parse($data->created_at)->format('d/m/Y') : '' }}</td>
+                </tr>
+            @endforeach
+        </tbody>
+    </table>
+
     <script>
+        function exportPlanToExcel() {
+            var loadScript = function(url, callback) {
+                var script = document.createElement("script");
+                script.type = "text/javascript";
+                script.onload = function(){
+                    callback();
+                };
+                script.src = url;
+                document.getElementsByTagName("head")[0].appendChild(script);
+            };
+
+            var doExport = function() {
+                var planName = {!! json_encode(request()->get('name') ?? 'Ke_Hoach') !!};
+                var production = {!! json_encode($production ?? '') !!};
+                var date = new Date();
+                var dateStr = date.getDate().toString().padStart(2, '0') + '-' + 
+                              (date.getMonth() + 1).toString().padStart(2, '0') + '-' + 
+                              date.getFullYear();
+                var fileName = planName + '_' + production + '_' + dateStr;
+
+                var exportTable = $('#export_hidden_table');
+                
+                // Configure export button if not already present
+                if (!$.fn.DataTable.isDataTable('#export_hidden_table')) {
+                    exportTable.DataTable({
+                        paging: false,
+                        searching: false,
+                        ordering: false,
+                        info: false,
+                        buttons: [
+                            {
+                                extend: 'excelHtml5',
+                                name: 'excel-export',
+                                title: planName,
+                                filename: fileName
+                            }
+                        ]
+                    });
+                }
+                
+                exportTable.DataTable().button('excel-export:name').trigger();
+            };
+
+            // Dynamically load plugins if they aren't loaded yet
+            if (typeof JSZip === 'undefined' || typeof $.fn.dataTable.Buttons === 'undefined') {
+                loadScript("{{ asset('dataTable/plugins/jszip/jszip.min.js') }}", function() {
+                    loadScript("{{ asset('dataTable/plugins/datatables-buttons/js/dataTables.buttons.min.js') }}", function() {
+                        loadScript("{{ asset('dataTable/plugins/datatables-buttons/js/buttons.html5.min.js') }}", doExport);
+                    });
+                });
+            } else {
+                doExport();
+            }
+        }
+
         $(document).ready(function() {
             document.body.style.overflowY = "auto";
             preventDoubleSubmit("#send_form", "#send_btn");
