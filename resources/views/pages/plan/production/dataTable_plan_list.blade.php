@@ -27,56 +27,9 @@
         }
     </style>
     <div class="p-3">
-        <!-- Bảng Kế hoạch gom theo tháng -->
-
-        <!-- Form Tìm Kiếm Sản Phẩm Toàn Cục -->
-        {{-- <div class="card card-primary mt-5">
-            <div class="card-header">
-                <h3 class="card-title">Tìm Kiếm Kế Hoạch Sản Phẩm (Toàn Cục)</h3>
-                <div class="card-tools">
-                    <button type="button" class="btn btn-tool" data-card-widget="collapse">
-                        <i class="fas fa-minus"></i>
-                    </button>
-                </div>
-            </div>
-            <div class="card-body">
-                <form action="{{ route('pages.plan.production.search_all') }}" method="GET">
-                    <div class="row">
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                <label>Từ khoá (Mã hoặc Tên Sản Phẩm)</label>
-                                <input type="text" class="form-control" name="keyword"
-                                    value="{{ request('keyword') }}" placeholder="Nhập mã hoặc tên..." required>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="form-group">
-                                <label>Từ Tháng</label>
-                                <input type="month" class="form-control" name="from_month"
-                                    value="{{ request('from_month') }}">
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="form-group">
-                                <label>Đến Tháng</label>
-                                <input type="month" class="form-control" name="to_month"
-                                    value="{{ request('to_month') }}">
-                            </div>
-                        </div>
-                        <div class="col-md-2 d-flex align-items-end">
-                            <div class="form-group w-100">
-                                <button type="submit" class="btn btn-primary w-100">
-                                    <i class="fas fa-search"></i> Tìm Kiếm
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </form>
-            </div>
-        </div> --}}
 
         <!-- Bảng Kế hoạch gốc -->
-        <div class="card card-success mt-2">
+        <div class="card card-success mt-5">
             <div class="card-header">
                 <h3 class="card-title">Danh Sách Kế Hoạch Chi Tiết</h3>
                 <div class="card-tools">
@@ -93,34 +46,40 @@
                         'disabled',
                     );
                 @endphp
-                <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 p-3" style="background-color: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.04);">
+                <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 p-3"
+                    style="background-color: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.04);">
                     <!-- Nút Thêm Kế Hoạch -->
                     <div class="mb-2 mb-xl-0 pr-4" style="border-right: 2px solid #e9ecef;">
                         @if (user_has_permission(session('user')['userId'], 'plan_production_create_plan_list', 'boolean'))
                             <button class="btn btn-success btn-create" data-toggle="modal"
-                                data-target="#create_plan_list_modal" style="height: 40px; border-radius: 6px; font-weight: 600; letter-spacing: 0.3px; padding: 0 20px; box-shadow: 0 2px 4px rgba(40,167,69,0.2);">
+                                data-target="#create_plan_list_modal"
+                                style="height: 40px; border-radius: 6px; font-weight: 600; letter-spacing: 0.3px; padding: 0 20px; box-shadow: 0 2px 4px rgba(40,167,69,0.2);">
                                 <i class="fas fa-plus-circle mr-2"></i>Thêm Kế Hoạch
                             </button>
                         @endif
                     </div>
 
                     <!-- Form Tìm kiếm Nâng Cao -->
-                    <form action="{{ route('pages.plan.production.search_all') }}" method="GET" class="flex-grow-1 m-0 pl-4">
+                    <form action="{{ route('pages.plan.production.search_all') }}" method="GET"
+                        class="flex-grow-1 m-0 pl-4">
                         <div class="d-flex flex-wrap align-items-center justify-content-end">
-                            
+
                             <!-- Nhãn Toàn cục -->
-                            <div class="mr-3 text-info font-weight-bold d-none d-lg-block" style="font-size: 15px; letter-spacing: 0.5px;">
+                            <div class="mr-3 text-info font-weight-bold d-none d-lg-block"
+                                style="font-size: 15px; letter-spacing: 0.5px;">
                                 <i class="fas fa-globe-asia mr-1"></i> Tra Cứu Toàn Cục:
                             </div>
-                            
+
                             <!-- Ô Tìm kiếm -->
                             <div class="mr-3 mb-2 mb-md-0" style="flex: 1; min-width: 250px; max-width: 350px;">
                                 <div class="input-group shadow-sm" style="border-radius: 6px; overflow: hidden;">
                                     <div class="input-group-prepend">
-                                        <span class="input-group-text bg-white border-right-0 text-muted" style="border-color: #ced4da;"><i class="fas fa-search"></i></span>
+                                        <span class="input-group-text bg-white border-right-0 text-muted"
+                                            style="border-color: #ced4da;"><i class="fas fa-search"></i></span>
                                     </div>
                                     <input type="text" class="form-control border-left-0" name="keyword"
-                                        value="{{ request('keyword') }}" placeholder="Nhập mã / tên sản phẩm..." required 
+                                        value="{{ request('keyword') }}" placeholder="Nhập mã / tên sản phẩm..."
+                                        required
                                         style="height: 40px; box-shadow: none; border-color: #ced4da; padding-left: 0;">
                                 </div>
                             </div>
@@ -129,10 +88,12 @@
                             <div class="mr-3 mb-2 mb-md-0" style="width: 170px;">
                                 <div class="input-group shadow-sm" style="border-radius: 6px; overflow: hidden;">
                                     <div class="input-group-prepend">
-                                        <span class="input-group-text bg-light text-secondary font-weight-bold" style="border-color: #ced4da; font-size: 13px;">Từ</span>
+                                        <span class="input-group-text bg-light text-secondary font-weight-bold"
+                                            style="border-color: #ced4da; font-size: 13px;">Từ</span>
                                     </div>
                                     <input type="month" class="form-control" name="from_month"
-                                        value="{{ request('from_month', date('Y') . '-01') }}" style="height: 40px; border-color: #ced4da; box-shadow: none; cursor: pointer;">
+                                        value="{{ request('from_month', date('Y') . '-01') }}"
+                                        style="height: 40px; border-color: #ced4da; box-shadow: none; cursor: pointer;">
                                 </div>
                             </div>
 
@@ -140,16 +101,19 @@
                             <div class="mr-3 mb-2 mb-md-0" style="width: 170px;">
                                 <div class="input-group shadow-sm" style="border-radius: 6px; overflow: hidden;">
                                     <div class="input-group-prepend">
-                                        <span class="input-group-text bg-light text-secondary font-weight-bold" style="border-color: #ced4da; font-size: 13px;">Đến</span>
+                                        <span class="input-group-text bg-light text-secondary font-weight-bold"
+                                            style="border-color: #ced4da; font-size: 13px;">Đến</span>
                                     </div>
                                     <input type="month" class="form-control" name="to_month"
-                                        value="{{ request('to_month', date('Y-m')) }}" style="height: 40px; border-color: #ced4da; box-shadow: none; cursor: pointer;">
+                                        value="{{ request('to_month', date('Y-m')) }}"
+                                        style="height: 40px; border-color: #ced4da; box-shadow: none; cursor: pointer;">
                                 </div>
                             </div>
 
                             <!-- Submit -->
                             <div class="mb-2 mb-md-0">
-                                <button type="submit" class="btn btn-info shadow-sm" style="height: 40px; border-radius: 6px; font-weight: 600; letter-spacing: 0.3px; padding: 0 25px;">
+                                <button type="submit" class="btn btn-info shadow-sm"
+                                    style="height: 40px; border-radius: 6px; font-weight: 600; letter-spacing: 0.3px; padding: 0 25px;">
                                     Tìm Kiếm <i class="fas fa-arrow-right ml-2"></i>
                                 </button>
                             </div>
