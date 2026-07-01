@@ -39,12 +39,21 @@ class DailyReportController extends Controller
         $theory = $this->yield_theory($startDate, $endDate, 'resourceId');
 
 
+        $yieldsSubquery = DB::table('stage_plan as sp')
+            ->join('yields as y', 'sp.id', '=', 'y.stage_plan_id')
+            ->select('sp.plan_master_id', 'sp.stage_code', DB::raw('SUM(y.yield) as total_yield'))
+            ->groupBy('sp.plan_master_id', 'sp.stage_code');
+
         $sum_by_next_room = DB::table('stage_plan as t')
             ->leftJoin('stage_plan as t2', function ($join) {
                 $join->on('t2.code', '=', 't.nextcessor_code');
             })
+            ->leftJoinSub($yieldsSubquery, 'y_sum', function ($join) {
+                $join->on('t.plan_master_id', '=', 'y_sum.plan_master_id')
+                    ->on('t.stage_code', '=', 'y_sum.stage_code');
+            })
             ->leftJoin('room', 't2.resourceId', 'room.id')
-            ->whereNotNull('t.yields')
+            ->whereNotNull('y_sum.total_yield')
             ->where('t.deparment_code', session('user')['production_code'])
             ->where('t2.start', '>', $reportedDate)
             ->where('room.stage_code', '!=', 8) // 🔥 Loại bỏ các phòng stage 8
@@ -52,8 +61,8 @@ class DailyReportController extends Controller
             ->where('t.active', 1)
             ->where('t.finished', 1)
             ->select(
-                DB::raw("SUM(t.yields) as sum_yields"),
-                DB::raw("SUM(CASE WHEN t.Theoretical_yields > 0 THEN (t.yields / t.Theoretical_yields) * t.Theoretical_yields_qty ELSE 0 END) as sum_yields_unit"),
+                DB::raw("SUM(COALESCE(y_sum.total_yield, 0)) as sum_yields"),
+                DB::raw("SUM(CASE WHEN t.Theoretical_yields > 0 THEN (COALESCE(y_sum.total_yield, 0) / t.Theoretical_yields) * t.Theoretical_yields_qty ELSE 0 END) as sum_yields_unit"),
                 DB::raw("CONCAT(room.code, ' - ', room.name, ' - ', room.main_equiment_name) as next_room"),
                 DB::raw("MIN(room.production_group) as production_group"),
                 DB::raw("MIN(room.stage) as stage"),
@@ -725,15 +734,24 @@ class DailyReportController extends Controller
     {
         $reportedDate = $request->reportedDate ? Carbon::parse($request->reportedDate)->setTime(6, 0, 0) : Carbon::now()->setTime(6, 0, 0);
 
+        $yieldsSubquery = DB::table('stage_plan as sp')
+            ->join('yields as y', 'sp.id', '=', 'y.stage_plan_id')
+            ->select('sp.plan_master_id', 'sp.stage_code', DB::raw('SUM(y.yield) as total_yield'))
+            ->groupBy('sp.plan_master_id', 'sp.stage_code');
+
         $details = DB::table('stage_plan as t')
             ->leftJoin('stage_plan as t2', 't2.code', '=', 't.nextcessor_code')
+            ->leftJoinSub($yieldsSubquery, 'y_sum', function ($join) {
+                $join->on('t.plan_master_id', '=', 'y_sum.plan_master_id')
+                    ->on('t.stage_code', '=', 'y_sum.stage_code');
+            })
             ->leftJoin('room as next_room', 't2.resourceId', '=', 'next_room.id')
             ->leftJoin('room as pre_room', 't.resourceId', '=', 'pre_room.id')
             ->leftJoin('plan_master', 't.plan_master_id', '=', 'plan_master.id')
             ->leftJoin('finished_product_category as fpc', 't.product_caterogy_id', '=', 'fpc.id')
             ->leftJoin('product_name', 'fpc.product_name_id', '=', 'product_name.id')
             ->leftJoin('intermediate_category as ic', 'fpc.intermediate_code', '=', 'ic.intermediate_code')
-            ->whereNotNull('t.yields')
+            ->whereNotNull('y_sum.total_yield')
             ->where('t.deparment_code', session('user')['production_code'])
             ->where('t2.start', '>', $reportedDate)
             ->where('next_room.stage_code', '!=', 8)
@@ -747,7 +765,7 @@ class DailyReportController extends Controller
                 'product_name.name as product_name',
                 DB::raw("COALESCE(plan_master.actual_batch, plan_master.batch) as batch"),
                 DB::raw("CONCAT(pre_room.code, ' - ', pre_room.name) as pre_room"),
-                't.yields',
+                DB::raw("COALESCE(y_sum.total_yield, 0) as yields"),
                 't.stage_code',
                 'next_room.stage_code as next_stage',
                 't2.start as next_start',
