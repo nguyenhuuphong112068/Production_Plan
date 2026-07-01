@@ -501,51 +501,82 @@
                 </div>
 
                 <div class="card-body">
-                    <table id="data_table_instrument" class="table table-bordered table-striped">
-                        <thead style=" position: sticky; top: 60px;  z-index: 1020;">
-                            <tr>
-                                <th>STT</th>
-                                <th>Tên Phòng - Thiết Bị Chính</th>
-                                <th>Công Đoạn Tiếp Theo</th>
-                                <th>Tồn Thực Tế Công Đoạn trước</th>
-                                <th class ="text-center">Chi Tiết</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @php $group_code_current = null; @endphp
+                    @php
+                        // Group data by group_code
+                        $grouped_data = [];
+                        $max_yields = [];
+                        if (isset($sum_by_next_room)) {
+                            foreach ($sum_by_next_room as $item) {
+                                if (!isset($grouped_data[$item->group_code])) {
+                                    $grouped_data[$item->group_code] = [];
+                                    $max_yields[$item->group_code] = 0;
+                                }
+                                $grouped_data[$item->group_code][] = $item;
+                                
+                                if ((float)$item->sum_yields > $max_yields[$item->group_code]) {
+                                    $max_yields[$item->group_code] = (float)$item->sum_yields;
+                                }
+                            }
+                        }
+                    @endphp
 
-                            @foreach ($sum_by_next_room as $key_room => $data)
-                                @if ($group_code_current != $data->group_code)
-                                    <tr style="background:#CDC717; color:#003A4F; font-weight:bold;">
-                                        <td class="text-center" colspan="6">Tổ
-                                            {{ $group_name[$data->group_code] }}</td>
-                                    </tr>
-                                    @php $group_code_current = $data->group_code; @endphp
-                                @endif
-
-                                <tr>
-                                    <td>{{ $loop->iteration }}</td>
-                                    <td>{{ $data->next_room }}</td>
-                                    <td>{{ $data->stage }}</td>
-                                    <td>
-                                        {{ number_format($data->sum_yields, 2) }}
-                                        {{ $data->stage_code <= 5 ? 'Kg' : 'ĐVL' }}
-                                        @if ($data->stage_code == 5)
-                                            # {{ number_format($data->sum_yields_unit ?? 0, 2) }} ĐVL
-                                        @endif
-                                    </td>
-
-                                    <td class="text-center align-middle">
-                                        <button type="button" class="btn btn-primary btn-detial"
-                                            data-room_id ="{{ $data->room_id }}" data-toggle="modal"
-                                            data-target="#detailModal">
-                                            <i class="fas fa-eye"></i>
-                                        </button>
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
+                    @foreach ($grouped_data as $group_code => $items)
+                        <div class="card mb-4" style="border: 1px solid #ddd;">
+                            <div class="card-header" style="background:#CDC717; color:#003A4F; font-weight:bold; text-align: center; font-size: 16px;">
+                                Tổ {{ $group_name[$group_code] ?? $group_code }}
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-bordered table-striped table-sm mb-0">
+                                        <thead style="position: sticky; top: 0; z-index: 10; background: #fff;">
+                                            <tr>
+                                                <th style="width: 5%" class="text-center">STT</th>
+                                                <th style="width: 25%">Tên Phòng - Thiết Bị Chính</th>
+                                                <th style="width: 15%">Công Đoạn Tiếp Theo</th>
+                                                <th style="width: 20%">Tồn Thực Tế Công Đoạn trước</th>
+                                                <th style="width: 30%">Biểu Đồ So Sánh</th>
+                                                <th style="width: 5%" class="text-center">Chi Tiết</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach ($items as $index => $data)
+                                                <tr>
+                                                    <td class="text-center align-middle">{{ $index + 1 }}</td>
+                                                    <td class="align-middle">{{ $data->next_room }}</td>
+                                                    <td class="align-middle">{{ $data->stage }}</td>
+                                                    <td class="align-middle">
+                                                        {{ number_format($data->sum_yields, 2) }}
+                                                        {{ $data->stage_code <= 5 ? 'Kg' : 'ĐVL' }}
+                                                        @if ($data->stage_code == 5)
+                                                            <br># {{ number_format($data->sum_yields_unit ?? 0, 2) }} ĐVL
+                                                        @endif
+                                                    </td>
+                                                    <td class="align-middle">
+                                                        @php
+                                                            $percent = $max_yields[$group_code] > 0 ? ((float)$data->sum_yields / $max_yields[$group_code]) * 100 : 0;
+                                                        @endphp
+                                                        <div style="width: 100%; background-color: #e9ecef; border-radius: 4px; overflow: hidden; height: 24px; position: relative;">
+                                                            <div style="width: {{ $percent }}%; background-color: #28a745; height: 100%; border-radius: 4px;"></div>
+                                                            <div style="position: absolute; top: 0; left: 8px; height: 100%; display: flex; align-items: center; color: {{ $percent > 25 ? '#fff' : '#000' }}; font-weight: bold; font-size: 13px; text-shadow: {{ $percent > 25 ? '0 1px 2px rgba(0,0,0,0.5)' : 'none' }};">
+                                                                {{ number_format($data->sum_yields, 2) }}
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td class="text-center align-middle">
+                                                        <button type="button" class="btn btn-primary btn-sm btn-detial"
+                                                            data-room_id="{{ $data->room_id }}" data-toggle="modal"
+                                                            data-target="#detailModal">
+                                                            <i class="fas fa-eye"></i>
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    @endforeach
                 </div>
             </div>
 
@@ -692,7 +723,6 @@
 
     });
 </script>
-
 
 <script>
     document.querySelectorAll('.toggle-stage').forEach(btn => {
