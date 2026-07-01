@@ -15,7 +15,7 @@
                     <h1 class="inline-block">{{ session('title') }}
                         @csrf
                         <button class="mx-5 btn-history" style="color:#CDC717; background:none; border:none; outline:none;"
-                            title="Lịch Sữ Trang Thái Sản Xuất">
+                            title="Lịch Sử Trang Thái Sản Xuất">
                             <i class="fas fa-history"></i>
                         </button>
 

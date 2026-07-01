@@ -610,7 +610,7 @@
                                     <td>${item.product_name ?? ''} </td>
                                     <td>${item.batch ?? ''}</td>
                                     <td>${(item.pre_room ?? '') }</td>
-                                    <td>${(item.yields ?? '') + (item.stage_code <= 4 ? " Kg" : " ĐVL")}</td>
+                                    <td>${(item.yields != null ? new Intl.NumberFormat('en-US', { maximumFractionDigits: 3 }).format(item.yields) : '') + (item.stage_code <= 4 ? " Kg" : " ĐVL")}</td>
                                     <td>${stageNameMap[item.next_stage] ?? ''}</td>
                                     
                                     <td>${moment(item.next_start).format('hh:mm DD/MM/YYYY') ?? ''}</td>

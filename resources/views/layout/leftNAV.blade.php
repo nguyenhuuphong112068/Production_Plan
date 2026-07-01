@@ -897,7 +897,7 @@
                     <a href="{{ route('pages.AuditTrail.list') }}" class="nav-link">
                         <i class="nav-icon fas fa-th"></i>
                         <p>
-                            Lịch Sữ Đăng Nhập
+                            Lịch Sử Đăng Nhập
                         </p>
                     </a>
                 </li>
