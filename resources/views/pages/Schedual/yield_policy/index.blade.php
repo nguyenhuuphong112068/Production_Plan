@@ -912,7 +912,7 @@
         <div id="yp-toast"></div>
 
     @section('script')
-        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+        <script src="{{ asset('assets/plugins/local_cdn/chart.umd.min.js') }}"></script>
         <script>
             // ──────────────────────────────────────────────────────
             // DATA từ PHP

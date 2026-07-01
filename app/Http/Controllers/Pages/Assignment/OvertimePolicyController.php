@@ -20,8 +20,8 @@ class OvertimePolicyController extends Controller
 
         $policies = OvertimePolicy::where('overtime_policies.production_code', $production_code)
             ->where('overtime_policies.active', 1)
-            ->leftJoin('stage_groups', 'overtime_policies.group_id', '=', 'stage_groups.id')
-            ->select('overtime_policies.*', 'stage_groups.code as group_code_value')
+            ->leftJoin('stage_groups', 'overtime_policies.group_id', '=', 'stage_groups.code')
+            ->select('overtime_policies.*', 'stage_groups.code as group_code_value', 'stage_groups.name as group_name')
             ->get();
 
         return response()->json([
@@ -37,7 +37,7 @@ class OvertimePolicyController extends Controller
     {
         $production_code = $request->production_code;
         $policiesData = $request->policies; // Mảng các policy: [['group_id' => null, 'max_personnel' => 10, 'max_hours' => 20], ...]
-        $user = session('user')['name'] ?? 'System';
+        $user = session('user')['fullName'] ?? session('user')['name'] ?? 'System';
 
         if (!$production_code || !is_array($policiesData)) {
             return response()->json(['success' => false, 'message' => 'Invalid data']);

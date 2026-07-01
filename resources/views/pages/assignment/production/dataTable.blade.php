@@ -1,6 +1,6 @@
 <link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet">
 <link href="{{ asset('assets/vendor/select2/select2.min.css') }}" rel="stylesheet" />
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<link rel="stylesheet" href="{{ asset('assets/plugins/local_cdn/flatpickr.min.css') }}">
 <link href="{{ asset('assets/plugins/nouislider/nouislider.min.css') }}" rel="stylesheet" />
 <style>
     /* Slider Styling */
@@ -1114,9 +1114,15 @@
 <script src="{{ asset('js/vendor/jquery-1.12.4.min.js') }}"></script>
 <script src="{{ asset('js/sweetalert2.all.min.js') }}"></script>
 <script src="{{ asset('assets/plugins/nouislider/nouislider.min.js') }}"></script>
-<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="{{ asset('assets/plugins/local_cdn/flatpickr.min.js') }}"></script>
+<script src="{{ asset('assets/plugins/local_cdn/xlsx.bundle.js') }}"></script>
 
 <script>
+    const stageGroupsMap = {
+        @foreach (\DB::table('stage_groups')->get() as $sg)
+            "{{ $sg->code }}": "{{ $sg->name }}",
+        @endforeach
+    };
     const dbAssignments = @json($dbAssignments ?? []);
     const assignmentSuggestions = @json($suggestions ?? []);
     const person_options = `{!! implode(
@@ -4088,29 +4094,23 @@
                     <th colspan="6" style="font-size: 16px; border: none; text-align: left;">Lịch Công Tác Phân Xưởng</th>
                 </tr>
             `;
+            let metaRows = 1;
             if (groupName) {
                 titleHtml += `
                 <tr>
                     <th colspan="6" style="border: none; text-align: left;">Tổ: ${groupName}</th>
                 </tr>`;
+                metaRows++;
             }
             titleHtml += `
                 <tr>
                     <th colspan="6" style="border: none; text-align: left;">Ngày: ${$('#reportedDate').val() || $('input[name="reportedDate"]').val() || ''}</th>
                 </tr>
             `;
+            metaRows++;
 
             let tableHtml = `
-                <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
-                <head>
-                    <meta charset="utf-8" />
-                    <style>
-                        table { border-collapse: collapse; } 
-                        th, td { border: 1px solid black; padding: 5px; vertical-align: top; }
-                        th { background-color: #f2f2f2; font-weight: bold; text-align: center; }
-                    </style>
-                </head>
-                <body>
+                <div id="export-excel-container" style="display:none;">
                     <table>
                         <thead>
                             ${titleHtml}
@@ -4153,23 +4153,39 @@
                     else if (shiftVal === '6') shiftName = 'Ca 4';
                     else if (shiftVal === '4') shiftName = 'Hành chính';
 
-                    const personnel = [];
-                    $item.find('.personnel-container .person-select').each(function() {
-                        const val = $(this).val();
-                        if (val) {
-                            const name = $(this).find('option:selected').text();
-                            personnel.push(name);
-                        }
-                    });
-                    const personnelStr = personnel.join('<br>');
-                    const assignedCount = personnel.length;
-
                     const startTime = $item.find('.start-time-input').val() || '';
                     const endTime = $item.find('.end-time-input').val() || '';
                     const timeStr = (startTime && endTime) ?
                         `${startTime} - ${endTime}` : '';
 
-                    const workDetail = $item.find('.work-detail-input').val() || '';
+                    const personnel = [];
+                    $item.find('.personnel-container .person-select').each(function() {
+                        const val = $(this).val();
+                        if (val) {
+                            const name = $(this).find('option:selected').text();
+                            let pTimeStr = '';
+                            const pRow = $(this).closest('.personnel-row');
+                            if (pRow.length > 0) {
+                                const displayEl = pRow.find('.time-display').text().trim();
+                                if (displayEl) {
+                                    let timePart = displayEl.split('=')[0].trim();
+                                    if (timePart) {
+                                        pTimeStr = ` (${timePart})`;
+                                    }
+                                }
+                            }
+                            if (!pTimeStr && timeStr) {
+                                pTimeStr = ` (${timeStr})`;
+                            }
+                            personnel.push(name + pTimeStr);
+                        }
+                    });
+                    const personnelStr = personnel.join('<br>');
+                    const assignedCount = personnel.length;
+
+                    const workDetailElement = $item.find('.job-desc')[0];
+                    const workDetail = workDetailElement ? workDetailElement.innerText
+                        .trim().replace(/\n/g, '<br>') : '';
 
                     if (!shiftSummary[shiftName]) shiftSummary[shiftName] = 0;
                     shiftSummary[shiftName] += assignedCount;
@@ -4206,19 +4222,85 @@
             }
             tableHtml +=
                 `<tr><td style="text-align:center; font-weight:bold">Tổng cộng</td><td style="text-align:center; font-weight:bold; color: red;">${totalAssignedAllShifts}</td></tr>`;
-            tableHtml += `</tbody></table></body></html>`;
+            tableHtml += `</tbody></table></div>`;
 
-            const blob = new Blob(['\ufeff' + tableHtml], {
-                type: 'application/vnd.ms-excel;charset=utf-8'
-            });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.href = url;
-            link.download = "Lich_Cong_Tac_" + ($('input[name="reportedDate"]').val() || "Export") +
-                ".xls";
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = tableHtml;
+            document.body.appendChild(tempDiv);
+
+            try {
+                const wb = XLSX.utils.table_to_book(tempDiv, {
+                    sheet: "Lich_Cong_Tac"
+                });
+
+                const ws = wb.Sheets["Lich_Cong_Tac"];
+                if (ws) {
+                    ws['!cols'] = [{
+                            wpx: 150
+                        },
+                        {
+                            wpx: 80
+                        },
+                        {
+                            wpx: 120
+                        },
+                        {
+                            wpx: 200
+                        },
+                        {
+                            wpx: 120
+                        },
+                        {
+                            wpx: 300
+                        }
+                    ];
+
+                    const range = XLSX.utils.decode_range(ws['!ref']);
+                    for (let R = range.s.r; R <= range.e.r; ++R) {
+                        for (let C = range.s.c; C <= range.e.c; ++C) {
+                            const cellAddress = XLSX.utils.encode_cell({
+                                c: C,
+                                r: R
+                            });
+                            if (!ws[cellAddress]) continue;
+                            if (!ws[cellAddress].s) ws[cellAddress].s = {};
+                            
+                            if (R < metaRows) {
+                                ws[cellAddress].s.font = { bold: true, sz: (R === 0 ? 14 : 12) };
+                            } else if (R === metaRows) {
+                                ws[cellAddress].s.font = { bold: true };
+                                ws[cellAddress].s.border = {
+                                    top: { style: "medium", color: { auto: 1 } },
+                                    bottom: { style: "medium", color: { auto: 1 } },
+                                    left: { style: "medium", color: { auto: 1 } },
+                                    right: { style: "medium", color: { auto: 1 } }
+                                };
+                                ws[cellAddress].s.alignment = { vertical: "center", horizontal: "center", wrapText: true };
+                            } else {
+                                ws[cellAddress].s.border = {
+                                    top: { style: "medium", color: { auto: 1 } },
+                                    bottom: { style: "medium", color: { auto: 1 } },
+                                    left: { style: "medium", color: { auto: 1 } },
+                                    right: { style: "medium", color: { auto: 1 } }
+                                };
+                                ws[cellAddress].s.alignment = { wrapText: true, vertical: "top" };
+                            }
+                        }
+                    }
+                }
+                const fileName = "Lich_Cong_Tac_" + ($('input[name="reportedDate"]').val() || $(
+                    '#reportedDate').val() || "Export") + ".xlsx";
+                XLSX.writeFile(wb, fileName);
+            } catch (e) {
+                console.error("Lỗi xuất Excel:", e);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi',
+                    text: 'Không thể xuất file Excel. Vui lòng tải lại trang và thử lại.'
+                });
+            } finally {
+                document.body.removeChild(tempDiv);
+            }
         });
 
         $(document).on('click', '#btn-auto-assign', autoAssign);
@@ -5155,15 +5237,21 @@
                     pol.group_code_value.toString() : '';
                 curP = otData.groups.persons[gCode] || 0;
                 curH = parseFloat((otData.groups.hours[gCode] || 0).toFixed(1));
-                title = `Tổ ${gCode}`;
+
+                let groupName = typeof stageGroupsMap !== 'undefined' && stageGroupsMap[gCode] ? stageGroupsMap[
+                    gCode] : `Tổ ${gCode}`;
+                if (gCode === '7') {
+                    groupName = 'ĐGTC';
+                }
+                title = groupName;
             }
 
             let isExceeded = (maxP > 0 && curP > maxP) || (maxH > 0 && curH > maxH);
             let colorClass = isExceeded ? 'badge-danger' : 'badge-primary';
 
             badgeHtml += `<span class="badge ${colorClass} mr-2 shadow-sm" style="font-size:0.9rem; padding: 6px 10px;">
-                    <i class="fas ${isExceeded ? 'fa-exclamation-triangle' : 'fa-check-circle'}"></i> Mức trần ${title}: 
-                    ${maxP > 0 ? `<b>${curP}/${maxP}</b> người ` : ''} 
+                    <i class="fas ${isExceeded ? 'fa-exclamation-triangle' : 'fa-check-circle'}"></i>  ${title}: 
+                    ${maxP > 0 ? `<b>${curP}/${maxP}</b> người ` : ''} và 
                     ${maxH > 0 ? `<b>${curH.toFixed(1)}/${maxH}</b> giờ` : ''}
                 </span>`;
         });

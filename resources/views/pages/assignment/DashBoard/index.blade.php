@@ -320,9 +320,9 @@
 </div>
 
 <!-- ChartJS -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ asset('assets/plugins/local_cdn/chart.min.js') }}"></script>
 <!-- SweetAlert2 -->
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="{{ asset('assets/plugins/local_cdn/sweetalert2.min.js') }}"></script>
 
 <script>
     let globalStatsDaily = [];
