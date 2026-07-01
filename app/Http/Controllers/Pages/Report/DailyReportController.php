@@ -48,6 +48,7 @@ class DailyReportController extends Controller
             ->where('t.deparment_code', session('user')['production_code'])
             ->where('t2.start', '>', $reportedDate)
             ->where('room.stage_code', '!=', 8) // 🔥 Loại bỏ các phòng stage 8
+            ->where('t.stage_code', '!=', 2)
             ->where('t.active', 1)
             ->where('t.finished', 1)
             ->select(
@@ -736,6 +737,7 @@ class DailyReportController extends Controller
             ->where('t.deparment_code', session('user')['production_code'])
             ->where('t2.start', '>', $reportedDate)
             ->where('next_room.stage_code', '!=', 8)
+            ->where('t.stage_code', '!=', 2)
             ->where('t.active', 1)
             ->where('t.finished', 1)
             ->where('next_room.id', $request->room_id)
