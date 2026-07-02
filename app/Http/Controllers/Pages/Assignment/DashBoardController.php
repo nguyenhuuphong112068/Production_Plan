@@ -461,10 +461,13 @@ class DashBoardController extends Controller
             // Tổng hợp OT theo tổ
             $groupName = $employees[$empId]->group_names;
             if (!isset($groupOvertimeMap[$groupName])) {
-                $groupOvertimeMap[$groupName] = ['name' => $groupName, 'ot_hours' => 0, 'count' => 0];
+                $groupOvertimeMap[$groupName] = ['name' => $groupName, 'ot_hours' => 0, 'count' => 0, 'ot_people_count' => 0];
             }
             $groupOvertimeMap[$groupName]['ot_hours'] += $empOT;
             $groupOvertimeMap[$groupName]['count']++;
+            if ($empOT > 0) {
+                $groupOvertimeMap[$groupName]['ot_people_count']++;
+            }
         }
 
         $stats_laps['total_ot_hours'] = round($stats_laps['total_ot_hours'], 2);
@@ -481,7 +484,12 @@ class DashBoardController extends Controller
         // Format overtime by group
         $overtimeByGroup = array_values(array_filter(
             array_map(function ($g) {
-                return ['name' => $g['name'], 'ot_hours' => round($g['ot_hours'], 2), 'count' => $g['count']];
+                return [
+                    'name' => $g['name'], 
+                    'ot_hours' => round($g['ot_hours'], 2), 
+                    'count' => $g['count'], 
+                    'ot_people_count' => $g['ot_people_count']
+                ];
             }, $groupOvertimeMap),
             fn($g) => $g['ot_hours'] > 0 || $g['count'] > 0
         ));

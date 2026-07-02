@@ -425,7 +425,8 @@
     $production_code = session('user')['production_code'];
     $reportedDateObj = \Carbon\Carbon::parse($reportedDate)->startOfDay();
     $todayObj = \Carbon\Carbon::today();
-    $isPastDate = $reportedDateObj->lt($todayObj);
+    // Cho phép chỉnh sửa dữ liệu của ngày hôm nay và 1 ngày trước đó (hôm qua)
+    $isPastDate = $reportedDateObj->lt($todayObj->copy()->subDay(1));
     $hasEditPermission = user_has_permission(session('user')['userId'], 'production_assignment', 'boolean');
     $hasAuthorizeOvertime = user_has_permission(session('user')['userId'], 'Authorize_overtime', 'boolean');
     $canEdit = $hasEditPermission && !$isPastDate && (!empty($group_code) || $production_code != 'PXV1');
@@ -4166,9 +4167,11 @@
                             let pTimeStr = '';
                             const pRow = $(this).closest('.personnel-row');
                             if (pRow.length > 0) {
-                                const displayEl = pRow.find('.time-display').text().trim();
+                                const displayEl = pRow.find('.time-display')
+                                    .text().trim();
                                 if (displayEl) {
-                                    let timePart = displayEl.split('=')[0].trim();
+                                    let timePart = displayEl.split('=')[0]
+                                    .trim();
                                     if (timePart) {
                                         pTimeStr = ` (${timePart})`;
                                     }
@@ -4264,26 +4267,78 @@
                             });
                             if (!ws[cellAddress]) continue;
                             if (!ws[cellAddress].s) ws[cellAddress].s = {};
-                            
+
                             if (R < metaRows) {
-                                ws[cellAddress].s.font = { bold: true, sz: (R === 0 ? 14 : 12) };
-                            } else if (R === metaRows) {
-                                ws[cellAddress].s.font = { bold: true };
-                                ws[cellAddress].s.border = {
-                                    top: { style: "medium", color: { auto: 1 } },
-                                    bottom: { style: "medium", color: { auto: 1 } },
-                                    left: { style: "medium", color: { auto: 1 } },
-                                    right: { style: "medium", color: { auto: 1 } }
+                                ws[cellAddress].s.font = {
+                                    bold: true,
+                                    sz: (R === 0 ? 14 : 12)
                                 };
-                                ws[cellAddress].s.alignment = { vertical: "center", horizontal: "center", wrapText: true };
+                            } else if (R === metaRows) {
+                                ws[cellAddress].s.font = {
+                                    bold: true
+                                };
+                                ws[cellAddress].s.border = {
+                                    top: {
+                                        style: "medium",
+                                        color: {
+                                            auto: 1
+                                        }
+                                    },
+                                    bottom: {
+                                        style: "medium",
+                                        color: {
+                                            auto: 1
+                                        }
+                                    },
+                                    left: {
+                                        style: "medium",
+                                        color: {
+                                            auto: 1
+                                        }
+                                    },
+                                    right: {
+                                        style: "medium",
+                                        color: {
+                                            auto: 1
+                                        }
+                                    }
+                                };
+                                ws[cellAddress].s.alignment = {
+                                    vertical: "center",
+                                    horizontal: "center",
+                                    wrapText: true
+                                };
                             } else {
                                 ws[cellAddress].s.border = {
-                                    top: { style: "medium", color: { auto: 1 } },
-                                    bottom: { style: "medium", color: { auto: 1 } },
-                                    left: { style: "medium", color: { auto: 1 } },
-                                    right: { style: "medium", color: { auto: 1 } }
+                                    top: {
+                                        style: "medium",
+                                        color: {
+                                            auto: 1
+                                        }
+                                    },
+                                    bottom: {
+                                        style: "medium",
+                                        color: {
+                                            auto: 1
+                                        }
+                                    },
+                                    left: {
+                                        style: "medium",
+                                        color: {
+                                            auto: 1
+                                        }
+                                    },
+                                    right: {
+                                        style: "medium",
+                                        color: {
+                                            auto: 1
+                                        }
+                                    }
                                 };
-                                ws[cellAddress].s.alignment = { wrapText: true, vertical: "top" };
+                                ws[cellAddress].s.alignment = {
+                                    wrapText: true,
+                                    vertical: "top"
+                                };
                             }
                         }
                     }

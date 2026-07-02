@@ -422,12 +422,12 @@
                             </a>
                         </li>
 
-                        {{-- <li class="nav-item">
+                        <li class="nav-item">
                             <a href="{{ route('pages.plan.validation_tracking.list') }}" class="nav-link">
                                 <i class="far fa-circle nav-icon"></i>
                                 <p>Theo Dõi Thẩm Định</p>
                             </a>
-                        </li> --}}
+                        </li>
 
                         <li class="nav-item">
                             <a href="{{ route('pages.plan.production.feedback_list') }}" class="nav-link">

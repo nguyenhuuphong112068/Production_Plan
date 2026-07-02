@@ -17,7 +17,11 @@ class ValidationTrackingController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        return view('pages.plan.validation_tracking.list', compact('trackings'));
+        $products = \App\Models\IntermediateCategory::with(['productName', 'validationTrackings.validationTracking'])
+            ->whereHas('validationTrackings')
+            ->get();
+
+        return view('pages.plan.validation_tracking.list', compact('trackings', 'products'));
     }
 
     public function store(Request $request)
@@ -139,6 +143,8 @@ class ValidationTrackingController extends Controller
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Lỗi: ' . $e->getMessage()]);
         }
+    }
+
     public function checkValidation(Request $request)
     {
         $ic_id = $request->intermediate_category_id;
@@ -149,7 +155,7 @@ class ValidationTrackingController extends Controller
         $trackings = ValidationTrackingIntermediateCategory::with('validationTracking')
             ->where('intermediate_category_id', $ic_id)
             ->whereColumn('num_of_finished_batch', '<', 'num_of_tracking_batch')
-            ->whereHas('validationTracking', function($q) {
+            ->whereHas('validationTracking', function ($q) {
                 $q->where('status', 'Đang theo dõi');
             })
             ->get();
@@ -157,4 +163,3 @@ class ValidationTrackingController extends Controller
         return response()->json($trackings);
     }
 }
-
