@@ -437,6 +437,7 @@
 
                                 </tbody>
                             </table>
+                            <div id="validation_tracking_alert" class="mt-2"></div>
                         </div>
                         {{-- CÔng Thức ĐG --}}
                         <div class ="col-md-4">
@@ -584,6 +585,8 @@
                               </tr>
                           `);
                         });
+
+                        checkValidationTracking(intermediate_caterogy_id);
                     }
                 },
                 error: function() {
@@ -878,9 +881,45 @@
             $("#allow_weight_before_date").val($(this).val());
         });
 
-
         preventDoubleSubmit("#createModal", "#btnSave");
-
-
     });
+
+    function checkValidationTracking(ic_id) {
+        if (!ic_id) return;
+        $.ajax({
+            url: "{{ route('pages.plan.validation_tracking.check_validation') }}",
+            type: "GET",
+            data: { intermediate_category_id: ic_id },
+            success: function(res) {
+                let alertDiv = $('#validation_tracking_alert');
+                alertDiv.empty();
+
+                if (res && res.length > 0) {
+                    let html = `<div class="alert alert-warning" style="font-size:14px; padding: 10px;">
+                        <strong><i class="fas fa-exclamation-triangle"></i> Nhắc nhở Thẩm Định!</strong>
+                        <ul class="mb-2 pl-3">`;
+                    
+                    let trackIds = [];
+                    res.forEach(function(item) {
+                        html += `<li>Nguyên liệu <b>${item.validation_tracking.MaterialName} (${item.validation_tracking.MatID})</b> đang theo dõi. Đã chạy <b>${item.num_of_finished_batch}/${item.num_of_tracking_batch}</b> lô.</li>`;
+                        trackIds.push(item.id);
+                    });
+                    
+                    html += `</ul>
+                        <div class="custom-control custom-checkbox">
+                            <input class="custom-control-input custom-control-input-danger" type="checkbox" id="apply_validation_tracking" name="apply_validation_tracking" value="1">
+                            <label for="apply_validation_tracking" class="custom-control-label" style="cursor:pointer;">Đánh dấu lô này cho theo dõi thẩm định</label>
+                        </div>`;
+                    
+                    // Hidden input to pass the pivot ids to backend
+                    trackIds.forEach(function(id) {
+                        html += `<input type="hidden" name="validation_tracking_ic_ids[]" value="${id}">`;
+                    });
+
+                    html += `</div>`;
+                    alertDiv.html(html);
+                }
+            }
+        });
+    }
 </script>

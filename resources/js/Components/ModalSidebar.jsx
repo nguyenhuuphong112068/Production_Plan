@@ -201,8 +201,27 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
     return date.toLocaleDateString("vi-VN"); // sẽ thành dd/MM/yyyy
   };
 
+  const checkNotReady = (dateStr) => {
+    if (!dateStr) return true;
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return true;
+    date.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return date.getTime() > today.getTime();
+  };
+
+  const isRowBlocked = (rowData) => {
+    const showWeight = [1, 2, 3, 4, 5, 6].includes(stageFilter);
+    const showPkg = stageFilter === 7;
+    if (showWeight && checkNotReady(rowData.after_weigth_date)) return true;
+    if (showPkg && checkNotReady(rowData.after_parkaging_date)) return true;
+    return false;
+  };
+
   const weightPBodyTemplate = (rowData) => {
     const isEmpty = !rowData.after_weigth_date;
+    const isNotReady = checkNotReady(rowData.after_weigth_date);
 
     return (
       <div style={{ display: "flex", flexDirection: "column" }}>
@@ -216,6 +235,9 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
             ? "Chưa xác định"
             : formatDate(rowData.after_weigth_date)}
         </span>
+        {isNotReady && (
+          <span className="badge bg-danger mt-1" style={{ fontSize: '0.75rem', width: 'max-content' }}>NL Chưa sẵn sàng</span>
+        )}
       </div>
     );
   };
@@ -318,6 +340,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
 
   const packagingBodyTemplate = (rowData) => {
     const isEmpty = !rowData.after_parkaging_date;
+    const isNotReady = checkNotReady(rowData.after_parkaging_date);
 
     return (
       <div style={{ display: "flex", flexDirection: "column" }}>
@@ -331,6 +354,9 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
             ? "Chưa xác định"
             : formatDate(rowData.after_parkaging_date)}
         </span>
+        {isNotReady && (
+          <span className="badge bg-danger mt-1" style={{ fontSize: '0.75rem', width: 'max-content' }}>BB Chưa sẵn sàng</span>
+        )}
       </div>
     );
   };
@@ -957,6 +983,11 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
   const naBody = (field) => (rowData) => {
     if (field === "name") {
       const name = rowData.stage_code === 9 ? (rowData.title ?? "NA") : (rowData.name ?? "NA");
+      const showWeight = [1, 2, 3, 4, 5, 6].includes(stageFilter);
+      const showPkg = stageFilter === 7;
+      const isWeightNotReady = showWeight && checkNotReady(rowData.after_weigth_date);
+      const isPkgNotReady = showPkg && checkNotReady(rowData.after_parkaging_date);
+
       return (
         <div className="d-flex flex-column">
           <span>{name}</span>
@@ -964,6 +995,12 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
             <span className="badge bg-danger mt-1" style={{ fontSize: '10px', width: 'fit-content' }}>
               Không sắp lịch tự động
             </span>
+          )}
+          {percentShow === "30%" && isWeightNotReady && (
+            <span className="badge bg-danger mt-1" style={{ fontSize: '0.75rem', width: 'max-content' }}>NL Chưa sẵn sàng</span>
+          )}
+          {percentShow === "30%" && isPkgNotReady && (
+            <span className="badge bg-danger mt-1" style={{ fontSize: '0.75rem', width: 'max-content' }}>BB Chưa sẵn sàng</span>
           )}
         </div>
       );
@@ -1948,15 +1985,20 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
               /* Cột Kéo thả */
               <Column
                 header="-"
-                body={(rowData) => (
-                  <div
-                    className="fc-event cursor-move px-2 py-1 bg-blue-100 border border-blue-400 rounded text-sm text-center"
-                    draggable="true"
-                    onClick={handleSelectionChange}
-                  >
-                    <i className="fas fa-arrows-alt"></i>
-                  </div>
-                )}
+                body={(rowData) => {
+                  const blocked = isRowBlocked(rowData);
+                  return (
+                    <div
+                      className={blocked ? "px-2 py-1 bg-gray-100 border border-gray-400 rounded text-sm text-center text-gray-400 cursor-not-allowed" : "fc-event cursor-move px-2 py-1 bg-blue-100 border border-blue-400 rounded text-sm text-center"}
+                      draggable={blocked ? "false" : "true"}
+                      onClick={blocked ? undefined : handleSelectionChange}
+                      title={blocked ? "Chưa sẵn sàng để kéo thả" : ""}
+                      style={blocked ? { opacity: 0.6 } : {}}
+                    >
+                      <i className="fas fa-arrows-alt"></i>
+                    </div>
+                  );
+                }}
                 style={{ width: "60px", textAlign: "center" }}
               />
             )}

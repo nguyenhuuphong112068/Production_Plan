@@ -94,7 +94,8 @@
                                 <th class="text-center" style="width: 5% ">Sản lượng thực tế</th>
                                 <th class="text-center" style="width: 5% ">Phần trăm đáp ứng</th>
                                 <th class="text-center p-0 align-middle" style="min-width: 500px;">
-                                    <div class="border-bottom" style="border-color: #dee2e6; padding: 10px 0;">Chi tiết</div>
+                                    <div class="border-bottom" style="border-color: #dee2e6; padding: 10px 0;">Chi tiết
+                                    </div>
                                     <div class="row m-0 w-100">
                                         <div class="col-6 p-2" style="border-right: 1px solid #dee2e6;">Giải trình</div>
                                         <div class="col-6 p-2">Lý do</div>
@@ -215,12 +216,16 @@
 
                                     <td class="text-left note-content p-0 align-middle">
                                         <div class="d-flex w-100 h-100" style="min-width: 500px;">
-                                            <div class="w-50 p-2 d-flex align-items-start" style="border-right: 1px dashed rgba(0,0,0,0.2);">
-                                                <span style="font-size: 0.9em; white-space: pre-line; flex-grow: 1;">{{ isset($explanation[$stage_code]) && !empty($explanation[$stage_code]->content) ? trim($explanation[$stage_code]->content) : '-' }}</span>
+                                            <div class="w-50 p-2 d-flex align-items-start"
+                                                style="border-right: 1px dashed rgba(0,0,0,0.2);">
+                                                <span
+                                                    style="font-size: 0.9em; white-space: pre-line; flex-grow: 1;">{{ isset($explanation[$stage_code]) && !empty($explanation[$stage_code]->content) ? trim($explanation[$stage_code]->content) : '-' }}</span>
                                             </div>
                                             <div class="w-50 p-2 d-flex justify-content-between align-items-start">
-                                                <span style="font-size: 0.9em; white-space: pre-line; flex-grow: 1;">{{ isset($explanation[$stage_code]) && !empty($explanation[$stage_code]->reason) ? trim($explanation[$stage_code]->reason) : '-' }}</span>
-                                                <button type="button" class="btn btn-sm btn-outline-info btn-explain ml-2"
+                                                <span
+                                                    style="font-size: 0.9em; white-space: pre-line; flex-grow: 1;">{{ isset($explanation[$stage_code]) && !empty($explanation[$stage_code]->reason) ? trim($explanation[$stage_code]->reason) : '-' }}</span>
+                                                <button type="button"
+                                                    class="btn btn-sm btn-outline-info btn-explain ml-2"
                                                     style="padding: 2px 6px; font-size: 10px; height: fit-content;"
                                                     data-stage_code="{{ $stage_code }}"
                                                     data-reported_date="{{ $defaultFrom }}" data-toggle="modal"
@@ -512,9 +517,9 @@
                                     $max_yields[$item->group_code] = 0;
                                 }
                                 $grouped_data[$item->group_code][] = $item;
-                                
-                                if ((float)$item->sum_yields > $max_yields[$item->group_code]) {
-                                    $max_yields[$item->group_code] = (float)$item->sum_yields;
+
+                                if ((float) $item->sum_yields > $max_yields[$item->group_code]) {
+                                    $max_yields[$item->group_code] = (float) $item->sum_yields;
                                 }
                             }
                         }
@@ -522,7 +527,8 @@
 
                     @foreach ($grouped_data as $group_code => $items)
                         <div class="card mb-4" style="border: 1px solid #ddd;">
-                            <div class="card-header" style="background:#CDC717; color:#003A4F; font-weight:bold; text-align: center; font-size: 16px;">
+                            <div class="card-header"
+                                style="background:#CDC717; color:#003A4F; font-weight:bold; text-align: center; font-size: 16px;">
                                 Tổ {{ $group_name[$group_code] ?? $group_code }}
                             </div>
                             <div class="card-body p-0">
@@ -548,22 +554,33 @@
                                                         {{ number_format($data->sum_yields, 2) }}
                                                         {{ $data->stage_code <= 5 ? 'Kg' : 'ĐVL' }}
                                                         @if ($data->stage_code == 5)
-                                                            <br># {{ number_format($data->sum_yields_unit ?? 0, 2) }} ĐVL
+                                                            <br># {{ number_format($data->sum_yields_unit ?? 0, 2) }}
+                                                            ĐVL
                                                         @endif
                                                     </td>
                                                     <td class="align-middle">
                                                         @php
-                                                            $percent = $max_yields[$group_code] > 0 ? ((float)$data->sum_yields / $max_yields[$group_code]) * 100 : 0;
+                                                            $percent =
+                                                                $max_yields[$group_code] > 0
+                                                                    ? ((float) $data->sum_yields /
+                                                                            $max_yields[$group_code]) *
+                                                                        100
+                                                                    : 0;
                                                         @endphp
-                                                        <div style="width: 100%; background-color: #e9ecef; border-radius: 4px; overflow: hidden; height: 24px; position: relative;">
-                                                            <div style="width: {{ $percent }}%; background-color: #28a745; height: 100%; border-radius: 4px;"></div>
-                                                            <div style="position: absolute; top: 0; left: 8px; height: 100%; display: flex; align-items: center; color: {{ $percent > 25 ? '#fff' : '#000' }}; font-weight: bold; font-size: 13px; text-shadow: {{ $percent > 25 ? '0 1px 2px rgba(0,0,0,0.5)' : 'none' }};">
+                                                        <div
+                                                            style="width: 100%; background-color: #e9ecef; border-radius: 4px; overflow: hidden; height: 24px; position: relative;">
+                                                            <div
+                                                                style="width: {{ $percent }}%; background-color: #28a745; height: 100%; border-radius: 4px;">
+                                                            </div>
+                                                            <div
+                                                                style="position: absolute; top: 0; left: 8px; height: 100%; display: flex; align-items: center; color: {{ $percent > 25 ? '#fff' : '#000' }}; font-weight: bold; font-size: 13px; text-shadow: {{ $percent > 25 ? '0 1px 2px rgba(0,0,0,0.5)' : 'none' }};">
                                                                 {{ number_format($data->sum_yields, 2) }}
                                                             </div>
                                                         </div>
                                                     </td>
                                                     <td class="text-center align-middle">
-                                                        <button type="button" class="btn btn-primary btn-sm btn-detial"
+                                                        <button type="button"
+                                                            class="btn btn-primary btn-sm btn-detial"
                                                             data-room_id="{{ $data->room_id }}" data-toggle="modal"
                                                             data-target="#detailModal">
                                                             <i class="fas fa-eye"></i>

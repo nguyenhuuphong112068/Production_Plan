@@ -83,9 +83,11 @@ class ProductionAssignmentController extends Controller
         // 4. Lấy dữ liệu công việc lý thuyết trong ngày
         $stagePlanQuery = DB::table('stage_plan as sp')
             ->leftJoin('plan_master as pm', 'sp.plan_master_id', '=', 'pm.id')
+            ->join('plan_list as pl', 'pm.plan_list_id', '=', 'pl.id')
             ->leftJoin('finished_product_category as fpc', 'sp.product_caterogy_id', '=', 'fpc.id')
             ->leftJoin('product_name', 'fpc.product_name_id', 'product_name.id')
-            ->where('sp.deparment_code', $production_code);
+            ->where('sp.deparment_code', $production_code)
+            ->where('pl.type', 1);
 
         if ($rooms->isNotEmpty()) {
             $stagePlanQuery->whereIn('sp.resourceId', $rooms->pluck('id'));
@@ -1107,9 +1109,11 @@ class ProductionAssignmentController extends Controller
         // 3. Lấy dữ liệu công việc lý thuyết trong ngày
         $stagePlanQuery = DB::table('stage_plan as sp')
             ->leftJoin('plan_master as pm', 'sp.plan_master_id', '=', 'pm.id')
+            ->join('plan_list as pl', 'pm.plan_list_id', '=', 'pl.id')
             ->leftJoin('finished_product_category as fpc', 'sp.product_caterogy_id', '=', 'fpc.id')
             ->leftJoin('product_name', 'fpc.product_name_id', 'product_name.id')
             ->where('sp.deparment_code', $production_code)
+            ->where('pl.type', 1)
             ->where('sp.active', 1)
             ->whereRaw('(sp.start < ? AND sp.end > ?)', [$endDate, $startDate]);
 
@@ -1456,9 +1460,11 @@ class ProductionAssignmentController extends Controller
 
         $stagePlanQuery = DB::table('stage_plan as sp')
             ->leftJoin('plan_master as pm', 'sp.plan_master_id', '=', 'pm.id')
+            ->join('plan_list as pl', 'pm.plan_list_id', '=', 'pl.id')
             ->leftJoin('finished_product_category as fpc', 'sp.product_caterogy_id', '=', 'fpc.id')
             ->leftJoin('product_name', 'fpc.product_name_id', 'product_name.id')
             ->where('sp.deparment_code', $production_code)
+            ->where('pl.type', 1)
             ->where('sp.active', 1)
             ->where(function ($q) use ($startDate, $endDate) {
                 $q->where(function ($q1) use ($startDate, $endDate) {

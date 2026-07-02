@@ -55,6 +55,16 @@ Route::prefix('/plan')
                 Route::get('equipment_allocation/{id}', 'getEquipmentAllocation')->name('equipment_allocation');
             });
 
+        Route::prefix('/validation_tracking')
+            ->name('validation_tracking.')
+            ->controller(App\Http\Controllers\Pages\Plan\ValidationTrackingController::class)
+            ->group(function () {
+                Route::get('', 'index')->name('list');
+                Route::post('store', 'store')->name('store');
+                Route::post('update', 'update')->name('update');
+                Route::post('approve', 'approve')->name('approve');
+                Route::get('check_validation', 'checkValidation')->name('check_validation');
+            });
 
 
 

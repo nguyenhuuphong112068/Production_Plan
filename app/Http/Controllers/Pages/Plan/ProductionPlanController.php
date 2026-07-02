@@ -1001,6 +1001,34 @@ class ProductionPlanController extends Controller
                                         "reason" => "Tạo Mới", // lần đầu tạo thì version = 1
                                 ]);
 
+                                // Xử lý Theo Dõi Thẩm Định
+                                if ($request->has('apply_validation_tracking') && $request->apply_validation_tracking == 1 && $request->has('validation_tracking_ic_ids')) {
+                                        foreach ($request->validation_tracking_ic_ids as $vt_ic_id) {
+                                                $vt_ic = \App\Models\ValidationTrackingIntermediateCategory::find($vt_ic_id);
+                                                if ($vt_ic && $vt_ic->num_of_finished_batch < $vt_ic->num_of_tracking_batch) {
+                                                        \App\Models\ValidationTrackingPlanMaster::create([
+                                                                'validation_tracking_id' => $vt_ic->validation_tracking_id,
+                                                                'plan_master_id' => $planMasterId,
+                                                        ]);
+                                                        
+                                                        $vt_ic->increment('num_of_finished_batch');
+
+                                                        // Nếu đạt số lô theo dõi, cập nhật trạng thái tổng thể (Tùy chọn)
+                                                        if ($vt_ic->num_of_finished_batch >= $vt_ic->num_of_tracking_batch) {
+                                                                // Kiểm tra xem tất cả các IC khác của cùng VT đã xong chưa
+                                                                $allFinished = !\App\Models\ValidationTrackingIntermediateCategory::where('validation_tracking_id', $vt_ic->validation_tracking_id)
+                                                                        ->whereColumn('num_of_finished_batch', '<', 'num_of_tracking_batch')
+                                                                        ->exists();
+                                                                
+                                                                if ($allFinished) {
+                                                                        \App\Models\ValidationTracking::where('id', $vt_ic->validation_tracking_id)
+                                                                                ->update(['status' => 'Hoàn thành']);
+                                                                }
+                                                        }
+                                                }
+                                        }
+                                }
+
                                 $i++;
                         }
                 } catch (\Throwable $e) {
