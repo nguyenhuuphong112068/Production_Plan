@@ -171,8 +171,10 @@
                                 style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: #fff; cursor:pointer;"
                                 title="Click để xem chi tiết theo ngày">
                                 <div class="inner">
-                                    <h3 id="kpi_total_ot">0h <span style="font-size: 0.5em; font-weight: normal;" id="kpi_total_ot_people"></span></h3>
-                                    <p id="kpi_total_ot_label"><i class="fas fa-clock mr-1"></i>Tổng Tăng Ca theo e-office (TC)</p>
+                                    <h3 id="kpi_total_ot">0h <span style="font-size: 0.5em; font-weight: normal;"
+                                            id="kpi_total_ot_people"></span></h3>
+                                    <p id="kpi_total_ot_label"><i class="fas fa-clock mr-1"></i>Tổng Tăng Ca theo e-office
+                                        (TC)</p>
                                 </div>
                                 <div class="icon"><i class="fas fa-fire-alt"></i></div>
                             </div>
@@ -466,19 +468,26 @@
             document.getElementById('kpi_over8').innerText = data.stats_people.over_8h || 0;
             document.getElementById('kpi_total_ot').innerText = (data.stats_people.total_ot_hours || 0) + 'h';
             if (document.getElementById('kpi_total_ot_people')) {
-                document.getElementById('kpi_total_ot_people').innerText = '(' + (data.stats_people.over_8h || 0) + ' người)';
+                document.getElementById('kpi_total_ot_people').innerText = '(' + (data.stats_people.over_8h || 0) +
+                    ' người)';
             }
 
             // Hiển thị Số Lượt (Laps) ở thẻ p (nhỏ)
             if (days > 1) {
                 document.getElementById('kpi_total_label').innerText = 'Tổng nhân sự (' + totalLaps + ' lượt)';
-                document.getElementById('kpi_maternity_label').innerText = 'Nghỉ thai sản - ' + (data.stats_laps.maternity_leave || 0) + ' lượt';
-                document.getElementById('kpi_on_leave_label').innerText = 'Nghỉ phép (P) - ' + data.stats_laps.on_leave + ' lượt';
-                document.getElementById('kpi_unassigned_label').innerText = 'Chưa xếp lịch - ' + data.stats_laps.unassigned + ' lượt';
+                document.getElementById('kpi_maternity_label').innerText = 'Nghỉ thai sản - ' + (data.stats_laps
+                    .maternity_leave || 0) + ' lượt';
+                document.getElementById('kpi_on_leave_label').innerText = 'Nghỉ phép (P) - ' + data.stats_laps.on_leave +
+                    ' lượt';
+                document.getElementById('kpi_unassigned_label').innerText = 'Chưa xếp lịch - ' + data.stats_laps
+                    .unassigned + ' lượt';
                 document.getElementById('kpi_under8_label').innerText = '< 8h/ngày - ' + data.stats_laps.under_8h + ' lượt';
-                document.getElementById('kpi_exact8_label').innerText = 'Đủ 8h/ngày - ' + data.stats_laps.exact_8h + ' lượt';
-                document.getElementById('kpi_over8_label').innerText = '> 8h/ngày - ' + (data.stats_laps.over_8h || 0) + ' lượt';
-                document.getElementById('kpi_total_ot_label').innerHTML = '<i class="fas fa-clock mr-1"></i>Tổng Tăng Ca (' + (data.stats_laps.total_ot_hours || 0) + 'h)';
+                document.getElementById('kpi_exact8_label').innerText = 'Đủ 8h/ngày - ' + data.stats_laps.exact_8h +
+                ' lượt';
+                document.getElementById('kpi_over8_label').innerText = '> 8h/ngày - ' + (data.stats_laps.over_8h || 0) +
+                    ' lượt';
+                document.getElementById('kpi_total_ot_label').innerHTML =
+                    '<i class="fas fa-clock mr-1"></i>Tổng Tăng Ca (' + (data.stats_laps.total_ot_hours || 0) + 'h)';
                 if (document.getElementById('kpi_total_ot_people')) {
                     document.getElementById('kpi_total_ot_people').innerText = '';
                 }
@@ -490,7 +499,8 @@
                 document.getElementById('kpi_under8_label').innerText = '< 8h / ngày';
                 document.getElementById('kpi_exact8_label').innerText = 'Đủ 8h / ngày';
                 document.getElementById('kpi_over8_label').innerText = '> 8h / ngày';
-                document.getElementById('kpi_total_ot_label').innerHTML = '<i class="fas fa-clock mr-1"></i>Tổng Tăng Ca theo e-office (TC)';
+                document.getElementById('kpi_total_ot_label').innerHTML =
+                    '<i class="fas fa-clock mr-1"></i>Tổng Tăng Ca theo ';
             }
 
             globalStatsDaily = data.stats_daily || [];
@@ -504,7 +514,15 @@
             const otGroupBody = document.getElementById('otGroupTableBody');
             if (data.overtime_by_group && data.overtime_by_group.length > 0) {
                 otGroupBody.innerHTML = '';
+                let totalCount = 0;
+                let totalOTHours = 0;
+                let totalOTPeople = 0;
+
                 data.overtime_by_group.forEach(g => {
+                    totalCount += g.count;
+                    totalOTHours += g.ot_hours;
+                    totalOTPeople += g.ot_people_count;
+
                     const avgOT = g.count > 0 ? Math.round((g.ot_hours / g.count) * 100) / 100 : 0;
                     const otBar = g.ot_hours > 0 ?
                         `<div class="progress progress-xs mt-1" style="height:4px;"><div class="progress-bar bg-danger" style="width:${Math.min(100, g.ot_hours * 2)}%"></div></div>` :
@@ -521,6 +539,17 @@
                     </tr>
                 `;
                 });
+
+                // Add summary row
+                totalOTHours = Math.round(totalOTHours * 100) / 100;
+                otGroupBody.innerHTML += `
+                    <tr style="background-color: #f8f9fa;">
+                        <td><strong>Tổng cộng</strong></td>
+                        <td class="text-center"><strong>${totalCount}</strong></td>
+                        <td class="text-right"><strong class="text-danger" style="font-size:1.1em;">${totalOTHours}h</strong></td>
+                        <td class="text-right text-dark"><strong>${totalOTPeople}</strong></td>
+                    </tr>
+                `;
             } else {
                 otGroupBody.innerHTML =
                     '<tr><td colspan="4" class="text-center text-muted py-3"><i class="fas fa-info-circle mr-1"></i>Không có dữ liệu tăng ca từ API lịch trực</td></tr>';
