@@ -362,7 +362,7 @@
                 </li>
 
                 <!-- Droplist MMS-->
-                @if (user_has_permission(session('user')['userId'], 'layout_MMS', 'boolean'))
+                @if (user_has_permission(session('user')['userId'], 'layout_MMS_bo', 'boolean'))
                     <li class="nav-item has-treeview {{ str_contains(url()->current(), 'MMS') ? 'menu-open' : '' }}">
                         <a href="#"
                             class="nav-link {{ str_contains(url()->current(), 'MMS') ? 'active' : '' }}">
@@ -422,12 +422,12 @@
                             </a>
                         </li>
 
-                        <li class="nav-item">
+                        {{-- <li class="nav-item">
                             <a href="{{ route('pages.plan.validation_tracking.list') }}" class="nav-link">
                                 <i class="far fa-circle nav-icon"></i>
                                 <p>Theo Dõi Thẩm Định</p>
                             </a>
-                        </li>
+                        </li> --}}
 
                         <li class="nav-item">
                             <a href="{{ route('pages.plan.production.feedback_list') }}" class="nav-link">
