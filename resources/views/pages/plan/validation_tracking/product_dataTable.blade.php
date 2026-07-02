@@ -5,7 +5,7 @@
                 <h3 class="card-title"><i class="fas fa-pills"></i> Thống Kê Theo Bán Thành Phẩm</h3>
             </div>
             <div class="card-body">
-                <div class="table-responsive">
+                <div style="max-height: calc(100vh - 320px); overflow-y: auto; overflow-x: auto;">
                     <table id="productTrackingTable" class="table table-bordered table-striped w-100">
                         <thead style="background-color: #f4f6f9;">
                             <tr>
@@ -70,15 +70,13 @@
         $('.modal-backdrop').remove();
 
         $('#productTrackingTable').DataTable({
-            "paging": true,
-            "lengthChange": true,
+            "paging": false,
+            "lengthChange": false,
             "searching": true,
             "ordering": false,
-            "info": true,
+            "info": false,
             "autoWidth": false,
             "responsive": false,
-            "scrollY": "calc(100vh - 290px)",
-            "scrollCollapse": true,
             "drawCallback": function (settings) {
                 var api = this.api();
                 var rows = api.rows({page: 'current'}).nodes();
@@ -116,7 +114,7 @@
 
         // Fix DataTables width/height inside Bootstrap tabs
         $('a[data-toggle="pill"]').on('shown.bs.tab', function(e){
-            $($.fn.dataTable.tables(true)).DataTable().columns.adjust();
+            $.fn.dataTable.tables({ visible: true, api: true }).columns.adjust().draw();
         });
     });
 </script>

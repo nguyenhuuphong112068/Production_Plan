@@ -437,7 +437,6 @@
 
                                 </tbody>
                             </table>
-                            <div id="validation_tracking_alert" class="mt-2"></div>
                         </div>
                         {{-- CÔng Thức ĐG --}}
                         <div class ="col-md-4">
@@ -536,12 +535,12 @@
                         res.forEach((item, index) => {
                             // map màu level
 
-                            material_table.append(`
-                              <tr>
-                                    <td>${index + 1}</td>
-                                    <td>${item.MatID ?? ''}</td>
-                                    <td>${item.MaterialName ?? ''}</td>
-                                    <td style="text-align:center">
+                              material_table.append(`
+                                <tr>
+                                      <td>${index + 1}</td>
+                                      <td>${item.MatID ?? ''}</td>
+                                      <td id="mat_name_${item.MatID}">${item.MaterialName ?? ''}</td>
+                                      <td style="text-align:center">
                                         ${
                                             item.MatQty != null
                                             ? Number(item.MatQty).toLocaleString(undefined, {
@@ -624,12 +623,12 @@
                         res.forEach((item, index) => {
                             // map màu level
 
-                            packagin_table.append(`
-                              <tr>
-                                    <td>${index + 1}</td>
-                                    <td>${item.MatID ?? ''}</td>
-                                    <td>${item.MaterialName ?? ''}</td>
-                                    <td style="text-align:center">
+                              packagin_table.append(`
+                                <tr>
+                                      <td>${index + 1}</td>
+                                      <td>${item.MatID ?? ''}</td>
+                                      <td id="mat_name_${item.MatID}">${item.MaterialName ?? ''}</td>
+                                      <td style="text-align:center">
                                         ${
                                             item.MatQty != null
                                             ? Number(item.MatQty).toLocaleString(undefined, {
@@ -884,6 +883,22 @@
         preventDoubleSubmit("#createModal", "#btnSave");
     });
 
+    $('#createModal form').on('submit', function(e) {
+        let form = $(this);
+        let hasValidationTracking = false;
+
+        form.find('.validation-tracked-mat').each(function() {
+            if ($(this).is(':checked')) {
+                hasValidationTracking = true;
+                form.append(`<input type="hidden" name="validation_tracking_ic_ids[]" value="${$(this).attr('data-validation-id')}">`);
+            }
+        });
+
+        if (hasValidationTracking) {
+            form.append(`<input type="hidden" name="is_validation_tracking" value="1">`);
+        }
+    });
+
     function checkValidationTracking(ic_id) {
         if (!ic_id) return;
         $.ajax({
@@ -891,33 +906,26 @@
             type: "GET",
             data: { intermediate_category_id: ic_id },
             success: function(res) {
-                let alertDiv = $('#validation_tracking_alert');
-                alertDiv.empty();
-
                 if (res && res.length > 0) {
-                    let html = `<div class="alert alert-warning" style="font-size:14px; padding: 10px;">
-                        <strong><i class="fas fa-exclamation-triangle"></i> Nhắc nhở Thẩm Định!</strong>
-                        <ul class="mb-2 pl-3">`;
-                    
-                    let trackIds = [];
                     res.forEach(function(item) {
-                        html += `<li>Nguyên liệu <b>${item.validation_tracking.MaterialName} (${item.validation_tracking.MatID})</b> đang theo dõi. Đã chạy <b>${item.num_of_finished_batch}/${item.num_of_tracking_batch}</b> lô.</li>`;
-                        trackIds.push(item.id);
+                        let matId = item.validation_tracking.MatID;
+                        let purpose = item.validation_tracking.purpose || '';
+                        let purposeHtml = purpose ? ` - ${purpose}` : '';
+                        let cell = $(`#mat_name_${matId}`);
+                        if (cell.length) {
+                            cell.append(`<div class="mt-1"><span class="badge badge-warning text-wrap text-left" style="font-size:0.8rem; padding: 5px 8px; font-weight: normal; border: 1px solid #ffc107; line-height: 1.4; display: inline-block; max-width: 100%; word-break: break-word;" title="Nguyên liệu đang theo dõi thẩm định. Đã chạy ${item.num_of_finished_batch}/${item.num_of_tracking_batch} lô."><i class="fas fa-exclamation-triangle"></i> Nhắc nhở Thẩm định${purposeHtml} (${item.num_of_finished_batch}/${item.num_of_tracking_batch})</span></div>`);
+                            
+                            // Attach data to checkbox
+                            let checkbox = $(`input[name="materials[${matId}][active]"][type="checkbox"]`);
+                            if (!checkbox.length) {
+                                checkbox = $(`input[name="packagings[${matId}][active]"][type="checkbox"]`);
+                            }
+                            if (checkbox.length) {
+                                checkbox.addClass('validation-tracked-mat');
+                                checkbox.attr('data-validation-id', item.id);
+                            }
+                        }
                     });
-                    
-                    html += `</ul>
-                        <div class="custom-control custom-checkbox">
-                            <input class="custom-control-input custom-control-input-danger" type="checkbox" id="apply_validation_tracking" name="apply_validation_tracking" value="1">
-                            <label for="apply_validation_tracking" class="custom-control-label" style="cursor:pointer;">Đánh dấu lô này cho theo dõi thẩm định</label>
-                        </div>`;
-                    
-                    // Hidden input to pass the pivot ids to backend
-                    trackIds.forEach(function(id) {
-                        html += `<input type="hidden" name="validation_tracking_ic_ids[]" value="${id}">`;
-                    });
-
-                    html += `</div>`;
-                    alertDiv.html(html);
                 }
             }
         });

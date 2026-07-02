@@ -64,6 +64,7 @@ Route::prefix('/plan')
                 Route::post('update', 'update')->name('update');
                 Route::post('approve', 'approve')->name('approve');
                 Route::get('check_validation', 'checkValidation')->name('check_validation');
+                Route::get('get_plan_masters/{tracking_id}', 'getPlanMasters')->name('get_plan_masters');
             });
 
 

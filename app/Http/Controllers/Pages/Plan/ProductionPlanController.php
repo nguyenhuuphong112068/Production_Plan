@@ -891,6 +891,7 @@ class ProductionPlanController extends Controller
                                         "responsed_date" => $request->expected_date,
                                         "level" => $request->level,
                                         "is_val" => ($i <= $total) ? 1 : 0,
+                                        "is_validation_tracking" => $request->has('is_validation_tracking') ? 1 : 0,
                                         "code_val" => ($i <= $total) ? $code_val_part_0 . "_" . $code_val_part_1 : null,
 
                                         "after_weigth_date" => $request->after_weigth_date,
@@ -1002,7 +1003,7 @@ class ProductionPlanController extends Controller
                                 ]);
 
                                 // Xử lý Theo Dõi Thẩm Định
-                                if ($request->has('apply_validation_tracking') && $request->apply_validation_tracking == 1 && $request->has('validation_tracking_ic_ids')) {
+                                if ($request->has('is_validation_tracking') && $request->is_validation_tracking == 1 && $request->has('validation_tracking_ic_ids')) {
                                         foreach ($request->validation_tracking_ic_ids as $vt_ic_id) {
                                                 $vt_ic = \App\Models\ValidationTrackingIntermediateCategory::find($vt_ic_id);
                                                 if ($vt_ic && $vt_ic->num_of_finished_batch < $vt_ic->num_of_tracking_batch) {

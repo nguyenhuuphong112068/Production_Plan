@@ -359,6 +359,24 @@
                                 @if ($data->is_val)
                                     Lô thứ {{ $data->code_val ? explode('_', $data->code_val)[1] ?? '' : '' }}
                                 @endif
+
+                                @if (isset($data->is_validation_tracking) && $data->is_validation_tracking)
+                                    @php
+                                        $vts = \App\Models\ValidationTrackingPlanMaster::where('plan_master_id', $data->id)
+                                            ->join('validation_tracking', 'validation_tracking_plan_master.validation_tracking_id', '=', 'validation_tracking.id')
+                                            ->get();
+                                    @endphp
+                                    @foreach($vts as $vt)
+                                        <div class="mt-1 text-left">
+                                            <span class="badge badge-warning" style="white-space: normal; text-align: left; line-height: 1.4; border: 1px solid #ffc107;">
+                                                <i class="fas fa-exclamation-triangle"></i> TĐNL: {{ $vt->MaterialName }}
+                                                @if($vt->purpose)
+                                                    <br><small>{{ $vt->purpose }}</small>
+                                                @endif
+                                            </span>
+                                        </div>
+                                    @endforeach
+                                @endif
                             </td>
 
                             <td>
