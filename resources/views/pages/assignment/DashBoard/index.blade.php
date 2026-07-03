@@ -183,11 +183,12 @@
 
                     <div class="row">
                         <!-- Card cấu hình chính sách -->
+
                         <div class="col-md-8 mb-3">
                             <div class="card card-outline card-warning h-100 shadow-sm">
                                 <div class="card-header bg-warning text-dark">
-                                    <h3 class="card-title font-weight-bold"><i class="fas fa-cogs"></i> Cấu hình Chính
-                                        Sách Tăng Ca</h3>
+                                    <h3 class="card-title font-weight-bold"><i class="fas fa-cogs"></i> Chính Sách Tăng Ca
+                                    </h3>
                                     <div class="card-tools">
                                         <button class="btn btn-sm btn-info text-white shadow-sm" style="border:none;"
                                             onclick="openHistoryModal()"><i class="fas fa-history"></i> Xem lịch
@@ -218,10 +219,11 @@
                                 </div>
                                 <div class="card-footer text-right p-2 bg-light">
                                     <button type="button" class="btn btn-primary btn-sm px-4 shadow-sm"
-                                        onclick="savePolicy()"><i class="fas fa-save"></i> Lưu Cấu Hình</button>
+                                        onclick="savePolicy()" {{ user_has_permission(session('user')['userId'], 'Authorize_overtime', 'boolean') ? '' : 'disabled' }}><i class="fas fa-save"></i> Lưu Cấu Hình</button>
                                 </div>
                             </div>
                         </div>
+
 
                         <!-- Thống kê OT theo Tổ -->
                         <div class="col-md-4 mb-3" id="otSummaryRow">
@@ -483,7 +485,7 @@
                     .unassigned + ' lượt';
                 document.getElementById('kpi_under8_label').innerText = '< 8h/ngày - ' + data.stats_laps.under_8h + ' lượt';
                 document.getElementById('kpi_exact8_label').innerText = 'Đủ 8h/ngày - ' + data.stats_laps.exact_8h +
-                ' lượt';
+                    ' lượt';
                 document.getElementById('kpi_over8_label').innerText = '> 8h/ngày - ' + (data.stats_laps.over_8h || 0) +
                     ' lượt';
                 document.getElementById('kpi_total_ot_label').innerHTML =
@@ -708,6 +710,8 @@
         }
 
         function renderPolicyForm(prodCode, currentPolicies) {
+            const canAuthorizeOvertime = {{ user_has_permission(session('user')['userId'], 'Authorize_overtime', 'boolean') ? 'true' : 'false' }};
+            const disabledAttr = canAuthorizeOvertime ? '' : 'disabled';
             const tbody = document.getElementById('policyTableBody');
             tbody.innerHTML = '';
 
@@ -723,8 +727,8 @@
             <tr style="background-color: #fff3cd;">
                 <td><strong>Toàn phân xưởng</strong></td>
                 <td>-</td>
-                <td><input type="number" min="0" class="form-control form-control-sm pol-personnel" data-group="" value="${deptPol.max_personnel_per_day || ''}" placeholder="Ko giới hạn"></td>
-                <td><input type="number" min="0" step="0.5" class="form-control form-control-sm pol-hours" data-group="" value="${deptPol.max_hours_per_day || ''}" placeholder="Ko giới hạn"></td>
+                <td><input type="number" min="0" class="form-control form-control-sm pol-personnel" data-group="" value="${deptPol.max_personnel_per_day || ''}" placeholder="Ko giới hạn" ${disabledAttr}></td>
+                <td><input type="number" min="0" step="0.5" class="form-control form-control-sm pol-hours" data-group="" value="${deptPol.max_hours_per_day || ''}" placeholder="Ko giới hạn" ${disabledAttr}></td>
             </tr>
         `;
 
@@ -735,8 +739,8 @@
                     <tr>
                         <td>Tổ / Nhóm</td>
                         <td>${g.name}</td>
-                        <td><input type="number" min="0" class="form-control form-control-sm pol-personnel" data-group="${g.code}" value="${gPol.max_personnel_per_day || ''}" placeholder="Ko giới hạn"></td>
-                        <td><input type="number" min="0" step="0.5" class="form-control form-control-sm pol-hours" data-group="${g.code}" value="${gPol.max_hours_per_day || ''}" placeholder="Ko giới hạn"></td>
+                        <td><input type="number" min="0" class="form-control form-control-sm pol-personnel" data-group="${g.code}" value="${gPol.max_personnel_per_day || ''}" placeholder="Ko giới hạn" ${disabledAttr}></td>
+                        <td><input type="number" min="0" step="0.5" class="form-control form-control-sm pol-hours" data-group="${g.code}" value="${gPol.max_hours_per_day || ''}" placeholder="Ko giới hạn" ${disabledAttr}></td>
                     </tr>
                 `;
                 });
