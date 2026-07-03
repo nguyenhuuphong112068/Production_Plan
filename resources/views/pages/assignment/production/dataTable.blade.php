@@ -964,10 +964,17 @@
                     <input type="text" class="form-control border-left-0" id="sidebar-personnel-search"
                         placeholder="Tìm tên hoặc mã NV...">
                 </div>
-                <div class="custom-control custom-switch pl-4">
-                    <input type="checkbox" class="custom-control-input" id="filter-under-8h">
-                    <label class="custom-control-label small text-muted font-weight-bold cursor-pointer"
-                        for="filter-under-8h">Chỉ hiện nhân sự < 8h làm việc</label>
+                <div class="d-flex align-items-center mt-2">
+                    <div class="custom-control custom-switch pl-5 mr-3">
+                        <input type="checkbox" class="custom-control-input" id="filter-under-8h">
+                        <label class="custom-control-label small text-muted font-weight-bold cursor-pointer"
+                            for="filter-under-8h">Nhân sự < 8h</label>
+                    </div>
+                    <div class="custom-control custom-switch pl-4">
+                        <input type="checkbox" class="custom-control-input" id="filter-over-8h">
+                        <label class="custom-control-label small text-muted font-weight-bold cursor-pointer"
+                            for="filter-over-8h">Nhân sự > 8h</label>
+                    </div>
                 </div>
             </div>
             <div class="sidebar-body p-0 overflow-auto" id="sidebar-data-container" style="flex: 1">
@@ -1381,6 +1388,7 @@
         }
 
         const filterUnder8h = $('#filter-under-8h').is(':checked');
+        const filterOver8h = $('#filter-over-8h').is(':checked');
 
         $('.draggable-person').each(function() {
             const $el = $(this);
@@ -1520,15 +1528,17 @@
                 }
             }
 
-            // Apply filter under 8h
-            if (filterUnder8h) {
-                if (totalHours >= 8 || isLeave) {
-                    $el.hide();
-                } else {
-                    $el.show();
-                }
-            } else {
+            // Apply filter under 8h / over 8h
+            let showEl = true;
+            if (filterUnder8h || filterOver8h) {
+                showEl = false;
+                if (filterUnder8h && totalHours < 8 && !isLeave) showEl = true;
+                if (filterOver8h && totalHours > 8 && !isLeave) showEl = true;
+            }
+            if (showEl) {
                 $el.show();
+            } else {
+                $el.hide();
             }
         });
 
@@ -4171,7 +4181,7 @@
                                     .text().trim();
                                 if (displayEl) {
                                     let timePart = displayEl.split('=')[0]
-                                    .trim();
+                                        .trim();
                                     if (timePart) {
                                         pTimeStr = ` (${timePart})`;
                                     }
@@ -4386,7 +4396,7 @@
             renderSidebarData(currentSidebarData, currentSidebarDay, query);
         });
 
-        $(document).on('change', '#filter-under-8h', function() {
+        $(document).on('change', '#filter-under-8h, #filter-over-8h', function() {
             const query = $('#sidebar-personnel-search').val();
             renderSidebarData(currentSidebarData, currentSidebarDay, query);
         });

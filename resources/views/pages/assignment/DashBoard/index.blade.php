@@ -184,7 +184,7 @@
                     <div class="row">
                         <!-- Card cấu hình chính sách -->
 
-                        <div class="col-md-8 mb-3">
+                        <div class="col-md-6 mb-3">
                             <div class="card card-outline card-warning h-100 shadow-sm">
                                 <div class="card-header bg-warning text-dark">
                                     <h3 class="card-title font-weight-bold"><i class="fas fa-cogs"></i> Chính Sách Tăng Ca
@@ -219,14 +219,16 @@
                                 </div>
                                 <div class="card-footer text-right p-2 bg-light">
                                     <button type="button" class="btn btn-primary btn-sm px-4 shadow-sm"
-                                        onclick="savePolicy()" {{ user_has_permission(session('user')['userId'], 'Authorize_overtime', 'boolean') ? '' : 'disabled' }}><i class="fas fa-save"></i> Lưu Cấu Hình</button>
+                                        onclick="savePolicy()"
+                                        {{ user_has_permission(session('user')['userId'], 'Authorize_overtime', 'boolean') ? '' : 'disabled' }}><i
+                                            class="fas fa-save"></i> Lưu Cấu Hình</button>
                                 </div>
                             </div>
                         </div>
 
 
                         <!-- Thống kê OT theo Tổ -->
-                        <div class="col-md-4 mb-3" id="otSummaryRow">
+                        <div class="col-md-6 mb-3" id="otSummaryRow">
                             <div class="card card-outline h-100 shadow-sm" style="border-color: #f5576c;">
                                 <div class="card-header"
                                     style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color:#fff;">
@@ -710,7 +712,8 @@
         }
 
         function renderPolicyForm(prodCode, currentPolicies) {
-            const canAuthorizeOvertime = {{ user_has_permission(session('user')['userId'], 'Authorize_overtime', 'boolean') ? 'true' : 'false' }};
+            const canAuthorizeOvertime =
+                {{ user_has_permission(session('user')['userId'], 'Authorize_overtime', 'boolean') ? 'true' : 'false' }};
             const disabledAttr = canAuthorizeOvertime ? '' : 'disabled';
             const tbody = document.getElementById('policyTableBody');
             tbody.innerHTML = '';
