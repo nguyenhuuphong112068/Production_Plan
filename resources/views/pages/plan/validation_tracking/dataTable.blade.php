@@ -46,10 +46,10 @@
                                                     id="intermediates-{{ $tracking->id }}">
                                                     <ul class="list-group">
                                                         @foreach ($tracking->intermediateCategories as $ic)
-                                                            <li
-                                                                class="list-group-item d-flex justify-content-between align-items-center">
-                                                                {{ $ic->intermediateCategory->productName->name ?? 'N/A' }}
-                                                                <br><small>(Mã: {{ $ic->intermediateCategory->intermediate_code ?? 'N/A' }})</small>
+                                                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                                <div>
+                                                                    {{ $ic->intermediateCategory->intermediate_code ?? 'N/A' }} - {{ $ic->intermediateCategory->productName->name ?? 'N/A' }} - <span class="text-info">Cỡ lô: {{ number_format((float)($ic->intermediateCategory->batch_size ?? 0), 0, ',', '.') }} {{ $ic->intermediateCategory->unit_batch_size ?? '' }} | ĐVL: {{ number_format((float)($ic->intermediateCategory->batch_qty ?? 0), 0, ',', '.') }} {{ $ic->intermediateCategory->unit_batch_qty ?? '' }}</span>
+                                                                </div>
                                                                 <span class="badge badge-primary badge-pill btn-show-ic-plan-masters"
                                                                     style="cursor: pointer;"
                                                                     data-tracking-id="{{ $tracking->id }}"

@@ -1,1 +1,0 @@
-<?php require 'vendor/autoload.php'; \ = require_once 'bootstrap/app.php'; \ = \->make(Illuminate\Contracts\Http\Kernel::class); \->handle(Illuminate\Http\Request::capture()); print_r(DB::select('SELECT month FROM plan_list LIMIT 5')); print_r(DB::select('SELECT STR_TO_DATE(\'07-2026\', \'%m-%Y\') as d1, STR_TO_DATE(\'2026-07\', \'%Y-%m\') as d2')); ?>

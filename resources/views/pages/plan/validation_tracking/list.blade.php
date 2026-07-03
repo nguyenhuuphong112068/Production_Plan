@@ -31,6 +31,9 @@
                           <li class="nav-item">
                               <a class="nav-link font-weight-bold" id="tab-product-tab" data-toggle="pill" href="#tab-product" role="tab" aria-controls="tab-product" aria-selected="false"><i class="fas fa-pills text-success"></i> Thống Kê Theo Bán Thành Phẩm</a>
                           </li>
+                          <li class="nav-item">
+                              <a class="nav-link font-weight-bold" id="tab-in-progress-tab" data-toggle="pill" href="#tab-in-progress" role="tab" aria-controls="tab-in-progress" aria-selected="false"><i class="fas fa-spinner fa-spin text-warning"></i> Kế Hoạch Đang Sản Xuất</a>
+                          </li>
                       </ul>
                   </div>
                   <div class="card-body">
@@ -40,6 +43,9 @@
                           </div>
                           <div class="tab-pane fade" id="tab-product" role="tabpanel" aria-labelledby="tab-product-tab">
                               @include('pages.plan.validation_tracking.product_dataTable')
+                          </div>
+                          <div class="tab-pane fade" id="tab-in-progress" role="tabpanel" aria-labelledby="tab-in-progress-tab">
+                              @include('pages.plan.validation_tracking.in_progress_dataTable')
                           </div>
                       </div>
                   </div>

@@ -21,7 +21,41 @@ class ValidationTrackingController extends Controller
             ->whereHas('validationTrackings')
             ->get();
 
-        return view('pages.plan.validation_tracking.list', compact('trackings', 'products'));
+        $inProgressPlans = DB::table('plan_master')
+            ->where('plan_master.active', 1)
+            ->where('plan_master.cancel', 0)
+            ->where('plan_master.is_validation_tracking', 1)
+            ->join('finished_product_category', 'plan_master.product_caterogy_id', '=', 'finished_product_category.id')
+            ->leftJoin('product_name as fp_name', 'finished_product_category.product_name_id', '=', 'fp_name.id')
+            ->leftJoin('stage_plan', function ($join) {
+                $join->on('plan_master.main_parkaging_id', '=', 'stage_plan.plan_master_id')
+                     ->where('stage_plan.stage_code', 7)
+                     ->where('stage_plan.active', 1);
+            })
+            ->where(function($q) {
+                $q->whereNull('stage_plan.id')
+                  ->orWhere('stage_plan.finished', 0);
+            })
+            ->select(
+                'plan_master.id',
+                'plan_master.batch',
+                'plan_master.actual_batch',
+                'finished_product_category.finished_product_code',
+                'fp_name.name as product_name',
+                'finished_product_category.batch_qty',
+                'finished_product_category.unit_batch_qty',
+                'plan_master.deparment_code',
+                'stage_plan.start as packaging_start',
+                'stage_plan.end as packaging_end',
+                'stage_plan.actual_start',
+                'stage_plan.actual_end',
+                'stage_plan.schedualed',
+                'stage_plan.finished'
+            )
+            ->orderBy('plan_master.expected_date', 'asc')
+            ->get();
+
+        return view('pages.plan.validation_tracking.list', compact('trackings', 'products', 'inProgressPlans'));
     }
 
     public function store(Request $request)
@@ -148,17 +182,42 @@ class ValidationTrackingController extends Controller
     public function checkValidation(Request $request)
     {
         $ic_id = $request->intermediate_category_id;
-        if (!$ic_id) {
+        $ic_code = $request->intermediate_code;
+        $plan_master_id = $request->plan_master_id;
+        
+        if (!$ic_id && !$ic_code) {
             return response()->json([]);
         }
 
-        $trackings = ValidationTrackingIntermediateCategory::with('validationTracking')
-            ->where('intermediate_category_id', $ic_id)
-            ->whereColumn('num_of_finished_batch', '<', 'num_of_tracking_batch')
-            ->whereHas('validationTracking', function ($q) {
-                $q->where('status', 'Đang theo dõi');
-            })
-            ->get();
+        $query = ValidationTrackingIntermediateCategory::with('validationTracking');
+            
+        if ($ic_id) {
+            $query->where('intermediate_category_id', $ic_id);
+        } else {
+            $query->whereHas('intermediateCategory', function ($q) use ($ic_code) {
+                $q->where('intermediate_code', $ic_code);
+            });
+        }
+
+        if ($plan_master_id) {
+            $query->where(function ($q) use ($plan_master_id) {
+                $q->where(function($q1) {
+                    $q1->whereColumn('num_of_finished_batch', '<', 'num_of_tracking_batch')
+                       ->whereHas('validationTracking', function($q2) {
+                           $q2->where('status', 'Đang theo dõi');
+                       });
+                })->orWhereHas('validationTracking.planMasters', function($q2) use ($plan_master_id) {
+                    $q2->where('plan_master_id', $plan_master_id);
+                });
+            });
+        } else {
+            $query->whereColumn('num_of_finished_batch', '<', 'num_of_tracking_batch')
+                  ->whereHas('validationTracking', function ($q) {
+                      $q->where('status', 'Đang theo dõi');
+                  });
+        }
+
+        $trackings = $query->get();
 
         return response()->json($trackings);
     }

@@ -475,7 +475,7 @@
             const material_table = $('#material_recipe_body')
             const plan_master_id = $(this).find('input[name="id"]').val();
             material_table.empty();
-            $.ajax({
+            let req1 = $.ajax({
                 url: "{{ route('pages.plan.production.recipe_show_update') }}",
                 type: 'post',
                 data: {
@@ -501,7 +501,7 @@
 
                                     </td>
                                     <td>${item.material_packaging_code ?? ''}</td>
-                                    <td>${item.MaterialName ?? ''}</td>
+                                    <td id="update_mat_name_${item.material_packaging_code}">${item.MaterialName ?? ''}</td>
 
                                     <td style="text-align:center">
                                         ${
@@ -545,7 +545,7 @@
 
             const packagin_table = $('#packaging_recipe_body')
             packagin_table.empty();
-            $.ajax({
+            let req2 = $.ajax({
                 url: "{{ route('pages.plan.production.recipe_show_update') }}",
                 type: 'post',
                 data: {
@@ -571,7 +571,7 @@
                                             value="${item.id ?? 0}">
                                         </td>
                                     <td>${item.material_packaging_code ?? ''}</td>
-                                    <td>${item.MaterialName ?? ''}</td>
+                                    <td id="update_mat_name_${item.material_packaging_code}">${item.MaterialName ?? ''}</td>
                                     <td style="text-align:center">
                                         ${
                                             item.qty != null
@@ -606,6 +606,11 @@
                 }
             });
 
+            $.when(req1, req2).done(function() {
+                let intermediateCode = $('#updateModal').find('input[name="intermediate_code"]').val() || "";
+                let planMasterId = $('#updateModal').find('input[name="id"]').val() || "";
+                checkValidationTrackingUpdate(intermediateCode, planMasterId);
+            });
 
         });
 
@@ -805,6 +810,52 @@
 
         preventDoubleSubmit("#updateModal", "#btnSave");
 
+        $('#updateModal form').on('submit', function(e) {
+            let form = $(this);
+            let hasValidationTracking = false;
+
+            form.find('.validation-tracked-mat').each(function() {
+                if ($(this).is(':checked')) {
+                    hasValidationTracking = true;
+                    form.append(`<input type="hidden" name="validation_tracking_ic_ids[]" value="${$(this).attr('data-validation-id')}">`);
+                }
+            });
+
+            if (hasValidationTracking) {
+                form.append(`<input type="hidden" name="is_validation_tracking" value="1">`);
+            }
+        });
+
+        function checkValidationTrackingUpdate(ic_code, plan_master_id) {
+            if (!ic_code) return;
+            $.ajax({
+                url: "{{ route('pages.plan.validation_tracking.check_validation') }}",
+                type: "GET",
+                data: { intermediate_code: ic_code, plan_master_id: plan_master_id },
+                success: function(res) {
+                    if (res && res.length > 0) {
+                        res.forEach(function(item) {
+                            let matId = item.validation_tracking.MatID;
+                            let purpose = item.validation_tracking.purpose || '';
+                            let purposeHtml = purpose ? ` - ${purpose}` : '';
+                            let cell = $(`#update_mat_name_${matId}`);
+                            if (cell.length) {
+                                cell.append(`<div class="mt-1"><span class="badge badge-warning text-wrap text-left" style="font-size:0.8rem; padding: 5px 8px; font-weight: normal; border: 1px solid #ffc107; line-height: 1.4; display: inline-block; max-width: 100%; word-break: break-word;" title="Nguyên liệu đang theo dõi thẩm định. Đã chạy ${item.num_of_finished_batch}/${item.num_of_tracking_batch} lô."><i class="fas fa-exclamation-triangle"></i> Nhắc nhở Thẩm định${purposeHtml} (${item.num_of_finished_batch}/${item.num_of_tracking_batch})</span></div>`);
+                                
+                                let checkbox = $(`input[name="materials[${matId}][active]"][type="checkbox"]`);
+                                if (!checkbox.length) {
+                                    checkbox = $(`input[name="packagings[${matId}][active]"][type="checkbox"]`);
+                                }
+                                if (checkbox.length) {
+                                    checkbox.addClass('validation-tracked-mat');
+                                    checkbox.attr('data-validation-id', item.id);
+                                }
+                            }
+                        });
+                    }
+                }
+            });
+        }
 
     });
 </script>

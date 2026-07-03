@@ -9,10 +9,9 @@
                     <table id="productTrackingTable" class="table table-bordered table-striped w-100">
                         <thead style="background-color: #f4f6f9;">
                             <tr>
-                                <th style="width: 15%;">Mã Bán Thành Phẩm</th>
-                                <th style="width: 25%;">Tên Sản Phẩm</th>
-                                <th style="width: 15%;">Mã Nguyên Liệu</th>
-                                <th style="width: 25%;">Tên Nguyên Liệu</th>
+                                <th style="width: 40%;">Bán Thành Phẩm Theo Dõi</th>
+                                <th style="width: 10%;">Mã Nguyên Liệu</th>
+                                <th style="width: 20%;">Tên Nguyên Liệu</th>
                                 <th style="width: 10%;" class="text-center">Tiến độ lô</th>
                                 <th style="width: 10%;" class="text-center">Trạng thái</th>
                             </tr>
@@ -23,10 +22,11 @@
                                     @foreach ($product->validationTrackings as $index => $vt_ic)
                                         @if($vt_ic->validationTracking)
                                         <tr>
-                                            <td class="font-weight-bold text-primary">{{ $product->intermediate_code }}</td>
-                                            <td>{{ $product->productName->name ?? 'N/A' }}</td>
-                                            <td class="font-weight-bold text-secondary">{{ $vt_ic->validationTracking->MatID }}</td>
-                                            <td>{{ $vt_ic->validationTracking->MaterialName }}<br><small class="text-muted">CC: {{ $vt_ic->validationTracking->CC_num }}</small></td>
+                                            <td class="font-weight-bold text-primary">
+                                                {{ $product->intermediate_code }} - {{ $product->productName->name ?? 'N/A' }} - Cỡ lô: {{ number_format((float)$product->batch_size, 0, ',', '.') }} {{ $product->unit_batch_size ?? '' }} | ĐVL: {{ number_format((float)$product->batch_qty, 0, ',', '.') }} {{ $product->unit_batch_qty ?? '' }}
+                                            </td>
+                                            <td class="font-weight-bold text-secondary">{{ $vt_ic->validationTracking->MatID ?? 'N/A' }}</td>
+                                            <td>{{ $vt_ic->validationTracking->MaterialName ?? 'N/A' }}<br><small class="text-muted">CC: {{ $vt_ic->validationTracking->CC_num }}</small></td>
                                             <td class="text-center">
                                                 <span class="badge badge-primary badge-pill">
                                                     {{ $vt_ic->num_of_finished_batch }} / {{ $vt_ic->num_of_tracking_batch }} lô

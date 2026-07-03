@@ -10,3 +10,4 @@ Artisan::command('inspire', function () {
 use Illuminate\Support\Facades\Schedule;
 
 Schedule::command('notify:unscheduled-batches')->dailyAt('08:00');
+Schedule::command('notify:validation-sampling')->dailyAt('08:00');

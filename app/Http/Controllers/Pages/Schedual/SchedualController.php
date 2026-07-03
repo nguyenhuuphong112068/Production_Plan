@@ -305,11 +305,11 @@ class SchedualController extends Controller
             ->leftJoin('plan_list', 'plan_master.plan_list_id', '=', 'plan_list.id')
             ->leftJoin('finished_product_category', function ($join) {
                 $join->on('plan_master.product_caterogy_id', '=', 'finished_product_category.id')
-                     ->where('plan_list.type', '=', 1);
+                    ->where('plan_list.type', '=', 1);
             })
             ->leftJoin('quota_maintenance', function ($join) {
                 $join->on('plan_master.product_caterogy_id', '=', 'quota_maintenance.id')
-                     ->where('plan_list.type', '=', 0);
+                    ->where('plan_list.type', '=', 0);
             })
             ->leftJoin('intermediate_category', 'finished_product_category.intermediate_code', '=', 'intermediate_category.intermediate_code')
             ->leftJoin('product_name', 'intermediate_category.product_name_id', '=', 'product_name.id')
@@ -2145,10 +2145,10 @@ class SchedualController extends Controller
                         )
                         ->leftJoin('plan_master', 'sp.plan_master_id', 'plan_master.id')
                         ->leftJoin('plan_list', 'plan_master.plan_list_id', 'plan_list.id')
-                ->leftJoin('finished_product_category', function ($join) {
-                    $join->on('sp.product_caterogy_id', '=', 'finished_product_category.id')
-                         ->where('plan_list.type', '=', 1);
-                })
+                        ->leftJoin('finished_product_category', function ($join) {
+                            $join->on('sp.product_caterogy_id', '=', 'finished_product_category.id')
+                                ->where('plan_list.type', '=', 1);
+                        })
                         ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
                         ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
                         ->leftJoin('stage_plan as prev', function ($join) {
@@ -3218,6 +3218,36 @@ class SchedualController extends Controller
                         'yields' => $request->input('yields'),
                         'finished' => 1,
                     ]);
+            }
+
+            // Cập nhật trạng thái Validation Tracking nếu đủ số lô
+            $plan_master_ids = [];
+            if (isset($request->temp)) {
+                $plan_master_ids = is_array($ids) ? $ids : [$ids];
+            } else {
+                $plan_master_ids = DB::table('stage_plan')->whereIn('id', is_array($ids) ? $ids : [$ids])->pluck('plan_master_id')->unique()->toArray();
+            }
+
+            if (!empty($plan_master_ids)) {
+                $vtpms = \App\Models\ValidationTrackingPlanMaster::whereIn('plan_master_id', $plan_master_ids)
+                    ->where('active', 1)
+                    ->get();
+                foreach ($vtpms as $vtpm) {
+                    $vt_ics = \App\Models\ValidationTrackingIntermediateCategory::where('validation_tracking_id', $vtpm->validation_tracking_id)->get();
+                    foreach ($vt_ics as $vt_ic) {
+                        if ($vt_ic->num_of_finished_batch >= $vt_ic->num_of_tracking_batch) {
+                            $allFinished = !\App\Models\ValidationTrackingIntermediateCategory::where('validation_tracking_id', $vt_ic->validation_tracking_id)
+                                ->where('active', 1)
+                                ->whereColumn('num_of_finished_batch', '<', 'num_of_tracking_batch')
+                                ->exists();
+
+                            if ($allFinished) {
+                                \App\Models\ValidationTracking::where('id', $vt_ic->validation_tracking_id)
+                                    ->update(['status' => 'Hoàn thành']);
+                            }
+                        }
+                    }
+                }
             }
         } catch (\Exception  $e) {
 
@@ -5774,10 +5804,10 @@ class SchedualController extends Controller
             )
             ->leftJoin('plan_master', 'sp.plan_master_id', 'plan_master.id')
             ->leftJoin('plan_list', 'plan_master.plan_list_id', 'plan_list.id')
-                ->leftJoin('finished_product_category', function ($join) {
-                    $join->on('sp.product_caterogy_id', '=', 'finished_product_category.id')
-                         ->where('plan_list.type', '=', 1);
-                })
+            ->leftJoin('finished_product_category', function ($join) {
+                $join->on('sp.product_caterogy_id', '=', 'finished_product_category.id')
+                    ->where('plan_list.type', '=', 1);
+            })
             ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
             ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
             ->leftJoin('stage_plan as prev', function ($join) {
@@ -5791,7 +5821,7 @@ class SchedualController extends Controller
             ->whereNull('sp.start')
             ->where(function ($q) {
                 $q->whereNotNull('plan_master.after_weigth_date')
-                  ->whereDate('plan_master.after_weigth_date', '<=', \Carbon\Carbon::today());
+                    ->whereDate('plan_master.after_weigth_date', '<=', \Carbon\Carbon::today());
             })
             ->whereIn('sp.campaign_code', $vipCampaigns)
             ->where('sp.deparment_code', session('user.production_code'))
@@ -5929,10 +5959,10 @@ class SchedualController extends Controller
             )
             ->leftJoin('plan_master', 'sp.plan_master_id', 'plan_master.id')
             ->leftJoin('plan_list', 'plan_master.plan_list_id', 'plan_list.id')
-                ->leftJoin('finished_product_category', function ($join) {
-                    $join->on('sp.product_caterogy_id', '=', 'finished_product_category.id')
-                         ->where('plan_list.type', '=', 1);
-                })
+            ->leftJoin('finished_product_category', function ($join) {
+                $join->on('sp.product_caterogy_id', '=', 'finished_product_category.id')
+                    ->where('plan_list.type', '=', 1);
+            })
             ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
             ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
             ->leftJoin('stage_plan as prev', function ($join) {
@@ -5946,7 +5976,7 @@ class SchedualController extends Controller
             ->whereNull('sp.start')
             ->where(function ($q) {
                 $q->whereNotNull('plan_master.after_weigth_date')
-                  ->whereDate('plan_master.after_weigth_date', '<=', \Carbon\Carbon::today());
+                    ->whereDate('plan_master.after_weigth_date', '<=', \Carbon\Carbon::today());
             })
             ->where(function ($q) {
                 // Chỉ sắp nếu predecessor đã có lịch hoặc không có predecessor (stage 3)
@@ -6076,10 +6106,10 @@ class SchedualController extends Controller
             )
             ->leftJoin('plan_master', 'sp.plan_master_id', 'plan_master.id')
             ->leftJoin('plan_list', 'plan_master.plan_list_id', 'plan_list.id')
-                ->leftJoin('finished_product_category', function ($join) {
-                    $join->on('sp.product_caterogy_id', '=', 'finished_product_category.id')
-                         ->where('plan_list.type', '=', 1);
-                })
+            ->leftJoin('finished_product_category', function ($join) {
+                $join->on('sp.product_caterogy_id', '=', 'finished_product_category.id')
+                    ->where('plan_list.type', '=', 1);
+            })
             ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
             ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
             ->leftJoin('stage_plan as prev', function ($join) {
@@ -6093,7 +6123,7 @@ class SchedualController extends Controller
             ->whereNull('sp.start')
             ->where(function ($q) {
                 $q->whereNotNull('plan_master.after_weigth_date')
-                  ->whereDate('plan_master.after_weigth_date', '<=', \Carbon\Carbon::today());
+                    ->whereDate('plan_master.after_weigth_date', '<=', \Carbon\Carbon::today());
             })
             ->whereNotNull('prev.start')
             ->whereNotNull('plan_master.after_weigth_date')
@@ -6190,10 +6220,10 @@ class SchedualController extends Controller
             )
             ->leftJoin('plan_master', 'sp.plan_master_id', 'plan_master.id')
             ->leftJoin('plan_list', 'plan_master.plan_list_id', 'plan_list.id')
-                ->leftJoin('finished_product_category', function ($join) {
-                    $join->on('sp.product_caterogy_id', '=', 'finished_product_category.id')
-                         ->where('plan_list.type', '=', 1);
-                })
+            ->leftJoin('finished_product_category', function ($join) {
+                $join->on('sp.product_caterogy_id', '=', 'finished_product_category.id')
+                    ->where('plan_list.type', '=', 1);
+            })
             ->leftJoin('intermediate_category', 'finished_product_category.intermediate_code', 'intermediate_category.intermediate_code')
             ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
             ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
@@ -6209,7 +6239,7 @@ class SchedualController extends Controller
             ->whereNull('sp.start')
             ->where(function ($q) {
                 $q->whereNotNull('plan_master.after_weigth_date')
-                  ->whereDate('plan_master.after_weigth_date', '<=', \Carbon\Carbon::today());
+                    ->whereDate('plan_master.after_weigth_date', '<=', \Carbon\Carbon::today());
             })
             ->whereNotNull('plan_master.after_weigth_date')
             ->when($stageCode == 7, function ($q) {
@@ -6323,7 +6353,7 @@ class SchedualController extends Controller
                 ->leftJoin('plan_list', 'plan_master.plan_list_id', 'plan_list.id')
                 ->leftJoin('finished_product_category', function ($join) {
                     $join->on('sp.product_caterogy_id', '=', 'finished_product_category.id')
-                         ->where('plan_list.type', '=', 1);
+                        ->where('plan_list.type', '=', 1);
                 })
                 // ->leftJoin('intermediate_category', 'finished_product_category.intermediate_code', 'intermediate_category.intermediate_code')
                 ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
@@ -6338,7 +6368,7 @@ class SchedualController extends Controller
                 ->whereNull('sp.start')
                 ->where(function ($q) {
                     $q->whereNotNull('plan_master.after_weigth_date')
-                      ->whereDate('plan_master.after_weigth_date', '<=', \Carbon\Carbon::today());
+                        ->whereDate('plan_master.after_weigth_date', '<=', \Carbon\Carbon::today());
                 })
                 ->where('sp.not_schedule', 0)
                 ->whereNotNull('plan_master.after_weigth_date')
@@ -6384,7 +6414,7 @@ class SchedualController extends Controller
                 ->leftJoin('plan_list', 'plan_master.plan_list_id', 'plan_list.id')
                 ->leftJoin('finished_product_category', function ($join) {
                     $join->on('sp.product_caterogy_id', '=', 'finished_product_category.id')
-                         ->where('plan_list.type', '=', 1);
+                        ->where('plan_list.type', '=', 1);
                 })
                 ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
                 ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
@@ -6394,7 +6424,7 @@ class SchedualController extends Controller
                 ->whereNull('sp.start')
                 ->where(function ($q) {
                     $q->whereNotNull('plan_master.after_weigth_date')
-                      ->whereDate('plan_master.after_weigth_date', '<=', \Carbon\Carbon::today());
+                        ->whereDate('plan_master.after_weigth_date', '<=', \Carbon\Carbon::today());
                 })
                 ->where('sp.not_schedule', 0)
                 ->whereNotNull('plan_master.after_weigth_date')
@@ -6492,10 +6522,10 @@ class SchedualController extends Controller
             )
             ->leftJoin('plan_master', 'sp.plan_master_id', 'plan_master.id')
             ->leftJoin('plan_list', 'plan_master.plan_list_id', 'plan_list.id')
-                ->leftJoin('finished_product_category', function ($join) {
-                    $join->on('sp.product_caterogy_id', '=', 'finished_product_category.id')
-                         ->where('plan_list.type', '=', 1);
-                })
+            ->leftJoin('finished_product_category', function ($join) {
+                $join->on('sp.product_caterogy_id', '=', 'finished_product_category.id')
+                    ->where('plan_list.type', '=', 1);
+            })
             ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
             ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
             ->leftJoin('stage_plan as next', 'next.code', '=', 'sp.nextcessor_code')
@@ -6506,7 +6536,7 @@ class SchedualController extends Controller
             ->whereNull('sp.start')
             ->where(function ($q) {
                 $q->whereNotNull('plan_master.after_weigth_date')
-                  ->whereDate('plan_master.after_weigth_date', '<=', \Carbon\Carbon::today());
+                    ->whereDate('plan_master.after_weigth_date', '<=', \Carbon\Carbon::today());
             })
             ->where('sp.finished', 0)
             ->where('next.finished', 0)
@@ -6588,7 +6618,7 @@ class SchedualController extends Controller
                 ->leftJoin('plan_list', 'plan_master.plan_list_id', 'plan_list.id')
                 ->leftJoin('finished_product_category', function ($join) {
                     $join->on('sp.product_caterogy_id', '=', 'finished_product_category.id')
-                         ->where('plan_list.type', '=', 1);
+                        ->where('plan_list.type', '=', 1);
                 })
                 ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
                 ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
@@ -6646,7 +6676,7 @@ class SchedualController extends Controller
                 ->leftJoin('plan_list', 'plan_master.plan_list_id', 'plan_list.id')
                 ->leftJoin('finished_product_category', function ($join) {
                     $join->on('sp.product_caterogy_id', '=', 'finished_product_category.id')
-                         ->where('plan_list.type', '=', 1);
+                        ->where('plan_list.type', '=', 1);
                 })
                 ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
                 ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
@@ -7148,7 +7178,7 @@ class SchedualController extends Controller
                 ->leftJoin('plan_list', 'plan_master.plan_list_id', 'plan_list.id')
                 ->leftJoin('finished_product_category', function ($join) {
                     $join->on('sp.product_caterogy_id', '=', 'finished_product_category.id')
-                         ->where('plan_list.type', '=', 1);
+                        ->where('plan_list.type', '=', 1);
                 })
                 ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
                 ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
@@ -7699,7 +7729,7 @@ class SchedualController extends Controller
                 ->leftJoin('plan_list', 'plan_master.plan_list_id', 'plan_list.id')
                 ->leftJoin('finished_product_category', function ($join) {
                     $join->on('sp.product_caterogy_id', '=', 'finished_product_category.id')
-                         ->where('plan_list.type', '=', 1);
+                        ->where('plan_list.type', '=', 1);
                 })
                 ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
                 ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
@@ -7715,7 +7745,7 @@ class SchedualController extends Controller
                 ->whereNull('sp.start')  // Chỉ sắp task chưa có lịch
                 ->where(function ($q) {
                     $q->whereNotNull('plan_master.after_weigth_date')
-                      ->whereDate('plan_master.after_weigth_date', '<=', \Carbon\Carbon::today());
+                        ->whereDate('plan_master.after_weigth_date', '<=', \Carbon\Carbon::today());
                 })
                 // ->whereNotNull('plan_master.after_weigth_date')
                 ->where('sp.deparment_code', session('user.production_code'))
@@ -7984,7 +8014,7 @@ class SchedualController extends Controller
             $exactNextStartStr = $tasks->min('next_start');
             $start = Carbon::parse($exactNextStartStr)->setTime(6, 0, 0);
             $exactNextStart = $exactNextStartStr ? Carbon::parse($exactNextStartStr) : null;
-            
+
             $expiredDateStr = $tasks->min('expired_material_date');
             $expiredDate = $expiredDateStr ? Carbon::parse($expiredDateStr)->startOfDay() : null;
         } else {
@@ -7994,7 +8024,7 @@ class SchedualController extends Controller
             $exactNextStartStr = $task->next_start;
             $start = Carbon::parse($exactNextStartStr)->setTime(6, 0, 0);
             $exactNextStart = $exactNextStartStr ? Carbon::parse($exactNextStartStr) : null;
-            
+
             $expiredDateStr = $task->expired_material_date ?? null;
             $expiredDate = $expiredDateStr ? Carbon::parse($expiredDateStr)->startOfDay() : null;
         }
@@ -8142,7 +8172,7 @@ class SchedualController extends Controller
 
         // Upper Bound 1: Không được bắt đầu sau khi NL hết hạn
         if ($expiredDate && $bestStart->startOfDay()->gt($expiredDate)) {
-            $bestStart = $expiredDate->copy()->setTime(8, 0); 
+            $bestStart = $expiredDate->copy()->setTime(8, 0);
             // Tránh ngày nghỉ bằng cách lùi về (subDay) cho đến khi gặp ngày làm việc
             while (in_array($bestStart->toDateString(), $this->selectedDates, true) || in_array($bestStart->toDateString(), $this->offDate)) {
                 $bestStart->subDay();
@@ -8167,7 +8197,7 @@ class SchedualController extends Controller
             $bestEnd = $this->addWorkingMinutes($bestStart->copy(), (float) $intervalTimeMinutes, $bestRoom, $this->work_sunday);
             $isOverlap = true;
         }
-        
+
         if ($bestStart->lt($now)) {
             $bestStart = $now->copy();
             $bestEnd = $this->addWorkingMinutes($bestStart->copy(), (float) $intervalTimeMinutes, $bestRoom, $this->work_sunday);
@@ -8784,4 +8814,3 @@ function minutesToHoursMinutes(int $minutes): array
 
     return [$hours,  $mins];
 }
-

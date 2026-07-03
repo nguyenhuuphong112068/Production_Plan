@@ -14,6 +14,7 @@ class ValidationTrackingPlanMaster extends Model
     protected $fillable = [
         'validation_tracking_id',
         'plan_master_id',
+        'active',
     ];
 
     public function validationTracking()

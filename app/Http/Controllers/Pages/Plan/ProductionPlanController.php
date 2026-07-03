@@ -1013,19 +1013,6 @@ class ProductionPlanController extends Controller
                                                         ]);
                                                         
                                                         $vt_ic->increment('num_of_finished_batch');
-
-                                                        // Nếu đạt số lô theo dõi, cập nhật trạng thái tổng thể (Tùy chọn)
-                                                        if ($vt_ic->num_of_finished_batch >= $vt_ic->num_of_tracking_batch) {
-                                                                // Kiểm tra xem tất cả các IC khác của cùng VT đã xong chưa
-                                                                $allFinished = !\App\Models\ValidationTrackingIntermediateCategory::where('validation_tracking_id', $vt_ic->validation_tracking_id)
-                                                                        ->whereColumn('num_of_finished_batch', '<', 'num_of_tracking_batch')
-                                                                        ->exists();
-                                                                
-                                                                if ($allFinished) {
-                                                                        \App\Models\ValidationTracking::where('id', $vt_ic->validation_tracking_id)
-                                                                                ->update(['status' => 'Hoàn thành']);
-                                                                }
-                                                        }
                                                 }
                                         }
                                 }
@@ -1188,6 +1175,70 @@ class ProductionPlanController extends Controller
                         'prepared_by' => session('user')['fullName'],
                         'created_at' => now(),
                         'updated_at' => now(),
+                ]);
+                // --- Xử lý Cập nhật Theo dõi Thẩm định ---
+                $submitted_ic_ids = $request->input('validation_tracking_ic_ids', []);
+                $current_vtpms = \App\Models\ValidationTrackingPlanMaster::where('plan_master_id', $plan->id)
+                                    ->where('active', 1)->get();
+                
+                $submitted_vt_ids = [];
+                foreach ($submitted_ic_ids as $vt_ic_id) {
+                    $vt_ic = \App\Models\ValidationTrackingIntermediateCategory::find($vt_ic_id);
+                    if ($vt_ic) {
+                        $submitted_vt_ids[] = $vt_ic->validation_tracking_id;
+                    }
+                }
+
+                // 1. Kiểm tra các tracking ĐÃ BỎ CHỌN
+                foreach ($current_vtpms as $vtpm) {
+                    if (!in_array($vtpm->validation_tracking_id, $submitted_vt_ids)) {
+                        $vtpm->active = 0;
+                        $vtpm->save();
+
+                        $fpc = DB::table('finished_product_category')->where('id', $plan->product_caterogy_id)->first();
+                        if ($fpc && $fpc->intermediate_code) {
+                            $vt_ic = \App\Models\ValidationTrackingIntermediateCategory::where('validation_tracking_id', $vtpm->validation_tracking_id)
+                                ->whereHas('intermediateCategory', function($q) use ($fpc) {
+                                    $q->where('intermediate_code', $fpc->intermediate_code);
+                                })->first();
+                            
+                            if ($vt_ic && $vt_ic->num_of_finished_batch > 0) {
+                                $vt_ic->decrement('num_of_finished_batch');
+                                \App\Models\ValidationTracking::where('id', $vtpm->validation_tracking_id)
+                                    ->update(['status' => 'Đang theo dõi']);
+                            }
+                        }
+                    }
+                }
+
+                // 2. Kiểm tra các tracking MỚI ĐƯỢC CHỌN
+                $current_vt_ids = $current_vtpms->pluck('validation_tracking_id')->toArray();
+                foreach ($submitted_ic_ids as $vt_ic_id) {
+                    $vt_ic = \App\Models\ValidationTrackingIntermediateCategory::find($vt_ic_id);
+                    if ($vt_ic && !in_array($vt_ic->validation_tracking_id, $current_vt_ids)) {
+                        if ($vt_ic->num_of_finished_batch < $vt_ic->num_of_tracking_batch) {
+                            $existing_vtpm = \App\Models\ValidationTrackingPlanMaster::where('plan_master_id', $plan->id)
+                                                ->where('validation_tracking_id', $vt_ic->validation_tracking_id)
+                                                ->first();
+                            if ($existing_vtpm) {
+                                $existing_vtpm->active = 1;
+                                $existing_vtpm->save();
+                            } else {
+                                \App\Models\ValidationTrackingPlanMaster::create([
+                                    'validation_tracking_id' => $vt_ic->validation_tracking_id,
+                                    'plan_master_id' => $plan->id,
+                                    'active' => 1
+                                ]);
+                            }
+                            $vt_ic->increment('num_of_finished_batch');
+                            }
+                        }
+                    }
+                }
+
+                $hasActive = \App\Models\ValidationTrackingPlanMaster::where('plan_master_id', $plan->id)->where('active', 1)->exists();
+                DB::table('plan_master')->where('id', $plan->id)->update([
+                    'is_validation_tracking' => $hasActive ? 1 : 0
                 ]);
 
                 return redirect()->back()->with('success', 'Đã cập nhật thành công!');
@@ -1470,6 +1521,39 @@ class ProductionPlanController extends Controller
                 DB::table('stage_plan')->where('plan_master_id', $request->id)->update([
                         'active' => $active_stage_plan
                 ]);
+
+                // --- Cập nhật Tracking khi Deactive/Restore ---
+                $plan_ids = [];
+                if ($request->only_parkaging == 1) {
+                        $plan_ids[] = $request->id;
+                } else {
+                        $plan_ids = DB::table('plan_master')->where('main_parkaging_id', $request->id)->pluck('id')->toArray();
+                }
+
+                if ($active_stage_plan == 0) {
+                        foreach ($plan_ids as $p_id) {
+                                $vtpms = \App\Models\ValidationTrackingPlanMaster::where('plan_master_id', $p_id)->where('active', 1)->get();
+                                foreach ($vtpms as $vtpm) {
+                                        $vtpm->active = 0;
+                                        $vtpm->save();
+
+                                        $plan = DB::table('plan_master')->where('id', $p_id)->first();
+                                        $fpc = DB::table('finished_product_category')->where('id', $plan->product_caterogy_id)->first();
+                                        if ($fpc && $fpc->intermediate_code) {
+                                                $vt_ic = \App\Models\ValidationTrackingIntermediateCategory::where('validation_tracking_id', $vtpm->validation_tracking_id)
+                                                        ->whereHas('intermediateCategory', function($q) use ($fpc) {
+                                                                $q->where('intermediate_code', $fpc->intermediate_code);
+                                                        })->first();
+                                                if ($vt_ic && $vt_ic->num_of_finished_batch > 0) {
+                                                        $vt_ic->decrement('num_of_finished_batch');
+                                                        \App\Models\ValidationTracking::where('id', $vtpm->validation_tracking_id)
+                                                                ->update(['status' => 'Đang theo dõi']);
+                                                }
+                                        }
+                                }
+                                DB::table('plan_master')->where('id', $p_id)->update(['is_validation_tracking' => 0]);
+                        }
+                }
 
                 return redirect()->back()->with('success', 'Cập nhật trạng thái thành công!');
         }

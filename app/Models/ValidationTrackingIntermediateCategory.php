@@ -18,6 +18,7 @@ class ValidationTrackingIntermediateCategory extends Model
         'num_of_finished_batch',
         'note',
         'updated_by',
+        'active',
     ];
 
     public function validationTracking()

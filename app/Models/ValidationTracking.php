@@ -22,6 +22,7 @@ class ValidationTracking extends Model
         'approved',
         'approved_at',
         'approved_by',
+        'active',
     ];
 
     public function intermediateCategories()
