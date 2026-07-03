@@ -899,16 +899,26 @@
                                 history_modal.append(`
                               <tr>
                                   <td>${index + 1}</td>
-                                  <td class="${index === 0 ? 'text-success' : 'text-danger'}""> 
+                                  <td class="${index === 0 ? 'text-success' : 'text-danger'}"> 
                                       <div>${item.intermediate_code ?? ''}</div>
                                       <div>${item.finished_product_code ?? ''}</div>
                                   </td>
 
                                   <td>${item.name ?? ''} (${item.batch_qty ?? ''} ${item.unit_batch_qty ?? ''})</td>
-                                  <td>${item.batch ?? ''}</td>
+                                  
+                                  <td>
+                                      <div>${item.batch ?? ''}</div>
+                                      <div>${item.actual_batch ?? ''}</div>
+                                      <div>${item.number_parkaging ?? ''} ${item.percent_parkaging ? '('+item.percent_parkaging+'%)' : ''}</div>
+                                  </td>
+
                                   <td>
                                       <div>${item.market ?? ''}</div>
                                       <div>${item.specification ?? ''}</div>
+                                  </td>
+
+                                  <td>
+                                      <div>${item.expected_date ? moment(item.expected_date).format('DD/MM/YYYY') : ''}</div>
                                   </td>
 
                                   <td style="text-align: center; vertical-align: middle;">
@@ -917,21 +927,34 @@
                                       </span>
                                   </td>
 
-                                  <td>
-                                      <div>${item.expected_date ? moment(item.expected_date).format('DD/MM/YYYY') : ''}</div>
-                                  </td>
-
                                   <td class="text-center align-middle">
                                       ${item.is_val ? '<i class="fas fa-check-circle text-primary fs-4"></i>' : ''}
+                                      ${item.vts && item.vts.length > 0 ? item.vts.map(vt => `
+                                          <div class="mt-1 text-left">
+                                              <span class="badge badge-warning" style="white-space: normal; text-align: left; line-height: 1.4; border: 1px solid #ffc107;">
+                                                  <i class="fas fa-exclamation-triangle"></i> TĐNL: ${vt.MaterialName}
+                                                  ${vt.purpose ? `<br><small>${vt.purpose}</small>` : ''}
+                                              </span>
+                                          </div>
+                                      `).join('') : ''}
                                   </td>
-
-                                  <td>${item.source_material_name ?? ''}</td>
 
                                   <td>
                                       <div>${item.after_weigth_date ? moment(item.after_weigth_date).format('DD/MM/YYYY') : ''}</div>
                                       <div>${item.after_parkaging_date ? moment(item.after_parkaging_date).format('DD/MM/YYYY') : ''}</div>
+                                      <div>${item.allow_weight_before_date ? moment(item.allow_weight_before_date).format('DD/MM/YYYY') : ''}</div>
+                                      <div>${item.expired_material_date ? moment(item.expired_material_date).format('DD/MM/YYYY') : ''}</div>
+                                      <div>${item.expired_packing_date ? moment(item.expired_packing_date).format('DD/MM/YYYY') : ''}</div>
                                   </td>
 
+                                  <td>
+                                      <div>${item.preperation_before_date ? moment(item.preperation_before_date).format('DD/MM/YYYY') : ''}</div>
+                                      <div>${item.blending_before_date ? moment(item.blending_before_date).format('DD/MM/YYYY') : ''}</div>
+                                      <div>${item.coating_before_date ? moment(item.coating_before_date).format('DD/MM/YYYY') : ''}</div>
+                                      <div>${item.parkaging_before_date ? moment(item.parkaging_before_date).format('DD/MM/YYYY') : ''}</div>
+                                  </td>
+
+                                  <td>${item.source_material_name ?? ''}</td>
                                   <td>${item.note ?? ''}</td>
                                   <td>${item.version ?? ''}</td>
                                   <td >${item.reason ?? ''}</td>

@@ -782,7 +782,17 @@ class ProductionPlanController extends Controller
                         ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
                         ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
                         ->leftJoin('specification', 'finished_product_category.specification_id', 'specification.id')
-                        ->orderBy('version', 'desc')->orderBy('expected_date', 'asc')->get();
+                        ->orderBy('plan_master_history.version', 'desc')->orderBy('plan_master_history.expected_date', 'asc')->get();
+
+                $vts = \App\Models\ValidationTrackingPlanMaster::where('validation_tracking_plan_master.plan_master_id', $request->id)
+                        ->where('validation_tracking_plan_master.active', 1)
+                        ->join('validation_tracking', 'validation_tracking_plan_master.validation_tracking_id', '=', 'validation_tracking.id')
+                        ->get(['validation_tracking.MaterialName', 'validation_tracking.purpose']);
+
+                foreach ($histories as $history) {
+                        $history->vts = $vts;
+                }
+
                 return response()->json($histories);
         }
 
@@ -980,6 +990,7 @@ class ProductionPlanController extends Controller
                                         "expected_date" => $request->expected_date,
                                         "level" => $request->level,
                                         "is_val" => ($i <= $total) ? 1 : 0,
+                                        "is_validation_tracking" => ($request->has('is_validation_tracking') && $request->is_validation_tracking == 1) ? 1 : 0,
                                         "after_weigth_date" => $request->after_weigth_date,
                                         "after_parkaging_date" => $request->after_parkaging_date,
 
@@ -1150,32 +1161,6 @@ class ProductionPlanController extends Controller
                         ->max('version');
 
                 $newVersion = $lastVersion ? $lastVersion + 1 : 1;
-                DB::table('plan_master_history')->insert([
-                        'plan_master_id' => $plan->id,
-                        'plan_list_id' => $plan->plan_list_id,
-                        'product_caterogy_id' => $plan->product_caterogy_id,
-                        'version' => $newVersion,
-
-                        'level' => $request->level,
-                        'batch' => $request->batch,
-                        'expected_date' => $request->expected_date,
-                        'is_val' => $request->is_val == null ? 0 : 1,
-                        'after_weigth_date' => $request->after_weigth_date,
-
-                        'after_parkaging_date' => $request->after_parkaging_date,
-
-                        'material_source_id' => $request->material_source_id,
-                        'percent_parkaging' => $plan->percent_parkaging,
-                        'only_parkaging' => $plan->only_parkaging,
-                        "number_parkaging" => $plan->number_parkaging,
-                        'note' => $request->note ?? "NA",
-                        'reason' => $request->reason ?? "NA",
-                        'deparment_code' => $plan->deparment_code,
-
-                        'prepared_by' => session('user')['fullName'],
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                ]);
                 // --- Xử lý Cập nhật Theo dõi Thẩm định ---
                 $submitted_ic_ids = $request->input('validation_tracking_ic_ids', []);
                 $current_vtpms = \App\Models\ValidationTrackingPlanMaster::where('plan_master_id', $plan->id)
@@ -1231,7 +1216,6 @@ class ProductionPlanController extends Controller
                                 ]);
                             }
                             $vt_ic->increment('num_of_finished_batch');
-                            }
                         }
                     }
                 }
@@ -1239,6 +1223,34 @@ class ProductionPlanController extends Controller
                 $hasActive = \App\Models\ValidationTrackingPlanMaster::where('plan_master_id', $plan->id)->where('active', 1)->exists();
                 DB::table('plan_master')->where('id', $plan->id)->update([
                     'is_validation_tracking' => $hasActive ? 1 : 0
+                ]);
+
+                DB::table('plan_master_history')->insert([
+                        'plan_master_id' => $plan->id,
+                        'plan_list_id' => $plan->plan_list_id,
+                        'product_caterogy_id' => $plan->product_caterogy_id,
+                        'version' => $newVersion,
+
+                        'level' => $request->level,
+                        'batch' => $request->batch,
+                        'expected_date' => $request->expected_date,
+                        'is_val' => $request->is_val == null ? 0 : 1,
+                        'is_validation_tracking' => $hasActive ? 1 : 0,
+                        'after_weigth_date' => $request->after_weigth_date,
+
+                        'after_parkaging_date' => $request->after_parkaging_date,
+
+                        'material_source_id' => $request->material_source_id,
+                        'percent_parkaging' => $plan->percent_parkaging,
+                        'only_parkaging' => $plan->only_parkaging,
+                        "number_parkaging" => $plan->number_parkaging,
+                        'note' => $request->note ?? "NA",
+                        'reason' => $request->reason ?? "NA",
+                        'deparment_code' => $plan->deparment_code,
+
+                        'prepared_by' => session('user')['fullName'],
+                        'created_at' => now(),
+                        'updated_at' => now(),
                 ]);
 
                 return redirect()->back()->with('success', 'Đã cập nhật thành công!');
@@ -1347,6 +1359,7 @@ class ProductionPlanController extends Controller
                                 "expected_date" => $request->expected_date,
                                 "level" => $request->level,
                                 "is_val" => $mainPlanMaster->is_val,
+                                "is_validation_tracking" => $mainPlanMaster->is_validation_tracking,
                                 "after_weigth_date" => $mainPlanMaster->after_weigth_date,
 
                                 "after_parkaging_date" => $mainPlanMaster->after_parkaging_date,
@@ -1445,6 +1458,7 @@ class ProductionPlanController extends Controller
                         "expected_date" => $request->expected_date,
                         "level" => $request->level,
                         "is_val" => $mainPlanMaster->is_val,
+                        "is_validation_tracking" => $mainPlanMaster->is_validation_tracking,
                         "after_weigth_date" => $mainPlanMaster->after_weigth_date,
 
                         "after_parkaging_date" => $mainPlanMaster->after_parkaging_date,
@@ -2078,6 +2092,7 @@ class ProductionPlanController extends Controller
                         'batch' => $plan->batch,
                         'expected_date' => $request->new_expected_date,
                         'is_val' => $plan->is_val,
+                        'is_validation_tracking' => $plan->is_validation_tracking,
                         'after_weigth_date' => $plan->after_weigth_date,
                         'after_parkaging_date' => $plan->after_parkaging_date,
                         'material_source_id' => $plan->material_source_id,
@@ -2157,6 +2172,7 @@ class ProductionPlanController extends Controller
                         'batch' => $plan->batch,
                         'expected_date' => $plan->expected_date,
                         'is_val' => $plan->is_val,
+                        'is_validation_tracking' => $plan->is_validation_tracking,
                         'after_weigth_date' => $plan->after_weigth_date,
                         'after_parkaging_date' => $plan->after_parkaging_date,
                         'material_source_id' => $plan->material_source_id,

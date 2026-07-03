@@ -30,22 +30,40 @@
                 <table id="data_table_history" class="table table-bordered table-striped" style="font-size: 20px">
                   <thead >
                     <tr>
-                    <th>STT</th>
-                    <th>Mã Sản Phẩm</th>
-                    <th>Sản Phẩm</th>
-                    <th>Số Lô</th>
-                    <th>Thị Trường/ Qui Cách</th>
-                    <th>Ưu Tiên</th>
-                    <th>Ngày dự kiến KCS</th>
-                    <th>Lô Thẩm định</th>
-                    <th>Nguồn</th>
-                    <th>Ngày có đủ NL/BB</th>
-                    <th>Ghi Chú</th>
-                    <th>Version</th>
-                    <th style="width: 100px" >Lý Do</th>
-                    <th>Người Tạo/ Ngày Tạo</th>
+                        <th>STT</th>
+                        <th>Mã Sản Phẩm</th>
+                        <th style="width:7%">Sản Phẩm</th>
+                        <th style="width:5%">
+                            Số Lô Dự Kiến <br>
+                            Số Lô Thực Tế <br>
+                            Số lượng ĐG
+                        </th>
+                        <th>Thị Trường/ Qui Cách</th>
+                        <th style="width:4%">Ngày dự kiến KCS</th>
+                        <th>Ưu Tiên</th>
+                        <th>Lô Thẩm định</th>
 
-                  </tr>
+                        <th>
+                            <div>(1) Ngày có đủ NL</div>
+                            <div>(2) Ngày có đủ BB</div>
+                            <div>(3) Ngày được phép cân</div>
+                            <div>(4) Ngày HH NL chính</div>
+                            <div>(5) Ngày HH BB</div>
+                        </th>
+
+                        <th>
+                            <div>(1) PC trước</div>
+                            <div>(2) THT trước</div>
+                            <div>(3) BP trước</div>
+                            <div>(4) ĐG trước</div>
+                        </th>
+
+                        <th>Nguồn</th>
+                        <th style="width:15%">Ghi Chú</th>
+                        <th>Version</th>
+                        <th style="width: 100px">Lý Do</th>
+                        <th>Người Tạo/ Ngày Tạo</th>
+                    </tr>
                   </thead>
                   <tbody id = "data_table_history_body">
    
