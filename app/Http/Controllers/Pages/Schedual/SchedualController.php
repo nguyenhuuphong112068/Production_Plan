@@ -957,7 +957,7 @@ class SchedualController extends Controller
         }
 
         $maintenanceEvents = $events->where('stage_code', '=', 8);
-        $productionEvents = $events->where('stage_code', '<', 8);
+        $productionEvents = $events->where('stage_code', '!=', 8);
 
         $groupedMaintenance = $maintenanceEvents->groupBy(function ($event) {
             $e = (object) $event;
@@ -1956,6 +1956,20 @@ class SchedualController extends Controller
                 | lưu stage_plan
                 |--------------------------------------------------------------------------
                 */
+                $offDays = DB::table('off_days')
+                    ->whereDate('off_date', '<=', $current_start)
+                    ->pluck('off_date')
+                    ->toArray();
+
+                $receiveDate = Carbon::parse($current_start)->subDay();
+
+                while (in_array($receiveDate->toDateString(), $offDays)) {
+
+                    $receiveDate->subDay();
+                }
+
+                $receiveDateStr = $receiveDate->toDateString();
+
                 if ($product['stage_code'] === 9) {
 
                     DB::table('stage_plan')
@@ -1966,25 +1980,12 @@ class SchedualController extends Controller
                             'start_clearning' => $start_clearning,
                             'end_clearning' => $end_clearning,
                             'resourceId' => $request->room_id,
+                            'title' => $product['title'] . '-' . $product['batch'],
                             'schedualed' => 1,
                             'schedualed_by' => session('user')['fullName'],
                             'schedualed_at' => now(),
                         ]);
                 } else {
-
-                    $offDays = DB::table('off_days')
-                        ->whereDate('off_date', '<=', $current_start)
-                        ->pluck('off_date')
-                        ->toArray();
-
-                    $receiveDate = Carbon::parse($current_start)->subDay();
-
-                    while (in_array($receiveDate->toDateString(), $offDays)) {
-
-                        $receiveDate->subDay();
-                    }
-
-                    $receiveDateStr = $receiveDate->toDateString();
 
                     DB::table('stage_plan')
                         ->where('id', $product['id'])
@@ -2019,8 +2020,10 @@ class SchedualController extends Controller
                         ->where('stage_plan_id', $product['id'])
                         ->max('version') ?? 0;
 
-                    $this->syncPackagingDate($product['id'], $receiveDate, 0, 'SchedualController.store');
-                    $this->syncPackagingDate($product['id'], $receiveDate, 1, 'SchedualController.store');
+                    if ($product['stage_code'] !== 9) {
+                        $this->syncPackagingDate($product['id'], $receiveDate, 0, 'SchedualController.store');
+                        $this->syncPackagingDate($product['id'], $receiveDate, 1, 'SchedualController.store');
+                    }
 
                     $update_row = DB::table('stage_plan')->where('id', $product['id'])->first();
                     if ($update_row) {
@@ -2059,7 +2062,7 @@ class SchedualController extends Controller
                 // Cập nhật submit = 0 sau khi lưu lịch sử (Ngoại trừ lịch bảo trì)
                 DB::table('stage_plan')
                     ->where('id', $product['id'])
-                    ->where('stage_code', '!=', 8)
+                    ->whereNotIn('stage_code', [8, 9])
                     ->update(['submit' => 0]);
 
                 /*
@@ -5414,7 +5417,7 @@ class SchedualController extends Controller
             // Cập nhật submit = 0 sau khi lưu lịch sử (Ngoại trừ lịch bảo trì)
             DB::table('stage_plan')
                 ->where('id', $stageId)
-                ->where('stage_code', '!=', 8)
+                ->whereNotIn('stage_code', [8, 9])
                 ->update(['submit' => 0]);
         });
     }

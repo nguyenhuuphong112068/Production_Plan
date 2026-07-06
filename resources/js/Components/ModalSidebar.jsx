@@ -220,6 +220,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
   };
 
   const weightPBodyTemplate = (rowData) => {
+    const isEventOrMaintenance = rowData.stage_code === 8 || rowData.stage_code === 9;
     const isEmpty = !rowData.after_weigth_date;
     const isNotReady = checkNotReady(rowData.after_weigth_date);
 
@@ -235,7 +236,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
             ? "Chưa xác định"
             : formatDate(rowData.after_weigth_date)}
         </span>
-        {isNotReady && (
+        {!isEventOrMaintenance && isNotReady && (
           <span className="badge bg-danger mt-1" style={{ fontSize: '0.75rem', width: 'max-content' }}>NL Chưa sẵn sàng</span>
         )}
       </div>
@@ -983,8 +984,9 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
   const naBody = (field) => (rowData) => {
     if (field === "name") {
       const name = rowData.stage_code === 9 ? (rowData.title ?? "NA") : (rowData.name ?? "NA");
-      const showWeight = [1, 2, 3, 4, 5, 6].includes(stageFilter);
-      const showPkg = stageFilter === 7;
+      const isEventOrMaintenance = rowData.stage_code === 8 || rowData.stage_code === 9;
+      const showWeight = [1, 2, 3, 4, 5, 6].includes(stageFilter) && !isEventOrMaintenance;
+      const showPkg = stageFilter === 7 && !isEventOrMaintenance;
       const isWeightNotReady = showWeight && checkNotReady(rowData.after_weigth_date);
       const isPkgNotReady = showPkg && checkNotReady(rowData.after_parkaging_date);
 

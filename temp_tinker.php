@@ -1,0 +1,1 @@
+<?php session()->put('user', ['userGroup' => 'Admin', 'userId' => 1]); $c = app()->make('App\Http\Controllers\Pages\Schedual\SchedualController'); $method = new ReflectionMethod($c, 'getEvents'); $method->setAccessible(true); $events = $method->invoke($c, 'PXV2', '2026-07-01', '2026-07-31', true, 0); echo json_encode($events->where('stage_code', 9)->values()->toArray());

@@ -251,6 +251,14 @@
         box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
     }
 
+    .job-desc * {
+        font-family: inherit !important;
+        font-size: inherit !important;
+        color: inherit !important;
+        background-color: transparent !important;
+        line-height: inherit !important;
+    }
+
     .btn-save-room.is-dirty {
         background-color: #ffc107 !important;
         border-color: #ffc107 !important;
@@ -1876,6 +1884,18 @@
         // Theo dõi thay đổi trong các input/select/div
         $(document).on('change input', '.room-row select, .room-row input, .room-row .job-desc', function() {
             markRoomDirty($(this).closest('.room-row'));
+        });
+
+        // Xử lý dán dữ liệu vào ô hoạt động để bỏ định dạng
+        $(document).on('paste', '.job-desc', function(e) {
+            e.preventDefault();
+            var text = '';
+            if (e.originalEvent && e.originalEvent.clipboardData) {
+                text = e.originalEvent.clipboardData.getData('text/plain');
+            } else if (window.clipboardData) {
+                text = window.clipboardData.getData('Text');
+            }
+            document.execCommand('insertText', false, text);
         });
 
         $(document).on('change', '.person-select', function() {
