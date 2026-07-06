@@ -46,8 +46,9 @@
                                     @endforeach
                                 @else
                                     <tr>
-                                        <td class="font-weight-bold text-primary">{{ $product->intermediate_code }}</td>
-                                        <td>{{ $product->productName->name ?? 'N/A' }}</td>
+                                        <td class="font-weight-bold text-primary">
+                                            {{ $product->intermediate_code }} - {{ $product->productName->name ?? 'N/A' }}
+                                        </td>
                                         <td class="text-muted font-italic text-center">Không có</td>
                                         <td class="text-muted font-italic text-center">Không có</td>
                                         <td class="text-muted font-italic text-center">-</td>
