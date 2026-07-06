@@ -15,7 +15,7 @@
             </tr>
         </thead>
         <tbody>
-            @forelse($inProgressPlans as $index => $plan)
+            @foreach($inProgressPlans as $index => $plan)
                 <tr>
                     <td>{{ $index + 1 }}</td>
                     <td class="font-weight-bold text-success">{{ $plan->finished_product_code }}</td>
@@ -54,16 +54,7 @@
                         </a>
                     </td>
                 </tr>
-            @empty
-                <tr>
-                    <td colspan="9" class="text-center py-4">
-                        <div class="text-muted">
-                            <i class="fas fa-inbox fa-3x mb-3"></i>
-                            <p>Không có sản phẩm nào đang lên kế hoạch chờ đóng gói</p>
-                        </div>
-                    </td>
-                </tr>
-            @endforelse
+            @endforeach
         </tbody>
     </table>
 </div>
@@ -79,7 +70,8 @@
             "autoWidth": false,
             "responsive": true,
             "language": {
-                "url": "//cdn.datatables.net/plug-ins/1.10.21/i18n/Vietnamese.json"
+                "url": "//cdn.datatables.net/plug-ins/1.10.21/i18n/Vietnamese.json",
+                "emptyTable": '<div class="text-muted"><i class="fas fa-inbox fa-3x mb-3"></i><p>Không có sản phẩm nào đang lên kế hoạch chờ đóng gói</p></div>'
             }
         });
     });
