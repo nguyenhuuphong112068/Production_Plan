@@ -129,11 +129,7 @@ class ProductionAssignmentController extends Controller
             ->where('a.active', 1);
 
         if ($active_group_code) {
-            if ($active_group_code == 7 || $active_group_code == 8) {
-                $assignmentQuery->whereIn('a.stage_groups_code', [7, 8]);
-            } else {
-                $assignmentQuery->where('a.stage_groups_code', $active_group_code);
-            }
+            $assignmentQuery->where('a.stage_groups_code', $active_group_code);
         }
 
         $allAssignments = $assignmentQuery->get()->groupBy('room_id');
@@ -1146,11 +1142,7 @@ class ProductionAssignmentController extends Controller
             ->where('a.active', 1);
 
         if ($group_code) {
-            if ($group_code == 7 || $group_code == 8) {
-                $assignmentsQuery->whereIn('a.stage_groups_code', [7, 8]);
-            } else {
-                $assignmentsQuery->where('a.stage_groups_code', $group_code);
-            }
+            $assignmentsQuery->where('a.stage_groups_code', $group_code);
         }
 
         $allAssignments = $assignmentsQuery->get()->groupBy('room_id');
@@ -1690,11 +1682,7 @@ class ProductionAssignmentController extends Controller
                 ->where('active', 1);
 
             if ($group_code) {
-                if ($group_code == 7 || $group_code == 8) {
-                    $deleteQuery->whereIn('stage_groups_code', [7, 8]);
-                } else {
-                    $deleteQuery->where('stage_groups_code', $group_code);
-                }
+                $deleteQuery->where('stage_groups_code', $group_code);
             }
             $deleteQuery->update(['active' => 0, 'updated_at' => now()]);
 
