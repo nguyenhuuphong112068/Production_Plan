@@ -3897,9 +3897,9 @@
                 // Backend đã tự xử lý logic cho ngày 21-31
                 const depMapping = {
                     'PXV1': 15,
-                    'PXV2': 31,
+                    'PXV2': 32,
                     'PXVH': 30,
-                    'PXDN': 30,
+                    'PXDN': 34,
                     'EN': 3,
                     'PXTN': 6
                 };
@@ -4485,7 +4485,7 @@
             // Backend đã tự xử lý logic cho ngày 21-31
             const depMapping = {
                 'PXV1': 15,
-                'PXV2': 31,
+                'PXV2': 32,
                 'PXVH': 30,
                 'PXDN': 34,
                 'EN': 3,
