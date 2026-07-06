@@ -580,10 +580,6 @@
                     html += '<td>' + (current.C2_time ? current.C2_time : '0') + '</td>';
                     html += '<td>' + (current.maxofbatch_campaign ? current.maxofbatch_campaign :
                         '0') + '</td>';
-                    html += '<td>' + (current.active == 1 ?
-                        '<span class="badge badge-success">Sử Dụng</span>' :
-                        '<span class="badge badge-danger" style="position: absolute; top: -5px; right: -5px; padding: 4px 6px; border-radius: 50%; font-size: 10px;">Vô Hiệu</span>'
-                        ) + '</td>';
                     html += '<td>' + (current.note ? current.note : '') + '</td>';
                     html += '</tr>';
                     tbody.append(html);
@@ -591,7 +587,7 @@
 
                 if (res.history.length === 0) {
                     tbody.append(
-                        '<tr><td colspan="9" class="text-center">Chưa có lịch sử thay đổi</td></tr>'
+                        '<tr><td colspan="8" class="text-center">Chưa có lịch sử thay đổi</td></tr>'
                         );
                 } else {
                     res.history.forEach(function(item) {
@@ -605,10 +601,6 @@
                         html += '<td>' + (item.C2_time ? item.C2_time : '0') + '</td>';
                         html += '<td>' + (item.maxofbatch_campaign ? item
                             .maxofbatch_campaign : '0') + '</td>';
-                        html += '<td>' + (item.active == 1 ?
-                            '<span class="badge badge-success">Sử Dụng</span>' :
-                            '<span class="badge badge-danger" style="position: absolute; top: -5px; right: -5px; padding: 4px 6px; border-radius: 50%; font-size: 10px;">Vô Hiệu</span>'
-                            ) + '</td>';
                         html += '<td>' + (item.note ? item.note : '') + '</td>';
                         html += '</tr>';
                         tbody.append(html);

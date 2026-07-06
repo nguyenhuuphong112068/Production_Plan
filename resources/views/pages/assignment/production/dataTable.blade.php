@@ -2621,9 +2621,58 @@
             });
         }
 
+        function autoFillTheoryForShift($roomRow, $targetItem, startHM, endHM) {
+            const planItems = $roomRow.find('.theory-cell .plan-item');
+            const $targetDesc = $targetItem.find('.job-desc');
+            $targetDesc.empty(); 
+            
+            planItems.each(function() {
+                const planStart = $(this).data('start'); 
+                if (!planStart) return;
+                
+                let isMatch = false;
+                if (startHM <= endHM) {
+                    if (planStart >= startHM && planStart < endHM) {
+                        isMatch = true;
+                    }
+                } else {
+                    if (planStart >= startHM || planStart < endHM) {
+                        isMatch = true;
+                    }
+                }
+                
+                if (isMatch) {
+                    const planHtml = $(this).find('.plan-text').parent().prop('outerHTML');
+                    if ($targetDesc.find('.plan-item[data-start="' + planStart + '"]').length === 0) {
+                        $targetDesc.append(planHtml);
+                    }
+                }
+            });
+            
+            const items = $targetDesc.find('.plan-item').get();
+            items.sort(function(a, b) {
+                const startA = $(a).data('start');
+                const startB = $(b).data('start');
+                return startA < startB ? -1 : (startA > startB ? 1 : 0);
+            });
+            
+            $targetDesc.empty();
+            $.each(items, function(i, itm) {
+                const $itm = $(itm).clone();
+                $itm.removeClass('hover-show-btn position-relative mb-1 pb-1 border-bottom');
+                $itm.css({
+                    'margin-bottom': '2px',
+                    'padding-bottom': '0',
+                    'border-bottom': 'none'
+                });
+                $itm.find('.btn-copy-plan').remove();
+                $targetDesc.append($itm);
+            });
+        }
+
         function addShiftHtml(nextShift, startTime, endTime) {
             return `
-                <tr class="assignment-item">
+                <tr class="assignment-item" data-theory-start="${startTime}" data-theory-end="${endTime}">
                     <td style="width: 14.3%">
                         <div class="d-flex flex-column align-items-center">
                             <select class="form-control form-control-sm shift-select mb-1">
@@ -2720,6 +2769,9 @@
             if (newRow.find('.personnel-row').length === 0) {
                 addPersonRow(newRow.find('.personnel-container'));
             }
+
+            const roomRow = $(this).closest('.room-row');
+            autoFillTheoryForShift(roomRow, newRow, startTime, endTime);
 
             newRow.find('.btn-clone-shift').show();
 
@@ -4907,6 +4959,8 @@
         function renderSuggestions() {
             if (!assignmentSuggestions || assignmentSuggestions.length === 0) return;
 
+            let clearedRooms = new Set();
+
             assignmentSuggestions.forEach(sug => {
                 let $roomRow = null;
                 if (sug.room_id) {
@@ -4921,6 +4975,15 @@
                 }
 
                 if ($roomRow && $roomRow.length > 0) {
+                    if (!clearedRooms.has($roomRow[0])) {
+                        $roomRow.find('.assignment-item').each(function() {
+                            if (!$(this).attr('data-id') || $(this).attr('data-id') === '') {
+                                $(this).remove();
+                            }
+                        });
+                        clearedRooms.add($roomRow[0]);
+                    }
+
                     const shift = sug.shift;
                     const start = sug.start_time;
                     const end = sug.end_time;
@@ -4951,6 +5014,8 @@
                             if ($targetItem.find('.personnel-row').length === 0) {
                                 addPersonRow($targetItem.find('.personnel-container'));
                             }
+                            
+                            autoFillTheoryForShift($roomRow, $targetItem, startHM, endHM);
                         }
 
                         if ($targetItem && pData && pData.length > 0) {

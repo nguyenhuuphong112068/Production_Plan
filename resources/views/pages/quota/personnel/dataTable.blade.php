@@ -540,6 +540,11 @@
                                         <i class="fas fa-baby mr-1" style="font-size: 0.9em; opacity: 0.8;"></i>Đang
                                         nghỉ thai sản
                                     </label>
+                                    @if($data->maternity_leave_updated_by)
+                                        <div class="small text-muted mt-1" style="font-size: 0.75rem;">
+                                            <i class="fas fa-user-edit mr-1"></i>{{ $data->maternity_leave_updated_by }} | {{ \Carbon\Carbon::parse($data->maternity_leave_updated_at)->format('d/m/y') }}
+                                        </div>
+                                    @endif
                                 </div>
                             </td>
 

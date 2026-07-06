@@ -396,7 +396,9 @@ class ProductionQuotaController extends Controller
                 DB::table('quota')
                         ->where('id', $request->id)
                         ->update([
-                                $request->name => $request->time
+                                $request->name => $request->time,
+                                'prepared_by' => session('user')['fullName'],
+                                'updated_at' => now(),
                         ]);
 
                 return response()->json(['success' => true]);

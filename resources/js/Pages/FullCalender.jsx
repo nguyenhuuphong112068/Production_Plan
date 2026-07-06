@@ -2897,27 +2897,33 @@ const ScheduleTest = () => {
           let lookupCode = baseProcessCode + "_" + event._def.resourceIds[0];
           let stage_code = event._def.extendedProps.stage_code;
           let is_clearning = event._def.extendedProps.is_clearning;
-          let quota_event = quota.find(q =>
-            q.process_code === lookupCode &&
-            q.stage_code == stage_code
-          );
 
-          if (quota_event === undefined) {
-            isQuotaMissing = true;
+          if (stage_code == 9) {
+            // Không check định mức cho stage_code == 9, giữ nguyên thời gian hiện tại
+            trueDurMs = event.end ? event.end.getTime() - event.start.getTime() : 0;
           } else {
-            let m_time = timeToMilliseconds(quota_event.m_time);
-            let p_time = event._def.extendedProps.first_in_campaign ? timeToMilliseconds(quota_event.p_time) : 0;
+            let quota_event = quota.find(q =>
+              q.process_code === lookupCode &&
+              q.stage_code == stage_code
+            );
 
-            if (is_clearning) {
-              if (event.title == "VS-II") m_time = timeToMilliseconds(quota_event.C2_time);
-              else m_time = timeToMilliseconds(quota_event.C1_time);
-              trueDurMs = m_time; // Clearing time is not multiplied by percent_parkaging
+            if (quota_event === undefined) {
+              isQuotaMissing = true;
             } else {
-              let ratio = 1;
-              if ((event._def.extendedProps.stage_code == 7 || event._def.extendedProps.stage_code == 1) && event._def.extendedProps.percent_parkaging) {
-                ratio = event._def.extendedProps.percent_parkaging;
+              let m_time = timeToMilliseconds(quota_event.m_time);
+              let p_time = event._def.extendedProps.first_in_campaign ? timeToMilliseconds(quota_event.p_time) : 0;
+
+              if (is_clearning) {
+                if (event.title == "VS-II") m_time = timeToMilliseconds(quota_event.C2_time);
+                else m_time = timeToMilliseconds(quota_event.C1_time);
+                trueDurMs = m_time; // Clearing time is not multiplied by percent_parkaging
+              } else {
+                let ratio = 1;
+                if ((event._def.extendedProps.stage_code == 7 || event._def.extendedProps.stage_code == 1) && event._def.extendedProps.percent_parkaging) {
+                  ratio = event._def.extendedProps.percent_parkaging;
+                }
+                trueDurMs = (m_time + p_time) * ratio;
               }
-              trueDurMs = (m_time + p_time) * ratio;
             }
           }
         } else {

@@ -451,6 +451,8 @@ class PersonnelController extends Controller
 
         DB::table('employees')->where('id', $employeeId)->update([
             'on_maternity_leave' => $status,
+            'maternity_leave_updated_by' => session('user')['fullName'] ?? (session('user')['username'] ?? 'Unknown'),
+            'maternity_leave_updated_at' => now(),
             'updated_at' => now(),
         ]);
 

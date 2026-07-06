@@ -12,6 +12,12 @@ class MaintenanceSchedualController extends SchedualController
 {
     public function index()
     {
+        try {
+            $this->syncExternal(request());
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Sync external failed: " . $e->getMessage());
+        }
+
         session()->put(['title' => 'LỊCH BẢO TRÌ - HIỆU CHUẨN']);
 
         return view('app');
@@ -1176,76 +1182,123 @@ class MaintenanceSchedualController extends SchedualController
 
     public function syncExternal(Request $request)
     {
-        $production = session('user')['production_code'];
+        $production = session('user')['production_code'] ?? null;
         $connections = ['cal1', 'cal2'];
         $suffixes = [1, 2, 3];
         $count = 0;
 
         // 1. Tìm các stage_plan bảo trì chưa xong (finished = 0)
-        $pendingPlans = DB::table('stage_plan as sp')
+        $pendingQuery = DB::table('stage_plan as sp')
             ->join('plan_master as pm', 'sp.plan_master_id', '=', 'pm.id')
             ->where('sp.stage_code', 8)
             ->where('sp.finished', 0)
-            ->where('sp.deparment_code', $production)
             ->whereNotNull('pm.batch')
-            ->select('sp.id as sp_id', 'pm.batch as sch_ids')
-            ->get();
+            ->select('sp.id as sp_id', 'pm.batch as sch_ids', 'pm.expected_date', 'sp.deparment_code');
+            
+        if ($production && is_array($production)) {
+            $pendingQuery->whereIn('sp.deparment_code', $production);
+        } elseif ($production) {
+            $pendingQuery->where('sp.deparment_code', $production);
+        }
+
+        $pendingPlans = $pendingQuery->get(); // Lấy tất cả cột đã select ở trên
+
+        \Illuminate\Support\Facades\Log::info("syncExternal called. Production: " . json_encode($production) . ", Pending plans: " . $pendingPlans->count());
 
         if ($pendingPlans->isEmpty()) {
             return response()->json(['success' => true, 'message' => 'Không có lịch bảo trì nào cần đồng bộ.', 'count' => 0]);
         }
 
-        // Tạo map SCH_ID -> danh sách stage_plan id liên quan
-        $schIdMap = [];
+        // Bản đồ phân xưởng -> connection DB
+        $connMap = [
+            'PXV1' => 'cal1',
+            'PXTN' => 'cal1',
+            'PXV2' => 'cal2',
+            'PXDN' => 'cal2',
+            'PXVH' => 'cal2',
+        ];
+
+        // Tạo map: connection -> SCH_ID -> danh sách stage_plan
+        $connSchIdMap = [
+            'cal1' => [],
+            'cal2' => []
+        ];
+
         foreach ($pendingPlans as $p) {
+            $conn = $connMap[$p->deparment_code] ?? null;
+            if (!$conn) continue; // Bỏ qua nếu phân xưởng không nằm trong mapping
+
             $ids = explode(',', $p->sch_ids);
             foreach ($ids as $id) {
-                $schIdMap[trim($id)][] = $p->sp_id;
+                $connSchIdMap[$conn][trim($id)][] = [
+                    'sp_id' => $p->sp_id,
+                    'expected_date' => $p->expected_date,
+                ];
             }
         }
-
-        $allSchIds = array_keys($schIdMap);
 
         DB::beginTransaction();
         try {
             foreach ($connections as $conn) {
+                $schIdMap = $connSchIdMap[$conn];
+                if (empty($schIdMap)) continue; // Nếu connection này không có lịch pending nào thì bỏ qua
+                
+                $allSchIds = array_keys($schIdMap);
                 foreach ($suffixes as $suffix) {
                     try {
-                        $remoteResults = DB::connection($conn)
-                            ->table("Schedule_Master_{$suffix}")
-                            ->whereIn('SCH_ID', $allSchIds)
-                            ->where('sch_ap_sts', 1)
-                            ->get();
+                        $chunks = array_chunk($allSchIds, 500);
+                        foreach ($chunks as $chunk) {
+                            $remoteResults = DB::connection($conn)
+                                ->table("Schedule_Master_{$suffix}")
+                                ->whereIn('SCH_ID', $chunk)
+                                ->where('sch_ap_sts', 1)
+                                ->get();
 
-                        foreach ($remoteResults as $res) {
-                            $schId = (string) $res->SCH_ID;
-                            if (isset($schIdMap[$schId])) {
-                                foreach ($schIdMap[$schId] as $spId) {
-                                    // Map Sch_Result_Status to yields (Pass=1, Fail=0, Skip=2)
-                                    $yield = 1;
-                                    $statusRaw = trim($res->Sch_Result_Status ?? 'Pass');
-                                    if ($statusRaw == 'Fail') {
-                                        $yield = 0;
-                                    } elseif ($statusRaw == 'Skip') {
-                                        $yield = 2;
+                            foreach ($remoteResults as $res) {
+                                $schId = (string) $res->SCH_ID;
+                                if (isset($schIdMap[$schId])) {
+                                    foreach ($schIdMap[$schId] as $key => $item) {
+                                        $spId = $item['sp_id'];
+                                        $expectedDate = $item['expected_date'];
+                                        
+                                        // Kiểm tra trùng khớp thời gian (năm-tháng) để tránh nhầm SCH_ID cũ
+                                        if ($expectedDate && $res->Sch_DueDate) {
+                                            $remoteYm = date('Y-m', strtotime($res->Sch_DueDate));
+                                            $localYm = date('Y-m', strtotime($expectedDate));
+                                            if ($remoteYm !== $localYm) {
+                                                continue; // Khác năm/tháng -> Đây là SCH_ID của năm khác, bỏ qua
+                                            }
+                                        }
+
+                                        // Map Sch_Result_Status to yields (Pass=1, Fail=0, Skip=2)
+                                        $yield = 1;
+                                        $statusRaw = trim($res->Sch_Result_Status ?? 'Pass');
+                                        if ($statusRaw == 'Fail') {
+                                            $yield = 0;
+                                        } elseif ($statusRaw == 'Skip') {
+                                            $yield = 2;
+                                        }
+
+                                        // Cập nhật stage_plan thực tế
+                                        DB::table('stage_plan')->where('id', $spId)->where('finished', 0)->update([
+                                            'actual_start' => $res->Sch_caldone_to,
+                                            'actual_end' => $res->Sch_caldone_to,
+                                            'finished_by' => $res->Sch_cal_Done_by ?? null,
+                                            'finished' => 1,
+                                            'yields' => $yield,
+                                        ]);
+                                        $count++;
+                                        
+                                        unset($schIdMap[$schId][$key]); // Xóa phần tử đã match
                                     }
-
-                                    // Cập nhật stage_plan thực tế
-                                    DB::table('stage_plan')->where('id', $spId)->where('finished', 0)->update([
-                                        'actual_start' => $res->Sch_caldone_to,
-                                        'actual_end' => $res->Sch_caldone_to,
-                                        'finished_by' => $res->Sch_cal_Done_by ?? null,
-                                        'finished' => 1,
-                                        'yields' => $yield,
-                                        'updated_at' => now(),
-                                    ]);
-                                    $count++;
+                                    if (empty($schIdMap[$schId])) {
+                                        unset($schIdMap[$schId]);
+                                    }
                                 }
-                                unset($schIdMap[$schId]);
                             }
                         }
                     } catch (\Exception $e) {
-                        // Skip if table or connection not available
+                        \Illuminate\Support\Facades\Log::error("Remote DB query error {$conn} {$suffix}: " . $e->getMessage());
                     }
                 }
             }

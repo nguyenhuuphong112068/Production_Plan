@@ -12,6 +12,11 @@ class MaintenanceWeeklyReportController extends Controller
 
     public function index(Request $request)
     {
+        try {
+            app(\App\Http\Controllers\Pages\MaintenanceSchedual\MaintenanceSchedualController::class)->syncExternal($request);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Sync external failed: " . $e->getMessage());
+        }
 
         $production_code = session('user')['production_code'];
 

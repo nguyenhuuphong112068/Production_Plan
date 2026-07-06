@@ -89,7 +89,6 @@
                                 <th rowspan="2">Người Sửa</th>
                                 <th colspan="4">Thời Gian</th>
                                 <th rowspan="2">Số Lô CĐ</th>
-                                <th rowspan="2">Trạng Thái</th>
                                 <th rowspan="2">Ghi Chú</th>
                             </tr>
                             <tr>

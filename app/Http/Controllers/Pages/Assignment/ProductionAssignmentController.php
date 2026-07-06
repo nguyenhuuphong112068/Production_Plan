@@ -904,6 +904,17 @@ class ProductionAssignmentController extends Controller
                 // Generate a new EXT ID for the cloned task on this date
                 $spIdString = 'EXT_CLONE_' . time() . '_' . rand(1000, 9999);
 
+                if ($is_suggestion) {
+                    // Xóa toàn bộ gợi ý cũ của phòng này trong ngày đích để ghi đè toàn bộ
+                    DB::table('assignment_suggestions')
+                        ->where('target_date', $targetDate)
+                        ->where('room_id', $room_id)
+                        ->where('work_location', $work_location)
+                        ->where('deparment_code', $production_code)
+                        ->where('stage_groups_code', $stage_groups_code)
+                        ->delete();
+                }
+
                 foreach ($assignments_data as $row) {
                     $p_data = $row['personnel_list'] ?? [];
 
@@ -912,15 +923,6 @@ class ProductionAssignmentController extends Controller
                     }
 
                     if ($is_suggestion) {
-                        // Delete old suggestion for same room/shift
-                        DB::table('assignment_suggestions')
-                            ->where('target_date', $targetDate)
-                            ->where('room_id', $room_id)
-                            ->where('work_location', $work_location)
-                            ->where('deparment_code', $production_code)
-                            ->where('stage_groups_code', $stage_groups_code)
-                            ->where('shift', $row['shift'])
-                            ->delete();
 
                         DB::table('assignment_suggestions')->insert([
                             'target_date' => $targetDate,
