@@ -97,11 +97,11 @@ class ProductionAssignmentController extends Controller
             ->where(function ($q) use ($startDate, $endDate) {
                 $q->where(function ($q1) use ($startDate, $endDate) {
                     $q1->where('sp.start', '<', $endDate)
-                       ->where('sp.end', '>', $startDate);
+                        ->where('sp.end', '>', $startDate);
                 })->orWhere(function ($q2) use ($startDate, $endDate) {
                     $q2->whereNotNull('sp.start_clearning')
-                       ->where('sp.start_clearning', '<', $endDate)
-                       ->where('sp.end_clearning', '>', $startDate);
+                        ->where('sp.start_clearning', '<', $endDate)
+                        ->where('sp.end_clearning', '>', $startDate);
                 });
             })
             ->select(
@@ -129,7 +129,11 @@ class ProductionAssignmentController extends Controller
             ->where('a.active', 1);
 
         if ($active_group_code) {
-            $assignmentQuery->where('a.stage_groups_code', $active_group_code);
+            if ($active_group_code == 7 || $active_group_code == 8) {
+                $assignmentQuery->whereIn('a.stage_groups_code', [7, 8]);
+            } else {
+                $assignmentQuery->where('a.stage_groups_code', $active_group_code);
+            }
         }
 
         $allAssignments = $assignmentQuery->get()->groupBy('room_id');
@@ -159,7 +163,7 @@ class ProductionAssignmentController extends Controller
             // Tạo chuỗi hiển thị lịch lý thuyết (Theory Display)
             $theoryDisplay = '';
             $spIds = [];
-            
+
             $displayItems = [];
             foreach ($plans as $p) {
                 // Production event
@@ -181,7 +185,7 @@ class ProductionAssignmentController extends Controller
                         } else {
                             $displayText = $p->product_name ? "{$p->product_name} - {$p->batch}" : strip_tags($p->title);
                         }
-                        
+
                         $displayItems[] = [
                             'sp_id' => $p->id,
                             'start' => $p->start,
@@ -190,7 +194,7 @@ class ProductionAssignmentController extends Controller
                         ];
                     }
                 }
-                
+
                 // Cleaning event
                 if ($p->start_clearning && $p->end_clearning) {
                     if ($p->start_clearning < $endDate && $p->end_clearning > $startDate) {
@@ -198,10 +202,10 @@ class ProductionAssignmentController extends Controller
                         if ($p->title_clearning == 'VS-II') $cleanTitle = 'Vệ sinh cấp II';
                         elseif ($p->title_clearning == 'VS-I') $cleanTitle = 'Vệ sinh cấp I';
                         elseif ($p->title_clearning == 'VS') $cleanTitle = 'Vệ sinh';
-                        
+
                         $productPart = $p->product_name ? "{$p->product_name} - {$p->batch}" : strip_tags($p->title);
                         $displayText = "{$cleanTitle} ({$productPart})";
-                        
+
                         $displayItems[] = [
                             'sp_id' => $p->id,
                             'start' => $p->start_clearning,
@@ -212,7 +216,7 @@ class ProductionAssignmentController extends Controller
                 }
             }
 
-            usort($displayItems, function($a, $b) {
+            usort($displayItems, function ($a, $b) {
                 return strtotime($a['start']) <=> strtotime($b['start']);
             });
 
@@ -222,7 +226,7 @@ class ProductionAssignmentController extends Controller
                     $spIds[] = $item['sp_id'];
                 }
                 $timeDisp = Carbon::parse($item['start'])->format('H:i') . '-' . Carbon::parse($item['end'])->format('H:i');
-                
+
                 $theoryDisplay .= "<div class='plan-item mb-1 pb-1 border-bottom position-relative hover-show-btn' data-start='{$item['start']}'><div class='plan-text' style='font-size: 0.8rem; line-height: 1.2;'><b>{$stt}. {$item['text']} <span class='time-text'>| ({$timeDisp})</span></b></div><button class='btn btn-xs btn-primary btn-copy-plan' title='Chép mục này' style='position: absolute; right: 0; top: 0; padding: 0 4px; font-size: 10px; display: none;'> >></button></div>";
             }
             if ($theoryDisplay == '') {
@@ -242,10 +246,10 @@ class ProductionAssignmentController extends Controller
             }
 
             // Lọc ra các assignment của chính tổ này (bỏ foreign)
-            $localAssignments = $assignments->filter(function($a) {
+            $localAssignments = $assignments->filter(function ($a) {
                 return !$a->is_foreign;
             });
-            $foreignAssignments = $assignments->filter(function($a) {
+            $foreignAssignments = $assignments->filter(function ($a) {
                 return $a->is_foreign;
             });
 
@@ -271,61 +275,61 @@ class ProductionAssignmentController extends Controller
                     $assignments = $assignments->sortBy('start');
                 } elseif ($plans->isNotEmpty()) {
                     $dayStart = Carbon::parse($reportedDate)->setTime(6, 0, 0);
-                $shiftItems = ['1' => [], '2' => [], '3' => []];
+                    $shiftItems = ['1' => [], '2' => [], '3' => []];
 
-                foreach ($displayItems as $item) {
-                    $pStart = Carbon::parse($item['start']);
-                    $pEnd = Carbon::parse($item['end']);
-                    $displayText = $item['text'];
+                    foreach ($displayItems as $item) {
+                        $pStart = Carbon::parse($item['start']);
+                        $pEnd = Carbon::parse($item['end']);
+                        $displayText = $item['text'];
 
-                    $s1S = $dayStart->copy();
-                    $s1E = $dayStart->copy()->addHours(8);
-                    if ($pStart->lt($s1E) && $pEnd->gt($s1S)) $shiftItems['1'][] = $displayText;
-                    
-                    $s2S = $s1E->copy();
-                    $s2E = $s2S->copy()->addHours(8);
-                    if ($pStart->lt($s2E) && $pEnd->gt($s2S)) $shiftItems['2'][] = $displayText;
-                    
-                    $s3S = $s2E->copy();
-                    $s3E = $s3S->copy()->addHours(8);
-                    if ($pStart->lt($s3E) && $pEnd->gt($s3S)) $shiftItems['3'][] = $displayText;
-                }
+                        $s1S = $dayStart->copy();
+                        $s1E = $dayStart->copy()->addHours(8);
+                        if ($pStart->lt($s1E) && $pEnd->gt($s1S)) $shiftItems['1'][] = $displayText;
 
-                foreach ($shiftItems as $code => $items) {
-                    if (empty($items)) continue;
-                    $unique_items = array_values(array_unique($items));
-                    $jobDescription = "";
-                    foreach ($unique_items as $idx => $item) {
-                        $jobDescription .= ($idx + 1) . ". " . $item . "\n";
+                        $s2S = $s1E->copy();
+                        $s2E = $s2S->copy()->addHours(8);
+                        if ($pStart->lt($s2E) && $pEnd->gt($s2S)) $shiftItems['2'][] = $displayText;
+
+                        $s3S = $s2E->copy();
+                        $s3E = $s3S->copy()->addHours(8);
+                        if ($pStart->lt($s3E) && $pEnd->gt($s3S)) $shiftItems['3'][] = $displayText;
                     }
-                    $sTime = $dayStart->copy()->addHours(($code - 1) * 8);
-                    $eTime = $sTime->copy()->addHours(8);
-                    $shiftCode = $code;
-                    $roomCol = 'number_of_employes_on_sheet' . $shiftCode;
-                    if ($shiftCode == '4') $roomCol = 'number_of_employes_on_sheet_regular';
-                    if ($shiftCode == '6') $roomCol = 'number_of_employes_on_sheet4';
-                    $suggestedCount = 1;
 
-                    $assignments->push((object)[
-                        'id' => null,
-                        'Sheet' => $code,
-                        'start' => $sTime->toDateTimeString(),
-                        'end' => $eTime->toDateTimeString(),
-                        'Job_description' => trim($jobDescription),
-                        'number_of_employes' => $suggestedCount,
-                        'Num_of_per_Level_3' => 1,
-                        'personnel_data' => collect([(object)['personnel_id' => null, 'notification' => null, 'start' => null, 'end' => null, 'operation_type' => null]]),
-                        'start_time_display' => $sTime->format('H:i'),
-                        'end_time_display' => $eTime->format('H:i'),
-                        'is_foreign' => false,
-                        'is_scheduled' => true
-                    ]);
+                    foreach ($shiftItems as $code => $items) {
+                        if (empty($items)) continue;
+                        $unique_items = array_values(array_unique($items));
+                        $jobDescription = "";
+                        foreach ($unique_items as $idx => $item) {
+                            $jobDescription .= ($idx + 1) . ". " . $item . "\n";
+                        }
+                        $sTime = $dayStart->copy()->addHours(($code - 1) * 8);
+                        $eTime = $sTime->copy()->addHours(8);
+                        $shiftCode = $code;
+                        $roomCol = 'number_of_employes_on_sheet' . $shiftCode;
+                        if ($shiftCode == '4') $roomCol = 'number_of_employes_on_sheet_regular';
+                        if ($shiftCode == '6') $roomCol = 'number_of_employes_on_sheet4';
+                        $suggestedCount = 1;
+
+                        $assignments->push((object)[
+                            'id' => null,
+                            'Sheet' => $code,
+                            'start' => $sTime->toDateTimeString(),
+                            'end' => $eTime->toDateTimeString(),
+                            'Job_description' => trim($jobDescription),
+                            'number_of_employes' => $suggestedCount,
+                            'Num_of_per_Level_3' => 1,
+                            'personnel_data' => collect([(object)['personnel_id' => null, 'notification' => null, 'start' => null, 'end' => null, 'operation_type' => null]]),
+                            'start_time_display' => $sTime->format('H:i'),
+                            'end_time_display' => $eTime->format('H:i'),
+                            'is_foreign' => false,
+                            'is_scheduled' => true
+                        ]);
+                    }
+                    $assignments = $assignments->sortBy('start');
                 }
-                $assignments = $assignments->sortBy('start');
             }
-        }
 
-        return (object)[
+            return (object)[
                 'sp_id' => $spIdString,
                 'room_id' => $room->id,
                 'group_code' => $room->group_code,
@@ -810,7 +814,7 @@ class ProductionAssignmentController extends Controller
                     $displayOrder = 1;
                     foreach ($unique_p_data as $p) {
                         if (empty($p['personnel_id'])) continue;
-                        
+
                         $pStart = empty($p['start']) ? $startDt : Carbon::parse($reportedDate . ' ' . $p['start'])->format('Y-m-d H:i:s');
                         $pEnd = empty($p['end']) ? $endDt : Carbon::parse($reportedDate . ' ' . $p['end'])->format('Y-m-d H:i:s');
                         if ($pEnd < $pStart) {
@@ -900,17 +904,6 @@ class ProductionAssignmentController extends Controller
                 // Generate a new EXT ID for the cloned task on this date
                 $spIdString = 'EXT_CLONE_' . time() . '_' . rand(1000, 9999);
 
-                if ($is_suggestion) {
-                    // Xóa toàn bộ gợi ý cũ của phòng này trong ngày đích để ghi đè toàn bộ
-                    DB::table('assignment_suggestions')
-                        ->where('target_date', $targetDate)
-                        ->where('room_id', $room_id)
-                        ->where('work_location', $work_location)
-                        ->where('deparment_code', $production_code)
-                        ->where('stage_groups_code', $stage_groups_code)
-                        ->delete();
-                }
-
                 foreach ($assignments_data as $row) {
                     $p_data = $row['personnel_list'] ?? [];
 
@@ -919,6 +912,15 @@ class ProductionAssignmentController extends Controller
                     }
 
                     if ($is_suggestion) {
+                        // Delete old suggestion for same room/shift
+                        DB::table('assignment_suggestions')
+                            ->where('target_date', $targetDate)
+                            ->where('room_id', $room_id)
+                            ->where('work_location', $work_location)
+                            ->where('deparment_code', $production_code)
+                            ->where('stage_groups_code', $stage_groups_code)
+                            ->where('shift', $row['shift'])
+                            ->delete();
 
                         DB::table('assignment_suggestions')->insert([
                             'target_date' => $targetDate,
@@ -1026,14 +1028,14 @@ class ProductionAssignmentController extends Controller
             $personnelId = $request->input('personnel_id');
             $start = $request->input('start');
             $end = $request->input('end');
-            
+
             $assignment = DB::table('assignments')->where('id', $assignmentId)->first();
             if (!$assignment) {
                 return response()->json(['success' => false, 'message' => 'Không tìm thấy phân công']);
             }
-            
+
             $reportedDate = $request->input('reportedDate') ?? Carbon::parse($assignment->start)->format('Y-m-d');
-            
+
             $pStart = Carbon::parse($reportedDate . ' ' . $start)->format('Y-m-d H:i:s');
             $pEnd = Carbon::parse($reportedDate . ' ' . $end)->format('Y-m-d H:i:s');
             if ($pEnd < $pStart) {
@@ -1142,7 +1144,11 @@ class ProductionAssignmentController extends Controller
             ->where('a.active', 1);
 
         if ($group_code) {
-            $assignmentsQuery->where('a.stage_groups_code', $group_code);
+            if ($group_code == 7 || $group_code == 8) {
+                $assignmentsQuery->whereIn('a.stage_groups_code', [7, 8]);
+            } else {
+                $assignmentsQuery->where('a.stage_groups_code', $group_code);
+            }
         }
 
         $allAssignments = $assignmentsQuery->get()->groupBy('room_id');
@@ -1159,7 +1165,7 @@ class ProductionAssignmentController extends Controller
             $actuals = $actualDetails->get($room->id) ?? collect();
 
             $theoryDisplay = '';
-            
+
             $displayItems = [];
             foreach ($plans as $p) {
                 // Production event
@@ -1181,7 +1187,7 @@ class ProductionAssignmentController extends Controller
                         } else {
                             $displayText = $p->product_name ? "{$p->product_name} - {$p->batch}" : strip_tags($p->title);
                         }
-                        
+
                         $displayItems[] = [
                             'start' => $p->start,
                             'end' => $p->end,
@@ -1189,7 +1195,7 @@ class ProductionAssignmentController extends Controller
                         ];
                     }
                 }
-                
+
                 // Cleaning event
                 if (!empty($p->start_clearning) && !empty($p->end_clearning)) {
                     if ($p->start_clearning < $endDate && $p->end_clearning > $startDate) {
@@ -1198,10 +1204,10 @@ class ProductionAssignmentController extends Controller
                         if ($titleClearning == 'VS-II') $cleanTitle = 'Vệ sinh cấp II';
                         elseif ($titleClearning == 'VS-I') $cleanTitle = 'Vệ sinh cấp I';
                         elseif ($titleClearning == 'VS') $cleanTitle = 'Vệ sinh';
-                        
+
                         $productPart = $p->product_name ? "{$p->product_name} - {$p->batch}" : strip_tags($p->title);
                         $displayText = "{$cleanTitle} ({$productPart})";
-                        
+
                         $displayItems[] = [
                             'start' => $p->start_clearning,
                             'end' => $p->end_clearning,
@@ -1211,7 +1217,7 @@ class ProductionAssignmentController extends Controller
                 }
             }
 
-            usort($displayItems, function($a, $b) {
+            usort($displayItems, function ($a, $b) {
                 return strtotime($a['start']) <=> strtotime($b['start']);
             });
 
@@ -1463,11 +1469,11 @@ class ProductionAssignmentController extends Controller
             ->where(function ($q) use ($startDate, $endDate) {
                 $q->where(function ($q1) use ($startDate, $endDate) {
                     $q1->where('sp.start', '<', $endDate)
-                       ->where('sp.end', '>', $startDate);
+                        ->where('sp.end', '>', $startDate);
                 })->orWhere(function ($q2) use ($startDate, $endDate) {
                     $q2->whereNotNull('sp.start_clearning')
-                       ->where('sp.start_clearning', '<', $endDate)
-                       ->where('sp.end_clearning', '>', $startDate);
+                        ->where('sp.start_clearning', '<', $endDate)
+                        ->where('sp.end_clearning', '>', $startDate);
                 });
             });
 
@@ -1534,7 +1540,7 @@ class ProductionAssignmentController extends Controller
                     }
                 }
             }
-            
+
             // Cleaning event
             if ($p->start_clearning && $p->end_clearning) {
                 if ($p->start_clearning < $endDate && $p->end_clearning > $startDate) {
@@ -1542,10 +1548,10 @@ class ProductionAssignmentController extends Controller
                     if ($p->title_clearning == 'VS-II') $cleanTitle = 'Vệ sinh cấp II';
                     elseif ($p->title_clearning == 'VS-I') $cleanTitle = 'Vệ sinh cấp I';
                     elseif ($p->title_clearning == 'VS') $cleanTitle = 'Vệ sinh';
-                    
+
                     $productPart = $p->product_name ? "{$p->product_name} - {$p->batch}" : strip_tags($p->title);
                     $displayText = "{$cleanTitle} ({$productPart})";
-                    
+
                     $events[] = [
                         'id' => 'plan-clean-' . $p->id,
                         'resourceId' => (string)$p->room_id,
@@ -1682,7 +1688,11 @@ class ProductionAssignmentController extends Controller
                 ->where('active', 1);
 
             if ($group_code) {
-                $deleteQuery->where('stage_groups_code', $group_code);
+                if ($group_code == 7 || $group_code == 8) {
+                    $deleteQuery->whereIn('stage_groups_code', [7, 8]);
+                } else {
+                    $deleteQuery->where('stage_groups_code', $group_code);
+                }
             }
             $deleteQuery->update(['active' => 0, 'updated_at' => now()]);
 

@@ -2624,12 +2624,12 @@
         function autoFillTheoryForShift($roomRow, $targetItem, startHM, endHM) {
             const planItems = $roomRow.find('.theory-cell .plan-item');
             const $targetDesc = $targetItem.find('.job-desc');
-            $targetDesc.empty(); 
-            
+            $targetDesc.empty();
+
             planItems.each(function() {
-                const planStart = $(this).data('start'); 
+                const planStart = $(this).data('start');
                 if (!planStart) return;
-                
+
                 let isMatch = false;
                 if (startHM <= endHM) {
                     if (planStart >= startHM && planStart < endHM) {
@@ -2640,7 +2640,7 @@
                         isMatch = true;
                     }
                 }
-                
+
                 if (isMatch) {
                     const planHtml = $(this).find('.plan-text').parent().prop('outerHTML');
                     if ($targetDesc.find('.plan-item[data-start="' + planStart + '"]').length === 0) {
@@ -2648,14 +2648,14 @@
                     }
                 }
             });
-            
+
             const items = $targetDesc.find('.plan-item').get();
             items.sort(function(a, b) {
                 const startA = $(a).data('start');
                 const startB = $(b).data('start');
                 return startA < startB ? -1 : (startA > startB ? 1 : 0);
             });
-            
+
             $targetDesc.empty();
             $.each(items, function(i, itm) {
                 const $itm = $(itm).clone();
@@ -4200,10 +4200,10 @@
                             <tr>
                                 <th>Phòng / Vị trí</th>
                                 <th>Ca</th>
-                                <th>Số lượng Đã xếp</th>
-                                <th>Nhân sự</th>
                                 <th>Giờ làm việc</th>
+                                <th>Nhân sự</th>
                                 <th>Chi tiết công việc</th>
+                                <th>Ghi chú</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -4277,12 +4277,12 @@
 
                     tableHtml += `
                         <tr>
-                            <td>${roomName}</td>
-                            <td style="text-align:center">${shiftName}</td>
-                            <td style="text-align:center">${assignedCount}</td>
-                            <td>${personnelStr}</td>
-                            <td style="text-align:center">${timeStr}</td>
-                            <td>${workDetail}</td>
+                            <td>${roomName || ' '}</td>
+                            <td style="text-align:center">${shiftName || ' '}</td>
+                            <td style="text-align:center">${timeStr || ' '}</td>
+                            <td>${personnelStr || ' '}</td>
+                            <td>${workDetail || ' '}</td>
+                            <td> </td>
                         </tr>
                     `;
                 });
@@ -4341,14 +4341,38 @@
                     ];
 
                     const range = XLSX.utils.decode_range(ws['!ref']);
+                    // Ép range hiển thị đủ 6 cột (từ 0 đến 5) để các ô cuối luôn có viền
+                    if (range.e.c < 5) range.e.c = 5;
+                    ws['!ref'] = XLSX.utils.encode_range(range);
+
+                    const mediumBorder = {
+                        style: "medium",
+                        color: {
+                            auto: 1
+                        }
+                    };
+                    const allBorders = {
+                        top: mediumBorder,
+                        bottom: mediumBorder,
+                        left: mediumBorder,
+                        right: mediumBorder
+                    };
+
                     for (let R = range.s.r; R <= range.e.r; ++R) {
-                        for (let C = range.s.c; C <= range.e.c; ++C) {
+                        for (let C = 0; C <= 5; ++C) {
                             const cellAddress = XLSX.utils.encode_cell({
                                 c: C,
                                 r: R
                             });
-                            if (!ws[cellAddress]) continue;
+                            if (!ws[cellAddress]) {
+                                ws[cellAddress] = { t: 's', v: '\xA0' };
+                            } else if (!ws[cellAddress].v || ws[cellAddress].v.toString().trim() === '' || ws[cellAddress].v === '\u200B') {
+                                ws[cellAddress].v = '\xA0';
+                                ws[cellAddress].t = 's';
+                            }
                             if (!ws[cellAddress].s) ws[cellAddress].s = {};
+
+                            ws[cellAddress].s.border = allBorders;
 
                             if (R < metaRows) {
                                 ws[cellAddress].s.font = {
@@ -4359,64 +4383,12 @@
                                 ws[cellAddress].s.font = {
                                     bold: true
                                 };
-                                ws[cellAddress].s.border = {
-                                    top: {
-                                        style: "medium",
-                                        color: {
-                                            auto: 1
-                                        }
-                                    },
-                                    bottom: {
-                                        style: "medium",
-                                        color: {
-                                            auto: 1
-                                        }
-                                    },
-                                    left: {
-                                        style: "medium",
-                                        color: {
-                                            auto: 1
-                                        }
-                                    },
-                                    right: {
-                                        style: "medium",
-                                        color: {
-                                            auto: 1
-                                        }
-                                    }
-                                };
                                 ws[cellAddress].s.alignment = {
                                     vertical: "center",
                                     horizontal: "center",
                                     wrapText: true
                                 };
                             } else {
-                                ws[cellAddress].s.border = {
-                                    top: {
-                                        style: "medium",
-                                        color: {
-                                            auto: 1
-                                        }
-                                    },
-                                    bottom: {
-                                        style: "medium",
-                                        color: {
-                                            auto: 1
-                                        }
-                                    },
-                                    left: {
-                                        style: "medium",
-                                        color: {
-                                            auto: 1
-                                        }
-                                    },
-                                    right: {
-                                        style: "medium",
-                                        color: {
-                                            auto: 1
-                                        }
-                                    }
-                                };
                                 ws[cellAddress].s.alignment = {
                                     wrapText: true,
                                     vertical: "top"
@@ -5014,7 +4986,7 @@
                             if ($targetItem.find('.personnel-row').length === 0) {
                                 addPersonRow($targetItem.find('.personnel-container'));
                             }
-                            
+
                             autoFillTheoryForShift($roomRow, $targetItem, startHM, endHM);
                         }
 

@@ -88,4 +88,14 @@ Route::prefix('/plan')
                 Route::post('history', 'history')->name('history');
                 Route::post('source_material', 'source_material')->name('source_material');
             });
+
+        Route::prefix('/annual')
+            ->name('annual.')
+            ->controller(\App\Http\Controllers\Pages\Plan\AnnualPlanController::class)
+            ->group(function () {
+                Route::get('', 'index')->name('list');
+                Route::get('/{id}', 'show')->name('show');
+                Route::post('', 'store')->name('store');
+                Route::post('update-monthly-data', 'updateMonthlyData')->name('update_monthly_data');
+            });
     });
