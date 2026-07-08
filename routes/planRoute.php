@@ -96,6 +96,7 @@ Route::prefix('/plan')
                 Route::get('', 'index')->name('list');
                 Route::get('/{id}', 'show')->name('show');
                 Route::post('', 'store')->name('store');
+                Route::post('/{id}/add-products', 'addProducts')->name('add_products');
                 Route::post('update-monthly-data', 'updateMonthlyData')->name('update_monthly_data');
             });
     });

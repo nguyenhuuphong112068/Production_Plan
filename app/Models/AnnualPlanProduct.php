@@ -20,10 +20,7 @@ class AnnualPlanProduct extends Model
         return $this->hasMany(AnnualPlanMonthlyData::class);
     }
 
-    public function intermediateCategory()
-    {
-        return $this->belongsTo(IntermediateCategory::class, 'intermediate_category_id');
-    }
+    // Removed intermediateCategory relation since column was dropped
 
     public function finishedProductCategory()
     {

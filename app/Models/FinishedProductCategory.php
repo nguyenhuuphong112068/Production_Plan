@@ -14,6 +14,6 @@ class FinishedProductCategory extends Model
     // Tên sản phẩm nằm trong bảng product_name, liên kết qua product_name_id
     public function productName()
     {
-        return $this->belongsTo(\App\Models\masterData\ProductName\ProductName::class, 'product_name_id');
+        return $this->belongsTo(\App\Models\masterData\ProductName\ProductNameModel::class, 'product_name_id');
     }
 }

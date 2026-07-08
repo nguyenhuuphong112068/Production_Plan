@@ -10,67 +10,56 @@
 
 @section('mainContent')
     <div class="content-wrapper">
-
-        <div class="container-fluid pd-x-0 mt-5">
-            <div class="d-sm-flex align-items-center justify-content-between mg-b-20 mg-lg-b-25 mg-xl-b-30">
-                <div>
-                    <nav aria-label="breadcrumb">
-                        <ol class="breadcrumb breadcrumb-style1 mg-b-10">
-                            <li class="breadcrumb-item"><a href="#">Kế Hoạch</a></li>
-                            <li class="breadcrumb-item active" aria-current="page">Kế Hoạch Năm</li>
-                        </ol>
-                    </nav>
-
-                </div>
-                <div class="d-none d-md-block">
-                    <button class="btn btn-sm pd-x-15 btn-primary btn-uppercase mg-l-5" data-toggle="modal"
-                        data-target="#modalCreatePlan">
-                        <i data-feather="plus" class="wd-10 mg-r-5"></i> Tạo kế hoạch mới
-                    </button>
-                </div>
+        <div class="card" style="min-height: 100vh">
+            <div class="card-header mt-4">
+                <h3 class="card-title">Danh sách Kế Hoạch Năm</h3>
             </div>
-
-            @if (session('success'))
-                <div class="alert alert-success">{{ session('success') }}</div>
-            @endif
-
-            <div class="row row-xs">
-                <div class="col-12">
-                    <div class="card">
-                        <div class="card-body">
-                            <table class="table table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>Năm</th>
-                                        <th>Ghi chú</th>
-                                        <th>Ngày tạo</th>
-                                        <th>Thao tác</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach ($plans as $plan)
-                                        <tr>
-                                            <td>{{ $plan->year }}</td>
-                                            <td>{{ $plan->description }}</td>
-                                            <td>{{ $plan->created_at->format('d/m/Y') }}</td>
-                                            <td>
-                                                <a href="{{ route('pages.plan.annual.show', $plan->id) }}"
-                                                    class="btn btn-sm btn-info">Chi tiết</a>
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                    @if ($plans->isEmpty())
-                                        <tr>
-                                            <td colspan="4" class="text-center">Chưa có kế hoạch nào</td>
-                                        </tr>
-                                    @endif
-                                </tbody>
-                            </table>
-                        </div>
+            
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-2">
+                        <button class="btn btn-success btn-add mb-2" data-toggle="modal"
+                            data-target="#modalCreatePlan" style="width: 155px;">
+                            <i class="fas fa-plus"></i> Tạo kế hoạch mới
+                        </button>
                     </div>
                 </div>
+
+                @if (session('success'))
+                    <div class="alert alert-success mt-2">{{ session('success') }}</div>
+                @endif
+
+                <table class="table table-hover table-bordered mt-3">
+                    <thead class="thead-light">
+                        <tr>
+                            <th>Năm</th>
+                            <th>Ghi chú</th>
+                            <th>Ngày tạo</th>
+                            <th class="text-center">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($plans as $plan)
+                            <tr>
+                                <td>{{ $plan->year }}</td>
+                                <td>{{ $plan->description }}</td>
+                                <td>{{ $plan->created_at->format('d/m/Y') }}</td>
+                                <td class="text-center">
+                                    <a href="{{ route('pages.plan.annual.show', $plan->id) }}"
+                                        class="btn btn-sm btn-info"><i class="fas fa-eye"></i> Chi tiết</a>
+                                </td>
+                            </tr>
+                        @endforeach
+                        @if ($plans->isEmpty())
+                            <tr>
+                                <td colspan="4" class="text-center">Chưa có kế hoạch nào</td>
+                            </tr>
+                        @endif
+                    </tbody>
+                </table>
             </div>
         </div>
+    </div>
 
         <!-- Modal Create -->
         <div class="modal fade" id="modalCreatePlan" tabindex="-1" role="dialog" aria-hidden="true">

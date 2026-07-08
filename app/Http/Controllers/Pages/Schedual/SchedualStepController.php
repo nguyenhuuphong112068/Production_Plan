@@ -24,28 +24,31 @@ class SchedualStepController extends Controller
             ->get()
             ->keyBy('stage_code');
 
-        // Lấy dữ liệu stage_plan + filter trước khi get()
+        $yieldsSubquery = DB::table('yields')
+            ->select('stage_plan_id', DB::raw('SUM(yield) as yields'))
+            ->groupBy('stage_plan_id');
+
         $datas = DB::table('stage_plan')
             ->when(!in_array(session('user')['userGroup'], ['Schedualer', 'Admin', 'Leader']), fn($query) => $query->where('submit', 1))
             ->leftJoin('room', 'stage_plan.resourceId', 'room.id')
             ->leftJoin('plan_master',  'stage_plan.plan_master_id', 'plan_master.id')
             ->leftJoin('finished_product_category', 'stage_plan.product_caterogy_id',  'finished_product_category.id')
+            ->leftJoin('intermediate_category', 'finished_product_category.intermediate_code', 'intermediate_category.intermediate_code')
             ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
             ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
+            ->leftJoinSub($yieldsSubquery, 'yields_summary', 'yields_summary.stage_plan_id', '=', 'stage_plan.id')
             ->select(
                 'stage_plan.id',
+                'stage_plan.code',
+                'stage_plan.nextcessor_code',
                 'stage_plan.plan_master_id',
                 'stage_plan.stage_code',
                 DB::raw("IF(stage_plan.actual_start IS NOT NULL, stage_plan.actual_start, stage_plan.start) AS start"),
                 DB::raw("IF(stage_plan.actual_end IS NOT NULL, stage_plan.actual_end, stage_plan.end) AS end"),
                 DB::raw("IF(stage_plan.actual_start_clearning IS NOT NULL, stage_plan.actual_start_clearning, stage_plan.start_clearning) AS start_clearning"),
                 DB::raw("IF(stage_plan.actual_end_clearning IS NOT NULL, stage_plan.actual_end_clearning, stage_plan.end_clearning) AS end_clearning"),
-                //'stage_plan.start',
-                //'stage_plan.end',
-                //'stage_plan.start_clearning',
-                //stage_plan.end_clearning',
                 'stage_plan.finished',
-                'stage_plan.yields',
+                'yields_summary.yields',
                 DB::raw("CONCAT(room.name,'-', room.code) as room_name"),
                 //'room.name as room_name',
                 //'room.code as room_code',
@@ -62,6 +65,13 @@ class SchedualStepController extends Controller
                 'finished_product_category.unit_batch_qty',
                 'market.name as market',
                 'product_name.name as product_name',
+                'intermediate_category.quarantine_total',
+                'intermediate_category.quarantine_weight',
+                'intermediate_category.quarantine_preparing',
+                'intermediate_category.quarantine_blending',
+                'intermediate_category.quarantine_forming',
+                'intermediate_category.quarantine_coating',
+                'intermediate_category.quarantine_time_unit',
                 DB::raw("
                         CASE 
                             WHEN stage_plan.finished = 1 THEN 'finished'
@@ -70,7 +80,9 @@ class SchedualStepController extends Controller
                         END as status
                     ")
             )
-            ->whereBetween('plan_master.expected_date', [$fromDate, $toDate])
+            ->when(!$request->has('filter_overdue') || $request->filter_overdue != '1', function($query) use ($fromDate, $toDate) {
+                return $query->whereBetween('plan_master.expected_date', [$fromDate, $toDate]);
+            })
             ->where('stage_plan.active', 1)
             ->where('stage_plan.deparment_code', $production)
             ->where('plan_master.only_parkaging',  0)
@@ -80,27 +92,79 @@ class SchedualStepController extends Controller
             ->get()
             ->groupBy('plan_master_id');
 
+        // Logic lọc cảnh báo đỏ (quá hạn biệt trữ) và công đoạn sau chưa hoàn thành
+        if ($request->has('filter_overdue') && $request->filter_overdue == '1') {
+            $filteredDatas = collect();
+            foreach ($datas as $plan_master_id => $stages) {
+                $isOverdue = false;
+                
+                // Nếu lô đã hoàn thành (công đoạn 7 hoặc 8 đã finished) thì bỏ qua, không tính là cảnh báo quá hạn
+                $isPlanFinished = false;
+                foreach ($stages as $s) {
+                    if ($s->stage_code >= 7 && $s->finished == 1) {
+                        $isPlanFinished = true;
+                        break;
+                    }
+                }
+                if ($isPlanFinished) continue;
+
+                foreach ($stages as $stage) {
+                    $next = $stages->firstWhere('code', $stage->nextcessor_code);
+                    // Yêu cầu: công đoạn sau chưa hoàn thành (chưa xếp lịch hoặc chưa finished)
+                    if (!$next || $next->finished == 1) continue;
+
+                    // Lấy thời gian biệt trữ chuẩn
+                    $stdValue = null;
+                    if (in_array($stage->stage_code, [1, 2])) $stdValue = $stage->quarantine_weight;
+                    elseif ($stage->stage_code == 3) $stdValue = $stage->quarantine_preparing;
+                    elseif ($stage->stage_code == 4) $stdValue = $stage->quarantine_blending;
+                    elseif ($stage->stage_code == 5) $stdValue = $stage->quarantine_forming;
+                    elseif ($stage->stage_code == 6) $stdValue = $stage->quarantine_coating;
+                    
+                    if ($stage->end && $stdValue !== null && $stdValue > 0) {
+                        $stdInMinutes = ($stage->quarantine_time_unit == 1) ? $stdValue * 24 * 60 : $stdValue * 60;
+                        
+                        if ($next->start) {
+                            continue; // Đã xếp lịch thì bỏ qua, không lọc cảnh báo
+                        } else {
+                            $endTs = strtotime($stage->end);
+                            $nowTs = time();
+                            $diffInMinutes = ($nowTs - $endTs) / 60;
+                            if ($diffInMinutes > $stdInMinutes) {
+                                $isOverdue = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+                if ($isOverdue) {
+                    $filteredDatas->put($plan_master_id, $stages);
+                }
+            }
+            $datas = $filteredDatas;
+        }
+
         $datas_only_parkaging = DB::table('stage_plan')
             ->when(!in_array(session('user')['userGroup'], ['Schedualer', 'Admin', 'Leader']), fn($query) => $query->where('submit', 1))
             ->leftJoin('room', 'stage_plan.resourceId', 'room.id')
             ->leftJoin('plan_master',  'stage_plan.plan_master_id', 'plan_master.id')
             ->leftJoin('finished_product_category', 'stage_plan.product_caterogy_id',  'finished_product_category.id')
+            ->leftJoin('intermediate_category', 'finished_product_category.intermediate_code', 'intermediate_category.intermediate_code')
             ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
             ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
+            ->leftJoinSub($yieldsSubquery, 'yields_summary', 'yields_summary.stage_plan_id', '=', 'stage_plan.id')
             ->select(
                 'stage_plan.id',
+                'stage_plan.code',
+                'stage_plan.nextcessor_code',
                 'stage_plan.plan_master_id',
                 'stage_plan.stage_code',
                 DB::raw("IF(stage_plan.actual_start IS NOT NULL, stage_plan.actual_start, stage_plan.start) AS start"),
                 DB::raw("IF(stage_plan.actual_end IS NOT NULL, stage_plan.actual_end, stage_plan.end) AS end"),
                 DB::raw("IF(stage_plan.actual_start_clearning IS NOT NULL, stage_plan.actual_start_clearning, stage_plan.start_clearning) AS start_clearning"),
                 DB::raw("IF(stage_plan.actual_end_clearning IS NOT NULL, stage_plan.actual_end_clearning, stage_plan.end_clearning) AS end_clearning"),
-                //'stage_plan.start',
-                //'stage_plan.end',
-                //'stage_plan.start_clearning',
-                //'stage_plan.end_clearning',
                 'stage_plan.finished',
-                'stage_plan.yields',
+                'yields_summary.yields',
                 DB::raw("CONCAT(room.name,'-', room.code) as room_name"),
                 // 'room.name as room_name',
                 // 'room.code as room_code',
@@ -116,6 +180,13 @@ class SchedualStepController extends Controller
                 'finished_product_category.unit_batch_qty',
                 'market.name as market',
                 'product_name.name as product_name',
+                'intermediate_category.quarantine_total',
+                'intermediate_category.quarantine_weight',
+                'intermediate_category.quarantine_preparing',
+                'intermediate_category.quarantine_blending',
+                'intermediate_category.quarantine_forming',
+                'intermediate_category.quarantine_coating',
+                'intermediate_category.quarantine_time_unit',
                 DB::raw("
                         CASE 
                             WHEN stage_plan.finished = 1 THEN 'finished'
