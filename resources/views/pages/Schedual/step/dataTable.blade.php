@@ -132,7 +132,7 @@
                             </div>
 
                             <div class="table-responsive shadow-sm rounded"
-                                style="max-height: calc(100vh - 200px); overflow-y: auto; overflow-x: auto; background: #fff;">
+                                style="overflow-x: auto; background: #fff;">
                                 <table id="data_table_Schedual_step" class="table table-bordered table-striped"
                                     style="font-size: 20px; min-width: 1500px;">
                                     <thead
