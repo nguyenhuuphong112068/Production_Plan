@@ -889,6 +889,39 @@ class ProductionAssignmentController extends Controller
         try {
             DB::beginTransaction();
 
+            // Load employee information for skipped checks
+            $allPersonnelIds = [];
+            foreach ($assignments_data as $row) {
+                foreach ($row['personnel_list'] ?? [] as $p) {
+                    if (!empty($p['personnel_id'])) {
+                        $allPersonnelIds[] = $p['personnel_id'];
+                    }
+                }
+            }
+            $allPersonnelIds = array_unique($allPersonnelIds);
+            
+            $employeeMap = [];
+            if (!empty($allPersonnelIds)) {
+                $employeeMap = DB::table('employees')
+                    ->whereIn('id', $allPersonnelIds)
+                    ->select('id', 'code', 'name', 'on_maternity_leave')
+                    ->get()
+                    ->keyBy('id')
+                    ->toArray();
+            }
+
+            $depMapping = [
+                'PXV1' => 15,
+                'PXV2' => 32,
+                'PXVH' => 30,
+                'PXDN' => 34,
+                'EN' => 3,
+                'PXTN' => 6
+            ];
+            $department = $depMapping[$production_code] ?? 15;
+            $shiftsCache = [];
+            $skippedList = [];
+
             $prodGroups = [
                 1 => "Trung Tâm Cân",
                 3 => "Pha Chế",
@@ -901,20 +934,48 @@ class ProductionAssignmentController extends Controller
             ];
 
             foreach ($target_dates as $targetDate) {
+                // Pre-load shifts for the target month/year cycle
+                $carbonDate = Carbon::parse($targetDate);
+                $day = $carbonDate->day;
+                $sheetMonth = $carbonDate->month;
+                $sheetYear = $carbonDate->year;
+                
+                if ($day >= 21) {
+                    $sheetMonth += 1;
+                    if ($sheetMonth > 12) {
+                        $sheetMonth = 1;
+                        $sheetYear += 1;
+                    }
+                }
+                
+                $cacheKey = "{$sheetMonth}_{$sheetYear}";
+                if (!isset($shiftsCache[$cacheKey])) {
+                    $shiftsCache[$cacheKey] = [];
+                    $url = "http://s-webdev:5070/api/shifts/by-department?month={$sheetMonth}&year={$sheetYear}&department={$department}";
+                    try {
+                        $ctx = stream_context_create(['http' => ['timeout' => 5]]);
+                        $apiData = @file_get_contents($url, false, $ctx);
+                        if ($apiData) {
+                            $decoded = json_decode($apiData, true);
+                            if (is_array($decoded)) {
+                                foreach ($decoded as $person) {
+                                    $code = $person['employeeId'] ?? $person['code'] ?? null;
+                                    if ($code) {
+                                        $shiftsCache[$cacheKey][$code] = $person;
+                                    }
+                                }
+                            }
+                        }
+                    } catch (\Exception $e) {
+                        \Log::error("Failed to fetch shifts in cloneCustomTask for {$cacheKey}: " . $e->getMessage());
+                    }
+                }
+
                 // Generate a new EXT ID for the cloned task on this date
                 $spIdString = 'EXT_CLONE_' . time() . '_' . rand(1000, 9999);
 
                 foreach ($assignments_data as $row) {
                     $p_data = $row['personnel_list'] ?? [];
-
-                    // DEBUG: Log personnel data received
-                    \Log::info('CLONE DEBUG - Personnel data for row:', [
-                        'shift' => $row['shift'] ?? 'N/A',
-                        'start_time' => $row['start_time'] ?? 'N/A',
-                        'end_time' => $row['end_time'] ?? 'N/A',
-                        'p_data_count' => count($p_data),
-                        'p_data' => $p_data
-                    ]);
 
                     if (empty($row['start_time']) || empty($row['end_time'])) {
                         continue;
@@ -955,9 +1016,53 @@ class ProductionAssignmentController extends Controller
                         $endDt = Carbon::parse($endDt)->addDay()->format('Y-m-d H:i:s');
                     }
 
-                    foreach ($p_data as $p) {
+                    $unique_p_data = collect($p_data)->unique('personnel_id');
+                    $validPersonnelList = [];
+                    foreach ($unique_p_data as $p) {
                         if (empty($p['personnel_id'])) continue;
+                        
+                        $emp = $employeeMap[$p['personnel_id']] ?? null;
+                        if (!$emp) {
+                            $validPersonnelList[] = $p;
+                            continue;
+                        }
+                        
+                        $empCode = $emp->code;
+                        $empName = $emp->name;
+                        
+                        // Check maternity leave
+                        if ($emp->on_maternity_leave == 1) {
+                            $formattedDate = Carbon::parse($targetDate)->format('d/m/Y');
+                            $skippedList[] = "{$empName} ({$formattedDate})";
+                            continue; // Skip!
+                        }
+                        
+                        // Check shift
+                        $personData = $shiftsCache[$cacheKey][$empCode] ?? null;
+                        $isLeave = false;
+                        if ($personData) {
+                            $dayKey = "day{$day}";
+                            $dayData = $personData['days'][$dayKey] ?? null;
+                            if (is_array($dayData) || is_object($dayData)) {
+                                $dayData = $dayData['shift'] ?? 'HC';
+                            }
+                            $shiftCode = strtoupper($dayData ?: 'HC');
+                            if ($shiftCode === 'P') {
+                                $isLeave = true;
+                            }
+                        }
+                        
+                        if ($isLeave) {
+                            $formattedDate = Carbon::parse($targetDate)->format('d/m/Y');
+                            $skippedList[] = "{$empName} ({$formattedDate})";
+                            continue; // Skip!
+                        }
+                        
+                        $validPersonnelList[] = $p;
+                    }
 
+                    // Check overlaps for the valid personnel list
+                    foreach ($validPersonnelList as $p) {
                         $overlap = DB::table('assignments as a')
                             ->join('assignment_personnel as ap', 'a.id', '=', 'ap.assignment_id')
                             ->leftJoin('room as r', 'a.room_id', '=', 'r.id')
@@ -981,7 +1086,6 @@ class ProductionAssignmentController extends Controller
                             }
                             $roomName = $overlap->room_name ?: 'Công tác khác';
                             $timeRange = Carbon::parse($overlap->start)->format('H:i') . ' - ' . Carbon::parse($overlap->end)->format('H:i');
-
                             $formattedTargetDate = Carbon::parse($targetDate)->format('d/m/Y');
                             // throw new \Exception("Ngày {$formattedTargetDate}: Nhân sự {$overlap->employee_name} đã được phân công tại {$grpName} ({$roomName}) trong khoảng thời gian {$timeRange}.");
                         }
@@ -997,7 +1101,7 @@ class ProductionAssignmentController extends Controller
                         'start' => $startDt,
                         'end' => $endDt,
                         'Job_description' => isset($row['job_description']) ? trim($row['job_description']) : null,
-                        'number_of_employes' => $row['number_of_employes'] ?? 0,
+                        'number_of_employes' => count($validPersonnelList),
                         'Num_of_per_Level_3' => $row['num_of_per_level_3'] ?? 0,
                         'off_stream' => $row['off_stream'] ?? 0,
                         'assigned_by' => session('user')['userName'] ?? 'System',
@@ -1006,10 +1110,7 @@ class ProductionAssignmentController extends Controller
                         'active' => 1
                     ]);
 
-                    $unique_p_data = collect($p_data)->unique('personnel_id');
-                    foreach ($unique_p_data as $p) {
-                        if (empty($p['personnel_id'])) continue;
-
+                    foreach ($validPersonnelList as $p) {
                         $pStart = $startDt;
                         $pEnd = $endDt;
 
@@ -1034,7 +1135,12 @@ class ProductionAssignmentController extends Controller
             }
 
             DB::commit();
-            return response()->json(['success' => true, 'message' => 'Đã nhân bản công tác thành công.']);
+            $msg = 'Đã nhân bản công tác thành công.';
+            if (!empty($skippedList)) {
+                $uniqueSkipped = array_unique($skippedList);
+                $msg .= ' (Bỏ qua các nhân sự nghỉ phép/thai sản tại ngày đích: ' . implode(', ', $uniqueSkipped) . ')';
+            }
+            return response()->json(['success' => true, 'message' => $msg]);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([

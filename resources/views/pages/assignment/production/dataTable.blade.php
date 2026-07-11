@@ -47,6 +47,14 @@
 </style>
 
 <style>
+    @keyframes blink {
+        0% { opacity: 1; }
+        50% { opacity: 0.3; }
+        100% { opacity: 1; }
+    }
+    .blink-animation {
+        animation: blink 1s infinite;
+    }
     :root {
         --primary-gold: #007bff;
         --light-gold: #e7f3ff;
@@ -1391,37 +1399,64 @@
 
         // ================= NEW: ROBUST TIME DISPLAY UPDATE =================
         const dbAssignments = typeof window.dbPersonnelAssignments !== 'undefined' ? window.dbPersonnelAssignments : {};
-        let domPersons = new Set();
+
+        // Step 1: Pre-calculate reverse mapping of employee ID to employee Code
+        let employeeIdToCode = {};
+        for (let code in employeeCodeToId) {
+            employeeIdToCode[employeeCodeToId[code]] = code;
+        }
+
+        // Step 2: Single-pass DOM scan to group assignments by personId
+        let personAssignments = {}; // personId -> array of assignments
+        
         $('.room-row .assignment-item:not(.foreign-assignment)').each(function() {
-            $(this).find('.personnel-row').each(function() {
-                const pid = $(this).find('.person-select').val();
-                if (pid) domPersons.add(pid.toString());
+            const $item = $(this);
+            const shiftVal = $item.find('.shift-select').val() || '4';
+            const itemStart = $item.find('.start-time-input').val() || '';
+            const itemEnd = $item.find('.end-time-input').val() || '';
+            
+            $item.find('.personnel-row').each(function() {
+                const $row = $(this);
+                const pid = $row.find('.person-select').val();
+                if (pid) {
+                    const pidStr = pid.toString();
+                    if (!personAssignments[pidStr]) {
+                        personAssignments[pidStr] = [];
+                    }
+                    const start = $row.find('.p-start-input').val() || itemStart;
+                    const end = $row.find('.p-end-input').val() || itemEnd;
+                    personAssignments[pidStr].push({
+                        element: $row,
+                        start: start,
+                        end: end,
+                        shift: shiftVal,
+                        is_local: true
+                    });
+                }
             });
         });
 
         let personCumulativeTimes = {}; // personId -> totalHrs
 
-        domPersons.forEach(personId => {
+        // Step 3: Combine with DB assignments and calculate cumulative hours
+        const allPersonIds = new Set([...Object.keys(personAssignments), ...Object.keys(dbAssignments)]);
+
+        allPersonIds.forEach(personId => {
             let assignments = [];
-            $('.room-row .assignment-item:not(.foreign-assignment)').each(function() {
-                const $item = $(this);
-                const shiftVal = $item.find('.shift-select').val() || '4';
-                $item.find('.personnel-row').each(function() {
-                    const foundPersonRow = $(this);
-                    if (foundPersonRow.find('.person-select').val() == personId) {
-                        const start = foundPersonRow.find('.p-start-input').val() || $item.find('.start-time-input').val() || '';
-                        const end = foundPersonRow.find('.p-end-input').val() || $item.find('.end-time-input').val() || '';
-                        assignments.push({
-                            element: foundPersonRow,
-                            start: start,
-                            end: end,
-                            shift: shiftVal,
-                            is_local: true
-                        });
-                    }
+            
+            // Add local assignments
+            const locals = personAssignments[personId] || [];
+            locals.forEach(la => {
+                assignments.push({
+                    element: la.element,
+                    start: la.start,
+                    end: la.end,
+                    shift: la.shift,
+                    is_local: true
                 });
             });
-
+            
+            // Add DB assignments
             const dbList = dbAssignments[personId] || [];
             dbList.forEach(dbAss => {
                 assignments.push({
@@ -1432,6 +1467,8 @@
                     is_local: false
                 });
             });
+
+            if (assignments.length === 0) return;
 
             assignments.sort((a, b) => {
                 const startA = a.start ? timeStrToMins(a.start) : 0;
@@ -1464,6 +1501,66 @@
 
             personCumulativeTimes[personId] = Math.round(cumulativeHours * 100) / 100;
         });
+
+        // Step 4: Index currentSidebarData for fast lookup
+        let sidebarDataMap = {};
+        if (currentSidebarData) {
+            currentSidebarData.forEach(p => {
+                const c = p.employeeId || p.code;
+                if (c) sidebarDataMap[c.toString()] = p;
+            });
+        }
+
+        // Step 5: Update warnings on each personnel row in the main table
+        $('.room-row .assignment-item:not(.foreign-assignment) .personnel-row').each(function() {
+            const $row = $(this);
+            const pid = $row.find('.person-select').val();
+            
+            // Remove old warning badges first
+            $row.find('.custom-warning-badge').remove();
+            
+            if (!pid) return;
+            
+            // 1. Check Leave (Nghỉ phép)
+            let isOnLeave = false;
+            const personCode = employeeIdToCode[pid];
+            if (personCode && currentSidebarData) {
+                const personData = sidebarDataMap[personCode.toString()];
+                if (personData) {
+                    const dayKey = 'day' + currentSidebarDay;
+                    const personShift = (personData.days && personData.days[dayKey]) ? (personData.days[
+                        dayKey]?.shift ?? personData.days[dayKey]).toString().toUpperCase() : 'HC';
+                    if (personShift === 'P' || personData.on_maternity_leave == 1) {
+                        isOnLeave = true;
+                    }
+                }
+            }
+            
+            // 2. Check Overtime >= 8h
+            const totalHours = personCumulativeTimes[pid.toString()] || 0;
+            const overtime = Math.max(0, totalHours - 8);
+            const isOvertimeExceeded = overtime >= 8;
+            
+            let headerRow = $row.find('.d-flex.align-items-center.w-100').first();
+            
+            if (isOnLeave) {
+                const leaveBadge = $('<span class="badge badge-danger custom-warning-badge blink-animation ml-1 cursor-pointer" title="Nhân sự đang trong trạng thái nghỉ phép!" style="font-size:0.7rem;"><i class="fas fa-plane-departure mr-1"></i>Nghỉ phép</span>');
+                if (headerRow.find('.btn-remove-person').length > 0) {
+                    leaveBadge.insertBefore(headerRow.find('.btn-remove-person'));
+                } else {
+                    headerRow.append(leaveBadge);
+                }
+            }
+            
+            if (isOvertimeExceeded) {
+                const otExceededBadge = $(`<span class="badge badge-warning custom-warning-badge blink-animation ml-1 cursor-pointer" title="Tăng ca quá nhiều (TC: ${overtime.toFixed(1)}h >= 8h)!" style="font-size:0.7rem; color: #fff; background-color: #fd7e14;"><i class="fas fa-exclamation-triangle mr-1"></i>TC >= 8h (${overtime.toFixed(1)}h)</span>`);
+                if (headerRow.find('.btn-remove-person').length > 0) {
+                    otExceededBadge.insertBefore(headerRow.find('.btn-remove-person'));
+                } else {
+                    headerRow.append(otExceededBadge);
+                }
+            }
+        });
         // ====================================================================
 
         if (!currentSidebarData) return;
@@ -1486,51 +1583,38 @@
                 totalHours = personCumulativeTimes[personId.toString()] || 0;
                 
                 const assignments = [];
-                // 1. Scan DOM (for sidebar badges)
-                $('.room-row .assignment-item:not(.foreign-assignment)').each(function() {
-                    const $item = $(this);
-                    const assId = $item.attr('data-id');
-                    let foundPersonRow = null;
-                    $item.find('.personnel-row').each(function() {
-                        if ($(this).find('.person-select').val() == personId.toString()) {
-                            foundPersonRow = $(this);
-                        }
-                    });
-                    if (foundPersonRow) {
-                        const roomRow = $item.closest('.room-row');
-                        let roomCode = 'Khác';
-                        const customSelect = roomRow.find('.room-select-custom');
-                        if (customSelect.length > 0) {
-                            const selectedOption = customSelect.find('option:selected');
-                            const selectedText = selectedOption.text().trim();
-                            if (selectedText && !selectedText.startsWith('--')) {
-                                roomCode = selectedText.split('-')[0].trim();
-                            } else {
-                                roomCode = 'Khác';
-                            }
+                
+                // Get local assignments from Step 2 map instead of query selector inside loop
+                const locals = personAssignments[personId.toString()] || [];
+                locals.forEach(la => {
+                    const roomRow = la.element.closest('.room-row');
+                    const isSaved = !roomRow.find('.btn-save-room').hasClass('is-dirty');
+                    const assId = la.element.closest('.assignment-item').attr('data-id');
+                    
+                    let roomCode = 'Khác';
+                    const customSelect = roomRow.find('.room-select-custom');
+                    if (customSelect.length > 0) {
+                        const selectedOption = customSelect.find('option:selected');
+                        const selectedText = selectedOption.text().trim();
+                        if (selectedText && !selectedText.startsWith('--')) {
+                            roomCode = selectedText.split('-')[0].trim();
                         } else {
-                            roomCode = roomRow.find('.room-name-cell b').text().trim() || 'NA';
+                            roomCode = 'Khác';
                         }
-                        const shiftVal = $item.find('.shift-select').val() || '4';
-                        const start = foundPersonRow.find('.p-start-input').val() || $item.find(
-                            '.start-time-input').val() || '';
-                        const end = foundPersonRow.find('.p-end-input').val() || $item.find(
-                            '.end-time-input').val() || '';
-
-                        if (start || end) {
-                            const isSaved = !roomRow.find('.btn-save-room').hasClass('is-dirty');
-                            assignments.push({
-                                element: foundPersonRow,
-                                assignment_id: assId,
-                                room: roomCode,
-                                start: start,
-                                end: end,
-                                is_local: true,
-                                shift: shiftVal,
-                                is_saved: isSaved
-                            });
-                        }
+                    } else {
+                        roomCode = roomRow.find('.room-name-cell b').text().trim() || 'NA';
                     }
+
+                    assignments.push({
+                        element: la.element,
+                        assignment_id: assId,
+                        room: roomCode,
+                        start: la.start,
+                        end: la.end,
+                        is_local: true,
+                        shift: la.shift,
+                        is_saved: isSaved
+                    });
                 });
 
                 // 2. Scan DB assignments from other groups/departments
