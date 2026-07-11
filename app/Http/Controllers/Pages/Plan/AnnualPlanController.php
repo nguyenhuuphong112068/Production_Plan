@@ -370,4 +370,140 @@ class AnnualPlanController extends Controller
 
         return response()->json(['success' => true, 'message' => 'Lưu dữ liệu thành công!']);
     }
+
+    public function getEquipmentAllocation($id)
+    {
+        $month = (int) request()->query('month', 8);
+        $stageCodeReq = request()->query('stage_code');
+        $effectiveStageCode = ($stageCodeReq && $stageCodeReq !== 'all') ? (int)$stageCodeReq : 7;
+
+        $departmentCode = request()->query('department_code', 'PXV1');
+
+        $planMasterData = \Illuminate\Support\Facades\DB::table('annual_plan_products as app')
+            ->join('annual_plan_monthly_data as apmd', function($join) use ($month) {
+                $join->on('app.id', '=', 'apmd.annual_plan_product_id')
+                     ->where('apmd.month', '=', $month);
+            })
+            ->join('finished_product_category as fpc', 'app.finished_product_category_id', '=', 'fpc.id')
+            ->where('app.annual_plan_id', $id)
+            ->where('apmd.planned_batches', '>', 0)
+            ->select(
+                'fpc.finished_product_code as product_code',
+                'fpc.intermediate_code',
+                \Illuminate\Support\Facades\DB::raw('SUM(apmd.planned_batches) as batch_count'),
+                \Illuminate\Support\Facades\DB::raw('MAX(fpc.batch_qty) as batch_qty')
+            )
+            ->groupBy('fpc.finished_product_code', 'fpc.intermediate_code')
+            ->get();
+
+        if ($planMasterData->isEmpty()) {
+            return response()->json(['success' => true, 'data' => []]);
+        }
+
+        $groupByLine = request()->query('group_by') === 'line';
+
+        $scheduledCounts = \Illuminate\Support\Facades\DB::table('stage_plan')
+            ->where('stage_code', $effectiveStageCode)
+            ->where('finished', 0)
+            ->where(function ($query) {
+                $query->whereNotNull('actual_start')
+                      ->orWhereNotNull('schedualed_at');
+            })
+            ->select('resourceId', \Illuminate\Support\Facades\DB::raw('COUNT(*) as scheduled_count'))
+            ->groupBy('resourceId')
+            ->pluck('scheduled_count', 'resourceId')
+            ->toArray();
+
+        $quotasQuery = \Illuminate\Support\Facades\DB::table('quota as q')
+            ->join('room as r', 'q.room_id', '=', 'r.id')
+            ->leftJoin('blister_type as bt', 'r.blister_type_code', '=', 'bt.code')
+            ->where('r.deparment_code', $departmentCode)
+            ->where('q.active', 1);
+
+        if ($stageCodeReq && $stageCodeReq !== 'all') {
+            $quotasQuery->where('q.stage_code', $stageCodeReq);
+        } else {
+            $quotasQuery->whereIn('q.stage_code', [3, 4, 5, 6, 7]);
+        }
+
+        $quotas = $quotasQuery->select('q.finished_product_code', 'q.intermediate_code', 'q.room_id', 'q.m_time', 'r.name as equipment_name', 'r.code as equipment_code', 'r.main_equiment_name', 'r.blister_type_code', 'bt.name as blister_type_name', 'r.order_by as room_order_by')->get();
+
+        $equipmentStats = [];
+
+        foreach ($planMasterData as $plan) {
+            $productQuotas = $quotas->filter(function ($q) use ($plan) {
+                return ($q->finished_product_code === $plan->product_code && $q->finished_product_code !== 'NA') ||
+                        ($q->intermediate_code === $plan->intermediate_code && $q->intermediate_code !== 'NA');
+            });
+            $processedGroups = [];
+            foreach ($productQuotas as $q) {
+                $mTimeVal = $q->m_time;
+                $mTime = 0;
+                if (strpos($mTimeVal, ':') !== false) {
+                    $parts = explode(':', $mTimeVal);
+                    $mTime = (float)$parts[0] + ((float)$parts[1] / 60);
+                } else {
+                    $mTime = (float)$mTimeVal;
+                }
+
+                $roomId = $q->room_id;
+
+                $groupId = $roomId;
+                $groupCode = $q->equipment_code;
+                $groupName = $q->equipment_name;
+                $groupMainName = $q->main_equiment_name;
+
+                if ($groupByLine && !empty($q->blister_type_code)) {
+                    $groupId = 'line_' . $q->blister_type_code;
+                    $groupCode = 'Dòng ' . ($q->blister_type_name ?? $q->blister_type_code);
+                    $groupName = 'Tập hợp các máy dòng ' . ($q->blister_type_name ?? $q->blister_type_code);
+                    $groupMainName = 'Multiple';
+                }
+
+                if (in_array($groupId, $processedGroups)) {
+                    continue;
+                }
+                $processedGroups[] = $groupId;
+
+                if (!isset($equipmentStats[$groupId])) {
+                    $sched = 0;
+                    if (!$groupByLine && isset($scheduledCounts[$roomId])) {
+                        $sched = $scheduledCounts[$roomId];
+                    } elseif ($groupByLine && !empty($q->blister_type_code)) {
+                        $lineEquipments = $quotas->where('blister_type_code', $q->blister_type_code)->pluck('room_id')->unique();
+                        foreach ($lineEquipments as $rId) {
+                            if (isset($scheduledCounts[$rId])) {
+                                $sched += $scheduledCounts[$rId];
+                            }
+                        }
+                    }
+
+                    $equipmentStats[$groupId] = [
+                        'room_id' => $groupId,
+                        'equipment_code' => $groupCode,
+                        'equipment_name' => $groupName,
+                        'main_equipment_name' => $groupMainName,
+                        'blister_type_code' => $q->blister_type_code,
+                        'room_order_by' => $q->room_order_by,
+                        'total_batches' => 0,
+                        'total_time' => 0,
+                        'total_quantity' => 0,
+                        'scheduled_batches' => $sched,
+                        'inventory_qty' => 0,
+                    ];
+                }
+
+                $batchCount = (float)$plan->batch_count;
+                $batchQty = (float)$plan->batch_qty;
+                $equipmentStats[$groupId]['total_batches'] += $batchCount;
+                $equipmentStats[$groupId]['total_time'] += ($mTime * $batchCount);
+                $equipmentStats[$groupId]['total_quantity'] += ($batchQty * $batchCount);
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => array_values($equipmentStats)
+        ]);
+    }
 }

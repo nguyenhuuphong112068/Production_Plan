@@ -107,7 +107,7 @@
             </div>
             <div class="card-body">
                 <div class="row">
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                         <button class="btn btn-success btn-add mb-2" onclick="saveData()" style="width: 155px;">
                             <i class="fas fa-save"></i> Lưu thay đổi
                         </button>
@@ -115,6 +115,16 @@
                             data-target="#addProductsModal">
                             <i class="fas fa-plus"></i> Thêm sản phẩm
                         </button>
+                        <div class="btn-group mb-2 ml-2">
+                            <button type="button" class="btn btn-info dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                <i class="fas fa-chart-pie"></i> Phân bổ thiết bị
+                            </button>
+                            <div class="dropdown-menu">
+                                @for ($m = 1; $m <= 12; $m++)
+                                    <a class="dropdown-item btn-equipment-allocation" href="#" data-month="{{ $m }}">Tháng {{ str_pad($m, 2, '0', STR_PAD_LEFT) }}/{{ $plan->year }}</a>
+                                @endfor
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -154,6 +164,63 @@
                         <button type="submit" class="btn btn-primary">Xác nhận Thêm</button>
                     </div>
                 </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Phân bổ thiết bị -->
+    <div class="modal fade" id="equipmentAllocationModal" tabindex="-1" role="dialog"
+        aria-labelledby="equipmentAllocationModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl" role="document" style="max-width: 90%;">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title" id="equipmentAllocationModalLabel"><i class="fas fa-chart-pie mr-2"></i>Phân
+                        bổ thiết bị cho kế hoạch</h5>
+                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <h5 id="equipmentAllocationPlanName" class="font-weight-bold text-center mb-2 text-primary"></h5>
+                    <div class="d-flex justify-content-center align-items-center mb-4 flex-wrap">
+                        <div class="custom-control custom-switch mr-4">
+                            <input type="checkbox" class="custom-control-input" id="groupByLineSwitch">
+                            <label class="custom-control-label font-weight-bold text-secondary" style="cursor: pointer;"
+                                for="groupByLineSwitch">Thống kê theo dòng máy</label>
+                        </div>
+                        <div class="form-group mb-0 d-flex align-items-center">
+                            <label for="stageCodeSelect" class="font-weight-bold text-secondary mb-0 mr-2">Công
+                                đoạn:</label>
+                            <select id="stageCodeSelect" class="form-control form-control-sm"
+                                style="width: auto; min-width: 150px;">
+                                <option value="all">Tất cả</option>
+                                <option value="3">Pha chế</option>
+                                <option value="4">Trộn hoàn tất</option>
+                                <option value="5">Định hình</option>
+                                <option value="6">Bao phim</option>
+                                <option value="7" selected>Đóng gói</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered table-hover" id="equipmentAllocationTable">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th class="text-center align-middle" style="width: 10%;">Mã Thiết bị</th>
+                                    <th class="text-center align-middle" style="width: 25%;">Tên Thiết bị</th>
+                                    <th class="text-center align-middle" style="width: 20%;">Loại Thiết bị</th>
+                                    <th class="text-center align-middle" colspan="2" style="width: 45%;">So Sánh</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Dữ liệu sẽ được load qua AJAX -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Đóng</button>
+                </div>
             </div>
         </div>
     </div>
@@ -471,6 +538,118 @@
                 });
         }
 
+        let currentMonth = 8;
+        
+        function loadEquipmentAllocation() {
+            var isGroupByLine = $('#groupByLineSwitch').is(':checked');
+            var stageCode = $('#stageCodeSelect').val();
+            var url = '{{ route("pages.plan.annual.equipment_allocation", $plan->id) }}' +
+                '?month=' + currentMonth + '&stage_code=' + stageCode + '&department_code={{ session('user')['production_code'] }}';
+            if (isGroupByLine) {
+                url += '&group_by=line';
+            }
+
+            $('#equipmentAllocationTable tbody').html(
+                '<tr><td colspan="5" class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x text-info"></i><br>Đang tải dữ liệu...</td></tr>'
+            );
+
+            $.ajax({
+                url: url,
+                type: 'GET',
+                success: function(response) {
+                    if (response.success) {
+                        var tbody = '';
+                        if (response.data.length === 0) {
+                            tbody =
+                                '<tr><td colspan="5" class="text-center py-4">Không có dữ liệu định mức thiết bị cho kế hoạch này.</td></tr>';
+                        } else {
+                            // Sort data: blister_type_code -> room_order_by -> total_batches
+                            response.data.sort(function(a, b) {
+                                // 1. Sort by blister_type_code
+                                if (a.blister_type_code !== null && b.blister_type_code !== null) {
+                                    if (a.blister_type_code !== b.blister_type_code) {
+                                        return a.blister_type_code - b.blister_type_code;
+                                    }
+                                } else if (a.blister_type_code !== null) {
+                                    return -1;
+                                } else if (b.blister_type_code !== null) {
+                                    return 1;
+                                }
+
+                                // 2. Sort by room_order_by
+                                var orderA = (a.room_order_by !== null && a.room_order_by !== undefined) ? parseInt(a.room_order_by) : 9999;
+                                var orderB = (b.room_order_by !== null && b.room_order_by !== undefined) ? parseInt(b.room_order_by) : 9999;
+                                if (orderA !== orderB) {
+                                    return orderA - orderB;
+                                }
+
+                                // 3. Fallback to total_batches descending
+                                return b.total_batches - a.total_batches;
+                            });
+
+                            var maxBatches = 0;
+                            var maxQty = 0;
+                            response.data.forEach(function(item) {
+                                if (item.total_batches > maxBatches) maxBatches = item.total_batches;
+                                if (item.total_quantity > maxQty) maxQty = item.total_quantity;
+                            });
+                            if (maxBatches === 0) maxBatches = 1;
+                            if (maxQty === 0) maxQty = 1;
+
+                            response.data.forEach(function(item) {
+                                var qty = (item.total_quantity || 0).toLocaleString('en-US');
+
+                                var widthBatches = (item.total_batches / maxBatches) * 100;
+                                var widthQty = (item.total_quantity / maxQty) * 100;
+
+                                var batchBarHtml =
+                                    '<div style="width: 100%; height: 24px; position: relative;">' +
+                                    '<div style="background-color: #e83e8c; width: ' + Math.max(widthBatches, 5) +
+                                    '%; height: 100%; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: width 0.5s ease; min-width: fit-content; padding: 0 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">' +
+                                    '<span style="color: white; font-weight: bold; font-size: 0.85rem; white-space: nowrap;">' +
+                                    item.total_batches + '</span>' +
+                                    '</div>' +
+                                    '</div>';
+
+                                var qtyBarHtml =
+                                    '<div style="width: 100%; height: 24px; position: relative;">' +
+                                    '<div style="background-color: #28a745; width: ' + Math.max(widthQty, 5) +
+                                    '%; height: 100%; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: width 0.5s ease; min-width: fit-content; padding: 0 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">' +
+                                    '<span style="color: white; font-weight: bold; font-size: 0.85rem; white-space: nowrap;">' +
+                                    qty + '</span>' +
+                                    '</div>' +
+                                    '</div>';
+
+                                var rowspan = 2;
+
+                                tbody += '<tr>' +
+                                    '<td class="text-center font-weight-bold align-middle" rowspan="' + rowspan + '" style="border-bottom: 2px solid #dee2e6;">' + (item.equipment_code || 'NA') + '</td>' +
+                                    '<td class="align-middle" rowspan="' + rowspan + '" style="border-bottom: 2px solid #dee2e6;">' + (item.equipment_name || 'NA') + '</td>' +
+                                    '<td class="text-center align-middle" rowspan="' + rowspan + '" style="border-bottom: 2px solid #dee2e6;">' + (item.main_equipment_name || 'NA') + '</td>' +
+                                    '<td class="text-right align-middle border-bottom-0 text-secondary pr-4 py-1" style="width: 15%; font-size: 0.9rem;">Tổng số Lô Có Thể Sắp</td>' +
+                                    '<td class="align-middle border-bottom-0 p-1" style="width: 30%;">' + batchBarHtml + '</td>' +
+                                    '</tr>' +
+                                    '<tr>' +
+                                    '<td class="text-right align-middle border-top-0 text-secondary pr-4 py-1" style="border-bottom: 2px solid #dee2e6; font-size: 0.9rem;">Sản lượng lý thuyết</td>' +
+                                    '<td class="align-middle border-top-0 p-1" style="border-bottom: 2px solid #dee2e6;">' + qtyBarHtml + '</td>' +
+                                    '</tr>';
+                            });
+                        }
+                        $('#equipmentAllocationTable tbody').html(tbody);
+                    } else {
+                        $('#equipmentAllocationTable tbody').html(
+                            '<tr><td colspan="5" class="text-center text-danger">Có lỗi xảy ra khi tải dữ liệu.</td></tr>'
+                        );
+                    }
+                },
+                error: function() {
+                    $('#equipmentAllocationTable tbody').html(
+                        '<tr><td colspan="5" class="text-center text-danger">Lỗi kết nối máy chủ.</td></tr>'
+                    );
+                }
+            });
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             // Lắng nghe sự kiện Ctrl + S
             document.addEventListener('keydown', function(e) {
@@ -492,6 +671,20 @@
                         '<div class="alert alert-danger m-3">Có lỗi xảy ra khi tải dữ liệu. Vui lòng thử lại.</div>'
                     );
                 });
+            });
+
+            $(document).on('click', '.btn-equipment-allocation', function(e) {
+                e.preventDefault();
+                currentMonth = $(this).data('month');
+                var monthStr = String(currentMonth).padStart(2, '0');
+                $('#equipmentAllocationPlanName').text('Kế hoạch phân bổ thiết bị: Tháng ' + monthStr + '/{{ $plan->year }}');
+                $('#groupByLineSwitch').prop('checked', false);
+                $('#equipmentAllocationModal').modal('show');
+                loadEquipmentAllocation();
+            });
+
+            $('#groupByLineSwitch, #stageCodeSelect').change(function() {
+                loadEquipmentAllocation();
             });
         });
     </script>
