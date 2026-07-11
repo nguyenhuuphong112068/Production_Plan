@@ -10,56 +10,64 @@
 
 @section('mainContent')
     <div class="content-wrapper">
-        <div class="card" style="min-height: 100vh">
-            <div class="card-header mt-4">
-                <h3 class="card-title">Danh sách Kế Hoạch Năm</h3>
-            </div>
-            
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-2">
-                        <button class="btn btn-success btn-add mb-2" data-toggle="modal"
-                            data-target="#modalCreatePlan" style="width: 155px;">
-                            <i class="fas fa-plus"></i> Tạo kế hoạch mới
+        <div class="p-3">
+            <div class="card card-success mt-5">
+                <div class="card-header">
+                    <h3 class="card-title">Danh sách Kế Hoạch Năm</h3>
+                    <div class="card-tools">
+                        <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                            <i class="fas fa-minus"></i>
                         </button>
                     </div>
                 </div>
+                
+                <div class="card-body" style="max-height: 95vh; overflow-y: auto;">
+                    <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 p-3"
+                        style="background-color: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.04);">
+                        <div class="mb-2 mb-xl-0 pr-4">
+                            <button class="btn btn-success btn-create" data-toggle="modal"
+                                data-target="#modalCreatePlan"
+                                style="height: 40px; border-radius: 6px; font-weight: 600; letter-spacing: 0.3px; padding: 0 20px; box-shadow: 0 2px 4px rgba(40,167,69,0.2);">
+                                <i class="fas fa-plus-circle mr-2"></i>Thêm Kế Hoạch
+                            </button>
+                        </div>
+                    </div>
 
-                @if (session('success'))
-                    <div class="alert alert-success mt-2">{{ session('success') }}</div>
-                @endif
+                    @if (session('success'))
+                        <div class="alert alert-success mb-3">{{ session('success') }}</div>
+                    @endif
 
-                <table class="table table-hover table-bordered mt-3">
-                    <thead class="thead-light">
-                        <tr>
-                            <th>Năm</th>
-                            <th>Ghi chú</th>
-                            <th>Ngày tạo</th>
-                            <th class="text-center">Thao tác</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach ($plans as $plan)
+                    <table class="table table-bordered table-striped" style="font-size: 20px">
+                        <thead>
                             <tr>
-                                <td>{{ $plan->year }}</td>
-                                <td>{{ $plan->description }}</td>
-                                <td>{{ $plan->created_at->format('d/m/Y') }}</td>
-                                <td class="text-center">
-                                    <a href="{{ route('pages.plan.annual.show', $plan->id) }}"
-                                        class="btn btn-sm btn-info"><i class="fas fa-eye"></i> Chi tiết</a>
-                                </td>
+                                <th>Năm</th>
+                                <th>Ghi chú</th>
+                                <th>Ngày tạo</th>
+                                <th class="text-center">Chi Tiết</th>
                             </tr>
-                        @endforeach
-                        @if ($plans->isEmpty())
-                            <tr>
-                                <td colspan="4" class="text-center">Chưa có kế hoạch nào</td>
-                            </tr>
-                        @endif
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            @foreach ($plans as $plan)
+                                <tr>
+                                    <td>{{ $plan->year }}</td>
+                                    <td>{{ $plan->description }}</td>
+                                    <td>{{ $plan->created_at->format('d/m/Y') }}</td>
+                                    <td class="text-center align-middle">
+                                        <a href="{{ route('pages.plan.annual.show', $plan->id) }}"
+                                            class="btn btn-success"><i class="fas fa-eye"></i></a>
+                                    </td>
+                                </tr>
+                            @endforeach
+                            @if ($plans->isEmpty())
+                                <tr>
+                                    <td colspan="4" class="text-center">Chưa có kế hoạch nào</td>
+                                </tr>
+                            @endif
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
-    </div>
 
         <!-- Modal Create -->
         <div class="modal fade" id="modalCreatePlan" tabindex="-1" role="dialog" aria-hidden="true">

@@ -13,7 +13,6 @@
     <style>
         .handsontable-container {
             width: 100%;
-            height: 70vh;
             overflow: hidden;
             margin-top: 20px;
         }
@@ -63,6 +62,20 @@
             background-color: #d0ebff !important;
             color: #0056b3 !important;
         }
+
+        /* Màu nền cho từng tháng (Màu nhạt pastel) */
+        .month-bg-1 { background-color: #f0f8ff !important; } /* AliceBlue */
+        .month-bg-2 { background-color: #fff5e6 !important; } /* FloralWhite */
+        .month-bg-3 { background-color: #f0fff0 !important; } /* Honeydew */
+        .month-bg-4 { background-color: #fff0f5 !important; } /* LavenderBlush */
+        .month-bg-5 { background-color: #f5fffa !important; } /* MintCream */
+        .month-bg-6 { background-color: #fdf5e6 !important; } /* OldLace */
+        .month-bg-7 { background-color: #f4fce3 !important; } /* Light Lime */
+        .month-bg-8 { background-color: #ffffe0 !important; } /* LightYellow */
+        .month-bg-9 { background-color: #f0ffff !important; } /* Azure */
+        .month-bg-10 { background-color: #fffafa !important; } /* Snow */
+        .month-bg-11 { background-color: #f5f5dc !important; } /* Beige */
+        .month-bg-12 { background-color: #faf0e6 !important; } /* Linen */
 
         /* Cột số thứ tự hàng bên trái */
         .handsontable .ht_clone_top_left_corner th,
@@ -130,40 +143,11 @@
                             <span aria-hidden="true">&times;</span>
                         </button>
                     </div>
-                    <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
-                        <table class="table table-bordered table-striped" id="productsTable">
-                            <thead style="position: sticky; top: 0; background: white; z-index: 10;">
-                                <tr>
-                                    <th class="text-center" style="width: 50px;">
-                                        <input type="checkbox" id="selectAllProducts">
-                                    </th>
-                                    <th>Mã BTP</th>
-                                    <th>Mã TP</th>
-                                    <th>Tên Sản Phẩm</th>
-                                    <th>Cỡ Lô</th>
-                                    <th>Thị Trường</th>
-                                    <th>Qui Cách</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach ($allFinishedProducts as $fpc)
-                                    @if (!in_array($fpc->id, $existingProductIds))
-                                        <tr>
-                                            <td class="text-center">
-                                                <input type="checkbox" name="selected_products[]"
-                                                    value="{{ $fpc->id }}" class="product-checkbox">
-                                            </td>
-                                            <td>{{ $fpc->intermediate_code }}</td>
-                                            <td>{{ $fpc->finished_product_code }}</td>
-                                            <td>{{ $fpc->productName?->name ?? $fpc->name }}</td>
-                                            <td>{{ $fpc->batch_qty }} {{ $fpc->unit_batch_qty }}</td>
-                                            <td>{{ $fpc->market }}</td>
-                                            <td>{{ $fpc->specification }}</td>
-                                        </tr>
-                                    @endif
-                                @endforeach
-                            </tbody>
-                        </table>
+                    <div class="modal-body" style="max-height: 70vh; overflow-y: auto;" id="unassignedProductsContainer">
+                        <div class="text-center py-5">
+                            <i class="fas fa-spinner fa-spin fa-3x text-primary"></i>
+                            <p class="mt-2">Đang tải dữ liệu...</p>
+                        </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-dismiss="modal">Hủy</button>
@@ -177,17 +161,13 @@
 
 @section('script')
     <script src="{{ asset('libs/handsontable/handsontable.full.min.js') }}"></script>
-    <script src="{{ asset('libs/hyperformula/hyperformula.full.min.js') }}"></script>
     <script>
         window.onerror = function(msg, url, lineNo, columnNo, error) {
             alert('JS Error: ' + msg + '\nLine: ' + lineNo);
             return false;
         };
-        const container = document.getElementById('hot-app');
         let hot;
-
-        // Inject data from controller
-        const data = @json($hotData);
+        let changedRowIds = new Set();
 
         // Helper to convert index to Excel column letter (0 -> A, 1 -> B...)
         function getExcelColumnName(colIndex) {
@@ -199,13 +179,18 @@
             return letter;
         }
 
-        // Base headers and columns
-        const colHeaders = [
-            'Hết SĐK', 'Phân loại', 'Khách', 'Thị trường', 'Dạng bào chế', 'Mã BTP', 'Mã TP', 'Sản phẩm', 'Hạn dùng',
-            'Quy cách', 'Cỡ lô', 'BQ bán / Tháng (hộp)', 'BQ bán / tháng (viên)'
-        ];
+        document.addEventListener('DOMContentLoaded', function() {
+            const container = document.getElementById('hot-app');
+            // Inject data from controller
+            const data = @json($hotData);
 
-        const columns = [{
+            // Base headers and columns
+            const colHeaders = [
+                'Hết SĐK', 'Phân loại', 'Khách', 'Thị trường', 'Dạng bào chế', 'Mã BTP', 'Mã TP', 'Sản phẩm', 'Hạn dùng',
+                'Quy cách', 'Cỡ lô', 'BQ bán / Tháng (hộp)', 'BQ bán / tháng (viên)'
+            ];
+
+            const columns = [{
                 data: 'registration_expiry',
                 type: 'date',
                 dateFormat: 'YYYY-MM-DD',
@@ -271,27 +256,72 @@
                 numericFormat: {
                     pattern: '0,0'
                 },
-                readOnly: false
+                readOnly: true
             }
+        ];
+
+        const topHeaders = [
+            { label: 'Thông tin chung', colspan: 13 }
         ];
 
         // Generate 12 months dynamically
         const planYear = {{ $plan->year }};
         for (let m = 1; m <= 12; m++) {
             const monthStr = m.toString().padStart(2, '0');
-            colHeaders.push(`KH T${monthStr}/${planYear} (Lô)`);
+            topHeaders.push({ label: `Tháng ${monthStr}/${planYear}`, colspan: 5 });
+
+            colHeaders.push(`Số lô`);
             columns.push({
                 data: `m${m}_batches`,
                 type: 'numeric',
                 numericFormat: {
                     pattern: '0,0'
-                }
+                },
+                className: `month-bg-${m}`
             });
 
-            colHeaders.push(`Tồn kho T${monthStr}/${planYear}`);
+            colHeaders.push(`Số lượng`);
+            columns.push({
+                data: `m${m}_planned_quantity`,
+                readOnly: true,
+                type: 'numeric',
+                numericFormat: {
+                    pattern: '0,0'
+                },
+                className: `month-bg-${m}`
+            });
+
+            colHeaders.push(`BTP dở dang`);
+            columns.push({
+                data: `m${m}_wip_inventory`,
+                readOnly: true,
+                type: 'numeric',
+                numericFormat: {
+                    pattern: '0,0'
+                },
+                className: `month-bg-${m}`
+            });
+
+            colHeaders.push(`Tồn kho`);
             columns.push({
                 data: `m${m}_expected_inventory`,
-                readOnly: true
+                readOnly: true,
+                type: 'numeric',
+                numericFormat: {
+                    pattern: '0,0'
+                },
+                className: `month-bg-${m}`
+            });
+
+            colHeaders.push(`Số tháng bán`);
+            columns.push({
+                data: `m${m}_months_sales`,
+                readOnly: true,
+                type: 'numeric',
+                numericFormat: {
+                    pattern: '0,0.00'
+                },
+                className: `month-bg-${m}`
             });
         }
 
@@ -305,35 +335,106 @@
             return getExcelColumnName(index);
         });
 
+        // Tính chiều cao tuyệt đối cho bảng = chiều cao cửa sổ - vị trí trên cùng của container - padding dưới
+        function getTableHeight() {
+            var rect = container.getBoundingClientRect();
+            return Math.max(window.innerHeight - rect.top - 20, 300);
+        }
+
         hot = new Handsontable(container, {
             data: data,
             nestedHeaders: [
-                finalColHeaders, // Hàng trên: Tên cột
-                excelLetters // Hàng dưới: Chỉ số A, B, C...
+                topHeaders,
+                finalColHeaders, // Hàng 2: Tên cột
+                excelLetters // Hàng 3: Chỉ số A, B, C...
             ],
             columns: columns,
             rowHeaders: true,
-            height: 'auto',
+            height: getTableHeight(),
             licenseKey: 'non-commercial-and-evaluation',
-            fixedColumnsStart: 8,
+            fixedColumnsStart: 0,
             contextMenu: true,
             manualColumnResize: true,
             manualColumnFreeze: true,
             filters: true,
             dropdownMenu: true,
-            formulas: {
-                engine: HyperFormula,
+            afterGetColHeader: function(col, TH) {
+                if (col >= 13) {
+                    let m = Math.floor((col - 13) / 5) + 1;
+                    if (m >= 1 && m <= 12) {
+                        TH.classList.add('month-bg-' + m);
+                    }
+                }
             },
             afterChange: function(changes, source) {
-                if (source === 'loadData') {
+                if (source === 'loadData' || source === 'calc') {
                     return;
                 }
-                // Add calculation logic here when KH Lô changes
+                
+                let toUpdate = [];
+                let rowUpdates = new Set();
+                
+                changes.forEach(([row, prop, oldValue, newValue]) => {
+                    if (oldValue !== newValue) {
+                        rowUpdates.add(row);
+                        const rowData = hot.getSourceDataAtRow(row);
+                        if (rowData && rowData.id) {
+                            changedRowIds.add(rowData.id);
+                        }
+                    }
+                });
+                
+                rowUpdates.forEach(row => {
+                    const rowData = hot.getSourceDataAtRow(row);
+                    const batch_size = parseFloat(String(rowData.batch_size).replace(/,/g, '')) || 0;
+                    const packaging_spec = parseFloat(String(rowData.packaging_spec).replace(/,/g, '')) || 0;
+                    const avg_sales_box = parseFloat(String(rowData.avg_sales_box).replace(/,/g, '')) || 0;
+                    
+                    // Tính BQ bán / tháng (viên)
+                    const avg_sales = avg_sales_box * packaging_spec;
+                    toUpdate.push([row, 'avg_sales_pill', avg_sales]);
+                    
+                    for (let m = 1; m <= 12; m++) {
+                        // Tính Số lượng KH
+                        let batches = parseFloat(String(rowData[`m${m}_batches`]).replace(/,/g, '')) || 0;
+                        let planned_qty = batches * batch_size;
+                        toUpdate.push([row, `m${m}_planned_quantity`, planned_qty]);
+                        
+                        // Tính Số tháng bán
+                        let wip = parseFloat(String(rowData[`m${m}_wip_inventory`]).replace(/,/g, '')) || 0;
+                        let fg = parseFloat(String(rowData[`m${m}_expected_inventory`]).replace(/,/g, '')) || 0;
+                        let months_sales = 0;
+                        if (avg_sales > 0) {
+                            months_sales = (wip + fg) / avg_sales;
+                            months_sales = Math.round(months_sales * 100) / 100;
+                        }
+                        toUpdate.push([row, `m${m}_months_sales`, months_sales]);
+                    }
+                });
+                
+                if (toUpdate.length > 0) {
+                    hot.setDataAtRowProp(toUpdate, 'calc');
+                }
             }
         });
 
+        // Cập nhật chiều cao khi thay đổi kích thước cửa sổ
+        window.addEventListener('resize', function() {
+            if (hot) {
+                hot.updateSettings({ height: getTableHeight() });
+            }
+        });
+        });
+
         function saveData() {
-            const dataToSave = hot.getSourceData();
+            if (changedRowIds.size === 0) {
+                alert('Không có thay đổi nào để lưu.');
+                return;
+            }
+
+            const allData = hot.getSourceData();
+            const dataToSave = allData.filter(row => changedRowIds.has(row.id));
+
             const btn = document.querySelector('.btn-success');
             const originalText = btn.innerHTML;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang lưu...';
@@ -356,6 +457,7 @@
                     btn.innerHTML = originalText;
                     btn.disabled = false;
                     if (data.success) {
+                        changedRowIds.clear();
                         alert(data.message);
                     } else {
                         alert('Lỗi: ' + data.message);
@@ -370,20 +472,25 @@
         }
 
         document.addEventListener('DOMContentLoaded', function() {
-            document.getElementById('selectAllProducts').addEventListener('change', function() {
-                var isChecked = this.checked;
-                var checkboxes = document.querySelectorAll('.product-checkbox');
-                checkboxes.forEach(function(cb) {
-                    cb.checked = isChecked;
-                });
+            // Lắng nghe sự kiện Ctrl + S
+            document.addEventListener('keydown', function(e) {
+                if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                    e.preventDefault();
+                    saveData();
+                }
             });
 
-            var checkboxes = document.querySelectorAll('.product-checkbox');
-            checkboxes.forEach(function(cb) {
-                cb.addEventListener('change', function() {
-                    var allChecked = document.querySelectorAll('.product-checkbox:checked')
-                        .length === document.querySelectorAll('.product-checkbox').length;
-                    document.getElementById('selectAllProducts').checked = allChecked;
+            $('#addProductsModal').on('show.bs.modal', function() {
+                const container = $('#unassignedProductsContainer');
+                if (container.data('loaded')) return;
+
+                $.get('{{ route('pages.plan.annual.unassigned_products', $plan->id) }}', function(html) {
+                    container.html(html);
+                    container.data('loaded', true);
+                }).fail(function() {
+                    container.html(
+                        '<div class="alert alert-danger m-3">Có lỗi xảy ra khi tải dữ liệu. Vui lòng thử lại.</div>'
+                    );
                 });
             });
         });

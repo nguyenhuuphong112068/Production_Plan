@@ -143,7 +143,7 @@
                                 </div>
                                 <div class = "col-md-6">
                                     <div class="form-group">
-                                        <label>Qui Cánh - Thị Trường</label>
+                                        <label>Qui Cách - Thị Trường</label>
                                         <input type="text" class="form-control" name="specification" readonly
                                             value="{{ old('specification') }}" />
                                     </div>
@@ -535,7 +535,7 @@
                         res.forEach((item, index) => {
                             // map màu level
 
-                              material_table.append(`
+                            material_table.append(`
                                 <tr>
                                       <td>${index + 1}</td>
                                       <td>${item.MatID ?? ''}</td>
@@ -623,7 +623,7 @@
                         res.forEach((item, index) => {
                             // map màu level
 
-                              packagin_table.append(`
+                            packagin_table.append(`
                                 <tr>
                                       <td>${index + 1}</td>
                                       <td>${item.MatID ?? ''}</td>
@@ -890,7 +890,9 @@
         form.find('.validation-tracked-mat').each(function() {
             if ($(this).is(':checked')) {
                 hasValidationTracking = true;
-                form.append(`<input type="hidden" name="validation_tracking_ic_ids[]" value="${$(this).attr('data-validation-id')}">`);
+                form.append(
+                    `<input type="hidden" name="validation_tracking_ic_ids[]" value="${$(this).attr('data-validation-id')}">`
+                    );
             }
         });
 
@@ -904,7 +906,9 @@
         $.ajax({
             url: "{{ route('pages.plan.validation_tracking.check_validation') }}",
             type: "GET",
-            data: { intermediate_category_id: ic_id },
+            data: {
+                intermediate_category_id: ic_id
+            },
             success: function(res) {
                 if (res && res.length > 0) {
                     res.forEach(function(item) {
@@ -913,12 +917,17 @@
                         let purposeHtml = purpose ? ` - ${purpose}` : '';
                         let cell = $(`#mat_name_${matId}`);
                         if (cell.length) {
-                            cell.append(`<div class="mt-1"><span class="badge badge-warning text-wrap text-left" style="font-size:0.8rem; padding: 5px 8px; font-weight: normal; border: 1px solid #ffc107; line-height: 1.4; display: inline-block; max-width: 100%; word-break: break-word;" title="Nguyên liệu đang theo dõi thẩm định. Đã chạy ${item.num_of_finished_batch}/${item.num_of_tracking_batch} lô."><i class="fas fa-exclamation-triangle"></i> Nhắc nhở Thẩm định${purposeHtml} (${item.num_of_finished_batch}/${item.num_of_tracking_batch})</span></div>`);
-                            
+                            cell.append(
+                                `<div class="mt-1"><span class="badge badge-warning text-wrap text-left" style="font-size:0.8rem; padding: 5px 8px; font-weight: normal; border: 1px solid #ffc107; line-height: 1.4; display: inline-block; max-width: 100%; word-break: break-word;" title="Nguyên liệu đang theo dõi thẩm định. Đã chạy ${item.num_of_finished_batch}/${item.num_of_tracking_batch} lô."><i class="fas fa-exclamation-triangle"></i> Nhắc nhở Thẩm định${purposeHtml} (${item.num_of_finished_batch}/${item.num_of_tracking_batch})</span></div>`
+                                );
+
                             // Attach data to checkbox
-                            let checkbox = $(`input[name="materials[${matId}][active]"][type="checkbox"]`);
+                            let checkbox = $(
+                                `input[name="materials[${matId}][active]"][type="checkbox"]`);
                             if (!checkbox.length) {
-                                checkbox = $(`input[name="packagings[${matId}][active]"][type="checkbox"]`);
+                                checkbox = $(
+                                    `input[name="packagings[${matId}][active]"][type="checkbox"]`
+                                    );
                             }
                             if (checkbox.length) {
                                 checkbox.addClass('validation-tracked-mat');

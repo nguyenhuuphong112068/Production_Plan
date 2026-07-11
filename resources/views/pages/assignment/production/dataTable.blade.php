@@ -525,7 +525,7 @@
                     @foreach ($tasks as $task)
                         <tr class="room-row {{ $task->assignments->first()->off_stream ?? 0 ? 'off-stream-row' : '' }}"
                             data-sp-id="{{ $task->sp_id ?: (count($task->assignments) > 0 ? 'EXT_EXISTING_' . $task->assignments[0]->id : '') }}"
-                            data-room-id="{{ $task->room_id }}" data-group-code="{{ $task->group_code }}"
+                            data-room-id="{{ $task->room_id ?? ($task->room_name !== 'Công tác khác' ? $task->room_name : '') }}" data-group-code="{{ $task->group_code }}"
                             data-n1="{{ $task->number_of_employes_on_sheet1 }}"
                             data-n2="{{ $task->number_of_employes_on_sheet2 }}"
                             data-n3="{{ $task->number_of_employes_on_sheet3 }}"
@@ -1347,6 +1347,7 @@
         });
     }
 
+
     function updateSidebarPersonnelTimes() {
         // Helper to calculate hours between HH:mm times
         function calculateDurationHours(startStr, endStr, shiftVal = null) {
@@ -1358,7 +1359,6 @@
             let eMin = parseInt(eParts[0], 10) * 60 + parseInt(eParts[1], 10);
 
             if (eMin < sMin) {
-                // Crosses midnight
                 eMin += 24 * 60;
             }
 
@@ -1369,31 +1369,104 @@
                 if (['1', '2', '3', '6'].includes(shiftVal.toString())) {
                     isNoLunchBreakShift = true;
                 }
-            } else {
-                if ((startStr === '06:00' && endStr === '14:00') ||
-                    (startStr === '14:00' && endStr === '22:00') ||
-                    (startStr === '22:00' && endStr === '06:00') ||
-                    (startStr === '08:00' && endStr === '20:00') ||
-                    (startStr === '20:00' && endStr === '08:00')) {
-                    isNoLunchBreakShift = true;
-                }
             }
 
             if (!isNoLunchBreakShift) {
-                // Subtract lunch break (11:30 - 12:15)
-                const lunchStart = 11 * 60 + 30; // 690
-                const lunchEnd = 12 * 60 + 15; // 735
-
+                const lunchStart = 11 * 60 + 30;
+                const lunchEnd = 12 * 60 + 15;
                 const overlapStart = Math.max(sMin, lunchStart);
                 const overlapEnd = Math.min(eMin, lunchEnd);
-
                 if (overlapStart < overlapEnd) {
                     durationMin -= (overlapEnd - overlapStart);
                 }
             }
-
             return durationMin / 60;
         }
+
+        function timeStrToMins(t) {
+            if (!t) return 0;
+            const parts = t.split(':');
+            return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+        }
+
+        // ================= NEW: ROBUST TIME DISPLAY UPDATE =================
+        const dbAssignments = typeof window.dbPersonnelAssignments !== 'undefined' ? window.dbPersonnelAssignments : {};
+        let domPersons = new Set();
+        $('.room-row .assignment-item:not(.foreign-assignment)').each(function() {
+            $(this).find('.personnel-row').each(function() {
+                const pid = $(this).find('.person-select').val();
+                if (pid) domPersons.add(pid.toString());
+            });
+        });
+
+        let personCumulativeTimes = {}; // personId -> totalHrs
+
+        domPersons.forEach(personId => {
+            let assignments = [];
+            $('.room-row .assignment-item:not(.foreign-assignment)').each(function() {
+                const $item = $(this);
+                const shiftVal = $item.find('.shift-select').val() || '4';
+                $item.find('.personnel-row').each(function() {
+                    const foundPersonRow = $(this);
+                    if (foundPersonRow.find('.person-select').val() == personId) {
+                        const start = foundPersonRow.find('.p-start-input').val() || $item.find('.start-time-input').val() || '';
+                        const end = foundPersonRow.find('.p-end-input').val() || $item.find('.end-time-input').val() || '';
+                        assignments.push({
+                            element: foundPersonRow,
+                            start: start,
+                            end: end,
+                            shift: shiftVal,
+                            is_local: true
+                        });
+                    }
+                });
+            });
+
+            const dbList = dbAssignments[personId] || [];
+            dbList.forEach(dbAss => {
+                assignments.push({
+                    element: null,
+                    start: dbAss.start_time,
+                    end: dbAss.end_time,
+                    shift: dbAss.shift_code,
+                    is_local: false
+                });
+            });
+
+            assignments.sort((a, b) => {
+                const startA = a.start ? timeStrToMins(a.start) : 0;
+                const startB = b.start ? timeStrToMins(b.start) : 0;
+                return startA - startB;
+            });
+
+            let cumulativeHours = 0;
+            assignments.forEach(a => {
+                let duration = calculateDurationHours(a.start, a.end, a.shift);
+                if (a.element) {
+                    const displayEl = a.element.find('.time-display');
+                    let tc = 0;
+                    if (cumulativeHours >= 8) {
+                        tc = duration;
+                    } else if (cumulativeHours + duration > 8) {
+                        tc = cumulativeHours + duration - 8;
+                    }
+
+                    let html = displayEl.html() || '';
+                    html = html.replace(/<span style="color:#dc3545[^>]*>.*?<\/span>/g, '').trim();
+
+                    if (tc > 0.01) {
+                        html += ` <span style="color:#dc3545;font-weight:bold;">TC:${tc.toFixed(1)}h</span>`;
+                    }
+                    displayEl.html(html);
+                }
+                cumulativeHours += duration;
+            });
+
+            personCumulativeTimes[personId] = Math.round(cumulativeHours * 100) / 100;
+        });
+        // ====================================================================
+
+        if (!currentSidebarData) return;
 
         const filterUnder8h = $('#filter-under-8h').is(':checked');
         const filterOver8h = $('#filter-over-8h').is(':checked');
@@ -1410,8 +1483,10 @@
             let totalHours = 0;
 
             if (personId) {
+                totalHours = personCumulativeTimes[personId.toString()] || 0;
+                
                 const assignments = [];
-                // 1. Scan DOM
+                // 1. Scan DOM (for sidebar badges)
                 $('.room-row .assignment-item:not(.foreign-assignment)').each(function() {
                     const $item = $(this);
                     const assId = $item.attr('data-id');
@@ -1483,37 +1558,6 @@
                         const startB = b.start ? timeStrToMins(b.start) : 0;
                         return startA - startB;
                     });
-
-                    let cumulativeHours = 0;
-
-                    assignments.forEach(a => {
-                        let duration = calculateDurationHours(a.start, a.end, a.shift);
-
-                        if (a.element) {
-                            const displayEl = a.element.find('.time-display');
-                            let tc = 0;
-                            if (cumulativeHours >= 8) {
-                                tc = duration; // Toàn bộ ca này là TC
-                            } else if (cumulativeHours + duration > 8) {
-                                tc = cumulativeHours + duration - 8;
-                            }
-
-                            let html = displayEl.html() || '';
-                            // Xóa span TC cũ (nếu có) để tránh bị lặp lại
-                            html = html.replace(/<span style="color:#dc3545[^>]*>.*?<\/span>/g, '')
-                                .trim();
-
-                            if (tc > 0.01) {
-                                html +=
-                                    ` <span style="color:#dc3545;font-weight:bold;">TC:${tc.toFixed(1)}h</span>`;
-                            }
-                            displayEl.html(html);
-                        }
-
-                        cumulativeHours += duration;
-                    });
-
-                    totalHours = Math.round(cumulativeHours * 100) / 100;
 
                     let hasUnsaved = assignments.some(a => a.is_local && !a.is_saved);
                     let totalBadgeClass = hasUnsaved ? 'badge-danger' : 'badge-success';
@@ -4789,11 +4833,26 @@
                 const p_list = [];
                 currentCloneTarget.find('.personnel-row').each(function() {
                     const pid = $(this).find('.person-select').val();
-                    if (pid) p_list.push({
-                        personnel_id: pid,
-                        notification: $(this).find('.person-notif').val(),
-                        operation_type: 'nhân bản'
-                    });
+                    if (pid) {
+                        let pStart = $(this).find('.p-start-input').val() || '';
+                        let pEnd = $(this).find('.p-end-input').val() || '';
+                        // Fallback: read from slider if hidden inputs are empty
+                        if (!pStart || !pEnd) {
+                            const sliderEl = $(this).find('.time-slider')[0];
+                            if (sliderEl && sliderEl.noUiSlider) {
+                                const vals = sliderEl.noUiSlider.get();
+                                if (!pStart) pStart = vals[0];
+                                if (!pEnd) pEnd = vals[1];
+                            }
+                        }
+                        p_list.push({
+                            personnel_id: pid,
+                            notification: $(this).find('.person-notif').val(),
+                            operation_type: 'nhân bản',
+                            start: pStart,
+                            end: pEnd
+                        });
+                    }
                 });
 
                 const jobDesc = currentCloneTarget.find('.job-desc').html().trim();
@@ -4838,11 +4897,23 @@
                         const pid = $(this).find('.person-select').val();
                         if (pid) {
                             pCount++;
+                            let pStart = $(this).find('.p-start-input').val() || '';
+                            let pEnd = $(this).find('.p-end-input').val() || '';
+                            // Fallback: read from slider if hidden inputs are empty
+                            if (!pStart || !pEnd) {
+                                const sliderEl = $(this).find('.time-slider')[0];
+                                if (sliderEl && sliderEl.noUiSlider) {
+                                    const vals = sliderEl.noUiSlider.get();
+                                    if (!pStart) pStart = vals[0];
+                                    if (!pEnd) pEnd = vals[1];
+                                }
+                            }
                             p_list.push({
                                 personnel_id: pid,
-                                notification: $(this).find('.person-notif')
-                                    .val(),
-                                operation_type: 'nhân bản'
+                                notification: $(this).find('.person-notif').val(),
+                                operation_type: 'nhân bản',
+                                start: pStart,
+                                end: pEnd
                             });
                         }
                     });
@@ -4903,6 +4974,17 @@
             const btn = $(this);
             btn.prop('disabled', true).html(
                 '<i class="fas fa-spinner fa-spin mr-1"></i> Đang xử lý...');
+
+            // DEBUG: Log payload to check personnel start/end
+            console.log('=== CLONE PAYLOAD DEBUG ===');
+            console.log('Assignments count:', assignments.length);
+            assignments.forEach((a, i) => {
+                console.log(`Assignment[${i}]:`, a.start_time, '-', a.end_time);
+                (a.personnel_list || []).forEach((p, j) => {
+                    console.log(`  Personnel[${j}]: id=${p.personnel_id}, start="${p.start}", end="${p.end}"`);
+                });
+            });
+            console.log('Full payload:', JSON.stringify(payload, null, 2));
 
             $.ajax({
                 url: "{{ route('pages.assignment.production.clone_custom_task') }}",
@@ -5090,6 +5172,7 @@
         noUiSlider.create(sliderEl, {
             start: [valStart, valEnd],
             connect: true,
+            margin: 15,
             range: {
                 'min': minRange,
                 'max': maxRange

@@ -3925,11 +3925,25 @@
             const p_list = [];
             currentCloneTarget.find('.personnel-row').each(function() {
                 const pid = $(this).find('.person-select').val();
-                if (pid) p_list.push({
-                    personnel_id: pid,
-                    notification: $(this).find('.person-notif').val(),
-                    operation_type: 'nhân bản'
-                });
+                if (pid) {
+                    let pStart = $(this).find('.p-start-input').val() || '';
+                    let pEnd = $(this).find('.p-end-input').val() || '';
+                    if (!pStart || !pEnd) {
+                        const sliderEl = $(this).find('.time-slider')[0];
+                        if (sliderEl && sliderEl.noUiSlider) {
+                            const vals = sliderEl.noUiSlider.get();
+                            if (!pStart) pStart = vals[0];
+                            if (!pEnd) pEnd = vals[1];
+                        }
+                    }
+                    p_list.push({
+                        personnel_id: pid,
+                        notification: $(this).find('.person-notif').val(),
+                        operation_type: 'nhân bản',
+                        start: pStart,
+                        end: pEnd
+                    });
+                }
             });
 
             const jobDesc = currentCloneTarget.find('.job-desc').html().trim();
@@ -3963,10 +3977,22 @@
                     const pid = $(this).find('.person-select').val();
                     if (pid) {
                         pCount++;
+                        let pStart = $(this).find('.p-start-input').val() || '';
+                        let pEnd = $(this).find('.p-end-input').val() || '';
+                        if (!pStart || !pEnd) {
+                            const sliderEl = $(this).find('.time-slider')[0];
+                            if (sliderEl && sliderEl.noUiSlider) {
+                                const vals = sliderEl.noUiSlider.get();
+                                if (!pStart) pStart = vals[0];
+                                if (!pEnd) pEnd = vals[1];
+                            }
+                        }
                         p_list.push({
                             personnel_id: pid,
                             notification: $(this).find('.person-notif').val(),
-                            operation_type: 'nhân bản'
+                            operation_type: 'nhân bản',
+                            start: pStart,
+                            end: pEnd
                         });
                     }
                 });

@@ -400,7 +400,7 @@ class ProductionAssignmentController extends Controller
             $personnelQuery->whereExists(function ($query) use ($active_group_code) {
                 $query->select(DB::raw(1))
                     ->from('employee_assignments as ea2')
-                    ->leftJoin('stage_groups as sg', 'ea2.group_id', '=', 'sg.id')
+                    ->leftJoin('stage_groups as sg', 'ea2.group_id', '=', 'sg.code')
                     ->whereColumn('ea2.employees_id', 'e.id')
                     ->where(function ($q) use ($active_group_code) {
                         $q->where('sg.code', $active_group_code)
@@ -907,6 +907,15 @@ class ProductionAssignmentController extends Controller
                 foreach ($assignments_data as $row) {
                     $p_data = $row['personnel_list'] ?? [];
 
+                    // DEBUG: Log personnel data received
+                    \Log::info('CLONE DEBUG - Personnel data for row:', [
+                        'shift' => $row['shift'] ?? 'N/A',
+                        'start_time' => $row['start_time'] ?? 'N/A',
+                        'end_time' => $row['end_time'] ?? 'N/A',
+                        'p_data_count' => count($p_data),
+                        'p_data' => $p_data
+                    ]);
+
                     if (empty($row['start_time']) || empty($row['end_time'])) {
                         continue;
                     }
@@ -1000,11 +1009,25 @@ class ProductionAssignmentController extends Controller
                     $unique_p_data = collect($p_data)->unique('personnel_id');
                     foreach ($unique_p_data as $p) {
                         if (empty($p['personnel_id'])) continue;
+
+                        $pStart = $startDt;
+                        $pEnd = $endDt;
+
+                        if (!empty($p['start']) && !empty($p['end'])) {
+                            $pStart = $targetDate . ' ' . $p['start'];
+                            $pEnd = $targetDate . ' ' . $p['end'];
+                            if ($p['end'] < $p['start']) {
+                                $pEnd = \Carbon\Carbon::parse($pEnd)->addDay()->format('Y-m-d H:i:s');
+                            }
+                        }
+
                         DB::table('assignment_personnel')->insert([
                             'assignment_id' => $assignmentId,
                             'personnel_id' => $p['personnel_id'],
                             'notification' => $p['notification'] ?? null,
-                            'operation_type' => $p['operation_type'] ?? 'thủ công'
+                            'operation_type' => $p['operation_type'] ?? 'thủ công',
+                            'start' => $pStart,
+                            'end' => $pEnd
                         ]);
                     }
                 }

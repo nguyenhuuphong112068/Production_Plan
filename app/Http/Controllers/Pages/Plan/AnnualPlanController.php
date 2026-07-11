@@ -21,7 +21,6 @@ class AnnualPlanController extends Controller
     {
         $plan = AnnualPlan::with(['products.monthlyData', 'products.finishedProductCategory.productName'])->findOrFail($id);
         
-        $allFinishedProducts = \App\Models\FinishedProductCategory::with('productName')->get();
         $existingProductIds = $plan->products->pluck('finished_product_category_id')->toArray();
 
         $markets = \Illuminate\Support\Facades\DB::table('market')->pluck('name', 'id');
@@ -29,6 +28,138 @@ class AnnualPlanController extends Controller
         $intermediateDosages = \Illuminate\Support\Facades\DB::table('intermediate_category')->pluck('dosage_id', 'intermediate_code');
 
         $hotData = [];
+
+        // --- Bắt đầu tính toán Tồn Kho Lũy Kế từ MMS ---
+        $matIds = [];
+        foreach($plan->products as $product) {
+            $fpc = $product->finishedProductCategory;
+            if ($fpc && $fpc->finished_product_code) {
+                $matIds[] = $fpc->finished_product_code;
+            }
+        }
+        $matIds = array_unique($matIds);
+
+        $openingBalances = [];
+        $monthlyNets = [];
+
+        $startDate = $plan->year . '-01-01 00:00:00';
+        $endDate = $plan->year . '-12-31 23:59:59';
+        
+        // 1. Số dư đầu kỳ (Tính đến trước 01/01 của năm kế hoạch)
+        $openingSql = "
+        WITH InventoryTransactions AS (
+            SELECT MatID AS ProductID, recttlqty AS Qty 
+            FROM FGGRN 
+            WHERE GRNAPSTS = 3 AND CRON < ?
+            
+            UNION ALL
+            
+            SELECT i.prdid AS ProductID, (i.ttlqty * -1) AS Qty 
+            FROM fgisuregitem i 
+            JOIN fgisureg r ON i.issueno = r.Issueno AND i.isuideno = r.isuideno 
+            WHERE r.apsts = 1 AND r.issuedate < ?
+        )
+        SELECT ProductID, SUM(Qty) as OpeningQty
+        FROM InventoryTransactions
+        GROUP BY ProductID
+        ";
+        try {
+            $openingResults = \Illuminate\Support\Facades\DB::connection('mms')->select($openingSql, [$startDate, $startDate]);
+            foreach($openingResults as $r) {
+                // Chỉ lấy những mã có trong kế hoạch
+                if (in_array($r->ProductID, $matIds)) {
+                    $openingBalances[$r->ProductID] = $r->OpeningQty;
+                }
+            }
+        } catch (\Exception $e) { }
+
+        // 2. Biến động Tồn kho từng tháng trong năm kế hoạch
+        $monthlySql = "
+        WITH InventoryTransactions AS (
+            SELECT MatID AS ProductID, recttlqty AS Qty, CRON AS TransactionDate 
+            FROM FGGRN 
+            WHERE GRNAPSTS = 3 AND CRON >= ? AND CRON <= ?
+            
+            UNION ALL
+            
+            SELECT i.prdid AS ProductID, (i.ttlqty * -1) AS Qty, r.issuedate AS TransactionDate 
+            FROM fgisuregitem i 
+            JOIN fgisureg r ON i.issueno = r.Issueno AND i.isuideno = r.isuideno 
+            WHERE r.apsts = 1 AND r.issuedate >= ? AND r.issuedate <= ?
+        )
+        SELECT ProductID, MONTH(TransactionDate) as Mth, SUM(Qty) as NetQty
+        FROM InventoryTransactions
+        GROUP BY ProductID, MONTH(TransactionDate)
+        ";
+        try {
+            $monthlyResults = \Illuminate\Support\Facades\DB::connection('mms')->select($monthlySql, [$startDate, $endDate, $startDate, $endDate]);
+            foreach($monthlyResults as $r) {
+                if (in_array($r->ProductID, $matIds)) {
+                    $monthlyNets[$r->ProductID][$r->Mth] = $r->NetQty;
+                }
+            }
+        } catch (\Exception $e) { }
+        // --- Kết thúc tính toán Tồn Kho Lũy Kế từ MMS ---
+
+        // --- Tính toán BTP dở dang (WIP) từ plan_master ---
+        $wipQuery = "
+            SELECT 
+                pm.product_caterogy_id AS fpc_id,
+                sp_start.actual_start AS start_date,
+                sp_end.actual_end AS end_date,
+                sp_end.finished as is_finished,
+                fpc.batch_qty
+            FROM plan_master pm
+            JOIN finished_product_category fpc ON pm.product_caterogy_id = fpc.id
+            JOIN stage_plan sp_start ON sp_start.plan_master_id = pm.id AND sp_start.stage_code = 1 AND sp_start.finished = 1
+            JOIN (
+                SELECT plan_master_id, MAX(stage_code) as max_stage_code
+                FROM stage_plan
+                GROUP BY plan_master_id
+            ) max_sp ON max_sp.plan_master_id = pm.id
+            JOIN stage_plan sp_end ON sp_end.plan_master_id = pm.id AND sp_end.stage_code = max_sp.max_stage_code
+            WHERE pm.active = 1 AND pm.cancel = 0
+        ";
+        
+        $wipBatches = \Illuminate\Support\Facades\DB::select($wipQuery);
+        $wipData = [];
+        $planYearInt = (int) $plan->year;
+
+        foreach ($wipBatches as $batch) {
+            if (!$batch->start_date && !$batch->is_finished) {
+                continue;
+            }
+            
+            $startDate = $batch->start_date ? \Carbon\Carbon::parse($batch->start_date) : null;
+            $endDate = ($batch->is_finished && $batch->end_date) ? \Carbon\Carbon::parse($batch->end_date) : null;
+            
+            for ($m = 1; $m <= 12; $m++) {
+                $endOfMonth = \Carbon\Carbon::create($planYearInt, $m, 1)->endOfMonth();
+                
+                $hasStarted = false;
+                if ($startDate) {
+                    $hasStarted = $startDate->lte($endOfMonth);
+                } else {
+                    if ($endDate && $endDate->gt($endOfMonth)) {
+                        $hasStarted = true;
+                    }
+                }
+                
+                $hasNotEnded = true;
+                if ($endDate) {
+                    $hasNotEnded = $endDate->gt($endOfMonth);
+                }
+                
+                if ($hasStarted && $hasNotEnded) {
+                    if (!isset($wipData[$batch->fpc_id])) {
+                        $wipData[$batch->fpc_id] = array_fill(1, 12, 0);
+                    }
+                    $wipData[$batch->fpc_id][$m] += $batch->batch_qty;
+                }
+            }
+        }
+        // --- Kết thúc tính WIP ---
+
         foreach($plan->products as $product) {
             $fpc = $product->finishedProductCategory;
             $market_name = $fpc && $fpc->market_id ? ($markets[$fpc->market_id] ?? '') : '';
@@ -38,36 +169,106 @@ class AnnualPlanController extends Controller
 
             $row = [
                 'id' => $product->id,
-                'registration_expiry' => $product->registration_expiry,
-                'classification' => $product->classification,
-                'customer_type' => $product->customer_type,
+                'registration_expiry' => $fpc->registration_expiry,
+                'classification' => $fpc->classification,
+                'customer_type' => $fpc->customer_type,
                 'market' => $market_name,
                 'dosage' => $dosage_name,
                 'intermediate_code' => $int_code ?? '',
                 'finished_product_code' => $fpc->finished_product_code ?? '',
                 'product_name' => $fpc->productName?->name ?? 'N/A',
-                'shelf_life' => $product->shelf_life,
-                'packaging_spec' => $product->packaging_spec,
+                'shelf_life' => $fpc->shelf_life,
+                'packaging_spec' => $fpc->packaging_spec,
                 'batch_size' => $fpc->batch_qty ?? 0,
-                'avg_sales_box' => $product->avg_sales_box,
-                'avg_sales_pill' => $product->avg_sales_pill,
+                'avg_sales_box' => $fpc->avg_sales_box,
+                'avg_sales_pill' => $fpc->avg_sales_pill,
             ];
             
+            $matId = $fpc->finished_product_code ?? null;
+            $runningBalance = $matId && isset($openingBalances[$matId]) ? $openingBalances[$matId] : 0;
+
+            $currentYear = (int) date('Y');
+            $currentMonth = (int) date('n');
+
             // Initialize 12 months with null
             for ($m = 1; $m <= 12; $m++) {
                 $row['m'.$m.'_batches'] = null;
-                $row['m'.$m.'_expected_inventory'] = null;
+                $row['m'.$m.'_wip_inventory'] = null;
+                $row['m'.$m.'_planned_quantity'] = null;
+                $row['m'.$m.'_months_sales'] = null;
+                
+                // Tính tồn kho thực tế từ MMS
+                if ($matId) {
+                    $shouldCalculate = true;
+                    if ($plan->year > $currentYear) {
+                        $shouldCalculate = false;
+                    } elseif ($plan->year == $currentYear && $m >= $currentMonth) {
+                        $shouldCalculate = false;
+                    }
+                    
+                    if ($shouldCalculate) {
+                        $net = isset($monthlyNets[$matId][$m]) ? $monthlyNets[$matId][$m] : 0;
+                        $runningBalance += $net;
+                    }
+                    
+                    $row['m'.$m.'_expected_inventory'] = max(0, round($runningBalance, 0));
+                } else {
+                    $row['m'.$m.'_expected_inventory'] = null;
+                }
             }
             
             foreach($product->monthlyData as $md) {
                 $row['m'.$md->month.'_batches'] = $md->planned_batches;
-                $row['m'.$md->month.'_expected_inventory'] = $md->inventory_fg; // Assuming inventory_fg is expected inventory
+                // $row['m'.$md->month.'_wip_inventory'] = $md->inventory_wip; // Vô hiệu hóa, giờ tính tự động
+            }
+
+            // Gán dữ liệu WIP tự động
+            $fpcId = $fpc->id ?? null;
+            for ($m = 1; $m <= 12; $m++) {
+                $row['m'.$m.'_wip_inventory'] = ($fpcId && isset($wipData[$fpcId][$m])) ? $wipData[$fpcId][$m] : 0;
+            }
+
+            // Calculate planned_quantity and months_sales based on loaded data
+            for ($m = 1; $m <= 12; $m++) {
+                $batches = $row['m'.$m.'_batches'] ?: 0;
+                $batch_size = $row['batch_size'] ?: 0;
+                $row['m'.$m.'_planned_quantity'] = $batches * $batch_size;
+
+                $wip = $row['m'.$m.'_wip_inventory'] ?: 0;
+                $fg = $row['m'.$m.'_expected_inventory'] ?: 0;
+                
+                // Recalculate avg_sales_pill
+                $packaging_spec = $row['packaging_spec'] ?: 0;
+                $avg_sales_box = $row['avg_sales_box'] ?: 0;
+                $avg_sales = $avg_sales_box * $packaging_spec;
+                $row['avg_sales_pill'] = $avg_sales;
+
+                if ($avg_sales > 0) {
+                    $row['m'.$m.'_months_sales'] = round(($wip + $fg) / $avg_sales, 2);
+                } else {
+                    $row['m'.$m.'_months_sales'] = 0;
+                }
             }
             
             $hotData[] = $row;
         }
 
-        return view('pages.plan.annual.show', compact('plan', 'hotData', 'allFinishedProducts', 'existingProductIds'));
+        return view('pages.plan.annual.show', compact('plan', 'hotData', 'existingProductIds'));
+    }
+
+    public function unassignedProducts($id)
+    {
+        $plan = AnnualPlan::with('products')->findOrFail($id);
+        $existingProductIds = $plan->products->pluck('finished_product_category_id')->filter()->toArray();
+        $products = \App\Models\FinishedProductCategory::with('productName');
+        
+        if (!empty($existingProductIds)) {
+            $products = $products->whereNotIn('id', $existingProductIds);
+        }
+        
+        $products = $products->get();
+            
+        return view('pages.plan.annual.partials.unassigned_products', compact('products'))->render();
     }
 
     public function addProducts(Request $request, $id)
@@ -115,51 +316,57 @@ class AnnualPlanController extends Controller
             return response()->json(['success' => false, 'message' => 'No data provided']);
         }
 
-        foreach ($data as $row) {
-            if (!isset($row['id'])) continue;
+        \Illuminate\Support\Facades\DB::transaction(function() use ($data, $year) {
+            foreach ($data as $row) {
+                if (!isset($row['id'])) continue;
 
-            $product = AnnualPlanProduct::find($row['id']);
-            if ($product) {
-                // Update fields
-                if (array_key_exists('classification', $row)) $product->classification = $row['classification'];
-                if (array_key_exists('customer_type', $row)) $product->customer_type = $row['customer_type'];
-                if (array_key_exists('shelf_life', $row)) {
-                    $product->shelf_life = $row['shelf_life'] !== null && $row['shelf_life'] !== '' ? (int) $row['shelf_life'] : null;
-                }
-                if (array_key_exists('registration_expiry', $row)) {
-                    $product->registration_expiry = $row['registration_expiry'] ?: null;
-                }
-                if (array_key_exists('packaging_spec', $row)) {
-                    $product->packaging_spec = $row['packaging_spec'] !== null && $row['packaging_spec'] !== '' ? (int) $row['packaging_spec'] : null;
-                }
-                if (array_key_exists('avg_sales_box', $row)) {
-                    $product->avg_sales_box = $row['avg_sales_box'] !== null && $row['avg_sales_box'] !== '' ? (int) str_replace(',', '', $row['avg_sales_box']) : null;
-                }
-                if (array_key_exists('avg_sales_pill', $row)) {
-                    $product->avg_sales_pill = $row['avg_sales_pill'] !== null && $row['avg_sales_pill'] !== '' ? (int) str_replace(',', '', $row['avg_sales_pill']) : null;
-                }
-                $product->save();
+                $product = AnnualPlanProduct::find($row['id']);
+                if ($product) {
+                    $fpc = $product->finishedProductCategory;
+                    if ($fpc) {
+                        // Update fields on finished_product_category
+                        if (array_key_exists('classification', $row)) $fpc->classification = $row['classification'];
+                        if (array_key_exists('customer_type', $row)) $fpc->customer_type = $row['customer_type'];
+                        if (array_key_exists('shelf_life', $row)) {
+                            $fpc->shelf_life = $row['shelf_life'] !== null && $row['shelf_life'] !== '' ? (int) $row['shelf_life'] : null;
+                        }
+                        if (array_key_exists('registration_expiry', $row)) {
+                            $fpc->registration_expiry = $row['registration_expiry'] ?: null;
+                        }
+                        if (array_key_exists('packaging_spec', $row)) {
+                            $fpc->packaging_spec = $row['packaging_spec'] !== null && $row['packaging_spec'] !== '' ? (int) $row['packaging_spec'] : null;
+                        }
+                        if (array_key_exists('avg_sales_box', $row)) {
+                            $fpc->avg_sales_box = $row['avg_sales_box'] !== null && $row['avg_sales_box'] !== '' ? (int) str_replace(',', '', $row['avg_sales_box']) : null;
+                        }
+                        if (array_key_exists('avg_sales_pill', $row)) {
+                            $fpc->avg_sales_pill = $row['avg_sales_pill'] !== null && $row['avg_sales_pill'] !== '' ? (int) str_replace(',', '', $row['avg_sales_pill']) : null;
+                        }
+                        $fpc->save();
+                    }
 
-                // Update monthly data
-                for ($m = 1; $m <= 12; $m++) {
-                    $batches_key = 'm' . $m . '_batches';
-                    if (array_key_exists($batches_key, $row)) {
-                        $planned_batches = $row[$batches_key] !== null && $row[$batches_key] !== '' ? (int) str_replace(',', '', $row[$batches_key]) : null;
+                    // Update monthly data
+                    for ($m = 1; $m <= 12; $m++) {
+                        $batches_key = 'm' . $m . '_batches';
+                        
+                        if (array_key_exists($batches_key, $row)) {
+                            $planned_batches = isset($row[$batches_key]) && $row[$batches_key] !== null && $row[$batches_key] !== '' ? (int) str_replace(',', '', $row[$batches_key]) : null;
 
-                        AnnualPlanMonthlyData::updateOrCreate(
-                            [
-                                'annual_plan_product_id' => $product->id,
-                                'month' => $m,
-                                'year' => $year
-                            ],
-                            [
-                                'planned_batches' => $planned_batches
-                            ]
-                        );
+                            AnnualPlanMonthlyData::updateOrCreate(
+                                [
+                                    'annual_plan_product_id' => $product->id,
+                                    'month' => $m,
+                                    'year' => $year
+                                ],
+                                [
+                                    'planned_batches' => $planned_batches
+                                ]
+                            );
+                        }
                     }
                 }
             }
-        }
+        });
 
         return response()->json(['success' => true, 'message' => 'Lưu dữ liệu thành công!']);
     }

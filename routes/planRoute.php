@@ -95,6 +95,7 @@ Route::prefix('/plan')
             ->group(function () {
                 Route::get('', 'index')->name('list');
                 Route::get('/{id}', 'show')->name('show');
+                Route::get('/{id}/unassigned-products', 'unassignedProducts')->name('unassigned_products');
                 Route::post('', 'store')->name('store');
                 Route::post('/{id}/add-products', 'addProducts')->name('add_products');
                 Route::post('update-monthly-data', 'updateMonthlyData')->name('update_monthly_data');

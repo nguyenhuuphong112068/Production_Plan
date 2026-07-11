@@ -355,7 +355,7 @@ class MaintenanceAssignmentController extends Controller
                 } elseif ($group_code == 20) {
                     $query->where('ea.production_code', 'QA');
                 } else {
-                    $query->leftJoin('stage_groups as sg', 'ea.group_id', '=', 'sg.id')
+                    $query->leftJoin('stage_groups as sg', 'ea.group_id', '=', 'sg.code')
                         ->where(function ($q2) use ($group_code) {
                             $q2->where('sg.code', $group_code)
                                ->orWhere('ea.group_id', $group_code);
@@ -781,10 +781,10 @@ class MaintenanceAssignmentController extends Controller
                         $pStart = $startDt;
                         $pEnd = $endDt;
 
-                        if (!empty($p['start_time']) && !empty($p['end_time'])) {
-                            $pStart = $targetDate . ' ' . $p['start_time'];
-                            $pEnd = $targetDate . ' ' . $p['end_time'];
-                            if ($p['end_time'] < $p['start_time']) {
+                        if (!empty($p['start']) && !empty($p['end'])) {
+                            $pStart = $targetDate . ' ' . $p['start'];
+                            $pEnd = $targetDate . ' ' . $p['end'];
+                            if ($p['end'] < $p['start']) {
                                 $pEnd = \Carbon\Carbon::parse($pEnd)->addDay()->format('Y-m-d H:i:s');
                             }
                         }
