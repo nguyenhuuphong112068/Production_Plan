@@ -57,6 +57,25 @@
         box-shadow: 0 0 5px #007bff;
     }
 
+    #bulkEditModal .modal-dialog {
+        max-width: 100% !important;
+        width: 100% !important;
+        max-height: 100% !important;
+        height: 100% !important;
+        margin-top: 0px;
+        margin-right: 0px;
+        margin-left: 10px;
+    }
+
+    #bulkEditModal .modal-content {
+        height: 100vh;
+    }
+
+    #bulkEditModal .modal-body {
+        overflow-y: auto;
+        max-height: calc(100vh - 120px);
+    }
+
     .highlight-row {
         background-color: #fff3cd !important;
         /* vàng nhạt */
@@ -81,71 +100,72 @@
         <!-- /.card-Body -->
         <div class="card-body">
 
-            <div class="row">
-
-                <div class="col-md-2">
+            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap">
+                
+                <!-- Nhóm 1: Thao tác -->
+                <div class="d-flex mb-2" style="gap: 10px;">
                     @if (user_has_permission(session('user')['userId'], 'plan_production_create', 'boolean') && !$send)
-                        <button class="btn btn-success btn-add mb-2" data-toggle="modal"
-                            data-target="#selectProductModal" style="width: 155px;">
+                        <button class="btn btn-success btn-add" data-toggle="modal" data-target="#selectProductModal">
                             <i class="fas fa-plus"></i> Thêm
+                        </button>
+                    @endif
+                    @if (user_has_permission(session('user')['userId'], 'plan_production_create', 'boolean'))
+                        <button type="button" class="btn btn-warning btn-bulk-edit font-weight-bold text-white" disabled>
+                            Sửa Nhiều Lô (<span id="selected-count">0</span>)
+                        </button>
+                        <button type="button" class="btn btn-danger btn-bulk-deactive font-weight-bold text-white" disabled>
+                            Hủy Nhiều Lô (<span id="selected-count-deactive">0</span>)
                         </button>
                     @endif
                 </div>
 
-
-                <div class="col-md-8 text-center">
+                <!-- Nhóm 2: Dự trù -->
+                <div class="d-flex mb-2" style="gap: 10px;">
                     @if (user_has_permission(session('user')['userId'], 'plan_production_create', 'boolean') || true)
-                        <form action="{{ route('pages.plan.production.open_stock') }}" method="get"
-                            class="d-inline-block">
+                        <form action="{{ route('pages.plan.production.open_stock') }}" method="get" class="m-0">
                             @csrf
                             <input type="hidden" name="plan_list_id" value="{{ $plan_list_id }}">
                             <input type="hidden" name="material_packaging_type" value="0">
                             <input type="hidden" name="title" value="BẢNG TÍNH NGUYÊN LIỆU">
                             <input type="hidden" name="selected" value="1">
                             <input type="hidden" name="current_url" value="{{ url()->full() }}">
-                            <button type="submit" class="btn btn-success" {{ $auth_view_material }}
-                                style="width: 300px">
+                            <button type="submit" class="btn btn-success" {{ $auth_view_material }}>
                                 <i class="fas fa-table"></i> Bảng Dự Trù Nguyên Liệu
                             </button>
                         </form>
 
-                        <form action="{{ route('pages.plan.production.open_stock') }}" method="get"
-                            class="d-inline-block ms-2">
+                        <form action="{{ route('pages.plan.production.open_stock') }}" method="get" class="m-0">
                             @csrf
                             <input type="hidden" name="plan_list_id" value="{{ $plan_list_id }}">
                             <input type="hidden" name="material_packaging_type" value="1">
                             <input type="hidden" name="title" value="BẢNG TÍNH BAO BÌ">
                             <input type="hidden" name="selected" value="1">
                             <input type="hidden" name="current_url" value="{{ url()->full() }}">
-                            <button type="submit" class="btn btn-success" style="width: 300px"
-                                {{ $auth_view_material }}>
+                            <button type="submit" class="btn btn-success" {{ $auth_view_material }}>
                                 <i class="fas fa-table"></i> Bảng Dự Trù Bao Bì
                             </button>
                         </form>
                     @endif
-
                 </div>
 
-
-                <div class="col-md-2" style="text-align: right;">
-
-                    <form id = "send_form" action="{{ route('pages.plan.production.send') }}" method="post">
-
+                <!-- Nhóm 3: Gửi và Xuất -->
+                <div class="d-flex mb-2" style="gap: 10px;">
+                    <form id="send_form" action="{{ route('pages.plan.production.send') }}" method="post" class="m-0">
                         @csrf
                         <input type="hidden" name="plan_list_id" value="{{ $plan_list_id }}">
                         <input type="hidden" name="month" value="{{ $month }}">
                         <input type="hidden" name="production" value="{{ $production }}">
                         @if (user_has_permission(session('user')['userId'], 'plan_production_send', 'boolean') && !$send)
-                            <button class="btn btn-success btn-send mb-2 " style="width: 177px;">
-                                <i id = "send_btn" class="fas fa-paper-plane"></i> Gửi
+                            <button class="btn btn-success btn-send">
+                                <i id="send_btn" class="fas fa-paper-plane"></i> Gửi
                             </button>
                         @endif
                     </form>
-                    <button class="btn btn-success mb-2" onclick="exportPlanToExcel()" style="width: 177px;">
+                    <button class="btn btn-success" onclick="exportPlanToExcel()">
                         <i class="fas fa-file-excel"></i> Xuất Excel
                     </button>
-
                 </div>
+
             </div>
 
             <table id="data_table_plan_master" class="table table-bordered table-striped" style="font-size: 16px">
@@ -180,6 +200,7 @@
                             {{ 'Số lượng ĐG' }}
                         </th>
                         <th>Thị Trường/ Qui Cách</th>
+
                         <th style="width:4%">Ngày dự kiến KCS</th>
                         <th>Ưu Tiên</th>
                         <th>Lô Thẩm định</th>
@@ -204,7 +225,7 @@
                         <th style="width:1%">Cập Nhật/ Vô Hiệu</th>
                         {{-- <th style="width:1%">Vô Hiệu</th> --}}
                         <th style="width:1%">Lịch Sử</th>
-                        <th class = "text-center">
+                        <th class = "text-center" style="display: none;">
                             Chọn
                             <br>
                             <button type="button" class="btn btn-primary btn-selected-all mt-3" {{ $auth_update }}
@@ -218,7 +239,24 @@
                 <tbody>
 
                     @foreach ($datas as $data)
-                        <tr class="{{ $data->IsHypothesis ? 'highlight-row' : '' }}" data-intermediate-code="{{ $data->intermediate_code }}">
+                        <tr class="{{ $data->IsHypothesis ? 'highlight-row' : '' }}"
+                            data-intermediate-code="{{ trim($data->intermediate_code) }}"
+                            data-fp-code="{{ trim($data->finished_product_code) }}"
+                            data-name="{{ trim($data->finished_product_name) }}"
+                            data-market="{{ trim($data->market) }}"
+                            data-specification="{{ trim($data->specification) }}"
+                            data-batch-qty="{{ trim($data->batch_qty) }}"
+                            data-unit-batch-qty="{{ trim($data->unit_batch_qty) }}"
+                            data-plan-list-id="{{ $data->plan_list_id }}" data-level="{{ $data->level }}"
+                            data-batch="{{ $data->batch }}"
+                            data-expected-date="{{ $data->expected_date ? \Carbon\Carbon::parse($data->expected_date)->format('Y-m-d') : '' }}"
+                            data-is-val="{{ $data->is_val }}" data-code-val="{{ $data->code_val }}"
+                            data-after-weigth-date="{{ $data->after_weigth_date ? \Carbon\Carbon::parse($data->after_weigth_date)->format('Y-m-d') : '' }}"
+                            data-after-parkaging-date="{{ $data->after_parkaging_date ? \Carbon\Carbon::parse($data->after_parkaging_date)->format('Y-m-d') : '' }}"
+                            data-allow-weight-before-date="{{ $data->allow_weight_before_date ? \Carbon\Carbon::parse($data->allow_weight_before_date)->format('Y-m-d') : '' }}"
+                            data-expired-material-date="{{ $data->expired_material_date ? \Carbon\Carbon::parse($data->expired_material_date)->format('Y-m-d') : '' }}"
+                            data-expired-packing-date="{{ $data->expired_packing_date ? \Carbon\Carbon::parse($data->expired_packing_date)->format('Y-m-d') : '' }}"
+                            data-note="{{ $data->note }}" style="cursor: pointer;">
 
                             <td>
                                 <div> {{ $loop->iteration }} </div>
@@ -362,15 +400,25 @@
 
                                 @if (isset($data->is_validation_tracking) && $data->is_validation_tracking)
                                     @php
-                                        $vts = \App\Models\ValidationTrackingPlanMaster::where('plan_master_id', $data->id)
-                                            ->join('validation_tracking', 'validation_tracking_plan_master.validation_tracking_id', '=', 'validation_tracking.id')
+                                        $vts = \App\Models\ValidationTrackingPlanMaster::where(
+                                            'plan_master_id',
+                                            $data->id,
+                                        )
+                                            ->join(
+                                                'validation_tracking',
+                                                'validation_tracking_plan_master.validation_tracking_id',
+                                                '=',
+                                                'validation_tracking.id',
+                                            )
                                             ->get();
                                     @endphp
-                                    @foreach($vts as $vt)
+                                    @foreach ($vts as $vt)
                                         <div class="mt-1 text-left">
-                                            <span class="badge badge-warning" style="white-space: normal; text-align: left; line-height: 1.4; border: 1px solid #ffc107;">
-                                                <i class="fas fa-exclamation-triangle"></i> TĐNL: {{ $vt->MaterialName }}
-                                                @if($vt->purpose)
+                                            <span class="badge badge-warning"
+                                                style="white-space: normal; text-align: left; line-height: 1.4; border: 1px solid #ffc107;">
+                                                <i class="fas fa-exclamation-triangle"></i> TĐNL:
+                                                {{ $vt->MaterialName }}
+                                                @if ($vt->purpose)
                                                     <br><small>{{ $vt->purpose }}</small>
                                                 @endif
                                             </span>
@@ -531,10 +579,9 @@
                                 </button>
                             </td>
 
-                            <td class="text-center align-middle">
+                            <td class="text-center align-middle" style="display: none;">
                                 <input type="checkbox" class="step-checkbox" name="selected"
-                                    data-id={{ $data->id }} value={{ $data->selected }}
-                                    {{ $data->selected == 1 ? 'checked' : '' }}>
+                                    data-id={{ $data->id }} value="1">
                             </td>
 
 
@@ -545,6 +592,216 @@
         </div>
     </div>
 
+    <!-- Modal Sửa Hàng Loạt -->
+    <div class="modal fade" id="bulkEditModal" tabindex="-1" role="dialog" aria-labelledby="bulkEditModalLabel"
+        aria-hidden="true" style="z-index: 1060;">
+        <div class="modal-dialog modal-xl" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title font-weight-bold" id="bulkEditModalLabel"><i
+                            class="fas fa-edit text-warning"></i> CHỈNH SỬA HÀNG LOẠT (<span
+                            id="bulk-selected-count">0</span> dòng được chọn)</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body" style="max-height: 80vh; overflow-y: auto;">
+                    <!-- Product Info Block -->
+                    <div class="row mb-3 pb-2 border-bottom">
+                        <div class="col-md-3">
+                            <label class="font-weight-bold mb-1" style="font-size: 13px;">Mã BTP</label>
+                            <input type="text" class="form-control form-control-sm bg-light" id="bulk_info_intermediate_code" readonly>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="font-weight-bold mb-1" style="font-size: 13px;">Mã TP</label>
+                            <input type="text" class="form-control form-control-sm bg-light" id="bulk_info_fp_code" readonly>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="font-weight-bold mb-1" style="font-size: 13px;">Qui Cách - Thị Trường</label>
+                            <input type="text" class="form-control form-control-sm bg-light" id="bulk_info_spec_market" readonly>
+                        </div>
+                        
+                        <div class="col-md-9 mt-2">
+                            <label class="font-weight-bold mb-1" style="font-size: 13px;">Tên Sản Phẩm</label>
+                            <input type="text" class="form-control form-control-sm bg-light" id="bulk_info_product_name" readonly>
+                        </div>
+                        <div class="col-md-3 mt-2">
+                            <label class="font-weight-bold mb-1" style="font-size: 13px;">Cỡ Lô</label>
+                            <input type="text" class="form-control form-control-sm bg-light" id="bulk_info_batch_qty" readonly>
+                        </div>
+                    </div>
+
+                    <form id="bulkEditForm">
+                        <div class="row">
+                            <!-- Cột 1: Thông tin cơ bản -->
+                            <div class="col-md-3 border-right" style="font-size: 13px;">
+
+                                <!-- Batch -->
+                                <div class="form-group mb-2">
+                                    <label class="font-weight-bold mb-1">Số Lô</label>
+                                    <div class="input-group input-group-sm mb-1">
+                                        <input type="text" class="form-control" id="bulk_batch">
+                                        <span class="input-group-text p-0" style="width: 105px;">
+                                            <input type="checkbox" id="bulk_format_batch_no" checked data-bootstrap-switch data-on-text="AAMMYY" data-off-text="YWWAA" data-on-color="success" data-off-color="danger" data-size="small">
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <!-- Expected Date -->
+                                <div class="form-group mb-2">
+                                    <label class="font-weight-bold mb-1">Ngày dự kiến KCS</label>
+                                    <input type="date" class="form-control form-control-sm"
+                                        id="bulk_expected_date">
+                                </div>
+
+                                <!-- Level -->
+                                <div class="card card-success mb-2 shadow-sm">
+                                    <div class="card-header py-1">
+                                        <label class="card-title m-0 font-weight-bold" style="font-size: 14px;">Mức Độ
+                                            Ưu Tiên</label>
+                                    </div>
+                                    <div class="card-body p-2" id="bulk_level_group">
+                                        <div class="icheck-danger d-block mb-1">
+                                            <input type="radio" name="bulk_level" id="bulk_level_1"
+                                                value="1">
+                                            <label for="bulk_level_1" class="font-weight-bold text-danger">1: Hàng
+                                                Gấp, Hàng Thầu</label>
+                                        </div>
+                                        <div class="icheck-warning d-block mb-1">
+                                            <input type="radio" name="bulk_level" id="bulk_level_2"
+                                                value="2">
+                                            <label for="bulk_level_2" class="font-weight-bold text-warning">2: Hàng
+                                                Gấp, Hàng sắp hết số đăng ký</label>
+                                        </div>
+                                        <div class="icheck-primary d-block mb-1">
+                                            <input type="radio" name="bulk_level" id="bulk_level_3"
+                                                value="3">
+                                            <label for="bulk_level_3" class="font-weight-bold text-primary">3: Hàng SX
+                                                dự trù theo KH bán hàng</label>
+                                        </div>
+                                        <div class="icheck-success d-block m-0">
+                                            <input type="radio" name="bulk_level" id="bulk_level_4"
+                                                value="4">
+                                            <label for="bulk_level_4" class="font-weight-bold text-success">4: Hàng
+                                                không cần gấp</label>
+                                        </div>
+                                    </div>
+                                </div>
+
+
+                                <!-- Các mốc ngày -->
+                                <div class="row">
+                                    <div class="col-md-6 mb-2">
+                                        <label class="font-weight-bold mb-1" style="font-size: 11px;">Ngày có đủ NL
+                                            PC</label>
+                                        <input type="date" class="form-control form-control-sm"
+                                            id="bulk_after_weigth_date">
+                                    </div>
+                                    <div class="col-md-6 mb-2">
+                                        <label class="font-weight-bold mb-1" style="font-size: 11px;">Ngày có đủ BB
+                                            ĐG</label>
+                                        <input type="date" class="form-control form-control-sm"
+                                            id="bulk_after_parkaging_date">
+                                    </div>
+                                    <div class="col-md-6 mb-2">
+                                        <label class="font-weight-bold mb-1" style="font-size: 11px;">Ngày được phép
+                                            cân</label>
+                                        <input type="date" class="form-control form-control-sm"
+                                            id="bulk_allow_weight_before_date">
+                                    </div>
+                                    <div class="col-md-6 mb-2">
+                                        <label class="font-weight-bold mb-1" style="font-size: 11px;">Hạn dùng
+                                            NL</label>
+                                        <input type="date" class="form-control form-control-sm"
+                                            id="bulk_expired_material_date">
+                                    </div>
+                                    <div class="col-md-6 mb-2">
+                                        <label class="font-weight-bold mb-1" style="font-size: 11px;">Hạn dùng
+                                            BB</label>
+                                        <input type="date" class="form-control form-control-sm"
+                                            id="bulk_expired_packing_date">
+                                    </div>
+                                </div>
+
+                                <!-- Note -->
+                                <div class="form-group mb-2">
+                                    <label class="font-weight-bold mb-1">Ghi chú (nếu có)</label>
+                                    <textarea class="form-control form-control-sm" id="bulk_note" rows="2" placeholder="Nhập ghi chú chung..."></textarea>
+                                </div>
+                            </div>
+
+                            <!-- Cột 2: CÔng Thức PC -->
+                            <div class="col-md-4">
+                                <div id="valWarningContainer" class="alert alert-warning py-1 px-2 mb-2"
+                                    style="font-size: 13px; display: none;">
+                                    <i class="fas fa-exclamation-triangle"></i> Có chứa nguyên liệu cần báo QA lấy mẫu
+                                    thẩm định.
+                                </div>
+                                <table class="table table-bordered table-striped table-sm" style="font-size: 13px">
+                                    <thead>
+                                        <tr class="bg-light">
+                                            <th>STT</th>
+                                            <th>Mã Nguyên Liệu</th>
+                                            <th>Tên Nguyên Liệu</th>
+                                            <th>Khối Lượng</th>
+                                            <th class="text-center">Chọn</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="bulk_material_recipe_body">
+                                        <!-- Render bằng JS -->
+                                        <tr>
+                                            <td colspan="5" class="text-center">Đang tải...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- Cột 3: CÔng Thức ĐG -->
+                            <div class="col-md-5">
+                                <table class="table table-bordered table-striped table-sm" style="font-size: 13px">
+                                    <thead>
+                                        <tr class="bg-light">
+                                            <th>STT</th>
+                                            <th>Mã Bao Bì</th>
+                                            <th>Tên Bao Bì</th>
+                                            <th>Lượng Bao Bì</th>
+                                            <th class="text-center">Chọn</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="bulk_packaging_recipe_body">
+                                        <!-- Render bằng JS -->
+                                        <tr>
+                                            <td colspan="5" class="text-center">Đang tải...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <hr class="mt-2 mb-3">
+
+                        <!-- Reason -->
+                        <div class="form-group row" @if (!$send) style="display: none;" @endif>
+                            <div class="col-md-2">
+                                <label class="font-weight-bold text-danger"><i
+                                        class="fas fa-exclamation-triangle"></i> Lý do cập nhật</label>
+                            </div>
+                            <div class="col-md-10">
+                                <textarea class="form-control form-control-sm" id="bulk_reason" rows="2"
+                                    placeholder="Vui lòng nhập lý do thay đổi để lưu lịch sử {{ $send ? '(Bắt buộc)' : '' }}..."
+                                    {{ $send ? 'required' : '' }}></textarea>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Hủy</button>
+                    <button type="button" class="btn btn-primary" id="btn-save-bulk"><i class="fas fa-save"></i>
+                        Lưu cập nhật</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script src="{{ asset('js/vendor/jquery-1.12.4.min.js') }}"></script>
     <script src="{{ asset('js/popper.min.js') }}"></script>
@@ -568,7 +825,9 @@
             <tr>
                 <th>STT</th>
                 <th>Tình Trạng</th>
-                @if ($plan_list_id < 0) <th>Tháng</th> @endif
+                @if ($plan_list_id < 0)
+                    <th>Tháng</th>
+                @endif
                 <th>Mã BTP</th>
                 <th>Mã TP</th>
                 <th>Tên BTP</th>
@@ -601,29 +860,43 @@
                 <tr>
                     <td>{{ $loop->iteration }}</td>
                     <td>{{ $data->IsHypothesis ? 'Lô Giả Định' : $data->status }}</td>
-                    @if ($plan_list_id < 0) <td>{{ $plan_list_id_title[$data->plan_list_id] ?? 'NA' }}</td> @endif
+                    @if ($plan_list_id < 0)
+                        <td>{{ $plan_list_id_title[$data->plan_list_id] ?? 'NA' }}</td>
+                    @endif
                     <td>{{ $data->intermediate_code }}</td>
                     <td>{{ $data->finished_product_code }}</td>
                     <td>{{ $data->intermediate_product_name }}</td>
-                    <td>{{ trim($data->finished_product_name) == trim($data->intermediate_product_name) ? '' : trim($data->finished_product_name) }}</td>
+                    <td>{{ trim($data->finished_product_name) == trim($data->intermediate_product_name) ? '' : trim($data->finished_product_name) }}
+                    </td>
                     <td>{{ $data->batch_qty . ' ' . $data->unit_batch_qty }}</td>
                     <td>{{ $data->batch }}</td>
                     <td>{{ $data->actual_batch }}</td>
-                    <td>{{ $data->number_parkaging > 0 ? ($data->number_parkaging . ' ' . $data->unit_batch_qty) : '' }}</td>
+                    <td>{{ $data->number_parkaging > 0 ? $data->number_parkaging . ' ' . $data->unit_batch_qty : '' }}
+                    </td>
                     <td>{{ $data->market }}</td>
                     <td>{{ $data->specification }}</td>
-                    <td>{{ $data->expected_date ? \Carbon\Carbon::parse($data->expected_date)->format('d/m/Y') : '' }}</td>
+                    <td>{{ $data->expected_date ? \Carbon\Carbon::parse($data->expected_date)->format('d/m/Y') : '' }}
+                    </td>
                     <td>{{ $data->level }}</td>
                     <td>{{ $data->is_val ? '1' : '0' }}</td>
-                    <td>{{ $data->after_weigth_date ? \Carbon\Carbon::parse($data->after_weigth_date)->format('d/m/Y') : '' }}</td>
-                    <td>{{ $data->after_parkaging_date ? \Carbon\Carbon::parse($data->after_parkaging_date)->format('d/m/Y') : '' }}</td>
-                    <td>{{ $data->allow_weight_before_date ? \Carbon\Carbon::parse($data->allow_weight_before_date)->format('d/m/Y') : '' }}</td>
-                    <td>{{ $data->expired_material_date ? \Carbon\Carbon::parse($data->expired_material_date)->format('d/m/Y') : '' }}</td>
-                    <td>{{ $data->expired_packing_date ? \Carbon\Carbon::parse($data->expired_packing_date)->format('d/m/Y') : '' }}</td>
-                    <td>{{ $data->preperation_before_date ? \Carbon\Carbon::parse($data->preperation_before_date)->format('d/m/Y') : '' }}</td>
-                    <td>{{ $data->blending_before_date ? \Carbon\Carbon::parse($data->blending_before_date)->format('d/m/Y') : '' }}</td>
-                    <td>{{ $data->coating_before_date ? \Carbon\Carbon::parse($data->coating_before_date)->format('d/m/Y') : '' }}</td>
-                    <td>{{ $data->parkaging_before_date ? \Carbon\Carbon::parse($data->parkaging_before_date)->format('d/m/Y') : '' }}</td>
+                    <td>{{ $data->after_weigth_date ? \Carbon\Carbon::parse($data->after_weigth_date)->format('d/m/Y') : '' }}
+                    </td>
+                    <td>{{ $data->after_parkaging_date ? \Carbon\Carbon::parse($data->after_parkaging_date)->format('d/m/Y') : '' }}
+                    </td>
+                    <td>{{ $data->allow_weight_before_date ? \Carbon\Carbon::parse($data->allow_weight_before_date)->format('d/m/Y') : '' }}
+                    </td>
+                    <td>{{ $data->expired_material_date ? \Carbon\Carbon::parse($data->expired_material_date)->format('d/m/Y') : '' }}
+                    </td>
+                    <td>{{ $data->expired_packing_date ? \Carbon\Carbon::parse($data->expired_packing_date)->format('d/m/Y') : '' }}
+                    </td>
+                    <td>{{ $data->preperation_before_date ? \Carbon\Carbon::parse($data->preperation_before_date)->format('d/m/Y') : '' }}
+                    </td>
+                    <td>{{ $data->blending_before_date ? \Carbon\Carbon::parse($data->blending_before_date)->format('d/m/Y') : '' }}
+                    </td>
+                    <td>{{ $data->coating_before_date ? \Carbon\Carbon::parse($data->coating_before_date)->format('d/m/Y') : '' }}
+                    </td>
+                    <td>{{ $data->parkaging_before_date ? \Carbon\Carbon::parse($data->parkaging_before_date)->format('d/m/Y') : '' }}
+                    </td>
                     <td>{{ $data->note ?? '' }}</td>
                     <td>{{ $data->prepared_by }}</td>
                     <td>{{ $data->created_at ? \Carbon\Carbon::parse($data->created_at)->format('d/m/Y') : '' }}</td>
@@ -637,7 +910,7 @@
             var loadScript = function(url, callback) {
                 var script = document.createElement("script");
                 script.type = "text/javascript";
-                script.onload = function(){
+                script.onload = function() {
                     callback();
                 };
                 script.src = url;
@@ -648,13 +921,13 @@
                 var planName = {!! json_encode(request()->get('name') ?? 'Ke_Hoach') !!};
                 var production = {!! json_encode($production ?? '') !!};
                 var date = new Date();
-                var dateStr = date.getDate().toString().padStart(2, '0') + '-' + 
-                              (date.getMonth() + 1).toString().padStart(2, '0') + '-' + 
-                              date.getFullYear();
+                var dateStr = date.getDate().toString().padStart(2, '0') + '-' +
+                    (date.getMonth() + 1).toString().padStart(2, '0') + '-' +
+                    date.getFullYear();
                 var fileName = planName + '_' + production + '_' + dateStr;
 
                 var exportTable = $('#export_hidden_table');
-                
+
                 // Configure export button if not already present
                 if (!$.fn.DataTable.isDataTable('#export_hidden_table')) {
                     exportTable.DataTable({
@@ -662,26 +935,27 @@
                         searching: false,
                         ordering: false,
                         info: false,
-                        buttons: [
-                            {
-                                extend: 'excelHtml5',
-                                name: 'excel-export',
-                                title: planName,
-                                filename: fileName
-                            }
-                        ]
+                        buttons: [{
+                            extend: 'excelHtml5',
+                            name: 'excel-export',
+                            title: planName,
+                            filename: fileName
+                        }]
                     });
                 }
-                
+
                 exportTable.DataTable().button('excel-export:name').trigger();
             };
 
             // Dynamically load plugins if they aren't loaded yet
             if (typeof JSZip === 'undefined' || typeof $.fn.dataTable.Buttons === 'undefined') {
                 loadScript("{{ asset('dataTable/plugins/jszip/jszip.min.js') }}", function() {
-                    loadScript("{{ asset('dataTable/plugins/datatables-buttons/js/dataTables.buttons.min.js') }}", function() {
-                        loadScript("{{ asset('dataTable/plugins/datatables-buttons/js/buttons.html5.min.js') }}", doExport);
-                    });
+                    loadScript("{{ asset('dataTable/plugins/datatables-buttons/js/dataTables.buttons.min.js') }}",
+                        function() {
+                            loadScript(
+                                "{{ asset('dataTable/plugins/datatables-buttons/js/buttons.html5.min.js') }}",
+                                doExport);
+                        });
                 });
             } else {
                 doExport();
@@ -930,31 +1204,16 @@
                                   <td class="text-center align-middle">
                                       ${item.is_val ? '<i class="fas fa-check-circle text-primary fs-4"></i>' : ''}
                                       ${item.vts && item.vts.length > 0 ? item.vts.map(vt => `
-                                          <div class="mt-1 text-left">
-                                              <span class="badge badge-warning" style="white-space: normal; text-align: left; line-height: 1.4; border: 1px solid #ffc107;">
-                                                  <i class="fas fa-exclamation-triangle"></i> TĐNL: ${vt.MaterialName}
-                                                  ${vt.purpose ? `<br><small>${vt.purpose}</small>` : ''}
-                                              </span>
-                                          </div>
-                                      `).join('') : ''}
+                                                                          <div class="mt-1 text-left">
+                                                                              <span class="badge badge-warning" style="white-space: normal; text-align: left; line-height: 1.4; border: 1px solid #ffc107;">
+                                                                                  <i class="fas fa-exclamation-triangle"></i> TĐNL: ${vt.MaterialName}
+                                                                                  ${vt.purpose ? `<br><small>${vt.purpose}</small>` : ''}
+                                                                              </span>
+                                                                          </div>
+                                                                      `).join('') : ''}
                                   </td>
 
-                                  <td>
-                                      <div>${item.after_weigth_date ? moment(item.after_weigth_date).format('DD/MM/YYYY') : ''}</div>
-                                      <div>${item.after_parkaging_date ? moment(item.after_parkaging_date).format('DD/MM/YYYY') : ''}</div>
-                                      <div>${item.allow_weight_before_date ? moment(item.allow_weight_before_date).format('DD/MM/YYYY') : ''}</div>
-                                      <div>${item.expired_material_date ? moment(item.expired_material_date).format('DD/MM/YYYY') : ''}</div>
-                                      <div>${item.expired_packing_date ? moment(item.expired_packing_date).format('DD/MM/YYYY') : ''}</div>
-                                  </td>
 
-                                  <td>
-                                      <div>${item.preperation_before_date ? moment(item.preperation_before_date).format('DD/MM/YYYY') : ''}</div>
-                                      <div>${item.blending_before_date ? moment(item.blending_before_date).format('DD/MM/YYYY') : ''}</div>
-                                      <div>${item.coating_before_date ? moment(item.coating_before_date).format('DD/MM/YYYY') : ''}</div>
-                                      <div>${item.parkaging_before_date ? moment(item.parkaging_before_date).format('DD/MM/YYYY') : ''}</div>
-                                  </td>
-
-                                  <td>${item.source_material_name ?? ''}</td>
                                   <td>${item.note ?? ''}</td>
                                   <td>${item.version ?? ''}</td>
                                   <td >${item.reason ?? ''}</td>
@@ -1059,45 +1318,10 @@
                     }
                 }
 
-                let tr = currentInput.closest('tr');
-                let btpCode = tr.attr('data-intermediate-code') || tr.data('intermediate-code');
-
-                let siblingInputs = [];
-                if (btpCode && name !== 'batch') {
-                    siblingInputs = $('tr[data-intermediate-code="' + btpCode + '"] .updateInput[name="' + name + '"]').not(currentInput);
-                }
-
-                if (siblingInputs.length > 0) {
-                    Swal.fire({
-                        title: 'Cập nhật hàng loạt?',
-                        text: 'Bạn có muốn tự động cập nhật giá trị này cho ' + siblingInputs.length + ' lô khác có cùng mã BTP (' + btpCode + ') không?',
-                        icon: 'question',
-                        showCancelButton: true,
-                        confirmButtonText: 'Đồng ý',
-                        cancelButtonText: 'Không, chỉ dòng này',
-                        confirmButtonColor: '#3085d6',
-                        cancelButtonColor: '#aaa'
-                    }).then((result) => {
-                        if (result.isConfirmed) {
-                            sendUpdateAjax(id, name, updateValue, currentInput);
-                            
-                            siblingInputs.each(function() {
-                                let sibInput = $(this);
-                                let sibId = sibInput.data('id');
-                                sibInput.val(updateValue);
-                                sibInput.data('old-value', updateValue);
-                                sendUpdateAjax(sibId, name, updateValue, sibInput);
-                            });
-                        } else {
-                            sendUpdateAjax(id, name, updateValue, currentInput);
-                        }
-                    });
-                } else {
-                    sendUpdateAjax(id, name, updateValue, currentInput);
-                }
+                sendUpdateAjax(id, name, updateValue, oldValue, currentInput);
             });
 
-            function sendUpdateAjax(id, name, updateValue, inputEl) {
+            function sendUpdateAjax(id, name, updateValue, oldValue, inputEl) {
                 $.ajax({
                     url: "{{ route('pages.plan.production.updateInput') }}",
                     type: 'POST',
@@ -1106,7 +1330,8 @@
                         _token: '{{ csrf_token() }}',
                         id: id,
                         name: name,
-                        updateValue: updateValue
+                        updateValue: updateValue,
+                        oldValue: oldValue
                     },
                     success: function(res) {
                         if (res.success) {
@@ -1169,7 +1394,8 @@
                         _token: '{{ csrf_token() }}',
                         id: id,
                         name: name,
-                        updateValue: updateValue
+                        updateValue: updateValue,
+                        oldValue: oldValue
                     },
                     success: function(res) {
                         if (res.success) {
@@ -1239,11 +1465,406 @@
 
                         // Cập nhật checkbox
                         $('.step-checkbox').prop('checked', isActive);
+                        updateBulkEditButtonState();
                     }
 
                 });
 
             });
+
+            // --- Javascript cho Sửa Hàng Loạt (Bulk Edit) ---
+            function updateBulkEditButtonState() {
+                let checkedCount = $('.step-checkbox:checked').length;
+                $('#selected-count').text(checkedCount);
+                $('#selected-count-deactive').text(checkedCount);
+                $('#bulk-selected-count').text(checkedCount);
+                if (checkedCount > 0) {
+                    $('.btn-bulk-edit').prop('disabled', false);
+                    $('.btn-bulk-deactive').prop('disabled', false);
+                } else {
+                    $('.btn-bulk-edit').prop('disabled', true);
+                    $('.btn-bulk-deactive').prop('disabled', true);
+                }
+            }
+
+            // Gọi lúc trang tải xong để thiết lập trạng thái ban đầu
+            updateBulkEditButtonState();
+
+            // Cập nhật đếm khi click từng checkbox (dành cho logic cũ nếu cần)
+            $(document).on('change', '.step-checkbox', function() {
+                updateBulkEditButtonState();
+            });
+
+            // Click vào dòng để chọn (Chỉ cho phép chọn cùng Mã Thành Phẩm)
+            $(document).on('click', '#data_table_plan_master tbody tr', function(e) {
+                // Bỏ qua nếu click vào các thẻ input, button, a, select, textarea
+                if ($(e.target).is('input, button, a, select, textarea') || $(e.target).closest(
+                        'button, a, select').length > 0) {
+                    return;
+                }
+
+                let currentFpCode = $(this).data('fp-code');
+                let isAlreadySelected = $(this).hasClass('row-selected');
+
+                // Lấy các dòng đang được chọn
+                let selectedRows = $('#data_table_plan_master tbody tr.row-selected');
+
+                if (selectedRows.length > 0) {
+                    let firstSelectedFpCode = selectedRows.first().data('fp-code');
+
+                    if (currentFpCode !== firstSelectedFpCode) {
+                        // Khác mã thành phẩm -> Bỏ chọn tất cả dòng cũ
+                        selectedRows.removeClass('row-selected table-success');
+                        selectedRows.find('.step-checkbox').prop('checked', false);
+                    }
+                }
+
+                // Toggle dòng hiện tại
+                if (isAlreadySelected) {
+                    $(this).removeClass('row-selected table-success');
+                    $(this).find('.step-checkbox').prop('checked', false);
+                } else {
+                    $(this).addClass('row-selected table-success');
+                    $(this).find('.step-checkbox').prop('checked', true);
+                }
+
+                updateBulkEditButtonState();
+            });
+
+            // Xoá logic checkbox cũ vì đã bỏ checkbox
+
+            // Chỉ cho phép tích 1 trong 3 checkbox lô thẩm định
+            $(document).on('change', '.bulk-val-checkbox', function() {
+                if ($(this).is(':checked')) {
+                    $('.bulk-val-checkbox').not(this).prop('checked', false);
+                }
+            });
+
+            $(document).on('click', '.btn-bulk-deactive', function() {
+                var selectedIds = [];
+                $('.step-checkbox:checked').each(function() {
+                    selectedIds.push($(this).data('id'));
+                });
+                if (selectedIds.length === 0) {
+                    Swal.fire('Vui lòng chọn ít nhất 1 lô!', '', 'warning');
+                    return;
+                }
+
+                Swal.fire({
+                    title: 'Xác nhận hủy/vô hiệu?',
+                    text: "Bạn có chắc chắn muốn hủy/vô hiệu " + selectedIds.length +
+                        " lô đã chọn?",
+                    icon: 'warning',
+                    input: 'textarea', // ô nhập lý do
+                    inputPlaceholder: 'Nhập lý do hủy...',
+                    inputAttributes: {
+                        'aria-label': 'Nhập lý do hủy'
+                    },
+                    showCancelButton: true,
+                    confirmButtonColor: '#28a745',
+                    cancelButtonColor: '#d33',
+                    confirmButtonText: 'Đồng ý',
+                    cancelButtonText: 'Hủy',
+                    preConfirm: (reason) => {
+                        if (!reason) {
+                            Swal.showValidationMessage('Bạn phải nhập lý do');
+                        }
+                        return reason;
+                    }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: "{{ route('pages.plan.production.bulk_deactive') }}",
+                            type: 'POST',
+                            data: {
+                                _token: "{{ csrf_token() }}",
+                                ids: selectedIds,
+                                deactive_reason: result.value
+                            },
+                            success: function(res) {
+                                if (res.success) {
+                                    Swal.fire('Thành công', res.message, 'success')
+                                        .then(() => {
+                                            location.reload();
+                                        });
+                                } else {
+                                    Swal.fire('Lỗi', res.message, 'error');
+                                }
+                            },
+                            error: function() {
+                                Swal.fire('Lỗi', 'Có lỗi xảy ra khi gọi server',
+                                    'error');
+                            }
+                        });
+                    }
+                });
+            });
+
+            // Khi click nút Sửa Hàng Loạt
+            $(document).on('click', '.btn-bulk-edit', function() {
+                let checkedCheckboxes = $('.step-checkbox:checked');
+                let checkedCount = checkedCheckboxes.length;
+                if (checkedCount === 0) return;
+
+                $('#bulk-selected-count').text(checkedCount);
+                $('#bulk_reason').val('');
+
+                // Lấy dòng đầu tiên
+                let firstRow = checkedCheckboxes.first().closest('tr');
+
+                // Điền thông tin sản phẩm
+                $('#bulk_info_intermediate_code').val(firstRow.data('intermediate-code') || '');
+                $('#bulk_info_fp_code').val(firstRow.data('fp-code') || '');
+                const market = firstRow.data('market') || '';
+                const spec = firstRow.data('specification') || '';
+                $('#bulk_info_spec_market').val((market ? market + ' - ' : '') + spec);
+                $('#bulk_info_product_name').val(firstRow.data('name') || '');
+                const qty = firstRow.data('batch-qty') || '';
+                const unit = firstRow.data('unit-batch-qty') || '';
+                $('#bulk_info_batch_qty').val((qty ? qty + ' - ' : '') + unit);
+
+                // Điền sẵn dữ liệu từ firstRow
+                $('#bulk_batch').val(firstRow.data('batch') || '');
+                $('#bulk_expected_date').val(firstRow.data('expected-date') || '');
+
+                const level = firstRow.data('level');
+                $('input[name="bulk_level"]').prop('checked', false);
+                if (level) {
+                    $('#bulk_level_' + level).prop('checked', true);
+                }
+
+
+                $('#bulk_after_weigth_date').val(firstRow.data('after-weigth-date') || '');
+                $('#bulk_after_parkaging_date').val(firstRow.data('after-parkaging-date') || '');
+                $('#bulk_allow_weight_before_date').val(firstRow.data('allow-weight-before-date') || '');
+                $('#bulk_expired_material_date').val(firstRow.data('expired-material-date') || '');
+                $('#bulk_expired_packing_date').val(firstRow.data('expired-packing-date') || '');
+                $('#bulk_note').val(firstRow.data('note') || '');
+
+                // --- Lấy dữ liệu công thức của dòng đầu tiên ---
+                let plan_master_id = checkedCheckboxes.first().data('id');
+                let ic_code = firstRow.data('intermediate-code');
+
+                $('#bulk_material_recipe_body').html(
+                    '<tr><td colspan="4" class="text-center">Đang tải...</td></tr>');
+                $('#bulk_packaging_recipe_body').html(
+                    '<tr><td colspan="4" class="text-center">Đang tải...</td></tr>');
+                $('#valWarningContainer').hide();
+
+                // Lấy công thức nguyên liệu
+                $.ajax({
+                    url: "{{ route('pages.plan.production.recipe_show_update') }}",
+                    type: 'post',
+                    data: {
+                        plan_master_id: plan_master_id,
+                        material_packaging_type: 0,
+                        _token: "{{ csrf_token() }}"
+                    },
+                    success: function(res) {
+                        const tbody = $('#bulk_material_recipe_body');
+                        tbody.empty();
+                        if (res.length === 0) {
+                            tbody.append(
+                                `<tr><td colspan="4" class="text-center">Không có công thức</td></tr>`
+                            );
+                        } else {
+                            res.forEach((item, index) => {
+                                tbody.append(`
+                                    <tr>
+                                        <td>${index + 1}</td>
+                                        <td>${item.material_packaging_code ?? ''}</td>
+                                        <td>${item.MaterialName ?? ''}</td>
+                                        <td>
+                                            ${
+                                                item.qty != null
+                                                ? Number(item.qty).toLocaleString(undefined, {
+                                                    minimumFractionDigits: 0,
+                                                    maximumFractionDigits: 3
+                                                })
+                                                : ''
+                                            } ${item.unit_bom ?? ''}
+                                        </td>
+                                        <td class="text-center align-middle">
+                                            <div class="icheck-primary d-inline">
+                                                <input type="checkbox" id="bulk_mat_${index}" class="bulk-material-checkbox" data-code="${item.material_packaging_code}" data-type="material" ${item.active == 1 ? 'checked' : ''}>
+                                                <label for="bulk_mat_${index}"></label>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                `);
+                            });
+                        }
+                    }
+                });
+
+                // Lấy công thức bao bì
+                $.ajax({
+                    url: "{{ route('pages.plan.production.recipe_show_update') }}",
+                    type: 'post',
+                    data: {
+                        plan_master_id: plan_master_id,
+                        material_packaging_type: 1,
+                        _token: "{{ csrf_token() }}"
+                    },
+                    success: function(res) {
+                        const tbody = $('#bulk_packaging_recipe_body');
+                        tbody.empty();
+                        if (res.length === 0) {
+                            tbody.append(
+                                `<tr><td colspan="4" class="text-center">Không có công thức</td></tr>`
+                            );
+                        } else {
+                            res.forEach((item, index) => {
+                                tbody.append(`
+                                    <tr>
+                                        <td>${index + 1}</td>
+                                        <td>${item.material_packaging_code ?? ''}</td>
+                                        <td>${item.MaterialName ?? ''}</td>
+                                        <td>
+                                            ${
+                                                item.qty != null
+                                                ? Number(item.qty).toLocaleString(undefined, {
+                                                    minimumFractionDigits: 0,
+                                                    maximumFractionDigits: 3
+                                                })
+                                                : ''
+                                            } ${item.unit_bom ?? ''}
+                                        </td>
+                                        <td class="text-center align-middle">
+                                            <div class="icheck-primary d-inline">
+                                                <input type="checkbox" id="bulk_pkg_${index}" class="bulk-packaging-checkbox" data-code="${item.material_packaging_code}" data-type="packaging" ${item.active == 1 ? 'checked' : ''}>
+                                                <label for="bulk_pkg_${index}"></label>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                `);
+                            });
+                        }
+                    }
+                });
+
+                // Kiểm tra thẩm định
+                $.ajax({
+                    url: "{{ route('pages.plan.validation_tracking.check_validation') }}",
+                    type: "GET",
+                    data: {
+                        intermediate_code: ic_code,
+                        plan_master_id: plan_master_id
+                    },
+                    success: function(res) {
+                        if (res && res.length > 0) {
+                            $('#valWarningContainer').show();
+                        } else {
+                            $('#valWarningContainer').hide();
+                        }
+                    }
+                });
+
+                $('#bulkEditModal').modal('show');
+            });
+
+            // Khi nhấn Lưu trong modal Sửa Hàng Loạt
+            $(document).on('click', '#btn-save-bulk', function() {
+                const checkedIds = [];
+                $('.step-checkbox:checked').each(function() {
+                    const id = $(this).data('id');
+                    if (id) checkedIds.push(id);
+                });
+
+                if (checkedIds.length === 0) {
+                    Swal.fire('Cảnh báo', 'Không có dòng nào được chọn!', 'warning');
+                    return;
+                }
+
+                const isSent = {{ $send ? 'true' : 'false' }};
+                const reason = $('#bulk_reason').val().trim();
+                if (isSent && !reason) {
+                    Swal.fire('Thiếu thông tin', 'Vui lòng nhập lý do thay đổi để lưu lịch sử!', 'warning');
+                    return;
+                }
+
+                let fields = {};
+                fields['batch'] = $('#bulk_batch').val();
+                fields['format_batch_no'] = $('#bulk_format_batch_no').is(':checked') ? 'on' : 'off';
+                fields['expected_date'] = $('#bulk_expected_date').val();
+                fields['level'] = $('input[name="bulk_level"]:checked').val() || null;
+
+
+                fields['after_weigth_date'] = $('#bulk_after_weigth_date').val();
+                fields['after_parkaging_date'] = $('#bulk_after_parkaging_date').val();
+                fields['allow_weight_before_date'] = $('#bulk_allow_weight_before_date').val();
+                fields['expired_material_date'] = $('#bulk_expired_material_date').val();
+                fields['expired_packing_date'] = $('#bulk_expired_packing_date').val();
+                fields['note'] = $('#bulk_note').val();
+
+                let recipe_status = [];
+                $('.bulk-material-checkbox').each(function() {
+                    recipe_status.push({
+                        code: $(this).data('code'),
+                        active: $(this).is(':checked') ? 1 : 0
+                    });
+                });
+                $('.bulk-packaging-checkbox').each(function() {
+                    recipe_status.push({
+                        code: $(this).data('code'),
+                        active: $(this).is(':checked') ? 1 : 0
+                    });
+                });
+                fields['recipe_status'] = recipe_status;
+
+                Swal.fire({
+                    title: 'Xác nhận lưu?',
+                    text: `Bạn chuẩn bị cập nhật ${checkedIds.length} dòng đã chọn. Hành động này không thể hoàn tác!`,
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Đồng ý',
+                    cancelButtonText: 'Hủy'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: "{{ route('pages.plan.production.bulk_update') }}",
+                            type: 'POST',
+                            dataType: 'json',
+                            data: {
+                                _token: '{{ csrf_token() }}',
+                                ids: checkedIds,
+                                fields: fields,
+                                reason: reason
+                            },
+                            success: function(res) {
+                                if (res.success) {
+                                    $('#bulkEditModal').modal('hide');
+                                    Swal.fire({
+                                        title: 'Thành công!',
+                                        text: res.message,
+                                        icon: 'success',
+                                        timer: 2000,
+                                        showConfirmButton: false
+                                    }).then(() => {
+                                        window.location.reload();
+                                    });
+                                } else {
+                                    Swal.fire('Lỗi', res.message, 'error');
+                                }
+                            },
+                            error: function(xhr) {
+                                const msg = xhr.responseJSON ? xhr.responseJSON
+                                    .message : 'Lỗi kết nối server';
+                                Swal.fire('Lỗi', msg, 'error');
+                            }
+                        });
+                    }
+                });
+            });
+
+            if ($("input#bulk_format_batch_no").length) {
+                $("input#bulk_format_batch_no").bootstrapSwitch({
+                    onText: 'AAMMYY',
+                    offText: 'YWWAA',
+                    onColor: 'success',
+                    offColor: 'danger'
+                });
+            }
 
             var table = $('#data_table_plan_master').DataTable();
 

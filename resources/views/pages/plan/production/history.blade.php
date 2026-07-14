@@ -43,22 +43,7 @@
                         <th>Ưu Tiên</th>
                         <th>Lô Thẩm định</th>
 
-                        <th>
-                            <div>(1) Ngày có đủ NL</div>
-                            <div>(2) Ngày có đủ BB</div>
-                            <div>(3) Ngày được phép cân</div>
-                            <div>(4) Ngày HH NL chính</div>
-                            <div>(5) Ngày HH BB</div>
-                        </th>
 
-                        <th>
-                            <div>(1) PC trước</div>
-                            <div>(2) THT trước</div>
-                            <div>(3) BP trước</div>
-                            <div>(4) ĐG trước</div>
-                        </th>
-
-                        <th>Nguồn</th>
                         <th style="width:15%">Ghi Chú</th>
                         <th>Version</th>
                         <th style="width: 100px">Lý Do</th>

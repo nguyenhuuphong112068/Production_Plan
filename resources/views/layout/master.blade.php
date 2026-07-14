@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <title>PSM Stellapharm</title>
+    <title>PMS Stellapharm</title>
     <!-- Tell the browser to be responsive to screen width -->
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -1659,8 +1659,8 @@
                                     <i class="fas fa-reply"></i>
                                 </span>
                                 ${side === 'me' ? `<span class="msg-action-btn btn-recall text-danger" title="Thu hồi, sau 30p sẽ không được thu hồi" data-msg-id="${m.id}">
-                                                                                        <i class="fas fa-undo"></i>
-                                                                                    </span>` : ''}
+                                                                                            <i class="fas fa-undo"></i>
+                                                                                        </span>` : ''}
                             </div>
                         `;
                     }

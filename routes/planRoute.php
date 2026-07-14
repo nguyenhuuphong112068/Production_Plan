@@ -29,6 +29,8 @@ Route::prefix('/plan')
                 Route::post('open_bacth_detail', 'open_bacth_detail')->name('open_bacth_detail');
                 Route::post('store', 'store')->name('store');
                 Route::post('update', 'update')->name('update');
+                Route::post('bulk-update', 'bulkUpdate')->name('bulk_update');
+                Route::post('bulk-deactive', 'bulkDeActive')->name('bulk_deactive');
                 Route::post('splitting', 'splitting')->name('splitting');
                 Route::post('splittingUpdate', 'splittingUpdate')->name('splittingUpdate');
                 Route::post('deActive', 'deActive')->name('deActive');
