@@ -464,6 +464,7 @@
             totalRow['classification'] = '';
             totalRow['customer_type'] = '';
             totalRow['market'] = '';
+            totalRow['general_market'] = '';
             totalRow['dosage'] = '';
             totalRow['intermediate_code'] = '';
             totalRow['finished_product_code'] = '';
@@ -488,7 +489,7 @@
 
             // Tab 1: Base headers and columns
             const colHeaders = [
-                'Hết SĐK', 'Phân loại', 'Khách', 'Thị trường', 'Dạng bào chế', 'Mã BTP', 'Mã TP', 'Sản phẩm', 'Hạn dùng',
+                'Hết SĐK', 'Phân loại', 'Khách', 'Thị trường', 'Thị trường chung', 'Dạng bào chế', 'Mã BTP', 'Mã TP', 'Sản phẩm', 'Hạn dùng',
                 'Quy cách', 'Cỡ lô', 'BQ bán / Tháng (hộp)', 'BQ bán / tháng (viên)'
             ];
 
@@ -509,6 +510,10 @@
             {
                 data: 'market',
                 readOnly: true
+            },
+            {
+                data: 'general_market',
+                readOnly: false
             },
             {
                 data: 'dosage',
@@ -563,7 +568,7 @@
         ];
 
         const topHeaders = [
-            { label: 'Thông tin chung', colspan: 13 }
+            { label: 'Thông tin chung', colspan: 14 }
         ];
 
         // Generate 12 months dynamically for Tab 1
@@ -633,7 +638,7 @@
 
         // Tab 2: Base headers and columns
         const colHeadersRatio = [
-            'Hết SĐK', 'Phân loại', 'Khách', 'Thị trường', 'Dạng bào chế', 'Mã BTP', 'Mã TP', 'Sản phẩm', 'Hạn dùng',
+            'Hết SĐK', 'Phân loại', 'Khách', 'Thị trường', 'Thị trường chung', 'Dạng bào chế', 'Mã BTP', 'Mã TP', 'Sản phẩm', 'Hạn dùng',
             'Quy cách', 'Cỡ lô', 'Bình quân dự trù tháng (hộp)', 'Bình quân dự trù tháng (viên)'
         ];
 
@@ -654,6 +659,10 @@
         {
             data: 'market',
             readOnly: true
+        },
+        {
+            data: 'general_market',
+            readOnly: false
         },
         {
             data: 'dosage',
@@ -708,7 +717,7 @@
         ];
 
         const topHeadersRatio = [
-            { label: 'Thông tin chung', colspan: 13 }
+            { label: 'Thông tin chung', colspan: 14 }
         ];
 
         // Generate 12 months dynamically for Tab 2

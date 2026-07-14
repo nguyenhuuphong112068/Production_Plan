@@ -214,6 +214,7 @@ class AnnualPlanController extends Controller
                 'classification' => $fpc->classification,
                 'customer_type' => $fpc->customer_type,
                 'market' => $market_name,
+                'general_market' => $fpc->general_market,
                 'dosage' => $dosage_name,
                 'intermediate_code' => $int_code ?? '',
                 'finished_product_code' => $fpc->finished_product_code ?? '',
@@ -393,6 +394,7 @@ class AnnualPlanController extends Controller
                         // Update fields on finished_product_category
                         if (array_key_exists('classification', $row)) $fpc->classification = $row['classification'];
                         if (array_key_exists('customer_type', $row)) $fpc->customer_type = $row['customer_type'];
+                        if (array_key_exists('general_market', $row)) $fpc->general_market = $row['general_market'];
                         if (array_key_exists('shelf_life', $row)) {
                             $fpc->shelf_life = $row['shelf_life'] !== null && $row['shelf_life'] !== '' ? (int) $row['shelf_life'] : null;
                         }
