@@ -29,12 +29,12 @@ class ValidationTrackingController extends Controller
             ->leftJoin('product_name as fp_name', 'finished_product_category.product_name_id', '=', 'fp_name.id')
             ->leftJoin('stage_plan', function ($join) {
                 $join->on('plan_master.main_parkaging_id', '=', 'stage_plan.plan_master_id')
-                     ->where('stage_plan.stage_code', 7)
-                     ->where('stage_plan.active', 1);
+                    ->where('stage_plan.stage_code', 7)
+                    ->where('stage_plan.active', 1);
             })
-            ->where(function($q) {
+            ->where(function ($q) {
                 $q->whereNull('stage_plan.id')
-                  ->orWhere('stage_plan.finished', 0);
+                    ->orWhere('stage_plan.finished', 0);
             })
             ->select(
                 'plan_master.id',
@@ -54,6 +54,7 @@ class ValidationTrackingController extends Controller
             )
             ->orderBy('plan_master.expected_date', 'asc')
             ->get();
+        session()->put(['title' => 'THEO DÕI THẨM ĐỊNH']);
 
         return view('pages.plan.validation_tracking.list', compact('trackings', 'products', 'inProgressPlans'));
     }
@@ -184,13 +185,13 @@ class ValidationTrackingController extends Controller
         $ic_id = $request->intermediate_category_id;
         $ic_code = $request->intermediate_code;
         $plan_master_id = $request->plan_master_id;
-        
+
         if (!$ic_id && !$ic_code) {
             return response()->json([]);
         }
 
         $query = ValidationTrackingIntermediateCategory::with('validationTracking');
-            
+
         if ($ic_id) {
             $query->where('intermediate_category_id', $ic_id);
         } else {
@@ -201,20 +202,20 @@ class ValidationTrackingController extends Controller
 
         if ($plan_master_id) {
             $query->where(function ($q) use ($plan_master_id) {
-                $q->where(function($q1) {
+                $q->where(function ($q1) {
                     $q1->whereColumn('num_of_finished_batch', '<', 'num_of_tracking_batch')
-                       ->whereHas('validationTracking', function($q2) {
-                           $q2->where('status', 'Đang theo dõi');
-                       });
-                })->orWhereHas('validationTracking.planMasters', function($q2) use ($plan_master_id) {
+                        ->whereHas('validationTracking', function ($q2) {
+                            $q2->where('status', 'Đang theo dõi');
+                        });
+                })->orWhereHas('validationTracking.planMasters', function ($q2) use ($plan_master_id) {
                     $q2->where('plan_master_id', $plan_master_id);
                 });
             });
         } else {
             $query->whereColumn('num_of_finished_batch', '<', 'num_of_tracking_batch')
-                  ->whereHas('validationTracking', function ($q) {
-                      $q->where('status', 'Đang theo dõi');
-                  });
+                ->whereHas('validationTracking', function ($q) {
+                    $q->where('status', 'Đang theo dõi');
+                });
         }
 
         $trackings = $query->get();
@@ -225,7 +226,7 @@ class ValidationTrackingController extends Controller
     public function getPlanMasters(Request $request, $tracking_id)
     {
         $ic_id = $request->query('ic_id');
-        
+
         $planMasterIds = DB::table('validation_tracking_plan_master')
             ->where('validation_tracking_id', $tracking_id)
             ->pluck('plan_master_id')
@@ -286,7 +287,7 @@ class ValidationTrackingController extends Controller
             })
             ->leftJoin('stage_plan', function ($join) {
                 $join->on('plan_master.main_parkaging_id', '=', 'stage_plan.plan_master_id')
-                        ->on('stage_plan.stage_code', '=', 'sp_max.max_stage_code');
+                    ->on('stage_plan.stage_code', '=', 'sp_max.max_stage_code');
             });
 
         if ($ic_id) {

@@ -42,6 +42,7 @@
                             <tr>
                                 <th>Năm</th>
                                 <th>Ghi chú</th>
+                                <th>Người tạo</th>
                                 <th>Ngày tạo</th>
                                 <th class="text-center">Chi Tiết</th>
                             </tr>
@@ -51,6 +52,7 @@
                                 <tr>
                                     <td>{{ $plan->year }}</td>
                                     <td>{{ $plan->description }}</td>
+                                    <td>{{ $plan->created_by }}</td>
                                     <td>{{ $plan->created_at->format('d/m/Y') }}</td>
                                     <td class="text-center align-middle">
                                         <a href="{{ route('pages.plan.annual.show', $plan->id) }}"
@@ -60,7 +62,7 @@
                             @endforeach
                             @if ($plans->isEmpty())
                                 <tr>
-                                    <td colspan="4" class="text-center">Chưa có kế hoạch nào</td>
+                                    <td colspan="5" class="text-center">Chưa có kế hoạch nào</td>
                                 </tr>
                             @endif
                         </tbody>

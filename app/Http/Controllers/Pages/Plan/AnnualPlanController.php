@@ -14,13 +14,14 @@ class AnnualPlanController extends Controller
     public function index()
     {
         $plans = AnnualPlan::orderBy('year', 'desc')->get();
+        session()->put(['title' => 'KẾ HOẠCH NĂM DỰ KIẾN']);
         return view('pages.plan.annual.index', compact('plans'));
     }
 
     public function show($id)
     {
         $plan = AnnualPlan::with(['products.monthlyData', 'products.finishedProductCategory.productName'])->findOrFail($id);
-        
+
         $existingProductIds = $plan->products->pluck('finished_product_category_id')->toArray();
 
         $markets = \Illuminate\Support\Facades\DB::table('market')->pluck('name', 'id');
@@ -31,7 +32,7 @@ class AnnualPlanController extends Controller
 
         // --- Bắt đầu tính toán Tồn Kho Lũy Kế từ MMS ---
         $matIds = [];
-        foreach($plan->products as $product) {
+        foreach ($plan->products as $product) {
             $fpc = $product->finishedProductCategory;
             if ($fpc && $fpc->finished_product_code) {
                 $matIds[] = $fpc->finished_product_code;
@@ -44,7 +45,7 @@ class AnnualPlanController extends Controller
 
         $startDate = $plan->year . '-01-01 00:00:00';
         $endDate = $plan->year . '-12-31 23:59:59';
-        
+
         // 1. Số dư đầu kỳ (Tính đến trước 01/01 của năm kế hoạch)
         $openingSql = "
         WITH InventoryTransactions AS (
@@ -72,13 +73,14 @@ class AnnualPlanController extends Controller
         ";
         try {
             $openingResults = \Illuminate\Support\Facades\DB::connection('mms')->select($openingSql, [$startDate, $startDate]);
-            foreach($openingResults as $r) {
+            foreach ($openingResults as $r) {
                 // Chỉ lấy những mã có trong kế hoạch
                 if (in_array($r->ProductID, $matIds)) {
                     $openingBalances[$r->ProductID] = $r->OpeningQty;
                 }
             }
-        } catch (\Exception $e) { }
+        } catch (\Exception $e) {
+        }
 
         // 2. Biến động Tồn kho từng tháng trong năm kế hoạch
         $monthlySql = "
@@ -100,12 +102,13 @@ class AnnualPlanController extends Controller
         ";
         try {
             $monthlyResults = \Illuminate\Support\Facades\DB::connection('mms')->select($monthlySql, [$startDate, $endDate, $startDate, $endDate]);
-            foreach($monthlyResults as $r) {
+            foreach ($monthlyResults as $r) {
                 if (in_array($r->ProductID, $matIds)) {
                     $monthlyNets[$r->ProductID][$r->Mth] = $r->NetQty;
                 }
             }
-        } catch (\Exception $e) { }
+        } catch (\Exception $e) {
+        }
 
         // 3. Thực xuất KD từng tháng trong năm kế hoạch
         $kdMonthlyNets = [];
@@ -123,13 +126,14 @@ class AnnualPlanController extends Controller
         ";
         try {
             $kdResults = \Illuminate\Support\Facades\DB::connection('mms')->select($kdSql, [$startDate, $endDate]);
-            foreach($kdResults as $r) {
+            foreach ($kdResults as $r) {
                 $trimmedPid = trim($r->ProductID);
                 if (in_array($trimmedPid, $matIds)) {
                     $kdMonthlyNets[$trimmedPid][$r->Mth] = $r->Qty;
                 }
             }
-        } catch (\Exception $e) { }
+        } catch (\Exception $e) {
+        }
         // --- Kết thúc tính toán Tồn Kho Lũy Kế từ MMS ---
 
         // --- Tính toán BTP dở dang (WIP) từ plan_master ---
@@ -163,7 +167,7 @@ class AnnualPlanController extends Controller
                   OR weighing_sp.start_date IS NOT NULL
               )
         ";
-        
+
         $wipBatches = \Illuminate\Support\Facades\DB::select($wipQuery);
         $wipData = [];
         $planYearInt = (int) $plan->year;
@@ -172,21 +176,21 @@ class AnnualPlanController extends Controller
             $startDate = $batch->start_date ? \Carbon\Carbon::parse($batch->start_date) : null;
             $endDate = $batch->end_date ? \Carbon\Carbon::parse($batch->end_date) : null;
             $isFinished = (bool) $batch->is_finished;
-            
+
             if (!$startDate) {
                 continue;
             }
-            
+
             for ($m = 1; $m <= 12; $m++) {
                 $endOfMonth = \Carbon\Carbon::create($planYearInt, $m, 1)->endOfMonth();
-                
+
                 $hasStarted = $startDate->lte($endOfMonth);
-                
+
                 $hasNotEnded = true;
                 if ($isFinished && $endDate) {
                     $hasNotEnded = $endDate->gt($endOfMonth);
                 }
-                
+
                 if ($hasStarted && $hasNotEnded) {
                     if (!isset($wipData[$batch->fpc_id])) {
                         $wipData[$batch->fpc_id] = array_fill(1, 12, 0);
@@ -197,7 +201,7 @@ class AnnualPlanController extends Controller
         }
         // --- Kết thúc tính WIP ---
 
-        foreach($plan->products as $product) {
+        foreach ($plan->products as $product) {
             $fpc = $product->finishedProductCategory;
             $market_name = $fpc && $fpc->market_id ? ($markets[$fpc->market_id] ?? '') : '';
             $int_code = $fpc ? $fpc->intermediate_code : null;
@@ -222,7 +226,7 @@ class AnnualPlanController extends Controller
                 'average_astimated_box' => $fpc->average_astimated_box,
                 'average_astimated_pill' => ($fpc->average_astimated_box ?? 0) * ($fpc->packaging_spec ?? 0),
             ];
-            
+
             $matId = $fpc->finished_product_code ? trim($fpc->finished_product_code) : null;
             $runningBalance = $matId && isset($openingBalances[$matId]) ? $openingBalances[$matId] : 0;
 
@@ -231,11 +235,11 @@ class AnnualPlanController extends Controller
 
             // Initialize 12 months with null
             for ($m = 1; $m <= 12; $m++) {
-                $row['m'.$m.'_batches'] = null;
-                $row['m'.$m.'_wip_inventory'] = null;
-                $row['m'.$m.'_planned_quantity'] = null;
-                $row['m'.$m.'_months_sales'] = null;
-                
+                $row['m' . $m . '_batches'] = null;
+                $row['m' . $m . '_wip_inventory'] = null;
+                $row['m' . $m . '_planned_quantity'] = null;
+                $row['m' . $m . '_months_sales'] = null;
+
                 // Tính tồn kho thực tế từ MMS
                 if ($matId) {
                     $shouldCalculate = true;
@@ -244,39 +248,39 @@ class AnnualPlanController extends Controller
                     } elseif ($plan->year == $currentYear && $m >= $currentMonth) {
                         $shouldCalculate = false;
                     }
-                    
+
                     if ($shouldCalculate) {
                         $net = isset($monthlyNets[$matId][$m]) ? $monthlyNets[$matId][$m] : 0;
                         $runningBalance += $net;
                     }
-                    
-                    $row['m'.$m.'_expected_inventory'] = max(0, round($runningBalance, 0));
+
+                    $row['m' . $m . '_expected_inventory'] = max(0, round($runningBalance, 0));
                 } else {
-                    $row['m'.$m.'_expected_inventory'] = null;
+                    $row['m' . $m . '_expected_inventory'] = null;
                 }
             }
-            
-            foreach($product->monthlyData as $md) {
-                $row['m'.$md->month.'_batches'] = $md->planned_batches;
+
+            foreach ($product->monthlyData as $md) {
+                $row['m' . $md->month . '_batches'] = $md->planned_batches;
                 // $row['m'.$md->month.'_wip_inventory'] = $md->inventory_wip; // Vô hiệu hóa, giờ tính tự động
             }
 
             // Gán dữ liệu WIP tự động
             $fpcId = $fpc->id ?? null;
             for ($m = 1; $m <= 12; $m++) {
-                $row['m'.$m.'_wip_inventory'] = ($fpcId && isset($wipData[$fpcId][$m])) ? $wipData[$fpcId][$m] : 0;
+                $row['m' . $m . '_wip_inventory'] = ($fpcId && isset($wipData[$fpcId][$m])) ? $wipData[$fpcId][$m] : 0;
             }
 
             // Calculate planned_quantity and months_sales, and KD actual export, ratio, safety stock
             $avg_forecast_pill = ($fpc->average_astimated_box ?? 0) * ($fpc->packaging_spec ?? 0);
             for ($m = 1; $m <= 12; $m++) {
-                $batches = $row['m'.$m.'_batches'] ?: 0;
+                $batches = $row['m' . $m . '_batches'] ?: 0;
                 $batch_size = $row['batch_size'] ?: 0;
-                $row['m'.$m.'_planned_quantity'] = $batches * $batch_size;
+                $row['m' . $m . '_planned_quantity'] = $batches * $batch_size;
 
-                $wip = $row['m'.$m.'_wip_inventory'] ?: 0;
-                $fg = $row['m'.$m.'_expected_inventory'] ?: 0;
-                
+                $wip = $row['m' . $m . '_wip_inventory'] ?: 0;
+                $fg = $row['m' . $m . '_expected_inventory'] ?: 0;
+
                 // Recalculate avg_sales_pill
                 $packaging_spec = $row['packaging_spec'] ?: 0;
                 $avg_sales_box = $row['avg_sales_box'] ?: 0;
@@ -284,25 +288,25 @@ class AnnualPlanController extends Controller
                 $row['avg_sales_pill'] = $avg_sales;
 
                 if ($avg_sales > 0) {
-                    $row['m'.$m.'_months_sales'] = round(($wip + $fg) / $avg_sales, 2);
+                    $row['m' . $m . '_months_sales'] = round(($wip + $fg) / $avg_sales, 2);
                 } else {
-                    $row['m'.$m.'_months_sales'] = 0;
+                    $row['m' . $m . '_months_sales'] = 0;
                 }
 
                 // Thực xuất KD
                 $kd_qty = ($matId && isset($kdMonthlyNets[$matId][$m])) ? $kdMonthlyNets[$matId][$m] : 0;
-                $row['m'.$m.'_kd_export'] = $kd_qty;
+                $row['m' . $m . '_kd_export'] = $kd_qty;
 
                 // Tỉ lệ thực xuất / dự trù và dự trữ an toàn
                 if ($avg_forecast_pill > 0) {
-                    $row['m'.$m.'_kd_ratio'] = round($kd_qty / $avg_forecast_pill, 4);
-                    $row['m'.$m.'_kd_safety_stock'] = round($fg / $avg_forecast_pill, 2);
+                    $row['m' . $m . '_kd_ratio'] = round($kd_qty / $avg_forecast_pill, 4);
+                    $row['m' . $m . '_kd_safety_stock'] = round($fg / $avg_forecast_pill, 2);
                 } else {
-                    $row['m'.$m.'_kd_ratio'] = 0;
-                    $row['m'.$m.'_kd_safety_stock'] = 0;
+                    $row['m' . $m . '_kd_ratio'] = 0;
+                    $row['m' . $m . '_kd_safety_stock'] = 0;
                 }
             }
-            
+
             $hotData[] = $row;
         }
 
@@ -322,13 +326,13 @@ class AnnualPlanController extends Controller
         $plan = AnnualPlan::with('products')->findOrFail($id);
         $existingProductIds = $plan->products->pluck('finished_product_category_id')->filter()->toArray();
         $products = \App\Models\FinishedProductCategory::with('productName');
-        
+
         if (!empty($existingProductIds)) {
             $products = $products->whereNotIn('id', $existingProductIds);
         }
-        
+
         $products = $products->get();
-            
+
         return view('pages.plan.annual.partials.unassigned_products', compact('products'))->render();
     }
 
@@ -362,7 +366,8 @@ class AnnualPlanController extends Controller
 
         AnnualPlan::create([
             'year' => $request->year,
-            'description' => $request->description
+            'description' => $request->description,
+            'created_by' => session('user')['fullName'] ?? 'System'
         ]);
 
         return redirect()->back()->with('success', 'Đã tạo kế hoạch năm thành công');
@@ -377,7 +382,7 @@ class AnnualPlanController extends Controller
             return response()->json(['success' => false, 'message' => 'No data provided']);
         }
 
-        \Illuminate\Support\Facades\DB::transaction(function() use ($data, $year) {
+        \Illuminate\Support\Facades\DB::transaction(function () use ($data, $year) {
             foreach ($data as $row) {
                 if (!isset($row['id'])) continue;
 
@@ -412,7 +417,7 @@ class AnnualPlanController extends Controller
                     // Update monthly data
                     for ($m = 1; $m <= 12; $m++) {
                         $batches_key = 'm' . $m . '_batches';
-                        
+
                         if (array_key_exists($batches_key, $row)) {
                             $planned_batches = isset($row[$batches_key]) && $row[$batches_key] !== null && $row[$batches_key] !== '' ? (int) str_replace(',', '', $row[$batches_key]) : null;
 
@@ -444,9 +449,9 @@ class AnnualPlanController extends Controller
         $departmentCode = request()->query('department_code', 'PXV1');
 
         $planMasterData = \Illuminate\Support\Facades\DB::table('annual_plan_products as app')
-            ->join('annual_plan_monthly_data as apmd', function($join) use ($month) {
+            ->join('annual_plan_monthly_data as apmd', function ($join) use ($month) {
                 $join->on('app.id', '=', 'apmd.annual_plan_product_id')
-                     ->where('apmd.month', '=', $month);
+                    ->where('apmd.month', '=', $month);
             })
             ->join('finished_product_category as fpc', 'app.finished_product_category_id', '=', 'fpc.id')
             ->where('app.annual_plan_id', $id)
@@ -471,7 +476,7 @@ class AnnualPlanController extends Controller
             ->where('finished', 0)
             ->where(function ($query) {
                 $query->whereNotNull('actual_start')
-                      ->orWhereNotNull('schedualed_at');
+                    ->orWhereNotNull('schedualed_at');
             })
             ->select('resourceId', \Illuminate\Support\Facades\DB::raw('COUNT(*) as scheduled_count'))
             ->groupBy('resourceId')
@@ -497,7 +502,7 @@ class AnnualPlanController extends Controller
         foreach ($planMasterData as $plan) {
             $productQuotas = $quotas->filter(function ($q) use ($plan) {
                 return ($q->finished_product_code === $plan->product_code && $q->finished_product_code !== 'NA') ||
-                        ($q->intermediate_code === $plan->intermediate_code && $q->intermediate_code !== 'NA');
+                    ($q->intermediate_code === $plan->intermediate_code && $q->intermediate_code !== 'NA');
             });
             $processedGroups = [];
             foreach ($productQuotas as $q) {
@@ -722,8 +727,10 @@ class AnnualPlanController extends Controller
         ";
 
         $results = \Illuminate\Support\Facades\DB::connection('mms')->select($sql, [
-            $finishedProductCode, $endOfMonth,
-            $finishedProductCode, $endOfMonth
+            $finishedProductCode,
+            $endOfMonth,
+            $finishedProductCode,
+            $endOfMonth
         ]);
 
         $data = [];
@@ -899,7 +906,7 @@ class AnnualPlanController extends Controller
                     $bomMaterialsToInsert = [];
                     $intermediateCode = $fpc->intermediate_code;
                     $user_fullname = session('user')['fullName'] ?? 'Auto-generate';
-                    
+
                     if ($intermediateCode && isset($filteredMaterials[$intermediateCode])) {
                         foreach ($filteredMaterials[$intermediateCode] as $bomItem) {
                             $bomMaterialsToInsert[] = [

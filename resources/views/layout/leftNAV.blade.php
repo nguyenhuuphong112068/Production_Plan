@@ -414,11 +414,11 @@
                     </a>
 
                     <ul class="nav nav-treeview">
-                        @if (user_has_permission(session('user')['userId'], 'layout_test', 'boolean'))
+                        @if (user_has_permission(session('user')['userId'], 'layout_annual_plan', 'boolean'))
                             <li class="nav-item">
                                 <a href="{{ route('pages.plan.annual.list') }}" class="nav-link">
                                     <i class="far fa-circle nav-icon text-warning"></i>
-                                    <p>Kế Hoạch Năm</p>
+                                    <p>Kế Hoạch Năm Dự Kiến</p>
                                 </a>
                             </li>
                         @endif
