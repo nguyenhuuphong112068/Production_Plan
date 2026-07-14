@@ -101,7 +101,7 @@
         <div class="card-body">
 
             <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap">
-                
+
                 <!-- Nhóm 1: Thao tác -->
                 <div class="d-flex mb-2" style="gap: 10px;">
                     @if (user_has_permission(session('user')['userId'], 'plan_production_create', 'boolean') && !$send)
@@ -109,11 +109,13 @@
                             <i class="fas fa-plus"></i> Thêm
                         </button>
                     @endif
-                    @if (user_has_permission(session('user')['userId'], 'plan_production_create', 'boolean'))
-                        <button type="button" class="btn btn-warning btn-bulk-edit font-weight-bold text-white" disabled>
+                    @if (user_has_permission(session('user')['userId'], 'plan_production_create', 'boolean') && $plan_list_id > 0)
+                        <button type="button" class="btn btn-warning btn-bulk-edit font-weight-bold text-white"
+                            disabled>
                             Sửa Nhiều Lô (<span id="selected-count">0</span>)
                         </button>
-                        <button type="button" class="btn btn-danger btn-bulk-deactive font-weight-bold text-white" disabled>
+                        <button type="button" class="btn btn-danger btn-bulk-deactive font-weight-bold text-white"
+                            disabled>
                             Hủy Nhiều Lô (<span id="selected-count-deactive">0</span>)
                         </button>
                     @endif
@@ -150,7 +152,8 @@
 
                 <!-- Nhóm 3: Gửi và Xuất -->
                 <div class="d-flex mb-2" style="gap: 10px;">
-                    <form id="send_form" action="{{ route('pages.plan.production.send') }}" method="post" class="m-0">
+                    <form id="send_form" action="{{ route('pages.plan.production.send') }}" method="post"
+                        class="m-0">
                         @csrf
                         <input type="hidden" name="plan_list_id" value="{{ $plan_list_id }}">
                         <input type="hidden" name="month" value="{{ $month }}">
@@ -610,24 +613,30 @@
                     <div class="row mb-3 pb-2 border-bottom">
                         <div class="col-md-3">
                             <label class="font-weight-bold mb-1" style="font-size: 13px;">Mã BTP</label>
-                            <input type="text" class="form-control form-control-sm bg-light" id="bulk_info_intermediate_code" readonly>
+                            <input type="text" class="form-control form-control-sm bg-light"
+                                id="bulk_info_intermediate_code" readonly>
                         </div>
                         <div class="col-md-3">
                             <label class="font-weight-bold mb-1" style="font-size: 13px;">Mã TP</label>
-                            <input type="text" class="form-control form-control-sm bg-light" id="bulk_info_fp_code" readonly>
+                            <input type="text" class="form-control form-control-sm bg-light"
+                                id="bulk_info_fp_code" readonly>
                         </div>
                         <div class="col-md-6">
-                            <label class="font-weight-bold mb-1" style="font-size: 13px;">Qui Cách - Thị Trường</label>
-                            <input type="text" class="form-control form-control-sm bg-light" id="bulk_info_spec_market" readonly>
+                            <label class="font-weight-bold mb-1" style="font-size: 13px;">Qui Cách - Thị
+                                Trường</label>
+                            <input type="text" class="form-control form-control-sm bg-light"
+                                id="bulk_info_spec_market" readonly>
                         </div>
-                        
+
                         <div class="col-md-9 mt-2">
                             <label class="font-weight-bold mb-1" style="font-size: 13px;">Tên Sản Phẩm</label>
-                            <input type="text" class="form-control form-control-sm bg-light" id="bulk_info_product_name" readonly>
+                            <input type="text" class="form-control form-control-sm bg-light"
+                                id="bulk_info_product_name" readonly>
                         </div>
                         <div class="col-md-3 mt-2">
                             <label class="font-weight-bold mb-1" style="font-size: 13px;">Cỡ Lô</label>
-                            <input type="text" class="form-control form-control-sm bg-light" id="bulk_info_batch_qty" readonly>
+                            <input type="text" class="form-control form-control-sm bg-light"
+                                id="bulk_info_batch_qty" readonly>
                         </div>
                     </div>
 
@@ -642,7 +651,9 @@
                                     <div class="input-group input-group-sm mb-1">
                                         <input type="text" class="form-control" id="bulk_batch">
                                         <span class="input-group-text p-0" style="width: 105px;">
-                                            <input type="checkbox" id="bulk_format_batch_no" checked data-bootstrap-switch data-on-text="AAMMYY" data-off-text="YWWAA" data-on-color="success" data-off-color="danger" data-size="small">
+                                            <input type="checkbox" id="bulk_format_batch_no" checked
+                                                data-bootstrap-switch data-on-text="AAMMYY" data-off-text="YWWAA"
+                                                data-on-color="success" data-off-color="danger" data-size="small">
                                         </span>
                                     </div>
                                 </div>
@@ -1204,13 +1215,13 @@
                                   <td class="text-center align-middle">
                                       ${item.is_val ? '<i class="fas fa-check-circle text-primary fs-4"></i>' : ''}
                                       ${item.vts && item.vts.length > 0 ? item.vts.map(vt => `
-                                                                          <div class="mt-1 text-left">
-                                                                              <span class="badge badge-warning" style="white-space: normal; text-align: left; line-height: 1.4; border: 1px solid #ffc107;">
-                                                                                  <i class="fas fa-exclamation-triangle"></i> TĐNL: ${vt.MaterialName}
-                                                                                  ${vt.purpose ? `<br><small>${vt.purpose}</small>` : ''}
-                                                                              </span>
-                                                                          </div>
-                                                                      `).join('') : ''}
+                                                                                  <div class="mt-1 text-left">
+                                                                                      <span class="badge badge-warning" style="white-space: normal; text-align: left; line-height: 1.4; border: 1px solid #ffc107;">
+                                                                                          <i class="fas fa-exclamation-triangle"></i> TĐNL: ${vt.MaterialName}
+                                                                                          ${vt.purpose ? `<br><small>${vt.purpose}</small>` : ''}
+                                                                                      </span>
+                                                                                  </div>
+                                                                              `).join('') : ''}
                                   </td>
 
 
