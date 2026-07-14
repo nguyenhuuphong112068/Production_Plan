@@ -218,7 +218,7 @@
                 <tbody>
 
                     @foreach ($datas as $data)
-                        <tr class = "{{ $data->IsHypothesis ? 'highlight-row' : '' }}">
+                        <tr class="{{ $data->IsHypothesis ? 'highlight-row' : '' }}" data-intermediate-code="{{ $data->intermediate_code }}">
 
                             <td>
                                 <div> {{ $loop->iteration }} </div>
@@ -1021,26 +1021,24 @@
             });
 
             $(document).on('blur', '#data_table_plan_master .updateInput', function() {
-
-
-                let id = $(this).data('id');
-                let name = $(this).attr('name');
-                let updateValue = $(this).val();
-                let oldValue = $(this).data('old-value');
+                let currentInput = $(this);
+                let id = currentInput.data('id');
+                let name = currentInput.attr('name');
+                let updateValue = currentInput.val();
+                let oldValue = currentInput.data('old-value');
 
                 if (updateValue === oldValue) return;
 
                 if (!id || id == '') {
-
                     Swal.fire({
                         title: 'Cảnh Báo!',
                         text: 'id Không xác định',
                         icon: 'warning',
-                        timer: 1000, // tự đóng sau 2 giây
+                        timer: 1000,
                         showConfirmButton: false
                     });
-                    $(this).val('');
-                    return
+                    currentInput.val('');
+                    return;
                 }
 
                 if (name == "level") {
@@ -1048,22 +1046,58 @@
                     if (updateValue && !pattern.test(updateValue)) {
                         Swal.fire({
                             title: 'Lỗi định dạng!',
-                            text: 'Thời gian phải có dạng hh:mm (phút là 00, 15, 30, 45)',
+                            text: 'Bậc ưu tiên phải là số nguyên dương',
                             icon: 'error',
                             timer: 2000,
                             showConfirmButton: false
                         });
-                        $(this).focus();
-                        $(this).css('border', '1px solid red');
+                        currentInput.focus();
+                        currentInput.css('border', '1px solid red');
                         return;
                     } else {
-                        $(this).css('border', '');
+                        currentInput.css('border', '');
                     }
                 }
 
+                let tr = currentInput.closest('tr');
+                let btpCode = tr.attr('data-intermediate-code') || tr.data('intermediate-code');
 
+                let siblingInputs = [];
+                if (btpCode && name !== 'batch') {
+                    siblingInputs = $('tr[data-intermediate-code="' + btpCode + '"] .updateInput[name="' + name + '"]').not(currentInput);
+                }
 
+                if (siblingInputs.length > 0) {
+                    Swal.fire({
+                        title: 'Cập nhật hàng loạt?',
+                        text: 'Bạn có muốn tự động cập nhật giá trị này cho ' + siblingInputs.length + ' lô khác có cùng mã BTP (' + btpCode + ') không?',
+                        icon: 'question',
+                        showCancelButton: true,
+                        confirmButtonText: 'Đồng ý',
+                        cancelButtonText: 'Không, chỉ dòng này',
+                        confirmButtonColor: '#3085d6',
+                        cancelButtonColor: '#aaa'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            sendUpdateAjax(id, name, updateValue, currentInput);
+                            
+                            siblingInputs.each(function() {
+                                let sibInput = $(this);
+                                let sibId = sibInput.data('id');
+                                sibInput.val(updateValue);
+                                sibInput.data('old-value', updateValue);
+                                sendUpdateAjax(sibId, name, updateValue, sibInput);
+                            });
+                        } else {
+                            sendUpdateAjax(id, name, updateValue, currentInput);
+                        }
+                    });
+                } else {
+                    sendUpdateAjax(id, name, updateValue, currentInput);
+                }
+            });
 
+            function sendUpdateAjax(id, name, updateValue, inputEl) {
                 $.ajax({
                     url: "{{ route('pages.plan.production.updateInput') }}",
                     type: 'POST',
@@ -1101,7 +1135,7 @@
                             });
                     }
                 });
-            });
+            }
 
             $(document).on('change', '#data_table_plan_master .step-checkbox', function() {
 

@@ -48,19 +48,26 @@ class AnnualPlanController extends Controller
         // 1. Số dư đầu kỳ (Tính đến trước 01/01 của năm kế hoạch)
         $openingSql = "
         WITH InventoryTransactions AS (
-            SELECT MatID AS ProductID, recttlqty AS Qty 
+            SELECT MatID AS ProductID, Mfgbatchno AS lot_number, recttlqty AS Qty 
             FROM FGGRN 
             WHERE GRNAPSTS = 3 AND CRON < ?
             
             UNION ALL
             
-            SELECT i.prdid AS ProductID, (i.ttlqty * -1) AS Qty 
+            SELECT i.prdid AS ProductID, g.Mfgbatchno AS lot_number, (i.ttlqty * -1) AS Qty 
             FROM fgisuregitem i 
             JOIN fgisureg r ON i.issueno = r.Issueno AND i.isuideno = r.isuideno 
+            JOIN FGGRN g ON i.FGGRNNO = g.GRNNO
             WHERE r.apsts = 1 AND r.issuedate < ?
+        ),
+        LotBalances AS (
+            SELECT ProductID, lot_number, SUM(Qty) as LotQty
+            FROM InventoryTransactions
+            GROUP BY ProductID, lot_number
+            HAVING SUM(Qty) >= 1000
         )
-        SELECT ProductID, SUM(Qty) as OpeningQty
-        FROM InventoryTransactions
+        SELECT ProductID, SUM(LotQty) as OpeningQty
+        FROM LotBalances
         GROUP BY ProductID
         ";
         try {
@@ -99,26 +106,62 @@ class AnnualPlanController extends Controller
                 }
             }
         } catch (\Exception $e) { }
+
+        // 3. Thực xuất KD từng tháng trong năm kế hoạch
+        $kdMonthlyNets = [];
+        $kdSql = "
+        SELECT 
+            i.prdid AS ProductID, 
+            MONTH(r.issuedate) as Mth, 
+            SUM(i.ttlqty) as Qty
+        FROM fgisuregitem i
+        JOIN fgisureg r ON i.issueno = r.Issueno AND i.isuideno = r.isuideno
+        WHERE r.apsts = 1 
+          AND r.rem = 'KHUONG DUY'
+          AND r.issuedate >= ? AND r.issuedate <= ?
+        GROUP BY i.prdid, MONTH(r.issuedate)
+        ";
+        try {
+            $kdResults = \Illuminate\Support\Facades\DB::connection('mms')->select($kdSql, [$startDate, $endDate]);
+            foreach($kdResults as $r) {
+                $trimmedPid = trim($r->ProductID);
+                if (in_array($trimmedPid, $matIds)) {
+                    $kdMonthlyNets[$trimmedPid][$r->Mth] = $r->Qty;
+                }
+            }
+        } catch (\Exception $e) { }
         // --- Kết thúc tính toán Tồn Kho Lũy Kế từ MMS ---
 
         // --- Tính toán BTP dở dang (WIP) từ plan_master ---
         $wipQuery = "
             SELECT 
                 pm.product_caterogy_id AS fpc_id,
-                sp_start.actual_start AS start_date,
-                sp_end.actual_end AS end_date,
-                sp_end.finished as is_finished,
+                COALESCE(
+                    CASE WHEN pm.order_number_R1 IS NOT NULL AND pm.order_number_R1 <> '' THEN pm.create_at_order_number ELSE NULL END,
+                    weighing_sp.start_date
+                ) as start_date,
+                packaging_sp.end_date,
+                CASE WHEN packaging_sp.end_date IS NOT NULL THEN 1 ELSE 0 END as is_finished,
                 fpc.batch_qty
             FROM plan_master pm
             JOIN finished_product_category fpc ON pm.product_caterogy_id = fpc.id
-            JOIN stage_plan sp_start ON sp_start.plan_master_id = pm.id AND sp_start.stage_code = 1 AND sp_start.finished = 1
-            JOIN (
-                SELECT plan_master_id, MAX(stage_code) as max_stage_code
+            LEFT JOIN (
+                SELECT plan_master_id, MIN(COALESCE(actual_end, actual_start, end)) as start_date
                 FROM stage_plan
+                WHERE stage_code IN (1, 2) AND finished = 1
                 GROUP BY plan_master_id
-            ) max_sp ON max_sp.plan_master_id = pm.id
-            JOIN stage_plan sp_end ON sp_end.plan_master_id = pm.id AND sp_end.stage_code = max_sp.max_stage_code
+            ) weighing_sp ON weighing_sp.plan_master_id = pm.id
+            LEFT JOIN (
+                SELECT plan_master_id, MAX(COALESCE(actual_end, actual_start, end)) as end_date
+                FROM stage_plan
+                WHERE stage_code >= 7 AND finished = 1
+                GROUP BY plan_master_id
+            ) packaging_sp ON packaging_sp.plan_master_id = pm.id
             WHERE pm.active = 1 AND pm.cancel = 0
+              AND (
+                  (pm.order_number_R1 IS NOT NULL AND pm.order_number_R1 <> '' AND pm.create_at_order_number IS NOT NULL)
+                  OR weighing_sp.start_date IS NOT NULL
+              )
         ";
         
         $wipBatches = \Illuminate\Support\Facades\DB::select($wipQuery);
@@ -126,27 +169,21 @@ class AnnualPlanController extends Controller
         $planYearInt = (int) $plan->year;
 
         foreach ($wipBatches as $batch) {
-            if (!$batch->start_date && !$batch->is_finished) {
+            $startDate = $batch->start_date ? \Carbon\Carbon::parse($batch->start_date) : null;
+            $endDate = $batch->end_date ? \Carbon\Carbon::parse($batch->end_date) : null;
+            $isFinished = (bool) $batch->is_finished;
+            
+            if (!$startDate) {
                 continue;
             }
-            
-            $startDate = $batch->start_date ? \Carbon\Carbon::parse($batch->start_date) : null;
-            $endDate = ($batch->is_finished && $batch->end_date) ? \Carbon\Carbon::parse($batch->end_date) : null;
             
             for ($m = 1; $m <= 12; $m++) {
                 $endOfMonth = \Carbon\Carbon::create($planYearInt, $m, 1)->endOfMonth();
                 
-                $hasStarted = false;
-                if ($startDate) {
-                    $hasStarted = $startDate->lte($endOfMonth);
-                } else {
-                    if ($endDate && $endDate->gt($endOfMonth)) {
-                        $hasStarted = true;
-                    }
-                }
+                $hasStarted = $startDate->lte($endOfMonth);
                 
                 $hasNotEnded = true;
-                if ($endDate) {
+                if ($isFinished && $endDate) {
                     $hasNotEnded = $endDate->gt($endOfMonth);
                 }
                 
@@ -182,9 +219,11 @@ class AnnualPlanController extends Controller
                 'batch_size' => $fpc->batch_qty ?? 0,
                 'avg_sales_box' => $fpc->avg_sales_box,
                 'avg_sales_pill' => $fpc->avg_sales_pill,
+                'average_astimated_box' => $fpc->average_astimated_box,
+                'average_astimated_pill' => ($fpc->average_astimated_box ?? 0) * ($fpc->packaging_spec ?? 0),
             ];
             
-            $matId = $fpc->finished_product_code ?? null;
+            $matId = $fpc->finished_product_code ? trim($fpc->finished_product_code) : null;
             $runningBalance = $matId && isset($openingBalances[$matId]) ? $openingBalances[$matId] : 0;
 
             $currentYear = (int) date('Y');
@@ -228,7 +267,8 @@ class AnnualPlanController extends Controller
                 $row['m'.$m.'_wip_inventory'] = ($fpcId && isset($wipData[$fpcId][$m])) ? $wipData[$fpcId][$m] : 0;
             }
 
-            // Calculate planned_quantity and months_sales based on loaded data
+            // Calculate planned_quantity and months_sales, and KD actual export, ratio, safety stock
+            $avg_forecast_pill = ($fpc->average_astimated_box ?? 0) * ($fpc->packaging_spec ?? 0);
             for ($m = 1; $m <= 12; $m++) {
                 $batches = $row['m'.$m.'_batches'] ?: 0;
                 $batch_size = $row['batch_size'] ?: 0;
@@ -248,12 +288,33 @@ class AnnualPlanController extends Controller
                 } else {
                     $row['m'.$m.'_months_sales'] = 0;
                 }
+
+                // Thực xuất KD
+                $kd_qty = ($matId && isset($kdMonthlyNets[$matId][$m])) ? $kdMonthlyNets[$matId][$m] : 0;
+                $row['m'.$m.'_kd_export'] = $kd_qty;
+
+                // Tỉ lệ thực xuất / dự trù và dự trữ an toàn
+                if ($avg_forecast_pill > 0) {
+                    $row['m'.$m.'_kd_ratio'] = round($kd_qty / $avg_forecast_pill, 4);
+                    $row['m'.$m.'_kd_safety_stock'] = round($fg / $avg_forecast_pill, 2);
+                } else {
+                    $row['m'.$m.'_kd_ratio'] = 0;
+                    $row['m'.$m.'_kd_safety_stock'] = 0;
+                }
             }
             
             $hotData[] = $row;
         }
 
-        return view('pages.plan.annual.show', compact('plan', 'hotData', 'existingProductIds'));
+        $pendingPlans = \Illuminate\Support\Facades\DB::table('plan_list')
+            ->where('send', 0)
+            ->where('active', 1)
+            ->where('type', 1)
+            ->orderBy('year', 'desc')
+            ->orderBy('month', 'desc')
+            ->get();
+
+        return view('pages.plan.annual.show', compact('plan', 'hotData', 'existingProductIds', 'pendingPlans'));
     }
 
     public function unassignedProducts($id)
@@ -341,6 +402,9 @@ class AnnualPlanController extends Controller
                         }
                         if (array_key_exists('avg_sales_pill', $row)) {
                             $fpc->avg_sales_pill = $row['avg_sales_pill'] !== null && $row['avg_sales_pill'] !== '' ? (int) str_replace(',', '', $row['avg_sales_pill']) : null;
+                        }
+                        if (array_key_exists('average_astimated_box', $row)) {
+                            $fpc->average_astimated_box = $row['average_astimated_box'] !== null && $row['average_astimated_box'] !== '' ? (int) str_replace(',', '', $row['average_astimated_box']) : null;
                         }
                         $fpc->save();
                     }
@@ -505,5 +569,439 @@ class AnnualPlanController extends Controller
             'success' => true,
             'data' => array_values($equipmentStats)
         ]);
+    }
+
+    public function getWipDetails($productId, $month)
+    {
+        $appProduct = AnnualPlanProduct::findOrFail($productId);
+        $plan = AnnualPlan::findOrFail($appProduct->annual_plan_id);
+        $fpc_id = $appProduct->finished_product_category_id;
+        $planYearInt = (int) $plan->year;
+        $month = (int) $month;
+
+        $wipQuery = "
+            SELECT 
+                pm.id as plan_id,
+                pm.batch as planned_batch,
+                pm.actual_batch,
+                pm.order_number_R1,
+                COALESCE(
+                    CASE WHEN pm.order_number_R1 IS NOT NULL AND pm.order_number_R1 <> '' THEN pm.create_at_order_number ELSE NULL END,
+                    weighing_sp.start_date
+                ) as start_date,
+                packaging_sp.end_date,
+                CASE WHEN packaging_sp.end_date IS NOT NULL THEN 1 ELSE 0 END as is_finished,
+                fpc.batch_qty,
+                CASE
+                    WHEN pm.cancel = 1 THEN 'Hủy'
+                    WHEN sp_max.max_stage_code IS NULL THEN 'Chưa làm'
+                    WHEN sp_max.max_stage_code < 7 AND sp_max.max_stage_code = sp_possible.max_possible_stage_code THEN 'Hoàn Tất'
+                    WHEN sp_max.max_stage_code = 1 THEN 'Đã Cân'
+                    WHEN sp_max.max_stage_code = 2 THEN 'Đã Cân'
+                    WHEN sp_max.max_stage_code = 3 THEN 'Đã Pha chế'
+                    WHEN sp_max.max_stage_code = 4 THEN 'Đã THT'
+                    WHEN sp_max.max_stage_code = 5 THEN 'Đã định hình'
+                    WHEN sp_max.max_stage_code = 6 THEN 'Đã Bao phim'
+                    WHEN sp_max.max_stage_code >= 7 THEN 'Hoàn Tất ĐG'
+                    ELSE 'Đang dở dang'
+                END as current_stage_status
+            FROM plan_master pm
+            JOIN finished_product_category fpc ON pm.product_caterogy_id = fpc.id
+            LEFT JOIN (
+                SELECT plan_master_id, MIN(COALESCE(actual_end, actual_start, end)) as start_date
+                FROM stage_plan
+                WHERE stage_code IN (1, 2) AND finished = 1
+                GROUP BY plan_master_id
+            ) weighing_sp ON weighing_sp.plan_master_id = pm.id
+            LEFT JOIN (
+                SELECT plan_master_id, MAX(COALESCE(actual_end, actual_start, end)) as end_date
+                FROM stage_plan
+                WHERE stage_code >= 7 AND finished = 1
+                GROUP BY plan_master_id
+            ) packaging_sp ON packaging_sp.plan_master_id = pm.id
+            LEFT JOIN (
+                SELECT plan_master_id, MAX(stage_code) as max_stage_code
+                FROM stage_plan
+                WHERE finished = 1
+                GROUP BY plan_master_id
+            ) sp_max ON sp_max.plan_master_id = pm.id
+            LEFT JOIN (
+                SELECT plan_master_id, MAX(stage_code) as max_possible_stage_code
+                FROM stage_plan
+                WHERE active = 1 AND stage_code <> 8
+                GROUP BY plan_master_id
+            ) sp_possible ON sp_possible.plan_master_id = pm.id
+            WHERE pm.active = 1 AND pm.cancel = 0
+              AND pm.product_caterogy_id = ?
+              AND (
+                  (pm.order_number_R1 IS NOT NULL AND pm.order_number_R1 <> '' AND pm.create_at_order_number IS NOT NULL)
+                  OR weighing_sp.start_date IS NOT NULL
+              )
+        ";
+
+        $batches = \Illuminate\Support\Facades\DB::select($wipQuery, [$fpc_id]);
+        $details = [];
+
+        $endOfMonth = \Carbon\Carbon::create($planYearInt, $month, 1)->endOfMonth();
+
+        foreach ($batches as $batch) {
+            $startDate = $batch->start_date ? \Carbon\Carbon::parse($batch->start_date) : null;
+            $endDate = $batch->end_date ? \Carbon\Carbon::parse($batch->end_date) : null;
+            $isFinished = (bool) $batch->is_finished;
+
+            if (!$startDate) {
+                continue;
+            }
+
+            $hasStarted = $startDate->lte($endOfMonth);
+            $hasNotEnded = true;
+            if ($isFinished && $endDate) {
+                $hasNotEnded = $endDate->gt($endOfMonth);
+            }
+
+            if ($hasStarted && $hasNotEnded) {
+                $status = $batch->current_stage_status;
+                if ($isFinished && $endDate) {
+                    $status = 'Hoàn Tất ĐG (' . $endDate->format('d/m/Y') . ')';
+                }
+
+                $details[] = [
+                    'plan_id' => $batch->plan_id,
+                    'batch_code' => $batch->actual_batch ?: $batch->planned_batch,
+                    'order_number' => $batch->order_number_R1 ?: 'Chưa có',
+                    'start_date' => $startDate->format('d/m/Y H:i'),
+                    'end_date' => $endDate ? $endDate->format('d/m/Y H:i') : 'Chưa hoàn thành',
+                    'status' => $status,
+                    'batch_qty' => number_format($batch->batch_qty)
+                ];
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $details
+        ]);
+    }
+
+    public function getInventoryDetails($productId, $month)
+    {
+        $appProduct = AnnualPlanProduct::findOrFail($productId);
+        $plan = AnnualPlan::findOrFail($appProduct->annual_plan_id);
+        $fpc = $appProduct->finishedProductCategory;
+        $finishedProductCode = $fpc ? $fpc->finished_product_code : null;
+
+        if (!$finishedProductCode) {
+            return response()->json([
+                'success' => true,
+                'data' => []
+            ]);
+        }
+
+        $endOfMonth = \Carbon\Carbon::create((int) $plan->year, (int) $month, 1)->endOfMonth()->format('Y-m-d 23:59:59');
+
+        $sql = "
+            SELECT 
+                t.lot_number,
+                SUM(t.Qty) AS quantity
+            FROM (
+                SELECT Mfgbatchno AS lot_number, recttlqty AS Qty 
+                FROM FGGRN 
+                WHERE GRNAPSTS = 3 AND MatID = ? AND CRON <= ?
+                
+                UNION ALL
+                
+                SELECT g.Mfgbatchno AS lot_number, (i.ttlqty * -1) AS Qty 
+                FROM fgisuregitem i 
+                JOIN fgisureg r ON i.issueno = r.Issueno AND i.isuideno = r.isuideno 
+                JOIN FGGRN g ON i.FGGRNNO = g.GRNNO
+                WHERE r.apsts = 1 AND i.prdid = ? AND r.issuedate <= ?
+            ) t
+            GROUP BY t.lot_number
+            HAVING SUM(t.Qty) >= 1000
+            ORDER BY t.lot_number ASC
+        ";
+
+        $results = \Illuminate\Support\Facades\DB::connection('mms')->select($sql, [
+            $finishedProductCode, $endOfMonth,
+            $finishedProductCode, $endOfMonth
+        ]);
+
+        $data = [];
+        foreach ($results as $r) {
+            $data[] = [
+                'lot_number' => trim($r->lot_number),
+                'quantity' => number_format($r->quantity)
+            ];
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $data
+        ]);
+    }
+
+    public function pushToMonthly(Request $request, $id)
+    {
+        $plan = AnnualPlan::with('products.monthlyData')->findOrFail($id);
+        $month = (int) $request->input('month');
+        $targetPlanListId = (int) $request->input('target_plan_list_id');
+
+        $targetPlanList = \Illuminate\Support\Facades\DB::table('plan_list')
+            ->where('id', $targetPlanListId)
+            ->first();
+
+        if (!$targetPlanList || $targetPlanList->type != 1) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Kế hoạch tháng nhận không tồn tại hoặc không phải là kế hoạch sản xuất!'
+            ], 404);
+        }
+
+        if ($targetPlanList->send == 1) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Kế hoạch tháng nhận đã được gửi đi, không thể đẩy thêm!'
+            ], 400);
+        }
+
+        $targetYear = $targetPlanList->year;
+        $targetMonth = $targetPlanList->month;
+        $baseDate = \Carbon\Carbon::create($targetYear, $targetMonth, 1)->startOfDay();
+        $expectedDate = $baseDate->copy()->addDays(40)->format('Y-m-d');
+
+        $targetMonthStr = str_pad($targetMonth, 2, '0', STR_PAD_LEFT);
+        $targetYearStr = substr($targetYear, -2);
+
+        $insertedCount = 0;
+
+        // Fetch BOM codes for all products in this plan
+        $intermediateCodes = [];
+        $finishedProductCodes = [];
+        foreach ($plan->products as $product) {
+            $fpc = $product->finishedProductCategory;
+            if ($fpc) {
+                if ($fpc->intermediate_code) {
+                    $intermediateCodes[] = $fpc->intermediate_code;
+                }
+                if ($fpc->finished_product_code) {
+                    $finishedProductCodes[] = $fpc->finished_product_code;
+                }
+            }
+        }
+        $intermediateCodes = array_values(array_unique(array_filter($intermediateCodes)));
+        $finishedProductCodes = array_values(array_unique(array_filter($finishedProductCodes)));
+
+        $filteredMaterials = [];
+        $filteredPackagings = [];
+
+        try {
+            $materialsBoms = [];
+            if (!empty($intermediateCodes)) {
+                $materialsBoms = \Illuminate\Support\Facades\DB::connection('mms')
+                    ->table('yfBOM_BOMItemHP')
+                    ->whereIn('PrdID', $intermediateCodes)
+                    ->get();
+            }
+
+            $packagingsBoms = [];
+            if (!empty($finishedProductCodes)) {
+                $packagingsBoms = \Illuminate\Support\Facades\DB::connection('mms')
+                    ->table('yfBOM_BOMItemHP')
+                    ->whereIn('PrdID', $finishedProductCodes)
+                    ->get();
+            }
+
+            $materialsGrouped = collect($materialsBoms)->groupBy('PrdID');
+            foreach ($materialsGrouped as $prdId => $items) {
+                $maxRev = $items->max('Revno');
+                $filteredMaterials[$prdId] = $items->filter(fn($item) => $item->Revno == $maxRev);
+            }
+
+            $packagingsGrouped = collect($packagingsBoms)->groupBy('PrdID');
+            foreach ($packagingsGrouped as $prdId => $items) {
+                $maxRev = $items->max('Revno');
+                $filteredPackagings[$prdId] = $items->filter(fn($item) => $item->Revno == $maxRev);
+            }
+        } catch (\Exception $e) {
+            // Silence or handle connection errors
+        }
+
+        \Illuminate\Support\Facades\DB::beginTransaction();
+        try {
+            foreach ($plan->products as $product) {
+                $fpc = $product->finishedProductCategory;
+                if (!$fpc) {
+                    continue;
+                }
+
+                $fpc_id = $fpc->id;
+                $deparment_code = $fpc->deparment_code ?? session('user')['production_code'] ?? 'PX1';
+
+                $md = $product->monthlyData->where('month', $month)->first();
+                $plannedBatches = $md ? (int) $md->planned_batches : 0;
+
+                if ($plannedBatches <= 0) {
+                    continue;
+                }
+
+                $existingCount = \Illuminate\Support\Facades\DB::table('plan_master')
+                    ->where('plan_list_id', $targetPlanListId)
+                    ->where('product_caterogy_id', $fpc_id)
+                    ->where('active', 1)
+                    ->where('cancel', 0)
+                    ->count();
+
+                $batchesToPush = $plannedBatches - $existingCount;
+
+                if ($batchesToPush <= 0) {
+                    continue;
+                }
+
+                $latestPlan = \Illuminate\Support\Facades\DB::table('plan_master')
+                    ->where('product_caterogy_id', $fpc_id)
+                    ->whereNotNull('batch')
+                    ->where('batch', '<>', '')
+                    ->where('batch', '<>', 'NA')
+                    ->orderBy('created_at', 'desc')
+                    ->orderBy('id', 'desc')
+                    ->first();
+
+                $currentLastBatch = $latestPlan ? ($latestPlan->actual_batch ?: $latestPlan->batch) : null;
+
+                for ($i = 0; $i < $batchesToPush; $i++) {
+                    $newBatchStr = $this->incrementBatchNumber($currentLastBatch, $targetMonthStr, $targetYearStr);
+                    $currentLastBatch = $newBatchStr;
+
+                    $planMasterId = \Illuminate\Support\Facades\DB::table('plan_master')->insertGetId([
+                        "product_caterogy_id" => $fpc_id,
+                        "plan_list_id" => $targetPlanListId,
+                        "batch" => $newBatchStr,
+                        "expected_date" => $expectedDate,
+                        "responsed_date" => $expectedDate,
+                        "level" => 1,
+                        "is_val" => 0,
+                        "is_validation_tracking" => 0,
+                        "percent_parkaging" => 1,
+                        "number_parkaging" => 0,
+                        "only_parkaging" => 0,
+                        "note" => "Đẩy từ kế hoạch năm",
+                        'deparment_code' => $deparment_code,
+                        'prepared_by' => session('user')['fullName'] ?? 'Auto-generate',
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+
+                    \Illuminate\Support\Facades\DB::table('plan_master')
+                        ->where('id', $planMasterId)
+                        ->update(['main_parkaging_id' => $planMasterId]);
+
+                    // Insert BOM items into plan_master_materials
+                    $bomMaterialsToInsert = [];
+                    $intermediateCode = $fpc->intermediate_code;
+                    $user_fullname = session('user')['fullName'] ?? 'Auto-generate';
+                    
+                    if ($intermediateCode && isset($filteredMaterials[$intermediateCode])) {
+                        foreach ($filteredMaterials[$intermediateCode] as $bomItem) {
+                            $bomMaterialsToInsert[] = [
+                                'plan_master_id' => $planMasterId,
+                                'material_packaging_code' => (string) $bomItem->MatID,
+                                'material_packaging_type' => 0,
+                                'Revno' => $bomItem->Revno,
+                                'qty' => (float) $bomItem->MatQty,
+                                'unit_bom' => $bomItem->uom,
+                                'MaterialName' => $bomItem->MaterialName,
+                                'created_at' => now(),
+                                'created_by' => $user_fullname,
+                                'active' => 1
+                            ];
+                        }
+                    }
+
+                    $finishedProductCode = $fpc->finished_product_code;
+                    if ($finishedProductCode && isset($filteredPackagings[$finishedProductCode])) {
+                        foreach ($filteredPackagings[$finishedProductCode] as $bomItem) {
+                            $bomMaterialsToInsert[] = [
+                                'plan_master_id' => $planMasterId,
+                                'material_packaging_code' => (string) $bomItem->MatID,
+                                'material_packaging_type' => 1,
+                                'Revno' => $bomItem->Revno,
+                                'qty' => (float) $bomItem->MatQty,
+                                'unit_bom' => $bomItem->uom,
+                                'MaterialName' => $bomItem->MaterialName,
+                                'created_at' => now(),
+                                'created_by' => $user_fullname,
+                                'active' => 1
+                            ];
+                        }
+                    }
+
+                    if (!empty($bomMaterialsToInsert)) {
+                        \Illuminate\Support\Facades\DB::table('plan_master_materials')->insert($bomMaterialsToInsert);
+                    }
+
+                    \Illuminate\Support\Facades\DB::table('plan_master_history')->insert([
+                        "plan_master_id" => $planMasterId,
+                        "plan_list_id" => $targetPlanListId,
+                        "product_caterogy_id" => $fpc_id,
+                        "batch" => $newBatchStr,
+                        "expected_date" => $expectedDate,
+                        "level" => 1,
+                        "is_val" => 0,
+                        "percent_parkaging" => 1,
+                        "number_parkaging" => 0,
+                        "only_parkaging" => 0,
+                        "note" => "Đẩy từ kế hoạch năm",
+                        'deparment_code' => $deparment_code,
+                        'prepared_by' => session('user')['fullName'] ?? 'Auto-generate',
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                        "version" => 1,
+                        "reason" => "Tạo Mới",
+                    ]);
+
+                    $insertedCount++;
+                }
+            }
+
+            \Illuminate\Support\Facades\DB::commit();
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Lỗi hệ thống: ' . $e->getMessage()
+            ], 500);
+        }
+
+        if ($insertedCount === 0) {
+            return response()->json([
+                'success' => true,
+                'message' => "Tất cả các lô của tháng này đã được đẩy trước đó hoặc đã tồn tại đầy đủ trong kế hoạch tháng '{$targetPlanList->name}'. Không có lô nào bị trùng lặp!",
+                'redirect_url' => route('pages.plan.production.open', ['plan_list_id' => $targetPlanListId])
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "Đã đẩy bổ sung thành công {$insertedCount} lô hàng mới vào kế hoạch tháng '{$targetPlanList->name}'!",
+            'redirect_url' => route('pages.plan.production.open', ['plan_list_id' => $targetPlanListId])
+        ]);
+    }
+
+    private function incrementBatchNumber($lastBatchStr, $targetMonthStr, $targetYearStr)
+    {
+        $lastBatchStr = trim($lastBatchStr);
+        if (strlen($lastBatchStr) >= 5 && strlen($lastBatchStr) <= 8 && !str_contains($lastBatchStr, ',')) {
+            if (preg_match('/^(\d+)(\d{4})(.*)$/', $lastBatchStr, $matches)) {
+                $prefix = $matches[1];
+                $valSuffix = $matches[3];
+
+                $prefixVal = (int)$prefix;
+                $newPrefixVal = $prefixVal + 1;
+
+                $newPrefix = str_pad($newPrefixVal, strlen($prefix), '0', STR_PAD_LEFT);
+                return $newPrefix . $targetMonthStr . $targetYearStr . $valSuffix;
+            }
+        }
+        return '01' . $targetMonthStr . $targetYearStr;
     }
 }

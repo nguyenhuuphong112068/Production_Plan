@@ -99,6 +99,34 @@
             font-weight: bold;
             color: #0d47a1;
         }
+
+        /* Custom tabs styling */
+        .nav-tabs {
+            border-bottom: 2px solid #e3f2fd;
+            margin-bottom: 15px;
+        }
+        .nav-tabs .nav-link {
+            border: none;
+            color: #495057;
+            font-weight: 600;
+            padding: 10px 20px;
+            transition: all 0.3s ease;
+        }
+        .nav-tabs .nav-link.active {
+            color: #0d47a1;
+            background-color: #e3f2fd;
+            border-radius: 4px 4px 0 0;
+            border-bottom: 3px solid #0d47a1;
+        }
+        .nav-tabs .nav-link:hover:not(.active) {
+            background-color: #f8f9fa;
+            color: #0d47a1;
+        }
+        .total-row-cell {
+            font-weight: bold !important;
+            background-color: #f8f9fa !important;
+            color: #212529 !important;
+        }
     </style>
     <div class="content-wrapper">
         <div class="card" style="min-height: 100vh">
@@ -114,6 +142,10 @@
                         <button class="btn btn-primary btn-add mb-2 ml-2" data-toggle="modal"
                             data-target="#addProductsModal">
                             <i class="fas fa-plus"></i> Thêm sản phẩm
+                        </button>
+                        <button class="btn btn-warning btn-add mb-2 ml-2 text-white" data-toggle="modal"
+                            data-target="#pushToMonthlyPlanModal" style="background-color: #f39c12; border-color: #f39c12;">
+                            <i class="fas fa-paper-plane"></i> Đẩy vào KH Tháng
                         </button>
                         <div class="btn-group mb-2 ml-2">
                             <button type="button" class="btn btn-info dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
@@ -132,11 +164,75 @@
                     <div class="alert alert-success mt-2">{{ session('success') }}</div>
                 @endif
 
-                <div class="row row-xs">
-                    <div class="col-12">
-                        <div id="hot-app" class="handsontable-container mt-3"></div>
+                <ul class="nav nav-tabs" id="annualPlanTabs" role="tablist">
+                    <li class="nav-item">
+                        <a class="nav-link active" id="forecast-tab" data-toggle="tab" href="#forecast-pane" role="tab" aria-controls="forecast-pane" aria-selected="true">
+                            <i class="fas fa-calendar-alt mr-1"></i> Bảng dự kiến kế hoạch năm
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="ratio-tab" data-toggle="tab" href="#ratio-pane" role="tab" aria-controls="ratio-pane" aria-selected="false">
+                            <i class="fas fa-chart-line mr-1"></i> Tỉ lệ thực xuất và dự trữ an toàn
+                        </a>
+                    </li>
+                </ul>
+                <div class="tab-content" id="annualPlanTabsContent">
+                    <div class="tab-pane fade show active" id="forecast-pane" role="tabpanel" aria-labelledby="forecast-tab">
+                        <div class="row row-xs">
+                            <div class="col-12">
+                                <div id="hot-app" class="handsontable-container mt-3"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="ratio-pane" role="tabpanel" aria-labelledby="ratio-tab">
+                        <div class="row row-xs">
+                            <div class="col-12">
+                                <div id="hot-app-ratio" class="handsontable-container mt-3"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Đẩy vào KH Tháng -->
+    <div class="modal fade" id="pushToMonthlyPlanModal" tabindex="-1" role="dialog" aria-labelledby="pushToMonthlyPlanModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content" style="border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+                <form id="pushToMonthlyPlanForm">
+                    @csrf
+                    <div class="modal-header bg-warning text-white" style="background-color: #f39c12 !important;">
+                        <h5 class="modal-title" id="pushToMonthlyPlanModalLabel"><i class="fas fa-paper-plane mr-2"></i>Đẩy lô từ KH Năm vào KH Tháng</h5>
+                        <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label class="font-weight-bold" for="push_month">Tháng cần đẩy từ KH Năm:</label>
+                            <select class="form-control" name="month" id="push_month" required>
+                                @for($m = 1; $m <= 12; $m++)
+                                    <option value="{{ $m }}">Tháng {{ $m }}</option>
+                                @endfor
+                            </select>
+                        </div>
+                        <div class="form-group mt-3">
+                            <label class="font-weight-bold" for="push_target_plan">Kế hoạch tháng nhận (Pending):</label>
+                            <select class="form-control" name="target_plan_list_id" id="push_target_plan" required>
+                                @forelse($pendingPlans as $p)
+                                    <option value="{{ $p->id }}">{{ $p->name }} (Tháng {{ $p->month }}/{{ $p->year }})</option>
+                                @empty
+                                    <option value="" disabled>Không có kế hoạch tháng nào đang chờ gửi (Pending)</option>
+                                @endforelse
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Hủy</button>
+                        <button type="submit" class="btn btn-warning text-white" style="background-color: #f39c12; border-color: #f39c12;" @if($pendingPlans->isEmpty()) disabled @endif>Xác nhận đẩy</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -224,6 +320,84 @@
             </div>
         </div>
     </div>
+
+    <!-- Modal Chi tiết BTP dở dang -->
+    <div class="modal fade" id="wipDetailsModal" tabindex="-1" role="dialog"
+        aria-labelledby="wipDetailsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl" role="document" style="max-width: 90%;">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title font-weight-bold" id="wipDetailsModalLabel">
+                        <i class="fas fa-hourglass-half mr-2"></i>Chi Tiết Các Lô BTP Dở Dang
+                    </h5>
+                    <button type="button" class="close text-dark" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <h5 id="wipDetailsPlanName" class="font-weight-bold mb-3 text-primary text-center"></h5>
+                    <div class="table-responsive">
+                        <table class="table table-striped table-bordered table-hover" id="wipDetailsTable">
+                            <thead class="thead-dark">
+                                <tr>
+                                    <th class="text-center" style="width: 5%;">STT</th>
+                                    <th class="text-center" style="width: 15%;">Số Lô</th>
+                                    <th class="text-center" style="width: 15%;">Số Lệnh</th>
+                                    <th class="text-center" style="width: 20%;">Ngày bắt đầu</th>
+                                    <th class="text-center" style="width: 20%;">Ngày kết thúc</th>
+                                    <th class="text-center" style="width: 15%;">Sản lượng (viên)</th>
+                                    <th class="text-center" style="width: 10%;">Trạng thái</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Dữ liệu sẽ được load qua AJAX -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Đóng</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Chi tiết Tồn kho -->
+    <div class="modal fade" id="inventoryDetailsModal" tabindex="-1" role="dialog"
+        aria-labelledby="inventoryDetailsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title font-weight-bold" id="inventoryDetailsModalLabel">
+                        <i class="fas fa-warehouse mr-2"></i>Chi Tiết Các Lô Tồn Kho thực tế (MMS)
+                    </h5>
+                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <h5 id="inventoryDetailsPlanName" class="font-weight-bold mb-3 text-primary text-center"></h5>
+                    <div class="table-responsive">
+                        <table class="table table-striped table-bordered table-hover" id="inventoryDetailsTable">
+                            <thead class="thead-dark">
+                                <tr>
+                                    <th class="text-center" style="width: 10%;">STT</th>
+                                    <th class="text-center" style="width: 50%;">Số Lô</th>
+                                    <th class="text-center" style="width: 40%;">Số lượng tồn (viên)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Dữ liệu sẽ được load qua AJAX -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Đóng</button>
+                </div>
+            </div>
+        </div>
+    </div>
 @endsection
 
 @section('script')
@@ -234,7 +408,12 @@
             return false;
         };
         let hot;
+        let hotRatio;
         let changedRowIds = new Set();
+        let globalData;
+        let lastClickTime = 0;
+        let lastRow = -1;
+        let lastCol = -1;
 
         // Helper to convert index to Excel column letter (0 -> A, 1 -> B...)
         function getExcelColumnName(colIndex) {
@@ -246,12 +425,68 @@
             return letter;
         }
 
+        // Tính chiều cao tuyệt đối cho bảng = chiều cao cửa sổ - vị trí trên cùng của container - padding dưới
+        function getTableHeight(targetContainer) {
+            if (!targetContainer) return 300;
+            var rect = targetContainer.getBoundingClientRect();
+            return Math.max(window.innerHeight - rect.top - 20, 300);
+        }
+
+        function syncChanges(sourceHot, targetHot, changes, source) {
+            if (source === 'sync' || source === 'loadData' || source === 'calc') {
+                return;
+            }
+            let syncData = [];
+            changes.forEach(([row, prop, oldValue, newValue]) => {
+                if (oldValue !== newValue) {
+                    const sharedProps = ['registration_expiry', 'classification', 'customer_type', 'shelf_life', 'packaging_spec'];
+                    if (sharedProps.includes(prop)) {
+                        syncData.push([row, prop, newValue]);
+                    }
+                }
+            });
+            if (syncData.length > 0) {
+                targetHot.setDataAtRowProp(syncData, 'sync');
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             const container = document.getElementById('hot-app');
+            const containerRatio = document.getElementById('hot-app-ratio');
             // Inject data from controller
-            const data = @json($hotData);
+            globalData = @json($hotData);
 
-            // Base headers and columns
+            let totalRow = {
+                product_name: 'Tổng cộng',
+                is_total_row: true
+            };
+            totalRow['registration_expiry'] = '';
+            totalRow['classification'] = '';
+            totalRow['customer_type'] = '';
+            totalRow['market'] = '';
+            totalRow['dosage'] = '';
+            totalRow['intermediate_code'] = '';
+            totalRow['finished_product_code'] = '';
+            totalRow['shelf_life'] = null;
+            totalRow['packaging_spec'] = null;
+            totalRow['batch_size'] = null;
+            totalRow['avg_sales_box'] = null;
+            totalRow['avg_sales_pill'] = null;
+            totalRow['average_astimated_box'] = null;
+            totalRow['average_astimated_pill'] = null;
+            
+            for (let m = 1; m <= 12; m++) {
+                totalRow[`m${m}_batches`] = 0;
+                totalRow[`m${m}_planned_quantity`] = 0;
+                totalRow[`m${m}_wip_inventory`] = null;
+                totalRow[`m${m}_expected_inventory`] = null;
+                totalRow[`m${m}_months_sales`] = null;
+            }
+            globalData.push(totalRow);
+
+            const data = globalData;
+
+            // Tab 1: Base headers and columns
             const colHeaders = [
                 'Hết SĐK', 'Phân loại', 'Khách', 'Thị trường', 'Dạng bào chế', 'Mã BTP', 'Mã TP', 'Sản phẩm', 'Hạn dùng',
                 'Quy cách', 'Cỡ lô', 'BQ bán / Tháng (hộp)', 'BQ bán / tháng (viên)'
@@ -331,7 +566,7 @@
             { label: 'Thông tin chung', colspan: 13 }
         ];
 
-        // Generate 12 months dynamically
+        // Generate 12 months dynamically for Tab 1
         const planYear = {{ $plan->year }};
         for (let m = 1; m <= 12; m++) {
             const monthStr = m.toString().padStart(2, '0');
@@ -347,7 +582,7 @@
                 className: `month-bg-${m}`
             });
 
-            colHeaders.push(`Số lượng`);
+            colHeaders.push(`Sản lượng`);
             columns.push({
                 data: `m${m}_planned_quantity`,
                 readOnly: true,
@@ -392,32 +627,144 @@
             });
         }
 
-        // Map headers to include Excel letters
-        const finalColHeaders = colHeaders.map((name, index) => {
-            return name;
-        });
-
-        // Map headers to Excel letters for the second row
         const excelLetters = colHeaders.map((_, index) => {
             return getExcelColumnName(index);
         });
 
-        // Tính chiều cao tuyệt đối cho bảng = chiều cao cửa sổ - vị trí trên cùng của container - padding dưới
-        function getTableHeight() {
-            var rect = container.getBoundingClientRect();
-            return Math.max(window.innerHeight - rect.top - 20, 300);
+        // Tab 2: Base headers and columns
+        const colHeadersRatio = [
+            'Hết SĐK', 'Phân loại', 'Khách', 'Thị trường', 'Dạng bào chế', 'Mã BTP', 'Mã TP', 'Sản phẩm', 'Hạn dùng',
+            'Quy cách', 'Cỡ lô', 'Bình quân dự trù tháng (hộp)', 'Bình quân dự trù tháng (viên)'
+        ];
+
+        const columnsRatio = [{
+            data: 'registration_expiry',
+            type: 'date',
+            dateFormat: 'YYYY-MM-DD',
+            readOnly: false
+        },
+        {
+            data: 'classification',
+            readOnly: false
+        },
+        {
+            data: 'customer_type',
+            readOnly: false
+        },
+        {
+            data: 'market',
+            readOnly: true
+        },
+        {
+            data: 'dosage',
+            readOnly: true
+        },
+        {
+            data: 'intermediate_code',
+            readOnly: true
+        },
+        {
+            data: 'finished_product_code',
+            readOnly: true
+        },
+        {
+            data: 'product_name',
+            readOnly: true
+        },
+        {
+            data: 'shelf_life',
+            type: 'numeric',
+            readOnly: false
+        },
+        {
+            data: 'packaging_spec',
+            type: 'numeric',
+            readOnly: false
+        },
+        {
+            data: 'batch_size',
+            type: 'numeric',
+            numericFormat: {
+                pattern: '0,0'
+            },
+            readOnly: true
+        },
+        {
+            data: 'average_astimated_box',
+            type: 'numeric',
+            numericFormat: {
+                pattern: '0,0'
+            },
+            readOnly: false
+        },
+        {
+            data: 'average_astimated_pill',
+            type: 'numeric',
+            numericFormat: {
+                pattern: '0,0'
+            },
+            readOnly: true
+        }
+        ];
+
+        const topHeadersRatio = [
+            { label: 'Thông tin chung', colspan: 13 }
+        ];
+
+        // Generate 12 months dynamically for Tab 2
+        for (let m = 1; m <= 12; m++) {
+            const monthStr = m.toString().padStart(2, '0');
+            topHeadersRatio.push({ label: `Tháng ${monthStr}/${planYear}`, colspan: 3 });
+
+            colHeadersRatio.push(`Thực xuất KD`);
+            columnsRatio.push({
+                data: `m${m}_kd_export`,
+                readOnly: true,
+                type: 'numeric',
+                numericFormat: {
+                    pattern: '0,0'
+                },
+                className: `month-bg-${m}`
+            });
+
+            colHeadersRatio.push(`Tỉ lệ thực xuất/dự trù`);
+            columnsRatio.push({
+                data: `m${m}_kd_ratio`,
+                readOnly: true,
+                type: 'numeric',
+                numericFormat: {
+                    pattern: '0.00%'
+                },
+                className: `month-bg-${m}`
+            });
+
+            colHeadersRatio.push(`Dự trữ an toàn`);
+            columnsRatio.push({
+                data: `m${m}_kd_safety_stock`,
+                readOnly: true,
+                type: 'numeric',
+                numericFormat: {
+                    pattern: '0.00'
+                },
+                className: `month-bg-${m}`
+            });
         }
 
+        const excelLettersRatio = colHeadersRatio.map((_, index) => {
+            return getExcelColumnName(index);
+        });
+
+        // Initialize Tab 1 Handsontable
         hot = new Handsontable(container, {
             data: data,
             nestedHeaders: [
                 topHeaders,
-                finalColHeaders, // Hàng 2: Tên cột
+                colHeaders, // Hàng 2: Tên cột
                 excelLetters // Hàng 3: Chỉ số A, B, C...
             ],
             columns: columns,
             rowHeaders: true,
-            height: getTableHeight(),
+            height: getTableHeight(container),
             licenseKey: 'non-commercial-and-evaluation',
             fixedColumnsStart: 0,
             contextMenu: true,
@@ -425,6 +772,15 @@
             manualColumnFreeze: true,
             filters: true,
             dropdownMenu: true,
+            cells: function(row, col) {
+                const cellProperties = {};
+                const rowData = this.instance.getSourceDataAtRow(row);
+                if (rowData && rowData.product_name === 'Tổng cộng') {
+                    cellProperties.readOnly = true;
+                    cellProperties.className = 'total-row-cell';
+                }
+                return cellProperties;
+            },
             afterGetColHeader: function(col, TH) {
                 if (col >= 13) {
                     let m = Math.floor((col - 13) / 5) + 1;
@@ -432,6 +788,36 @@
                         TH.classList.add('month-bg-' + m);
                     }
                 }
+            },
+            afterOnCellMouseDown: function(event, coords, TD) {
+                const currentTime = new Date().getTime();
+                const clickDelay = currentTime - lastClickTime;
+                
+                if (clickDelay < 300 && coords.row === lastRow && coords.col === lastCol) {
+                    const row = coords.row;
+                    const col = coords.col;
+                    if (row >= 0 && col >= 13) {
+                        const rowData = hot.getSourceDataAtRow(row);
+                        if (rowData && rowData.product_name === 'Tổng cộng') {
+                            return;
+                        }
+                        const productId = rowData.id;
+                        const productName = rowData.product_name || 'N/A';
+                        const month = Math.floor((col - 13) / 5) + 1;
+                        const monthStr = String(month).padStart(2, '0');
+                        
+                        const colMod = (col - 13) % 5;
+                        if (colMod === 2) {
+                            showWipDetails(productId, month, productName, monthStr);
+                        } else if (colMod === 3) {
+                            showInventoryDetails(productId, month, productName, monthStr);
+                        }
+                    }
+                }
+                
+                lastClickTime = currentTime;
+                lastRow = coords.row;
+                lastCol = coords.col;
             },
             afterChange: function(changes, source) {
                 if (source === 'loadData' || source === 'calc') {
@@ -482,16 +868,174 @@
                 if (toUpdate.length > 0) {
                     hot.setDataAtRowProp(toUpdate, 'calc');
                 }
+
+                calculateTotals();
+
+                // Sync changes to hotRatio
+                if (source !== 'sync' && hotRatio) {
+                    syncChanges(hot, hotRatio, changes, source);
+                }
             }
         });
 
+        // Initialize Tab 2 Handsontable
+        hotRatio = new Handsontable(containerRatio, {
+            data: data,
+            nestedHeaders: [
+                topHeadersRatio,
+                colHeadersRatio, // Hàng 2: Tên cột
+                excelLettersRatio // Hàng 3: Chỉ số A, B, C...
+            ],
+            columns: columnsRatio,
+            rowHeaders: true,
+            height: getTableHeight(containerRatio),
+            licenseKey: 'non-commercial-and-evaluation',
+            fixedColumnsStart: 0,
+            contextMenu: true,
+            manualColumnResize: true,
+            manualColumnFreeze: true,
+            filters: true,
+            dropdownMenu: true,
+            cells: function(row, col) {
+                const cellProperties = {};
+                const rowData = this.instance.getSourceDataAtRow(row);
+                if (rowData && rowData.product_name === 'Tổng cộng') {
+                    cellProperties.readOnly = true;
+                    cellProperties.className = 'total-row-cell';
+                }
+                return cellProperties;
+            },
+            afterGetColHeader: function(col, TH) {
+                if (col >= 13) {
+                    let m = Math.floor((col - 13) / 3) + 1;
+                    if (m >= 1 && m <= 12) {
+                        TH.classList.add('month-bg-' + m);
+                    }
+                }
+            },
+            afterChange: function(changes, source) {
+                if (source === 'loadData' || source === 'calc') {
+                    return;
+                }
+                
+                let toUpdate = [];
+                let rowUpdates = new Set();
+                
+                changes.forEach(([row, prop, oldValue, newValue]) => {
+                    if (oldValue !== newValue) {
+                        rowUpdates.add(row);
+                        const rowData = hotRatio.getSourceDataAtRow(row);
+                        if (rowData && rowData.id) {
+                            changedRowIds.add(rowData.id);
+                        }
+                    }
+                });
+                
+                rowUpdates.forEach(row => {
+                    const rowData = hotRatio.getSourceDataAtRow(row);
+                    const packaging_spec = parseFloat(String(rowData.packaging_spec).replace(/,/g, '')) || 0;
+                    const average_astimated_box = parseFloat(String(rowData.average_astimated_box).replace(/,/g, '')) || 0;
+                    
+                    const average_astimated_pill = average_astimated_box * packaging_spec;
+                    toUpdate.push([row, 'average_astimated_pill', average_astimated_pill]);
+                    
+                    for (let m = 1; m <= 12; m++) {
+                        let kd_export = parseFloat(String(rowData[`m${m}_kd_export`]).replace(/,/g, '')) || 0;
+                        let fg = parseFloat(String(rowData[`m${m}_expected_inventory`]).replace(/,/g, '')) || 0;
+                        
+                        let ratio = 0;
+                        let safety = 0;
+                        if (average_astimated_pill > 0) {
+                            ratio = Math.round((kd_export / average_astimated_pill) * 10000) / 10000;
+                            safety = Math.round((fg / average_astimated_pill) * 100) / 100;
+                        }
+                        toUpdate.push([row, `m${m}_kd_ratio`, ratio]);
+                        toUpdate.push([row, `m${m}_kd_safety_stock`, safety]);
+                    }
+                });
+                
+                if (toUpdate.length > 0) {
+                    hotRatio.setDataAtRowProp(toUpdate, 'calc');
+                }
+
+                calculateTotals();
+
+                // Sync changes to hot
+                if (source !== 'sync' && hot) {
+                    syncChanges(hotRatio, hot, changes, source);
+                }
+            }
+        });
+
+        calculateTotals();
+
         // Cập nhật chiều cao khi thay đổi kích thước cửa sổ
         window.addEventListener('resize', function() {
+            const container = document.getElementById('hot-app');
+            const containerRatio = document.getElementById('hot-app-ratio');
             if (hot) {
-                hot.updateSettings({ height: getTableHeight() });
+                hot.updateSettings({ height: getTableHeight(container) });
+            }
+            if (hotRatio) {
+                hotRatio.updateSettings({ height: getTableHeight(containerRatio) });
+            }
+        });
+
+        // Trigger render on tab changes to layout properly
+        $('a[data-toggle="tab"]').on('shown.bs.tab', function(e) {
+            const container = document.getElementById('hot-app');
+            const containerRatio = document.getElementById('hot-app-ratio');
+            if (e.target.id === 'forecast-tab' && hot) {
+                hot.updateSettings({ height: getTableHeight(container) });
+                hot.render();
+            } else if (e.target.id === 'ratio-tab' && hotRatio) {
+                hotRatio.updateSettings({ height: getTableHeight(containerRatio) });
+                hotRatio.render();
             }
         });
         });
+
+        function calculateTotals() {
+            if (!hot) return;
+            const count = hot.countRows();
+            if (count <= 1) return;
+            
+            let totalRowIndex = -1;
+            for (let r = 0; r < count; r++) {
+                if (hot.getDataAtRowProp(r, 'product_name') === 'Tổng cộng') {
+                    totalRowIndex = r;
+                    break;
+                }
+            }
+            
+            if (totalRowIndex === -1) return;
+            
+            let sums = {};
+            for (let m = 1; m <= 12; m++) {
+                sums[`m${m}_batches`] = 0;
+                sums[`m${m}_planned_quantity`] = 0;
+            }
+            
+            for (let r = 0; r < count; r++) {
+                if (r === totalRowIndex) continue;
+                
+                for (let m = 1; m <= 12; m++) {
+                    let batches = parseFloat(String(hot.getDataAtRowProp(r, `m${m}_batches`)).replace(/,/g, '')) || 0;
+                    let qty = parseFloat(String(hot.getDataAtRowProp(r, `m${m}_planned_quantity`)).replace(/,/g, '')) || 0;
+                    
+                    sums[`m${m}_batches`] += batches;
+                    sums[`m${m}_planned_quantity`] += qty;
+                }
+            }
+            
+            let updates = [];
+            for (let m = 1; m <= 12; m++) {
+                updates.push([totalRowIndex, `m${m}_batches`, sums[`m${m}_batches`]]);
+                updates.push([totalRowIndex, `m${m}_planned_quantity`, sums[`m${m}_planned_quantity`]]);
+            }
+            
+            hot.setDataAtRowProp(updates, 'calc');
+        }
 
         function saveData() {
             if (changedRowIds.size === 0) {
@@ -499,8 +1043,7 @@
                 return;
             }
 
-            const allData = hot.getSourceData();
-            const dataToSave = allData.filter(row => changedRowIds.has(row.id));
+            const dataToSave = globalData.filter(row => changedRowIds.has(row.id));
 
             const btn = document.querySelector('.btn-success');
             const originalText = btn.innerHTML;
@@ -686,6 +1229,128 @@
             $('#groupByLineSwitch, #stageCodeSelect').change(function() {
                 loadEquipmentAllocation();
             });
+
+            // Form submit handler to push annual plan to monthly plan
+            $('#pushToMonthlyPlanForm').on('submit', function(e) {
+                e.preventDefault();
+                
+                let formData = $(this).serialize();
+                let submitBtn = $(this).find('button[type="submit"]');
+                let originalText = submitBtn.text();
+                submitBtn.prop('disabled', true).text('Đang xử lý...');
+                
+                $.ajax({
+                    url: "{{ route('pages.plan.annual.push_to_monthly', $plan->id) }}",
+                    type: "POST",
+                    data: formData,
+                    success: function(response) {
+                        submitBtn.prop('disabled', false).text(originalText);
+                        if (response.success) {
+                            $('#pushToMonthlyPlanModal').modal('hide');
+                            alert(response.message || 'Đã đẩy các lô vào kế hoạch tháng thành công!');
+                            if (response.redirect_url) {
+                                window.location.href = response.redirect_url;
+                            }
+                        } else {
+                            alert(response.message || 'Có lỗi xảy ra!');
+                        }
+                    },
+                    error: function(xhr) {
+                        submitBtn.prop('disabled', false).text(originalText);
+                        let errMsg = 'Có lỗi xảy ra!';
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            errMsg = xhr.responseJSON.message;
+                        }
+                        alert(errMsg);
+                    }
+                });
+            });
         });
+
+        function showWipDetails(productId, month, productName, monthStr) {
+            $('#wipDetailsPlanName').text('Sản phẩm: ' + productName + ' - Tháng ' + monthStr + '/{{ $plan->year }}');
+            $('#wipDetailsTable tbody').html(
+                '<tr><td colspan="7" class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x text-warning"></i><br>Đang tải chi tiết các lô...</td></tr>'
+            );
+            $('#wipDetailsModal').modal('show');
+
+            $.ajax({
+                url: '{{ route("pages.plan.annual.wip_details", ["productId" => ":productId", "month" => ":month"]) }}'
+                    .replace(':productId', productId)
+                    .replace(':month', month),
+                type: 'GET',
+                success: function(response) {
+                    if (response.success) {
+                        let tbody = '';
+                        if (response.data.length === 0) {
+                            tbody = '<tr><td colspan="7" class="text-center py-4">Không có lô dở dang nào trong tháng này.</td></tr>';
+                        } else {
+                            response.data.forEach((item, index) => {
+                                tbody += '<tr>' +
+                                    '<td class="text-center align-middle">' + (index + 1) + '</td>' +
+                                    '<td class="text-center font-weight-bold align-middle text-primary">' + (item.batch_code || 'Chưa có') + '</td>' +
+                                    '<td class="text-center align-middle">' + (item.order_number || 'Chưa có') + '</td>' +
+                                    '<td class="text-center align-middle">' + item.start_date + '</td>' +
+                                    '<td class="text-center align-middle">' + item.end_date + '</td>' +
+                                    '<td class="text-right align-middle font-weight-bold">' + item.batch_qty + '</td>' +
+                                    '<td class="text-center align-middle"><span class="badge ' + (item.status.includes('hoàn thành') ? 'badge-success' : 'badge-warning') + '">' + item.status + '</span></td>' +
+                                    '</tr>';
+                            });
+                        }
+                        $('#wipDetailsTable tbody').html(tbody);
+                    } else {
+                        $('#wipDetailsTable tbody').html(
+                            '<tr><td colspan="7" class="text-center text-danger py-4">Lỗi tải dữ liệu.</td></tr>'
+                        );
+                    }
+                },
+                error: function() {
+                    $('#wipDetailsTable tbody').html(
+                        '<tr><td colspan="7" class="text-center text-danger py-4">Lỗi kết nối máy chủ.</td></tr>'
+                    );
+                }
+            });
+        }
+
+        function showInventoryDetails(productId, month, productName, monthStr) {
+            $('#inventoryDetailsPlanName').text('Sản phẩm: ' + productName + ' - Cuối tháng ' + monthStr + '/{{ $plan->year }}');
+            $('#inventoryDetailsTable tbody').html(
+                '<tr><td colspan="3" class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x text-success"></i><br>Đang tải chi tiết tồn kho...</td></tr>'
+            );
+            $('#inventoryDetailsModal').modal('show');
+
+            $.ajax({
+                url: '{{ route("pages.plan.annual.inventory_details", ["productId" => ":productId", "month" => ":month"]) }}'
+                    .replace(':productId', productId)
+                    .replace(':month', month),
+                type: 'GET',
+                success: function(response) {
+                    if (response.success) {
+                        let tbody = '';
+                        if (response.data.length === 0) {
+                            tbody = '<tr><td colspan="3" class="text-center py-4">Không có tồn kho thực tế cho sản phẩm này tại thời điểm cuối tháng.</td></tr>';
+                        } else {
+                            response.data.forEach((item, index) => {
+                                tbody += '<tr>' +
+                                    '<td class="text-center align-middle">' + (index + 1) + '</td>' +
+                                    '<td class="text-center font-weight-bold align-middle text-success">' + item.lot_number + '</td>' +
+                                    '<td class="text-right align-middle font-weight-bold">' + item.quantity + '</td>' +
+                                    '</tr>';
+                            });
+                        }
+                        $('#inventoryDetailsTable tbody').html(tbody);
+                    } else {
+                        $('#inventoryDetailsTable tbody').html(
+                            '<tr><td colspan="3" class="text-center text-danger py-4">Lỗi tải dữ liệu.</td></tr>'
+                        );
+                    }
+                },
+                error: function() {
+                    $('#inventoryDetailsTable tbody').html(
+                        '<tr><td colspan="3" class="text-center text-danger py-4">Lỗi kết nối máy chủ.</td></tr>'
+                    );
+                }
+            });
+        }
     </script>
 @endsection

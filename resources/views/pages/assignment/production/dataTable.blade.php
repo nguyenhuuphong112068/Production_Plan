@@ -2972,7 +2972,16 @@
                             },
                             success: function(res) {
                                 if (res.success) {
+                                    const roomRow = row.closest('.room-row');
+                                    const roomId = roomRow.attr('data-room-id');
+                                    const isCustomTask = !roomId || roomId === '';
+
                                     row.remove();
+
+                                    if (isCustomTask && roomRow.find('.assignment-item').length === 0) {
+                                        roomRow.remove();
+                                    }
+
                                     updateTimelines();
                                     updateSidebarHighlights();
                                     updateSidebarPersonnelTimes();

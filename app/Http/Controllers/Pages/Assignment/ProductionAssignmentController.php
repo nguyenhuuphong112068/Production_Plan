@@ -354,12 +354,20 @@ class ProductionAssignmentController extends Controller
             // Nhóm theo sp_id (EXT_...) để gộp các ca của cùng 1 công việc tùy chỉnh
             $noRoomGroups = $noRoomAssignments->groupBy('stage_plan_id');
             foreach ($noRoomGroups as $spId => $groupAssignments) {
+                $hasLocal = false;
                 foreach ($groupAssignments as $a) {
                     $a->is_foreign = ($active_group_code && $a->stage_groups_code != $active_group_code);
                     $a->is_scheduled = !empty($a->stage_plan_id);
                     $a->personnel_data = $allPersonnelData->get($a->id) ?? collect();
                     $a->start_time_display = $a->start ? Carbon::parse($a->start)->format('H:i') : null;
                     $a->end_time_display = $a->end ? Carbon::parse($a->end)->format('H:i') : null;
+                    if (!$a->is_foreign) {
+                        $hasLocal = true;
+                    }
+                }
+
+                if (!$hasLocal) {
+                    continue; // Bỏ qua công tác khác nếu tất cả các ca đều thuộc tổ khác
                 }
 
                 $tasks->push((object)[
@@ -1381,12 +1389,22 @@ class ProductionAssignmentController extends Controller
         if ($noRoomAssignments->isNotEmpty()) {
             $noRoomGroups = $noRoomAssignments->groupBy('stage_plan_id');
             foreach ($noRoomGroups as $spId => $groupAssignments) {
+                $hasLocal = false;
                 foreach ($groupAssignments as $a) {
                     $a->personnel_data = DB::table('assignment_personnel')
                         ->where('assignment_id', $a->id)
                         ->select('personnel_id', 'notification', 'operation_type', 'start', 'end')->get();
                     $a->start_time_display = $a->start ? Carbon::parse($a->start)->format('H:i') : null;
                     $a->end_time_display = $a->end ? Carbon::parse($a->end)->format('H:i') : null;
+                    
+                    $a->is_foreign = ($group_code && $a->stage_groups_code != $group_code);
+                    if (!$a->is_foreign) {
+                        $hasLocal = true;
+                    }
+                }
+
+                if (!$hasLocal) {
+                    continue; // Bỏ qua công tác khác nếu tất cả các ca đều thuộc tổ khác
                 }
 
                 $tasks->push((object)[

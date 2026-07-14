@@ -13,6 +13,7 @@ class ProductionPlanController extends Controller
 {
         public function index()
         {
+                $this->updateOrderNumbersFromMMS();
 
                 $production_code = session('user')['production_code'];
 
@@ -1867,6 +1868,8 @@ class ProductionPlanController extends Controller
                 $now = now();
                 $user = session('user')['fullName'];
                 $idOrPlanListId = 'id';
+                $ordernoR1 = null;
+                $ordernoR2 = null;
 
                 if ($request->name == "selected") {
                         $updateData = ['selected' => !$request->updateValue];
@@ -1927,7 +1930,72 @@ class ProductionPlanController extends Controller
                 }
 
 
-                if ($request->name  == "selected_all" && $request->id < 0) {
+                if ($request->name == 'actual_batch') {
+                        $newBatchVal = $request->updateValue;
+                        DB::table('plan_master')
+                                ->where('id', $request->id)
+                                ->update(['actual_batch' => $newBatchVal]);
+
+                        $plan = DB::table('plan_master')
+                                ->join('finished_product_category', 'plan_master.product_caterogy_id', '=', 'finished_product_category.id')
+                                ->where('plan_master.id', $request->id)
+                                ->select('finished_product_category.intermediate_code', 'plan_master.batch')
+                                ->first();
+
+                        if ($plan) {
+                                $batchCode = trim($newBatchVal ?: $plan->batch);
+                                $prdid = trim($plan->intermediate_code);
+
+                                $ordernoR1 = null;
+                                $ordernoR2 = null;
+                                $cronVal = null;
+                                $crbyVal = null;
+
+                                if (!empty($batchCode)) {
+                                        $batches = DB::connection('mms')->table('dbo.Batch')
+                                                ->where('Batchno', $batchCode)
+                                                ->where('PRDID', $prdid)
+                                                ->select('orderno', 'cron', 'crby')
+                                                ->get();
+
+                                        foreach ($batches as $b) {
+                                                $orderno = trim($b->orderno);
+                                                if (stripos($orderno, 'R1') !== false) {
+                                                        $ordernoR1 = $orderno;
+                                                        if (isset($b->cron)) {
+                                                                $cronVal = $b->cron;
+                                                        }
+                                                        if (isset($b->crby)) {
+                                                                $crbyVal = $b->crby;
+                                                        }
+                                                }
+                                                if (stripos($orderno, 'R2') !== false) {
+                                                        $ordernoR2 = $orderno;
+                                                        if (empty($cronVal) && isset($b->cron)) {
+                                                                $cronVal = $b->cron;
+                                                        }
+                                                        if (empty($crbyVal) && isset($b->crby)) {
+                                                                $crbyVal = $b->crby;
+                                                        }
+                                                }
+                                        }
+                                        if (empty($cronVal) && $batches->isNotEmpty()) {
+                                                $firstBatch = $batches->first();
+                                                $cronVal = $firstBatch->cron ?? null;
+                                                $crbyVal = $firstBatch->crby ?? null;
+                                        }
+                                }
+
+                                DB::table('plan_master')
+                                        ->where('id', $request->id)
+                                        ->update([
+                                                'order_number_R1' => $ordernoR1,
+                                                'order_number_R2' => $ordernoR2,
+                                                'create_at_order_number' => $cronVal,
+                                                'create_by_order_number' => $crbyVal,
+                                        ]);
+                        }
+                } else if ($request->name  == "selected_all" && $request->id < 0) {
                         DB::table('plan_master')
                                 ->where('weighed', 0)
                                 ->update(['selected' => 1]);
@@ -1938,7 +2006,12 @@ class ProductionPlanController extends Controller
                 }
 
 
-                return response()->json(['success' => true, 'updateValue' => $request->updateValue]);
+                return response()->json([
+                        'success' => true,
+                        'updateValue' => $request->updateValue,
+                        'order_number_R1' => $ordernoR1,
+                        'order_number_R2' => $ordernoR2
+                ]);
         }
 
         public function first_batch(Request $request)
@@ -3485,5 +3558,117 @@ class ProductionPlanController extends Controller
                         'success' => true,
                         'data' => array_values($equipmentStats)
                 ]);
+        }
+
+        private function updateOrderNumbersFromMMS()
+        {
+                try {
+                        $unmappedPlans = DB::table('plan_master')
+                                ->join('finished_product_category', 'plan_master.product_caterogy_id', '=', 'finished_product_category.id')
+                                ->where(function($query) {
+                                        $query->whereNull('plan_master.order_number_R1')
+                                              ->orWhereNull('plan_master.order_number_R2')
+                                              ->orWhere('plan_master.order_number_R1', '')
+                                              ->orWhere('plan_master.order_number_R2', '');
+                                })
+                                ->where(function($query) {
+                                        $query->whereNotNull('plan_master.actual_batch')
+                                              ->where('plan_master.actual_batch', '<>', '')
+                                              ->orWhere(function($q) {
+                                                      $q->whereNull('plan_master.actual_batch')
+                                                        ->whereNotNull('plan_master.batch')
+                                                        ->where('plan_master.batch', '<>', '');
+                                              });
+                                })
+                                ->select(
+                                        'plan_master.id',
+                                        DB::raw('COALESCE(NULLIF(plan_master.actual_batch, ""), plan_master.batch) as batch_code'),
+                                        'finished_product_category.intermediate_code',
+                                        'plan_master.order_number_R1',
+                                        'plan_master.order_number_R2'
+                                )
+                                ->get();
+
+                        if ($unmappedPlans->isNotEmpty()) {
+                                $batchCodes = $unmappedPlans->pluck('batch_code')->filter()->unique()->toArray();
+                                
+                                $mmsOrders = DB::connection('mms')->table('dbo.Batch')
+                                        ->whereIn('Batchno', $batchCodes)
+                                        ->select('Batchno', 'PRDID', 'orderno', 'cron', 'crby')
+                                        ->get();
+                                
+                                $mmsIndexed = [];
+                                foreach ($mmsOrders as $o) {
+                                        $batchCode = trim($o->Batchno);
+                                        $prdid = trim($o->PRDID);
+                                        $key = $batchCode . '_' . $prdid;
+                                        if (!isset($mmsIndexed[$key])) {
+                                                $mmsIndexed[$key] = [];
+                                        }
+                                        $mmsIndexed[$key][] = $o;
+                                }
+
+                                foreach ($unmappedPlans as $pm) {
+                                        $key = trim($pm->batch_code) . '_' . trim($pm->intermediate_code);
+                                        if (isset($mmsIndexed[$key])) {
+                                                $batches = $mmsIndexed[$key];
+                                                $ordernoR1 = null;
+                                                $ordernoR2 = null;
+                                                $cronVal = null;
+                                                $crbyVal = null;
+                                                
+                                                foreach ($batches as $b) {
+                                                        $orderno = trim($b->orderno);
+                                                        if (stripos($orderno, 'R1') !== false) {
+                                                                $ordernoR1 = $orderno;
+                                                                if (isset($b->cron)) {
+                                                                        $cronVal = $b->cron;
+                                                                }
+                                                                if (isset($b->crby)) {
+                                                                        $crbyVal = $b->crby;
+                                                                }
+                                                        }
+                                                        if (stripos($orderno, 'R2') !== false) {
+                                                                $ordernoR2 = $orderno;
+                                                                if (empty($cronVal) && isset($b->cron)) {
+                                                                        $cronVal = $b->cron;
+                                                                }
+                                                                if (empty($crbyVal) && isset($b->crby)) {
+                                                                        $crbyVal = $b->crby;
+                                                                }
+                                                        }
+                                                }
+                                                
+                                                if (empty($cronVal) && !empty($batches)) {
+                                                        $firstBatch = $batches[0];
+                                                        $cronVal = $firstBatch->cron ?? null;
+                                                        $crbyVal = $firstBatch->crby ?? null;
+                                                }
+                                                
+                                                $updateFields = [];
+                                                if ($ordernoR1 && empty($pm->order_number_R1)) {
+                                                        $updateFields['order_number_R1'] = $ordernoR1;
+                                                }
+                                                if ($ordernoR2 && empty($pm->order_number_R2)) {
+                                                        $updateFields['order_number_R2'] = $ordernoR2;
+                                                }
+                                                if ($cronVal) {
+                                                        $updateFields['create_at_order_number'] = $cronVal;
+                                                }
+                                                if ($crbyVal) {
+                                                        $updateFields['create_by_order_number'] = $crbyVal;
+                                                }
+                                                
+                                                if (!empty($updateFields)) {
+                                                        DB::table('plan_master')
+                                                                ->where('id', $pm->id)
+                                                                ->update($updateFields);
+                                                }
+                                        }
+                                }
+                        }
+                } catch (\Exception $e) {
+                        Log::error('Error updating order numbers from MMS: ' . $e->getMessage());
+                }
         }
 }

@@ -170,26 +170,29 @@
                                     </div>
                                 @endif
 
-                                {{-- 
-                                <b> {{"(2):"}}</b>
-                                @if ($department == 'PL' && $plan_feedback && !$data->order_number)
-                                    <div class="text-center">
-                                        <button class = "btn btn-success btn-order mt-1"
-                                            data-id = {{ $data->id }}
-                                            data-batch = {{ $data->batch }}
-                                        > 
-                                            <div> Cập Nhật Số Lệnh </div>
-                                            <div> {{ $data->batch }} </div>
-                                        </button>
-                                    </div>
-                                    @php
-                                         $missingOrders++;
-                                    @endphp
-                                @elseif ($data->order_number)
-                                    {{ $data->order_number }}
-                                    <div> {{"Updated_by: " . $data->order_by }} </div>
-                                    <div>{{"Updated_date: "}} {{$data->order_date ? \Carbon\Carbon::parse($data->pro_feedback_date)->format('d/m/Y') : '' }}</div>  
-                                @endif --}}
+                                <div class="mt-1">
+                                    <b>{{ '(2): ' }}</b>
+                                    @if(empty($data->actual_batch))
+                                        <input type="text" class="updateInput" name="actual_batch" value="{{ $data->batch }}" data-id="{{ $data->id }}" style="border: 1px solid #ccc; border-radius: 4px; width: 120px; text-align: left; padding: 2px 5px; background-color: #f9f9f9; display: inline-block; height: auto; color: red; font-weight: bold;">
+                                    @else
+                                        <input type="text" value="{{ $data->actual_batch }}" disabled readonly style="border: 1px solid #ccc; border-radius: 4px; width: 120px; text-align: left; padding: 2px 5px; background-color: #e9ecef; display: inline-block; height: auto; color: blue; font-weight: bold;">
+                                    @endif
+                                </div>
+
+                                <div class="mt-1">
+                                    <b>{{ '(3): ' }}</b>
+                                    <span class="order-numbers-container" data-id="{{ $data->id }}">
+                                        @if($data->order_number_R1 || $data->order_number_R2)
+                                            <span class="text-primary font-weight-bold">
+                                                {{ $data->order_number_R1 ?? '' }} 
+                                                {{ ($data->order_number_R1 && $data->order_number_R2) ? ' và ' : '' }} 
+                                                {{ $data->order_number_R2 ?? '' }}
+                                            </span>
+                                        @else
+                                            <span class="text-secondary">Chưa có số lệnh</span>
+                                        @endif
+                                    </span>
+                                </div>
 
 
 
@@ -373,6 +376,8 @@
                         <th>
                             <div>{{ 'KẾ HOẠCH' }}</div>
                             <div>{{ '(1) Ngày dự kiến KCS' }}</div>
+                            <div>{{ '(2) Số Lô Thực Tế' }}</div>
+                            <div>{{ '(3) Số Lệnh' }}</div>
                             {{-- <div>{{ "(2) Số lệnh" }} <span class ="text-red"> {{"(chưa có:  $missingOrders lô)"}} </span> </div> --}}
 
                         </th>
@@ -514,6 +519,27 @@
                     },
                     success: function(res) {
                         if (res.success) {
+                            if (name === 'actual_batch') {
+                                let container = $('.order-numbers-container[data-id="' + id + '"]');
+                                if (container.length > 0) {
+                                    if (res.order_number_R1 || res.order_number_R2) {
+                                        let text = (res.order_number_R1 || '') + 
+                                                   (res.order_number_R1 && res.order_number_R2 ? ' và ' : '') + 
+                                                   (res.order_number_R2 || '');
+                                        container.html('<span class="text-primary font-weight-bold">' + text + '</span>');
+                                    } else {
+                                        container.html('<span class="text-secondary">Chưa có số lệnh</span>');
+                                    }
+                                }
+                                let inputField = $('input[name="actual_batch"][data-id="' + id + '"]');
+                                if (inputField.length > 0 && updateValue && updateValue.trim() !== '') {
+                                    inputField.prop('disabled', true);
+                                    inputField.prop('readonly', true);
+                                    inputField.css('color', 'blue');
+                                    inputField.css('background-color', '#e9ecef');
+                                    inputField.removeClass('updateInput');
+                                }
+                            }
                             Swal.mixin({
                                     toast: true,
                                     position: 'top-end',
@@ -695,7 +721,7 @@
 
                         if (!batchNo || !orderNo) {
                             Swal.showValidationMessage(
-                            "Vui lòng điền đầy đủ số lô và số lệnh!");
+                                "Vui lòng điền đầy đủ số lô và số lệnh!");
                             return false;
                         }
 
@@ -728,7 +754,7 @@
                                     showConfirmButton: false
                                 }).then(() => {
                                     location
-                                .reload(); // reload ngay sau khi popup đóng
+                                        .reload(); // reload ngay sau khi popup đóng
                                 });
                             }
                         });

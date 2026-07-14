@@ -100,5 +100,8 @@ Route::prefix('/plan')
                 Route::post('/{id}/add-products', 'addProducts')->name('add_products');
                 Route::post('update-monthly-data', 'updateMonthlyData')->name('update_monthly_data');
                 Route::get('/{id}/equipment-allocation', 'getEquipmentAllocation')->name('equipment_allocation');
+                Route::get('/wip-details/{productId}/{month}', 'getWipDetails')->name('wip_details');
+                Route::get('/inventory-details/{productId}/{month}', 'getInventoryDetails')->name('inventory_details');
+                Route::post('/{id}/push-to-monthly', 'pushToMonthly')->name('push_to_monthly');
             });
     });
