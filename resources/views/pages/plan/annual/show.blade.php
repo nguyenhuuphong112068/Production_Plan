@@ -135,7 +135,7 @@
             </div>
             <div class="card-body">
                 <div class="row">
-                    <div class="col-md-6">
+                    <div class="col-md-12 d-flex flex-wrap align-items-center mb-3">
                         <button class="btn btn-success btn-add mb-2" onclick="saveData()" style="width: 155px;">
                             <i class="fas fa-save"></i> Lưu thay đổi
                         </button>
@@ -156,6 +156,16 @@
                                     <a class="dropdown-item btn-equipment-allocation" href="#" data-month="{{ $m }}">Tháng {{ str_pad($m, 2, '0', STR_PAD_LEFT) }}/{{ $plan->year }}</a>
                                 @endfor
                             </div>
+                        </div>
+
+                        <!-- Dropdown Tháng đang xét -->
+                        <div class="form-group ml-4 mb-2 d-flex align-items-center" style="width: 250px;">
+                            <label for="currentMonthSelect" class="mb-0 mr-2 font-weight-bold" style="white-space: nowrap; color: #d32f2f;">Tháng đang xét:</label>
+                            <select id="currentMonthSelect" class="form-control form-control-sm" style="border-color: #d32f2f; color: #d32f2f; font-weight: bold;">
+                                @for($m = 1; $m <= 12; $m++)
+                                    <option value="{{ $m }}">Tháng {{ str_pad($m, 2, '0', STR_PAD_LEFT) }}</option>
+                                @endfor
+                            </select>
                         </div>
                     </div>
                 </div>
@@ -455,6 +465,40 @@
             const containerRatio = document.getElementById('hot-app-ratio');
             // Inject data from controller
             globalData = @json($hotData);
+            const userPreferences = @json($userPreferences);
+            const tab1Prefs = userPreferences.tab1 || {};
+            const tab2Prefs = userPreferences.tab2 || {};
+
+            let globalCurrentMonth = new Date().getMonth() + 2;
+            if (globalCurrentMonth > 12) globalCurrentMonth = 1;
+            $('#currentMonthSelect').val(globalCurrentMonth);
+            
+            let globalTopHeaders = [];
+            let globalColHeaders = [];
+            let globalExcelLetters = [];
+
+            let savePrefsTimeout;
+            function saveTablePreferences(tableName, hotInstance) {
+                clearTimeout(savePrefsTimeout);
+                savePrefsTimeout = setTimeout(() => {
+                    if (!hotInstance) return;
+                    let prefs = {};
+                    prefs.fixedColumnsStart = hotInstance.getSettings().fixedColumnsStart;
+                    const filtersPlugin = hotInstance.getPlugin('filters');
+                    if (filtersPlugin && filtersPlugin.conditionCollection) {
+                        prefs.filters = filtersPlugin.conditionCollection.exportAllConditions();
+                    }
+                    $.ajax({
+                        url: '/user-table-preferences/save',
+                        type: 'POST',
+                        data: {
+                            table_name: tableName,
+                            preferences: prefs,
+                            _token: '{{ csrf_token() }}'
+                        }
+                    });
+                }, 1000);
+            }
 
             let totalRow = {
                 product_name: 'Tổng cộng',
@@ -488,7 +532,7 @@
             const data = globalData;
 
             // Tab 1: Base headers and columns
-            const colHeaders = [
+            let colHeaders = [
                 'Hết SĐK', 'Phân loại', 'Khách', 'Thị trường', 'Thị trường chung', 'Dạng bào chế', 'Mã BTP', 'Mã TP', 'Sản phẩm', 'Hạn dùng',
                 'Quy cách', 'Cỡ lô', 'BQ bán / Tháng (hộp)', 'BQ bán / tháng (viên)'
             ];
@@ -567,17 +611,39 @@
             }
         ];
 
-        const topHeaders = [
+        let topHeaders = [
             { label: 'Thông tin chung', colspan: 14 }
         ];
 
         // Generate 12 months dynamically for Tab 1
         const planYear = {{ $plan->year }};
+        function buildColHeaders() {
+            let tempColHeaders = [
+                'Hết SĐK', 'Phân loại', 'Khách', 'Thị trường', 'Thị trường chung', 'Dạng bào chế', 'Mã BTP', 'Mã TP', 'Sản phẩm', 'Hạn dùng',
+                'Quy cách', 'Cỡ lô', 'BQ bán / Tháng (hộp)', 'BQ bán / tháng (viên)'
+            ];
+            
+            for (let m = 1; m <= 12; m++) {
+                tempColHeaders.push(`Số lô`);
+                tempColHeaders.push(`Sản lượng`);
+                tempColHeaders.push(`BTP dở dang`);
+                tempColHeaders.push(`Tồn kho`);
+                let formula = '';
+                if (m > globalCurrentMonth) {
+                    formula = `<br><small style="color: #666; font-size: 0.75rem;">([Tồn kho (T${globalCurrentMonth})] - [BQ bán (viên)] * ${m - globalCurrentMonth}) / [BQ bán (viên)]</small>`;
+                }
+                tempColHeaders.push(`Số tháng bán${formula}`);
+            }
+            return tempColHeaders;
+        }
+
+        colHeaders = buildColHeaders();
+        globalColHeaders = colHeaders;
+
         for (let m = 1; m <= 12; m++) {
             const monthStr = m.toString().padStart(2, '0');
             topHeaders.push({ label: `Tháng ${monthStr}/${planYear}`, colspan: 5 });
 
-            colHeaders.push(`Số lô`);
             columns.push({
                 data: `m${m}_batches`,
                 type: 'numeric',
@@ -587,7 +653,6 @@
                 className: `month-bg-${m}`
             });
 
-            colHeaders.push(`Sản lượng`);
             columns.push({
                 data: `m${m}_planned_quantity`,
                 readOnly: true,
@@ -598,7 +663,6 @@
                 className: `month-bg-${m}`
             });
 
-            colHeaders.push(`BTP dở dang`);
             columns.push({
                 data: `m${m}_wip_inventory`,
                 readOnly: true,
@@ -609,7 +673,6 @@
                 className: `month-bg-${m}`
             });
 
-            colHeaders.push(`Tồn kho`);
             columns.push({
                 data: `m${m}_expected_inventory`,
                 readOnly: true,
@@ -620,7 +683,6 @@
                 className: `month-bg-${m}`
             });
 
-            colHeaders.push(`Số tháng bán`);
             columns.push({
                 data: `m${m}_months_sales`,
                 readOnly: true,
@@ -635,6 +697,9 @@
         const excelLetters = colHeaders.map((_, index) => {
             return getExcelColumnName(index);
         });
+        
+        globalTopHeaders = topHeaders;
+        globalExcelLetters = excelLetters;
 
         // Tab 2: Base headers and columns
         const colHeadersRatio = [
@@ -767,20 +832,24 @@
         hot = new Handsontable(container, {
             data: data,
             nestedHeaders: [
-                topHeaders,
-                colHeaders, // Hàng 2: Tên cột
-                excelLetters // Hàng 3: Chỉ số A, B, C...
+                globalTopHeaders,
+                globalColHeaders, // Hàng 2: Tên cột
+                globalExcelLetters // Hàng 3: Chỉ số A, B, C...
             ],
             columns: columns,
             rowHeaders: true,
             height: getTableHeight(container),
             licenseKey: 'non-commercial-and-evaluation',
-            fixedColumnsStart: 0,
+            fixedColumnsStart: parseInt(tab1Prefs.fixedColumnsStart) || 0,
             contextMenu: true,
             manualColumnResize: true,
             manualColumnFreeze: true,
+            persistentState: true,
             filters: true,
             dropdownMenu: true,
+            afterColumnFreeze: function() { saveTablePreferences('annual_plan_tab1', this); },
+            afterColumnUnfreeze: function() { saveTablePreferences('annual_plan_tab1', this); },
+            afterFilter: function() { saveTablePreferences('annual_plan_tab1', this); },
             cells: function(row, col) {
                 const cellProperties = {};
                 const rowData = this.instance.getSourceDataAtRow(row);
@@ -899,12 +968,16 @@
             rowHeaders: true,
             height: getTableHeight(containerRatio),
             licenseKey: 'non-commercial-and-evaluation',
-            fixedColumnsStart: 0,
+            fixedColumnsStart: parseInt(tab2Prefs.fixedColumnsStart) || 0,
             contextMenu: true,
             manualColumnResize: true,
             manualColumnFreeze: true,
+            persistentState: true,
             filters: true,
             dropdownMenu: true,
+            afterColumnFreeze: function() { saveTablePreferences('annual_plan_tab2', this); },
+            afterColumnUnfreeze: function() { saveTablePreferences('annual_plan_tab2', this); },
+            afterFilter: function() { saveTablePreferences('annual_plan_tab2', this); },
             cells: function(row, col) {
                 const cellProperties = {};
                 const rowData = this.instance.getSourceDataAtRow(row);
@@ -977,6 +1050,49 @@
         });
 
         calculateTotals();
+
+        // Restore filters if present
+        if (tab1Prefs.filters) {
+            const filtersPlugin = hot.getPlugin('filters');
+            if (filtersPlugin) {
+                filtersPlugin.conditionCollection.importAllConditions(tab1Prefs.filters);
+                filtersPlugin.filter();
+            }
+        }
+        if (tab2Prefs.filters) {
+            const filtersPlugin = hotRatio.getPlugin('filters');
+            if (filtersPlugin) {
+                filtersPlugin.conditionCollection.importAllConditions(tab2Prefs.filters);
+                filtersPlugin.filter();
+            }
+        }
+
+        $('#currentMonthSelect').change(function() {
+            globalCurrentMonth = parseInt($(this).val());
+            globalColHeaders = buildColHeaders();
+            
+            if (hot) {
+                hot.updateSettings({
+                    nestedHeaders: [
+                        globalTopHeaders,
+                        globalColHeaders,
+                        globalExcelLetters
+                    ]
+                });
+                
+                // Cuộn ngang tới tháng đang xét
+                let targetCol = 14 + (globalCurrentMonth - 1) * 5;
+                if (targetCol >= 0 && targetCol < globalColHeaders.length) {
+                    hot.scrollViewportTo(0, targetCol);
+                }
+            }
+        });
+
+        // Force fixedColumnsStart to override persistentState
+        setTimeout(function() {
+            if (hot) hot.updateSettings({ fixedColumnsStart: parseInt(tab1Prefs.fixedColumnsStart) || 0 });
+            if (hotRatio) hotRatio.updateSettings({ fixedColumnsStart: parseInt(tab2Prefs.fixedColumnsStart) || 0 });
+        }, 100);
 
         // Cập nhật chiều cao khi thay đổi kích thước cửa sổ
         window.addEventListener('resize', function() {

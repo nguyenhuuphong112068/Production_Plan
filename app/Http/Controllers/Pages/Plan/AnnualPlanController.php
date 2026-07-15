@@ -169,6 +169,31 @@ class AnnualPlanController extends Controller
         ";
 
         $wipBatches = \Illuminate\Support\Facades\DB::select($wipQuery);
+        
+        $r1Orders = [];
+        foreach ($wipBatches as $batch) {
+            if (!empty($batch->order_number_R1)) {
+                $r1Orders[] = $batch->order_number_R1;
+            }
+        }
+        
+        $mmsReceipts = [];
+        if (count($r1Orders) > 0) {
+            $uniqueR1 = array_unique($r1Orders);
+            try {
+                $chunks = array_chunk($uniqueR1, 1000);
+                foreach ($chunks as $chunk) {
+                    $placeholders = implode(',', array_fill(0, count($chunk), '?'));
+                    $receiptQuery = "SELECT prdorderno, MIN(CRON) as first_receipt_date FROM FGGRN WHERE prdorderno IN ($placeholders) AND GRNAPSTS = 3 GROUP BY prdorderno";
+                    $receipts = \Illuminate\Support\Facades\DB::connection('mms')->select($receiptQuery, $chunk);
+                    foreach ($receipts as $r) {
+                        $mmsReceipts[$r->prdorderno] = $r->first_receipt_date;
+                    }
+                }
+            } catch (\Exception $e) {
+            }
+        }
+
         $wipData = [];
         $planYearInt = (int) $plan->year;
 
@@ -176,6 +201,9 @@ class AnnualPlanController extends Controller
             $startDate = $batch->start_date ? \Carbon\Carbon::parse($batch->start_date) : null;
             $endDate = $batch->end_date ? \Carbon\Carbon::parse($batch->end_date) : null;
             $isFinished = (bool) $batch->is_finished;
+            
+            $receiptDateStr = !empty($batch->order_number_R1) ? ($mmsReceipts[$batch->order_number_R1] ?? null) : null;
+            $receiptDate = $receiptDateStr ? \Carbon\Carbon::parse($receiptDateStr) : null;
 
             if (!$startDate) {
                 continue;
@@ -187,8 +215,20 @@ class AnnualPlanController extends Controller
                 $hasStarted = $startDate->lte($endOfMonth);
 
                 $hasNotEnded = true;
-                if ($isFinished && $endDate) {
-                    $hasNotEnded = $endDate->gt($endOfMonth);
+                if ($receiptDate) {
+                    // Đã nhập kho MMS
+                    $hasNotEnded = $receiptDate->gt($endOfMonth);
+                } else {
+                    // Chưa nhập kho MMS
+                    if (!empty($batch->order_number_R1)) {
+                        // Nếu có mã R1 nhưng chưa nhập kho MMS -> vẫn là dở dang (bất chấp isFinished)
+                        $hasNotEnded = true;
+                    } else {
+                        // Không có mã R1, dùng logic cũ (ngày đóng gói)
+                        if ($isFinished && $endDate) {
+                            $hasNotEnded = $endDate->gt($endOfMonth);
+                        }
+                    }
                 }
 
                 if ($hasStarted && $hasNotEnded) {
@@ -319,7 +359,16 @@ class AnnualPlanController extends Controller
             ->orderBy('month', 'desc')
             ->get();
 
-        return view('pages.plan.annual.show', compact('plan', 'hotData', 'existingProductIds', 'pendingPlans'));
+        $userId = \Illuminate\Support\Facades\Auth::id() ?? 1;
+        $userPreferencesTab1 = \App\Models\UserTablePreference::where('user_id', $userId)->where('table_name', 'annual_plan_tab1')->first();
+        $userPreferencesTab2 = \App\Models\UserTablePreference::where('user_id', $userId)->where('table_name', 'annual_plan_tab2')->first();
+        
+        $userPreferences = [
+            'tab1' => $userPreferencesTab1 ? $userPreferencesTab1->preferences : null,
+            'tab2' => $userPreferencesTab2 ? $userPreferencesTab2->preferences : null,
+        ];
+
+        return view('pages.plan.annual.show', compact('plan', 'hotData', 'existingProductIds', 'pendingPlans', 'userPreferences'));
     }
 
     public function unassignedProducts($id)
@@ -647,6 +696,31 @@ class AnnualPlanController extends Controller
         ";
 
         $batches = \Illuminate\Support\Facades\DB::select($wipQuery, [$fpc_id]);
+        
+        $r1Orders = [];
+        foreach ($batches as $batch) {
+            if (!empty($batch->order_number_R1)) {
+                $r1Orders[] = $batch->order_number_R1;
+            }
+        }
+        
+        $mmsReceipts = [];
+        if (count($r1Orders) > 0) {
+            $uniqueR1 = array_unique($r1Orders);
+            try {
+                $chunks = array_chunk($uniqueR1, 1000);
+                foreach ($chunks as $chunk) {
+                    $placeholders = implode(',', array_fill(0, count($chunk), '?'));
+                    $receiptQuery = "SELECT prdorderno, MIN(CRON) as first_receipt_date FROM FGGRN WHERE prdorderno IN ($placeholders) AND GRNAPSTS = 3 GROUP BY prdorderno";
+                    $receipts = \Illuminate\Support\Facades\DB::connection('mms')->select($receiptQuery, $chunk);
+                    foreach ($receipts as $r) {
+                        $mmsReceipts[$r->prdorderno] = $r->first_receipt_date;
+                    }
+                }
+            } catch (\Exception $e) {
+            }
+        }
+
         $details = [];
 
         $endOfMonth = \Carbon\Carbon::create($planYearInt, $month, 1)->endOfMonth();
@@ -655,21 +729,37 @@ class AnnualPlanController extends Controller
             $startDate = $batch->start_date ? \Carbon\Carbon::parse($batch->start_date) : null;
             $endDate = $batch->end_date ? \Carbon\Carbon::parse($batch->end_date) : null;
             $isFinished = (bool) $batch->is_finished;
+            
+            $receiptDateStr = !empty($batch->order_number_R1) ? ($mmsReceipts[$batch->order_number_R1] ?? null) : null;
+            $receiptDate = $receiptDateStr ? \Carbon\Carbon::parse($receiptDateStr) : null;
 
             if (!$startDate) {
                 continue;
             }
 
             $hasStarted = $startDate->lte($endOfMonth);
+            
             $hasNotEnded = true;
-            if ($isFinished && $endDate) {
-                $hasNotEnded = $endDate->gt($endOfMonth);
+            if ($receiptDate) {
+                // Đã nhập kho MMS
+                $hasNotEnded = $receiptDate->gt($endOfMonth);
+            } else {
+                // Chưa nhập kho MMS
+                if (!empty($batch->order_number_R1)) {
+                    $hasNotEnded = true;
+                } else {
+                    if ($isFinished && $endDate) {
+                        $hasNotEnded = $endDate->gt($endOfMonth);
+                    }
+                }
             }
 
             if ($hasStarted && $hasNotEnded) {
                 $status = $batch->current_stage_status;
-                if ($isFinished && $endDate) {
-                    $status = 'Hoàn Tất ĐG (' . $endDate->format('d/m/Y') . ')';
+                if ($receiptDate) {
+                    $status = 'Đã Nhập Kho (' . $receiptDate->format('d/m/Y') . ')';
+                } elseif ($isFinished && $endDate) {
+                    $status = 'Hoàn Tất ĐG (' . $endDate->format('d/m/Y') . ') - Chờ NK';
                 }
 
                 $details[] = [

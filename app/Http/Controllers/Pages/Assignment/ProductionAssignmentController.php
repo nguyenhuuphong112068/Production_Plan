@@ -42,7 +42,8 @@ class ProductionAssignmentController extends Controller
             6 => "Bao Phim",
             7 => "ĐGSC",
             8 => "ĐGTC",
-            9 => "VSCN + Kho BTP"
+            9 => "VSCN + Kho BTP",
+            10 => "Mã Hoá BB"
         ])->map(function ($name, $id) {
             return (object) ['group_code' => $id, 'production_group' => $name];
         })->values();
@@ -907,7 +908,7 @@ class ProductionAssignmentController extends Controller
                 }
             }
             $allPersonnelIds = array_unique($allPersonnelIds);
-            
+
             $employeeMap = [];
             if (!empty($allPersonnelIds)) {
                 $employeeMap = DB::table('employees')
@@ -947,7 +948,7 @@ class ProductionAssignmentController extends Controller
                 $day = $carbonDate->day;
                 $sheetMonth = $carbonDate->month;
                 $sheetYear = $carbonDate->year;
-                
+
                 if ($day >= 21) {
                     $sheetMonth += 1;
                     if ($sheetMonth > 12) {
@@ -955,7 +956,7 @@ class ProductionAssignmentController extends Controller
                         $sheetYear += 1;
                     }
                 }
-                
+
                 $cacheKey = "{$sheetMonth}_{$sheetYear}";
                 if (!isset($shiftsCache[$cacheKey])) {
                     $shiftsCache[$cacheKey] = [];
@@ -1028,23 +1029,23 @@ class ProductionAssignmentController extends Controller
                     $validPersonnelList = [];
                     foreach ($unique_p_data as $p) {
                         if (empty($p['personnel_id'])) continue;
-                        
+
                         $emp = $employeeMap[$p['personnel_id']] ?? null;
                         if (!$emp) {
                             $validPersonnelList[] = $p;
                             continue;
                         }
-                        
+
                         $empCode = $emp->code;
                         $empName = $emp->name;
-                        
+
                         // Check maternity leave
                         if ($emp->on_maternity_leave == 1) {
                             $formattedDate = Carbon::parse($targetDate)->format('d/m/Y');
                             $skippedList[] = "{$empName} ({$formattedDate})";
                             continue; // Skip!
                         }
-                        
+
                         // Check shift
                         $personData = $shiftsCache[$cacheKey][$empCode] ?? null;
                         $isLeave = false;
@@ -1059,13 +1060,13 @@ class ProductionAssignmentController extends Controller
                                 $isLeave = true;
                             }
                         }
-                        
+
                         if ($isLeave) {
                             $formattedDate = Carbon::parse($targetDate)->format('d/m/Y');
                             $skippedList[] = "{$empName} ({$formattedDate})";
                             continue; // Skip!
                         }
-                        
+
                         $validPersonnelList[] = $p;
                     }
 
@@ -1396,7 +1397,7 @@ class ProductionAssignmentController extends Controller
                         ->select('personnel_id', 'notification', 'operation_type', 'start', 'end')->get();
                     $a->start_time_display = $a->start ? Carbon::parse($a->start)->format('H:i') : null;
                     $a->end_time_display = $a->end ? Carbon::parse($a->end)->format('H:i') : null;
-                    
+
                     $a->is_foreign = ($group_code && $a->stage_groups_code != $group_code);
                     if (!$a->is_foreign) {
                         $hasLocal = true;

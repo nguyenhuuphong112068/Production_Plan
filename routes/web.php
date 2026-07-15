@@ -25,5 +25,10 @@ require_once(__DIR__ . '/n8nRoute.php');
 require_once(__DIR__ . '/NotificationRoute.php');
 require_once(__DIR__ . '/ChatRoute.php');
 
+use App\Http\Controllers\UserTablePreferenceController;
+
+Route::post('/user-table-preferences/save', [UserTablePreferenceController::class, 'save']);
+Route::get('/user-table-preferences/load', [UserTablePreferenceController::class, 'load']);
+
 ?>
 
