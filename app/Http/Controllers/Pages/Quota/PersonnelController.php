@@ -149,7 +149,7 @@ class PersonnelController extends Controller
     {
         // Tăng giới hạn bộ nhớ cho route này vì render View HTML quá lớn
         ini_set('memory_limit', '512M');
-        
+
         // 1. Lấy mã bộ phận: Ưu tiên URL -> Session
         $departmentCode = $department ?? session('user')['department'];
 
@@ -240,7 +240,8 @@ class PersonnelController extends Controller
                 6 => "Bao Phim",
                 7 => "ĐGSC",
                 8 => "ĐGTC",
-                9 => "VSCN + Kho BTP"
+                9 => "VSCN + Kho BTP",
+                10 => "Mã Hoá BB"
             ])->map(function ($name, $id) {
                 return (object) ['id' => $id, 'code' => $id, 'name' => $name];
             })->values();
