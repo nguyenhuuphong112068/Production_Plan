@@ -1356,41 +1356,57 @@
     }
 
 
-    function updateSidebarPersonnelTimes() {
-        // Helper to calculate hours between HH:mm times
-        function calculateDurationHours(startStr, endStr, shiftVal = null) {
-            if (!startStr || !endStr) return 0;
-            const sParts = startStr.split(':');
-            const eParts = endStr.split(':');
+    // Helper: extract basic minute intervals [start, end] excluding lunch break if applicable
+    function extractBasicIntervals(startStr, endStr, shiftVal = null) {
+        if (!startStr || !endStr) return [];
+        function getMins(t) {
+            const p = t.split(':');
+            return parseInt(p[0], 10) * 60 + parseInt(p[1], 10);
+        }
+        let sMin = getMins(startStr);
+        let eMin = getMins(endStr);
+        if (eMin <= sMin) eMin += 24 * 60;
 
-            let sMin = parseInt(sParts[0], 10) * 60 + parseInt(sParts[1], 10);
-            let eMin = parseInt(eParts[0], 10) * 60 + parseInt(eParts[1], 10);
-
-            if (eMin < sMin) {
-                eMin += 24 * 60;
-            }
-
-            let durationMin = eMin - sMin;
-
-            let isNoLunchBreakShift = false;
-            if (shiftVal) {
-                if (['1', '2', '3', '6'].includes(shiftVal.toString())) {
-                    isNoLunchBreakShift = true;
-                }
-            }
-
-            if (!isNoLunchBreakShift) {
-                const lunchStart = 11 * 60 + 30;
-                const lunchEnd = 12 * 60 + 15;
-                const overlapStart = Math.max(sMin, lunchStart);
-                const overlapEnd = Math.min(eMin, lunchEnd);
-                if (overlapStart < overlapEnd) {
-                    durationMin -= (overlapEnd - overlapStart);
-                }
-            }
-            return durationMin / 60;
+        let isNoLunchBreakShift = false;
+        if (shiftVal && ['1', '2', '3', '6'].includes(shiftVal.toString())) {
+            isNoLunchBreakShift = true;
         }
 
+        if (!isNoLunchBreakShift) {
+            const lunchStart = 11 * 60 + 30; // 690
+            const lunchEnd = 12 * 60 + 15;   // 735
+            const overlapStart = Math.max(sMin, lunchStart);
+            const overlapEnd = Math.min(eMin, lunchEnd);
+            if (overlapStart < overlapEnd) {
+                let res = [];
+                if (overlapStart > sMin) res.push([sMin, overlapStart]);
+                if (eMin > overlapEnd) res.push([overlapEnd, eMin]);
+                return res;
+            }
+        }
+        return [[sMin, eMin]];
+    }
+
+    // Helper: merge overlapping intervals and return total duration in hours
+    function getMergedDurationHours(intervals) {
+        if (!intervals || intervals.length === 0) return 0;
+        let sorted = intervals.map(i => [...i]).sort((a, b) => a[0] - b[0]);
+        let merged = [sorted[0]];
+        for (let i = 1; i < sorted.length; i++) {
+            let current = sorted[i];
+            let last = merged[merged.length - 1];
+            if (current[0] <= last[1]) {
+                last[1] = Math.max(last[1], current[1]);
+            } else {
+                merged.push(current);
+            }
+        }
+        let totalMins = 0;
+        merged.forEach(m => { totalMins += (m[1] - m[0]); });
+        return totalMins / 60;
+    }
+
+    function updateSidebarPersonnelTimes() {
         function timeStrToMins(t) {
             if (!t) return 0;
             const parts = t.split(':');
@@ -1477,15 +1493,21 @@
             });
 
             let cumulativeHours = 0;
+            let mergedIntervals = [];
+
             assignments.forEach(a => {
-                let duration = calculateDurationHours(a.start, a.end, a.shift);
+                let basicIntervals = extractBasicIntervals(a.start, a.end, a.shift);
+                let allIntervals = [...mergedIntervals, ...basicIntervals];
+                let newCumulativeHours = getMergedDurationHours(allIntervals);
+                let effectiveDuration = newCumulativeHours - cumulativeHours;
+
                 if (a.element) {
                     const displayEl = a.element.find('.time-display');
                     let tc = 0;
                     if (cumulativeHours >= 8) {
-                        tc = duration;
-                    } else if (cumulativeHours + duration > 8) {
-                        tc = cumulativeHours + duration - 8;
+                        tc = effectiveDuration;
+                    } else if (newCumulativeHours > 8) {
+                        tc = newCumulativeHours - 8;
                     }
 
                     let html = displayEl.html() || '';
@@ -1496,7 +1518,25 @@
                     }
                     displayEl.html(html);
                 }
-                cumulativeHours += duration;
+                
+                mergedIntervals = [...mergedIntervals, ...basicIntervals];
+                // sort & merge again for next iteration to keep it clean
+                mergedIntervals = mergedIntervals.sort((a, b) => a[0] - b[0]);
+                let tempMerged = [];
+                if (mergedIntervals.length > 0) {
+                    tempMerged.push([...mergedIntervals[0]]);
+                    for (let i = 1; i < mergedIntervals.length; i++) {
+                        let current = mergedIntervals[i];
+                        let last = tempMerged[tempMerged.length - 1];
+                        if (current[0] <= last[1]) {
+                            last[1] = Math.max(last[1], current[1]);
+                        } else {
+                            tempMerged.push([...current]);
+                        }
+                    }
+                }
+                mergedIntervals = tempMerged;
+                cumulativeHours = newCumulativeHours;
             });
 
             personCumulativeTimes[personId] = Math.round(cumulativeHours * 100) / 100;
@@ -5403,60 +5443,50 @@
 
         $('.room-row').each(function() {
             const $roomRow = $(this);
-            if ($roomRow.css('display') === 'none') return; // Bỏ qua các dòng bị ẩn
-            // data-group-code = code của tổ (khớp với stage_groups.code = pol.group_code_value)
+            if ($roomRow.css('display') === 'none') return;
             const groupCode = ($roomRow.attr('data-group-code') || '').toString();
 
             $roomRow.find('.assignment-item:not(.foreign-assignment)').each(function() {
                 const $item = $(this);
-                const startStr = $item.find('.start-time-input').val();
-                const endStr = $item.find('.end-time-input').val();
-                if (!startStr || !endStr) return;
-
-                let shiftStart = timeStrToMins(startStr);
-                let shiftEnd = timeStrToMins(endStr);
-                if (shiftEnd <= shiftStart) shiftEnd += 24 * 60;
+                const shiftVal = $item.find('.shift-select').val() || '1';
 
                 $item.find('.personnel-row').each(function() {
                     const pid = $(this).find('.person-select').val();
                     if (!pid) return;
 
-                    // Ưu tiên dùng giờ riêng của nhân sự (slider), fallback về giờ ca
                     const pStartStr = $(this).find('.p-start-input').val();
                     const pEndStr = $(this).find('.p-end-input').val();
-
-                    let personMins = shiftEnd - shiftStart;
-
-                    // Đọc từ span hiển thị (ví dụ: =8.0h) để đảm bảo giống hệt logic tính toán ở Frontend (kể cả nghỉ trưa)
+                    
+                    let basicIntervals = [];
+                    // Extract start/end from display HTML or inputs
                     const displayHtml = $(this).find('.time-display').html() || '';
-                    const match = displayHtml.match(/=([0-9\.]+)h/);
-
-                    if (match) {
-                        personMins = parseFloat(match[1]) * 60;
+                    const timeMatch = displayHtml.match(/>([0-9]{2}:[0-9]{2})-([0-9]{2}:[0-9]{2})</);
+                    
+                    if (timeMatch) {
+                        basicIntervals = extractBasicIntervals(timeMatch[1], timeMatch[2], shiftVal);
                     } else if (pStartStr && pEndStr) {
-                        let pS = timeStrToMins(pStartStr);
-                        let pE = timeStrToMins(pEndStr);
-                        if (pE <= pS) pE += 24 * 60;
-                        personMins = pE - pS;
+                        basicIntervals = extractBasicIntervals(pStartStr, pEndStr, shiftVal);
+                    } else {
+                        // fallback to item shift times
+                        const itemStartStr = $item.find('.start-time-input').val();
+                        const itemEndStr = $item.find('.end-time-input').val();
+                        basicIntervals = extractBasicIntervals(itemStartStr, itemEndStr, shiftVal);
                     }
 
-                    const personName = $(this).find('.person-select option:selected').text()
-                        .trim() || 'Unknown';
-                    const roomName = $roomRow.find('.room-name-cell').text().trim().replace(
-                        /\s+/g, ' ');
-                    const shiftVal = $item.find('.shift-select').val() || '1';
+                    const personName = $(this).find('.person-select option:selected').text().trim() || 'Unknown';
+                    const roomName = $roomRow.find('.room-name-cell').text().trim().replace(/\s+/g, ' ');
 
                     if (!personData[pid]) {
                         personData[pid] = {
                             name: personName,
-                            totalMins: 0,
+                            intervals: [],
                             groupCodes: new Set(),
                             details: []
                         };
                     }
-                    personData[pid].totalMins += personMins;
-                    personData[pid].details.push(
-                        `Phòng: ${roomName}, Ca: ${shiftVal}, Mins: ${personMins}`);
+                    
+                    personData[pid].intervals.push(...basicIntervals);
+                    personData[pid].details.push(`Phòng: ${roomName}, Ca: ${shiftVal}`);
                     if (groupCode) personData[pid].groupCodes.add(groupCode);
                 });
             });
@@ -5470,7 +5500,7 @@
 
         for (let pid in personData) {
             const p = personData[pid];
-            const totalHrs = p.totalMins / 60;
+            const totalHrs = getMergedDurationHours(p.intervals);
             if (totalHrs > 8.01) {
                 console.log('Overtime detected for pid:', pid, 'Name:', p.name, 'totalMins:', p.totalMins, 'totalHrs:',
                     totalHrs);
