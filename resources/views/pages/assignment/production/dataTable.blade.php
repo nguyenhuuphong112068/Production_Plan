@@ -2127,6 +2127,19 @@
                     endInput.val(gap.end);
                     break;
             }
+
+            // Sync personnel sliders with the newly selected shift default times
+            row.find('.personnel-row').each(function() {
+                const sliderEl = $(this).find('.time-slider')[0];
+                if (sliderEl && sliderEl.noUiSlider) {
+                    sliderEl.noUiSlider.destroy();
+                    sliderEl.className = sliderEl.className.replace(/\bshift-\S+/g, '');
+                }
+                $(this).find('.p-start-input').val('');
+                $(this).find('.p-end-input').val('');
+                initTimeSlider($(this));
+            });
+
             updateTimelines();
             validateShiftDiscrepancy(row);
             updateSidebarPersonnelTimes();
