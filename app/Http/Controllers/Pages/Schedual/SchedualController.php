@@ -5512,57 +5512,60 @@ class SchedualController extends Controller
             $this->scheduleSensitiveProduct($i, 0, 0, $start_date);
         }
 
-        // / chạy theo stage_z
-        foreach ($stageCodes as $i) {
+        // / chạy theo stage_z - sản phẩm còn lại: thương mại (promotional_products = 0) chạy trước, khuyến mãi (= 1) chạy sau
+        foreach ([0, 1] as $promotionalFilter) {
 
-            $waite_time_nomal_batch = 0;
+            foreach ($stageCodes as $i) {
 
-            $waite_time_val_batch = 0;
+                $waite_time_nomal_batch = 0;
 
-            switch ($i) {
+                $waite_time_val_batch = 0;
 
-                case 3:
+                switch ($i) {
 
-                    $waite_time_nomal_batch = 0;
+                    case 3:
 
-                    $waite_time_val_batch = 0;
+                        $waite_time_nomal_batch = 0;
 
-                    break;
+                        $waite_time_val_batch = 0;
 
-                case 4:
+                        break;
 
-                    $waite_time_nomal_batch = ($request->wt_bleding ?? 0) * 24 * 60;
+                    case 4:
 
-                    $waite_time_val_batch = ($request->wt_bleding_val ?? 1) * 24 * 60;
+                        $waite_time_nomal_batch = ($request->wt_bleding ?? 0) * 24 * 60;
 
-                    break;
+                        $waite_time_val_batch = ($request->wt_bleding_val ?? 1) * 24 * 60;
 
-                case 5:
+                        break;
 
-                    $waite_time_nomal_batch = ($request->wt_forming ?? 0) * 24 * 60;
+                    case 5:
 
-                    $waite_time_val_batch = ($request->wt_forming_val ?? 5) * 24 * 60;
+                        $waite_time_nomal_batch = ($request->wt_forming ?? 0) * 24 * 60;
 
-                    break;
+                        $waite_time_val_batch = ($request->wt_forming_val ?? 5) * 24 * 60;
 
-                case 6:
+                        break;
 
-                    $waite_time_nomal_batch = ($request->wt_coating ?? 0) * 24 * 60;
+                    case 6:
 
-                    $waite_time_val_batch = ($request->wt_coating_val ?? 5) * 24 * 60;
+                        $waite_time_nomal_batch = ($request->wt_coating ?? 0) * 24 * 60;
 
-                    break;
+                        $waite_time_val_batch = ($request->wt_coating_val ?? 5) * 24 * 60;
 
-                case 7:
-                    // Đóng gói
-                    $waite_time_nomal_batch = ($request->wt_blitering ?? 0) * 24 * 60;
+                        break;
 
-                    $waite_time_val_batch = ($request->wt_blitering_val ?? 5) * 24 * 60;
+                    case 7:
+                        // Đóng gói
+                        $waite_time_nomal_batch = ($request->wt_blitering ?? 0) * 24 * 60;
 
-                    break;
+                        $waite_time_val_batch = ($request->wt_blitering_val ?? 5) * 24 * 60;
+
+                        break;
+                }
+
+                $this->Auto_scheduler_Stage_Forward($i, $waite_time_nomal_batch, $waite_time_val_batch, $start_date, $promotionalFilter);
             }
-
-            $this->Auto_scheduler_Stage_Forward($i, $waite_time_nomal_batch, $waite_time_val_batch, $start_date);
         }
 
         $overdueCampaigns = $this->scanOverdueTasks();
@@ -5663,34 +5666,38 @@ class SchedualController extends Controller
             $this->scheduleSensitiveProduct($i, 0, 0, $start_date);
         }
 
-        foreach ($stageCodes as $i) {
-            $waite_time_nomal_batch = 0;
-            $waite_time_val_batch = 0;
+        // Sản phẩm còn lại: thương mại (promotional_products = 0) chạy trước, khuyến mãi (= 1) chạy sau
+        foreach ([0, 1] as $promotionalFilter) {
 
-            switch ($i) {
-                case 3:
-                    $waite_time_nomal_batch = 0;
-                    $waite_time_val_batch = 0;
-                    break;
-                case 4:
-                    $waite_time_nomal_batch = ($request->wt_bleding ?? 0) * 24 * 60;
-                    $waite_time_val_batch = ($request->wt_bleding_val ?? 1) * 24 * 60;
-                    break;
-                case 5:
-                    $waite_time_nomal_batch = ($request->wt_forming ?? 0) * 24 * 60;
-                    $waite_time_val_batch = ($request->wt_forming_val ?? 5) * 24 * 60;
-                    break;
-                case 6:
-                    $waite_time_nomal_batch = ($request->wt_coating ?? 0) * 24 * 60;
-                    $waite_time_val_batch = ($request->wt_coating_val ?? 5) * 24 * 60;
-                    break;
-                case 7:
-                    $waite_time_nomal_batch = ($request->wt_blitering ?? 0) * 24 * 60;
-                    $waite_time_val_batch = ($request->wt_blitering_val ?? 5) * 24 * 60;
-                    break;
+            foreach ($stageCodes as $i) {
+                $waite_time_nomal_batch = 0;
+                $waite_time_val_batch = 0;
+
+                switch ($i) {
+                    case 3:
+                        $waite_time_nomal_batch = 0;
+                        $waite_time_val_batch = 0;
+                        break;
+                    case 4:
+                        $waite_time_nomal_batch = ($request->wt_bleding ?? 0) * 24 * 60;
+                        $waite_time_val_batch = ($request->wt_bleding_val ?? 1) * 24 * 60;
+                        break;
+                    case 5:
+                        $waite_time_nomal_batch = ($request->wt_forming ?? 0) * 24 * 60;
+                        $waite_time_val_batch = ($request->wt_forming_val ?? 5) * 24 * 60;
+                        break;
+                    case 6:
+                        $waite_time_nomal_batch = ($request->wt_coating ?? 0) * 24 * 60;
+                        $waite_time_val_batch = ($request->wt_coating_val ?? 5) * 24 * 60;
+                        break;
+                    case 7:
+                        $waite_time_nomal_batch = ($request->wt_blitering ?? 0) * 24 * 60;
+                        $waite_time_val_batch = ($request->wt_blitering_val ?? 5) * 24 * 60;
+                        break;
+                }
+
+                $this->Auto_scheduler_Stage_Forward($i, $waite_time_nomal_batch, $waite_time_val_batch, $start_date, $promotionalFilter);
             }
-
-            $this->Auto_scheduler_Stage_Forward($i, $waite_time_nomal_batch, $waite_time_val_batch, $start_date);
         }
 
         return response()->json(['status' => 'Pass 2 Completed']);
@@ -6309,7 +6316,7 @@ class SchedualController extends Controller
         }
     }
 
-    public function Auto_scheduler_Stage_Forward(int $stageCode, int $waite_time_nomal_batch = 0, int $waite_time_val_batch = 0, ?Carbon $start_date = null)
+    public function Auto_scheduler_Stage_Forward(int $stageCode, int $waite_time_nomal_batch = 0, int $waite_time_val_batch = 0, ?Carbon $start_date = null, ?int $promotionalFilter = null)
     {
 
         if ($this->prev_orderBy && $stageCode > 3) {
@@ -6375,6 +6382,9 @@ class SchedualController extends Controller
                 })
                 ->where('sp.not_schedule', 0)
                 ->whereNotNull('plan_master.after_weigth_date')
+                ->when($promotionalFilter !== null, function ($q) use ($promotionalFilter) {
+                    $q->where('plan_master.promotional_products', $promotionalFilter);
+                })
                 ->where('sp.deparment_code', session('user.production_code'))
                 ->orderBy('prev.start', 'asc')
                 ->get();
@@ -6434,6 +6444,9 @@ class SchedualController extends Controller
                 ->when($stageCode == 7, function ($q) {
 
                     $q->whereNotNull('plan_master.after_parkaging_date');
+                })
+                ->when($promotionalFilter !== null, function ($q) use ($promotionalFilter) {
+                    $q->where('plan_master.promotional_products', $promotionalFilter);
                 })
                 ->where('sp.deparment_code', session('user.production_code'))
                 ->orderBy('order_by', 'asc')
