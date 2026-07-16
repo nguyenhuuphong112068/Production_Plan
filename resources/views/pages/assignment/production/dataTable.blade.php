@@ -2112,6 +2112,10 @@
                     startInput.val('22:00');
                     endInput.val('06:00');
                     break;
+                case '6':
+                    startInput.val('01:00');
+                    endInput.val('21:00');
+                    break;
                 case '4':
                     startInput.val('07:15');
                     endInput.val('16:00');
@@ -2920,6 +2924,10 @@
                     nextShift = '3';
                     startTime = '22:00';
                     endTime = '06:00';
+                } else if (!existingShifts.includes('6')) {
+                    nextShift = '6';
+                    startTime = '01:00';
+                    endTime = '21:00';
                 } else {
                     nextShift = '5';
                     const roomRow = $(this).closest('.room-row');
