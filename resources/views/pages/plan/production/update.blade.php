@@ -216,6 +216,18 @@
                                         </div>
                                     </div>
 
+                                    <div class="card shadow-sm mt-3" style="border-left: 4px solid #007bff; border-radius: 4px;">
+                                        <div class="card-body py-2 px-3">
+                                            <div class="icheck-primary d-inline">
+                                                <input type="hidden" name="promotional_products" value="0">
+                                                <input type="checkbox" id="promotional_products_update" name="promotional_products" value="1">
+                                                <label for="promotional_products_update" class="text-primary font-weight-bold mb-0" style="cursor: pointer; font-size: 14px; vertical-align: middle;">
+                                                    <i class="fas fa-gift mr-1"></i> SẢN PHẨM KHUYẾN MÃI
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+
                                 </div>
 
                                 <div class="col-md-6">
@@ -376,6 +388,7 @@
                                     </div>
                                 </div>
                             </div>
+
                             {{-- Ghi chú --}}
                             <div class="row mt-2">
                                 <div class="col-md-12">

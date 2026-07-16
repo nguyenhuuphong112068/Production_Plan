@@ -205,7 +205,7 @@
                         <th>Thị Trường/ Qui Cách</th>
 
                         <th style="width:4%">Ngày dự kiến KCS</th>
-                        <th>Ưu Tiên</th>
+                        <th>Ưu Tiên/KH</th>
                         <th>Lô Thẩm định</th>
 
                         <th>
@@ -259,7 +259,7 @@
                             data-allow-weight-before-date="{{ $data->allow_weight_before_date ? \Carbon\Carbon::parse($data->allow_weight_before_date)->format('Y-m-d') : '' }}"
                             data-expired-material-date="{{ $data->expired_material_date ? \Carbon\Carbon::parse($data->expired_material_date)->format('Y-m-d') : '' }}"
                             data-expired-packing-date="{{ $data->expired_packing_date ? \Carbon\Carbon::parse($data->expired_packing_date)->format('Y-m-d') : '' }}"
-                            data-note="{{ $data->note }}" style="cursor: pointer;">
+                            data-note="{{ $data->note }}" data-promotional_products="{{ $data->promotional_products }}" style="cursor: pointer;">
 
                             <td>
                                 <div> {{ $loop->iteration }} </div>
@@ -349,6 +349,7 @@
                                             data-after_weigth_date="{{ $data->after_weigth_date }}"
                                             data-after_parkaging_date="{{ $data->after_parkaging_date }}"
                                             data-note="{{ $data->note }}" data-batch_qty="{{ $data->batch_qty }}"
+                                            data-promotional_products="{{ $data->promotional_products }}"
                                             data-unit_batch_qty="{{ $data->unit_batch_qty }}"
                                             data-material_source_id="{{ $data->material_source_id }}"
                                             data-number_parkaging="{{ $data->number_parkaging }}"
@@ -389,6 +390,11 @@
                                         value = "{{ $data->level }}" data-id={{ $data->id }}
                                         {{ $auth_update }}>
                                 </span>
+                                @if(isset($data->promotional_products) && $data->promotional_products == 1)
+                                <div class="mt-2 text-center" style="font-size: 13px;">
+                                    <span class="badge badge-primary px-2 py-1"><i class="fas fa-gift mr-1"></i> Hàng KH</span>
+                                </div>
+                                @endif
                             </td>
 
                             <td class="text-center ">
@@ -533,6 +539,7 @@
                                     data-after_weigth_date="{{ $data->after_weigth_date }}"
                                     data-after_parkaging_date="{{ $data->after_parkaging_date }}"
                                     data-note="{{ $data->note }}" data-batch_qty="{{ $data->batch_qty }}"
+                                    data-promotional_products="{{ $data->promotional_products }}"
                                     data-unit_batch_qty="{{ $data->unit_batch_qty }}"
                                     data-material_source_id="{{ $data->material_source_id }}"
                                     data-number_parkaging="{{ $data->number_parkaging }}" data-toggle="modal"
@@ -734,6 +741,20 @@
                                     </div>
                                 </div>
 
+                                <!-- Promotional Products -->
+                                <div class="form-group mb-2">
+                                    <div class="card shadow-sm border-0" style="border-left: 4px solid #007bff !important; border-radius: 4px;">
+                                        <div class="card-body py-2 px-3">
+                                            <div class="icheck-primary d-inline">
+                                                <input type="checkbox" id="bulk_promotional_products" value="1">
+                                                <label for="bulk_promotional_products" class="text-primary font-weight-bold mb-0" style="cursor: pointer; font-size: 14px; vertical-align: middle;">
+                                                    <i class="fas fa-gift mr-1"></i> SẢN PHẨM KHUYẾN MÃI
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
                                 <!-- Note -->
                                 <div class="form-group mb-2">
                                     <label class="font-weight-bold mb-1">Ghi chú (nếu có)</label>
@@ -850,7 +871,7 @@
                 <th>Thị Trường</th>
                 <th>Qui Cách</th>
                 <th>Ngày dự kiến KCS</th>
-                <th>Ưu Tiên</th>
+                <th>Ưu Tiên/KH</th>
                 <th>Lô Thẩm định</th>
                 <th>Ngày có đủ NL</th>
                 <th>Ngày có đủ BB</th>
@@ -999,6 +1020,7 @@
                     'source_material_name'));
                 modal.find('input[name="after_weigth_date"]').val(button.data('after_weigth_date'));
                 modal.find('input[name="after_parkaging_date"]').val(button.data('after_parkaging_date'));
+                modal.find('input[name="promotional_products"][type="checkbox"]').prop('checked', button.data('promotional_products') == 1 || button.data('promotional_products') === true);
                 modal.find('textarea[name="note"]').val(button.data('note'));
 
                 modal.find('input[name="batch_qty"]').val(button.data('batch_qty') + " - " + button.data(
@@ -1650,6 +1672,7 @@
                 $('#bulk_allow_weight_before_date').val(firstRow.data('allow-weight-before-date') || '');
                 $('#bulk_expired_material_date').val(firstRow.data('expired-material-date') || '');
                 $('#bulk_expired_packing_date').val(firstRow.data('expired-packing-date') || '');
+                $('#bulk_promotional_products').prop('checked', firstRow.data('promotional_products') == 1 || firstRow.data('promotional_products') === true);
                 $('#bulk_note').val(firstRow.data('note') || '');
 
                 // --- Lấy dữ liệu công thức của dòng đầu tiên ---
@@ -1806,6 +1829,7 @@
                 fields['allow_weight_before_date'] = $('#bulk_allow_weight_before_date').val();
                 fields['expired_material_date'] = $('#bulk_expired_material_date').val();
                 fields['expired_packing_date'] = $('#bulk_expired_packing_date').val();
+                fields['promotional_products'] = $('#bulk_promotional_products').is(':checked') ? 1 : 0;
                 fields['note'] = $('#bulk_note').val();
 
                 let recipe_status = [];

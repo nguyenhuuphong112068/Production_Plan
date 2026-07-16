@@ -828,11 +828,81 @@
             return getExcelColumnName(index);
         });
 
+        function rebuildNestedHeaders(originalHeaders, fixedCols) {
+            if (fixedCols <= 0 || !originalHeaders) return originalHeaders;
+            let newHeaders = [];
+            let currentCol = 0;
+            for (let i = 0; i < originalHeaders.length; i++) {
+                let header = originalHeaders[i];
+                let colspan = header.colspan || 1;
+                let nextCol = currentCol + colspan;
+                if (currentCol < fixedCols && nextCol > fixedCols) {
+                    newHeaders.push({ label: header.label || '', colspan: fixedCols - currentCol });
+                    newHeaders.push({ label: header.label || '', colspan: nextCol - fixedCols });
+                } else {
+                    newHeaders.push(header);
+                }
+                currentCol = nextCol;
+            }
+            return newHeaders;
+        }
+
+        const customContextMenu = ['row_above', 'row_below', 'col_left', 'col_right', 'remove_row', 'remove_col', '---------', 'undo', 'redo', '---------', 'make_read_only', 'alignment', '---------', 'copy', 'cut', '---------', 
+            {
+                key: 'freeze_up_to_column',
+                name: 'Đóng băng đến cột này (giống Excel)',
+                callback: function(key, selection) {
+                    var col = selection[0].start.col;
+                    var fixedCols = col + 1;
+                    
+                    var isTab1 = this.rootElement.id === 'hot-app';
+                    var origTopHeaders = isTab1 ? globalTopHeaders : topHeadersRatio;
+                    var origColHeaders = isTab1 ? globalColHeaders : colHeadersRatio;
+                    var origExcelLetters = isTab1 ? globalExcelLetters : excelLettersRatio;
+                    
+                    this.updateSettings({
+                        fixedColumnsStart: fixedCols,
+                        nestedHeaders: [
+                            rebuildNestedHeaders(origTopHeaders, fixedCols),
+                            origColHeaders,
+                            origExcelLetters
+                        ]
+                    });
+                    
+                    if(isTab1) saveTablePreferences('annual_plan_tab1', this);
+                    if(!isTab1) saveTablePreferences('annual_plan_tab2', this);
+                }
+            },
+            {
+                key: 'unfreeze_all',
+                name: 'Bỏ đóng băng tất cả',
+                callback: function(key, selection) {
+                    var isTab1 = this.rootElement.id === 'hot-app';
+                    var origTopHeaders = isTab1 ? globalTopHeaders : topHeadersRatio;
+                    var origColHeaders = isTab1 ? globalColHeaders : colHeadersRatio;
+                    var origExcelLetters = isTab1 ? globalExcelLetters : excelLettersRatio;
+                    
+                    this.updateSettings({
+                        fixedColumnsStart: 0,
+                        nestedHeaders: [
+                            origTopHeaders,
+                            origColHeaders,
+                            origExcelLetters
+                        ]
+                    });
+                    
+                    if(isTab1) saveTablePreferences('annual_plan_tab1', this);
+                    if(!isTab1) saveTablePreferences('annual_plan_tab2', this);
+                }
+            }
+        ];
+
         // Initialize Tab 1 Handsontable
+        let fixedColsTab1 = parseInt(tab1Prefs.fixedColumnsStart) || 0;
         hot = new Handsontable(container, {
             data: data,
             nestedHeaders: [
-                globalTopHeaders,
+                rebuildNestedHeaders(globalTopHeaders, fixedColsTab1),
                 globalColHeaders, // Hàng 2: Tên cột
                 globalExcelLetters // Hàng 3: Chỉ số A, B, C...
             ],
@@ -840,10 +910,10 @@
             rowHeaders: true,
             height: getTableHeight(container),
             licenseKey: 'non-commercial-and-evaluation',
-            fixedColumnsStart: parseInt(tab1Prefs.fixedColumnsStart) || 0,
-            contextMenu: true,
+            fixedColumnsStart: fixedColsTab1,
+            contextMenu: customContextMenu,
             manualColumnResize: true,
-            manualColumnFreeze: true,
+            manualColumnFreeze: false,
             persistentState: true,
             filters: true,
             dropdownMenu: true,
@@ -957,10 +1027,11 @@
         });
 
         // Initialize Tab 2 Handsontable
+        let fixedColsTab2 = parseInt(tab2Prefs.fixedColumnsStart) || 0;
         hotRatio = new Handsontable(containerRatio, {
             data: data,
             nestedHeaders: [
-                topHeadersRatio,
+                rebuildNestedHeaders(topHeadersRatio, fixedColsTab2),
                 colHeadersRatio, // Hàng 2: Tên cột
                 excelLettersRatio // Hàng 3: Chỉ số A, B, C...
             ],
@@ -968,10 +1039,10 @@
             rowHeaders: true,
             height: getTableHeight(containerRatio),
             licenseKey: 'non-commercial-and-evaluation',
-            fixedColumnsStart: parseInt(tab2Prefs.fixedColumnsStart) || 0,
-            contextMenu: true,
+            fixedColumnsStart: fixedColsTab2,
+            contextMenu: customContextMenu,
             manualColumnResize: true,
-            manualColumnFreeze: true,
+            manualColumnFreeze: false,
             persistentState: true,
             filters: true,
             dropdownMenu: true,
@@ -1072,9 +1143,10 @@
             globalColHeaders = buildColHeaders();
             
             if (hot) {
+                let fixedCols = hot.getSettings().fixedColumnsStart || 0;
                 hot.updateSettings({
                     nestedHeaders: [
-                        globalTopHeaders,
+                        rebuildNestedHeaders(globalTopHeaders, fixedCols),
                         globalColHeaders,
                         globalExcelLetters
                     ]
@@ -1090,8 +1162,20 @@
 
         // Force fixedColumnsStart to override persistentState
         setTimeout(function() {
-            if (hot) hot.updateSettings({ fixedColumnsStart: parseInt(tab1Prefs.fixedColumnsStart) || 0 });
-            if (hotRatio) hotRatio.updateSettings({ fixedColumnsStart: parseInt(tab2Prefs.fixedColumnsStart) || 0 });
+            if (hot) {
+                let fs1 = parseInt(tab1Prefs.fixedColumnsStart) || 0;
+                hot.updateSettings({ 
+                    fixedColumnsStart: fs1,
+                    nestedHeaders: [rebuildNestedHeaders(globalTopHeaders, fs1), globalColHeaders, globalExcelLetters]
+                });
+            }
+            if (hotRatio) {
+                let fs2 = parseInt(tab2Prefs.fixedColumnsStart) || 0;
+                hotRatio.updateSettings({ 
+                    fixedColumnsStart: fs2,
+                    nestedHeaders: [rebuildNestedHeaders(topHeadersRatio, fs2), colHeadersRatio, excelLettersRatio]
+                });
+            }
         }, 100);
 
         // Cập nhật chiều cao khi thay đổi kích thước cửa sổ

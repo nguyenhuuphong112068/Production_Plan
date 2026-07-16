@@ -907,6 +907,7 @@ class ProductionPlanController extends Controller
 
                                         "after_weigth_date" => $request->after_weigth_date,
                                         "after_parkaging_date" => $request->after_parkaging_date,
+                                        "promotional_products" => $request->promotional_products,
 
                                         "allow_weight_before_date" => $request->allow_weight_before_date,
                                         "expired_material_date" => $request->expired_material_date,
@@ -1128,6 +1129,7 @@ class ProductionPlanController extends Controller
                         "after_weigth_date" => $request->after_weigth_date,
 
                         "after_parkaging_date" => $request->after_parkaging_date,
+                        "promotional_products" => $request->promotional_products,
 
                         "material_source_id" => $request->material_source_id,
                         "note" => $request->note ?? "NA",
