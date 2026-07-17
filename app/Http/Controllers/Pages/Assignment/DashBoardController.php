@@ -83,7 +83,8 @@ class DashBoardController extends Controller
             6 => "Bao Phim",
             7 => "ĐGSC",
             8 => "ĐGTC",
-            9 => "VSCN + Kho BTP"
+            9 => "VSCN + Kho BTP",
+            10 => "Mã Hoá BB"
         ];
         $dbGroups = [];
         if ($isENorQA) {
@@ -212,7 +213,7 @@ class DashBoardController extends Controller
         ];
 
         $departmentId = $deptMapping[$production_code] ?? null;
-        
+
         // Lấy danh sách ngày nghỉ (off-dates)
         $offDates = DB::table('off_days')
             ->whereDate('off_date', '>=', $startDate->format('Y-m-d'))
@@ -375,7 +376,7 @@ class DashBoardController extends Controller
 
             $totalHours = array_sum($dailyHours);
             $avgHoursPerDay = $daysInPeriod > 0 ? ($totalHours / $daysInPeriod) : 0;
-            
+
             $assignedDays = 0;
             $leaveDays = 0;
 
@@ -485,9 +486,9 @@ class DashBoardController extends Controller
         $overtimeByGroup = array_values(array_filter(
             array_map(function ($g) {
                 return [
-                    'name' => $g['name'], 
-                    'ot_hours' => round($g['ot_hours'], 2), 
-                    'count' => $g['count'], 
+                    'name' => $g['name'],
+                    'ot_hours' => round($g['ot_hours'], 2),
+                    'count' => $g['count'],
                     'ot_people_count' => $g['ot_people_count']
                 ];
             }, $groupOvertimeMap),
@@ -503,29 +504,19 @@ class DashBoardController extends Controller
         }
 
         // 4. Lấy danh sách tất cả các tổ khả dụng trong phân xưởng này
-        $availableGroupsRaw = DB::table('employee_assignments as ea')
-            ->join('employees as e', 'ea.employees_id', '=', 'e.id')
-            ->where('e.active', 1)
-            ->where(function ($q) {
-                $q->whereNull('e.resign')->orWhere('e.resign', 0);
-            })
-            ->where('ea.production_code', $production_code)
-            ->where('ea.active', 1)
-            ->whereNotNull('ea.group_id')
-            ->select('ea.group_id as code')
-            ->distinct()
-            ->get();
-
         $availableGroupsArray = [];
-        foreach ($availableGroupsRaw as $g) {
-            $code = $g->code;
-            if ($isENorQA) {
-                $name = $dbGroups[$code] ?? 'NA';
-            } else {
-                $name = $hardcodedGroups[$code] ?? 'NA';
+        
+        if ($isENorQA) {
+            foreach ($dbGroups as $code => $name) {
+                if ($name !== 'NA') {
+                    $availableGroupsArray[] = ['code' => $code, 'name' => $name];
+                }
             }
-            if ($name !== 'NA') {
-                $availableGroupsArray[] = ['code' => $code, 'name' => $name];
+        } else {
+            foreach ($hardcodedGroups as $code => $name) {
+                if ($name !== 'NA') {
+                    $availableGroupsArray[] = ['code' => $code, 'name' => $name];
+                }
             }
         }
 
@@ -552,5 +543,3 @@ class DashBoardController extends Controller
         ]);
     }
 }
-
-

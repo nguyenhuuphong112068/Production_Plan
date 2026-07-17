@@ -314,10 +314,12 @@ class AnnualPlanController extends Controller
 
             // Calculate planned_quantity and months_sales, and KD actual export, ratio, safety stock
             $avg_forecast_pill = ($fpc->average_astimated_box ?? 0) * ($fpc->packaging_spec ?? 0);
+            $cumulative_planned_qty = 0;
             for ($m = 1; $m <= 12; $m++) {
                 $batches = $row['m' . $m . '_batches'] ?: 0;
                 $batch_size = $row['batch_size'] ?: 0;
-                $row['m' . $m . '_planned_quantity'] = $batches * $batch_size;
+                $planned_qty = $batches * $batch_size;
+                $row['m' . $m . '_planned_quantity'] = $planned_qty;
 
                 $wip = $row['m' . $m . '_wip_inventory'] ?: 0;
                 $fg = $row['m' . $m . '_expected_inventory'] ?: 0;
@@ -329,7 +331,23 @@ class AnnualPlanController extends Controller
                 $row['avg_sales_pill'] = $avg_sales;
 
                 if ($avg_sales > 0) {
-                    $row['m' . $m . '_months_sales'] = round(($wip + $fg) / $avg_sales, 2);
+                    $globalCurrentMonth = (int)date('n') + 1;
+                    if ($globalCurrentMonth > 12) {
+                        $globalCurrentMonth = 1;
+                    }
+                    
+                    if ($m >= $globalCurrentMonth) {
+                        $cumulative_planned_qty += $planned_qty;
+                    }
+
+                    if ($m > $globalCurrentMonth) {
+                        $currentMonthFg = $row['m' . $globalCurrentMonth . '_expected_inventory'] ?: $fg;
+                        $currentMonthWip = $row['m' . $globalCurrentMonth . '_wip_inventory'] ?: $wip;
+                        $months_sales = ($currentMonthWip + $currentMonthFg + $cumulative_planned_qty - $avg_sales * ($m - $globalCurrentMonth)) / $avg_sales;
+                        $row['m' . $m . '_months_sales'] = round($months_sales, 2);
+                    } else {
+                        $row['m' . $m . '_months_sales'] = round(($wip + $fg + $planned_qty) / $avg_sales, 2);
+                    }
                 } else {
                     $row['m' . $m . '_months_sales'] = 0;
                 }

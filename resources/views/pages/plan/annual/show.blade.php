@@ -127,6 +127,20 @@
             background-color: #f8f9fa !important;
             color: #212529 !important;
         }
+
+        /* Fix lỗi bảng bị trong suốt khi cuộn ngang */
+        .handsontable td {
+            background-color: #ffffff;
+        }
+        .handsontable .ht_clone_left {
+            z-index: 105;
+        }
+        .handsontable .ht_clone_top_left_corner {
+            z-index: 106;
+        }
+        .handsontable .ht_clone_top {
+            z-index: 104;
+        }
     </style>
     <div class="content-wrapper">
         <div class="card" style="min-height: 100vh">
@@ -533,11 +547,23 @@
 
             // Tab 1: Base headers and columns
             let colHeaders = [
-                'Hết SĐK', 'Phân loại', 'Khách', 'Thị trường', 'Thị trường chung', 'Dạng bào chế', 'Mã BTP', 'Mã TP', 'Sản phẩm', 'Hạn dùng',
+                'Mã BTP', 'Mã TP', 'Sản phẩm', 'Hết SĐK', 'Phân loại', 'Khách', 'Thị trường', 'Thị trường chung', 'Dạng bào chế', 'Hạn dùng',
                 'Quy cách', 'Cỡ lô', 'BQ bán / Tháng (hộp)', 'BQ bán / tháng (viên)'
             ];
 
             const columns = [{
+                data: 'intermediate_code',
+                readOnly: true
+            },
+            {
+                data: 'finished_product_code',
+                readOnly: true
+            },
+            {
+                data: 'product_name',
+                readOnly: true
+            },
+            {
                 data: 'registration_expiry',
                 type: 'date',
                 dateFormat: 'YYYY-MM-DD',
@@ -561,18 +587,6 @@
             },
             {
                 data: 'dosage',
-                readOnly: true
-            },
-            {
-                data: 'intermediate_code',
-                readOnly: true
-            },
-            {
-                data: 'finished_product_code',
-                readOnly: true
-            },
-            {
-                data: 'product_name',
                 readOnly: true
             },
             {
@@ -619,7 +633,7 @@
         const planYear = {{ $plan->year }};
         function buildColHeaders() {
             let tempColHeaders = [
-                'Hết SĐK', 'Phân loại', 'Khách', 'Thị trường', 'Thị trường chung', 'Dạng bào chế', 'Mã BTP', 'Mã TP', 'Sản phẩm', 'Hạn dùng',
+                'Mã BTP', 'Mã TP', 'Sản phẩm', 'Hết SĐK', 'Phân loại', 'Khách', 'Thị trường', 'Thị trường chung', 'Dạng bào chế', 'Hạn dùng',
                 'Quy cách', 'Cỡ lô', 'BQ bán / Tháng (hộp)', 'BQ bán / tháng (viên)'
             ];
             
@@ -630,7 +644,9 @@
                 tempColHeaders.push(`Tồn kho`);
                 let formula = '';
                 if (m > globalCurrentMonth) {
-                    formula = `<br><small style="color: #666; font-size: 0.75rem;">([Tồn kho (T${globalCurrentMonth})] - [BQ bán (viên)] * ${m - globalCurrentMonth}) / [BQ bán (viên)]</small>`;
+                    formula = `<br><small style="color: #666; font-size: 0.75rem;">([Tồn kho (T${globalCurrentMonth})] + [&Sigma; Sản lượng] - [Bán] * ${m - globalCurrentMonth}) / [Bán]</small>`;
+                } else {
+                    formula = `<br><small style="color: #666; font-size: 0.75rem;">([BTP dở dang] + [Tồn kho] + [Sản lượng]) / [Bán]</small>`;
                 }
                 tempColHeaders.push(`Số tháng bán${formula}`);
             }
@@ -703,11 +719,23 @@
 
         // Tab 2: Base headers and columns
         const colHeadersRatio = [
-            'Hết SĐK', 'Phân loại', 'Khách', 'Thị trường', 'Thị trường chung', 'Dạng bào chế', 'Mã BTP', 'Mã TP', 'Sản phẩm', 'Hạn dùng',
+            'Mã BTP', 'Mã TP', 'Sản phẩm', 'Hết SĐK', 'Phân loại', 'Khách', 'Thị trường', 'Thị trường chung', 'Dạng bào chế', 'Hạn dùng',
             'Quy cách', 'Cỡ lô', 'Bình quân dự trù tháng (hộp)', 'Bình quân dự trù tháng (viên)'
         ];
 
         const columnsRatio = [{
+            data: 'intermediate_code',
+            readOnly: true
+        },
+        {
+            data: 'finished_product_code',
+            readOnly: true
+        },
+        {
+            data: 'product_name',
+            readOnly: true
+        },
+        {
             data: 'registration_expiry',
             type: 'date',
             dateFormat: 'YYYY-MM-DD',
@@ -731,18 +759,6 @@
         },
         {
             data: 'dosage',
-            readOnly: true
-        },
-        {
-            data: 'intermediate_code',
-            readOnly: true
-        },
-        {
-            data: 'finished_product_code',
-            readOnly: true
-        },
-        {
-            data: 'product_name',
             readOnly: true
         },
         {
@@ -930,8 +946,8 @@
                 return cellProperties;
             },
             afterGetColHeader: function(col, TH) {
-                if (col >= 13) {
-                    let m = Math.floor((col - 13) / 5) + 1;
+                if (col >= 14) {
+                    let m = Math.floor((col - 14) / 5) + 1;
                     if (m >= 1 && m <= 12) {
                         TH.classList.add('month-bg-' + m);
                     }
@@ -944,17 +960,17 @@
                 if (clickDelay < 300 && coords.row === lastRow && coords.col === lastCol) {
                     const row = coords.row;
                     const col = coords.col;
-                    if (row >= 0 && col >= 13) {
+                    if (row >= 0 && col >= 14) {
                         const rowData = hot.getSourceDataAtRow(row);
                         if (rowData && rowData.product_name === 'Tổng cộng') {
                             return;
                         }
                         const productId = rowData.id;
                         const productName = rowData.product_name || 'N/A';
-                        const month = Math.floor((col - 13) / 5) + 1;
+                        const month = Math.floor((col - 14) / 5) + 1;
                         const monthStr = String(month).padStart(2, '0');
                         
-                        const colMod = (col - 13) % 5;
+                        const colMod = (col - 14) % 5;
                         if (colMod === 2) {
                             showWipDetails(productId, month, productName, monthStr);
                         } else if (colMod === 3) {
@@ -995,18 +1011,29 @@
                     const avg_sales = avg_sales_box * packaging_spec;
                     toUpdate.push([row, 'avg_sales_pill', avg_sales]);
                     
+                    let cumulative_planned_qty = 0;
                     for (let m = 1; m <= 12; m++) {
                         // Tính Số lượng KH
                         let batches = parseFloat(String(rowData[`m${m}_batches`]).replace(/,/g, '')) || 0;
                         let planned_qty = batches * batch_size;
                         toUpdate.push([row, `m${m}_planned_quantity`, planned_qty]);
                         
+                        if (m >= globalCurrentMonth) {
+                            cumulative_planned_qty += planned_qty;
+                        }
+                        
                         // Tính Số tháng bán
                         let wip = parseFloat(String(rowData[`m${m}_wip_inventory`]).replace(/,/g, '')) || 0;
                         let fg = parseFloat(String(rowData[`m${m}_expected_inventory`]).replace(/,/g, '')) || 0;
                         let months_sales = 0;
                         if (avg_sales > 0) {
-                            months_sales = (wip + fg) / avg_sales;
+                            if (m > globalCurrentMonth) {
+                                let currentMonthFg = parseFloat(String(rowData[`m${globalCurrentMonth}_expected_inventory`]).replace(/,/g, '')) || fg;
+                                let currentMonthWip = parseFloat(String(rowData[`m${globalCurrentMonth}_wip_inventory`]).replace(/,/g, '')) || wip;
+                                months_sales = (currentMonthWip + currentMonthFg + cumulative_planned_qty - avg_sales * (m - globalCurrentMonth)) / avg_sales;
+                            } else {
+                                months_sales = (wip + fg + planned_qty) / avg_sales;
+                            }
                             months_sales = Math.round(months_sales * 100) / 100;
                         }
                         toUpdate.push([row, `m${m}_months_sales`, months_sales]);
@@ -1059,8 +1086,8 @@
                 return cellProperties;
             },
             afterGetColHeader: function(col, TH) {
-                if (col >= 13) {
-                    let m = Math.floor((col - 13) / 3) + 1;
+                if (col >= 14) {
+                    let m = Math.floor((col - 14) / 3) + 1;
                     if (m >= 1 && m <= 12) {
                         TH.classList.add('month-bg-' + m);
                     }
