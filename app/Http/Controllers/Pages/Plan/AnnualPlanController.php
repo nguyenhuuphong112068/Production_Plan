@@ -169,14 +169,14 @@ class AnnualPlanController extends Controller
         ";
 
         $wipBatches = \Illuminate\Support\Facades\DB::select($wipQuery);
-        
+
         $r1Orders = [];
         foreach ($wipBatches as $batch) {
             if (!empty($batch->order_number_R1)) {
                 $r1Orders[] = $batch->order_number_R1;
             }
         }
-        
+
         $mmsReceipts = [];
         if (count($r1Orders) > 0) {
             $uniqueR1 = array_unique($r1Orders);
@@ -201,7 +201,7 @@ class AnnualPlanController extends Controller
             $startDate = $batch->start_date ? \Carbon\Carbon::parse($batch->start_date) : null;
             $endDate = $batch->end_date ? \Carbon\Carbon::parse($batch->end_date) : null;
             $isFinished = (bool) $batch->is_finished;
-            
+
             $receiptDateStr = !empty($batch->order_number_R1) ? ($mmsReceipts[$batch->order_number_R1] ?? null) : null;
             $receiptDate = $receiptDateStr ? \Carbon\Carbon::parse($receiptDateStr) : null;
 
@@ -335,7 +335,7 @@ class AnnualPlanController extends Controller
                     if ($globalCurrentMonth > 12) {
                         $globalCurrentMonth = 1;
                     }
-                    
+
                     if ($m >= $globalCurrentMonth) {
                         $cumulative_planned_qty += $planned_qty;
                     }
@@ -380,7 +380,7 @@ class AnnualPlanController extends Controller
         $userId = \Illuminate\Support\Facades\Auth::id() ?? 1;
         $userPreferencesTab1 = \App\Models\UserTablePreference::where('user_id', $userId)->where('table_name', 'annual_plan_tab1')->first();
         $userPreferencesTab2 = \App\Models\UserTablePreference::where('user_id', $userId)->where('table_name', 'annual_plan_tab2')->first();
-        
+
         $userPreferences = [
             'tab1' => $userPreferencesTab1 ? $userPreferencesTab1->preferences : null,
             'tab2' => $userPreferencesTab2 ? $userPreferencesTab2->preferences : null,
@@ -714,14 +714,14 @@ class AnnualPlanController extends Controller
         ";
 
         $batches = \Illuminate\Support\Facades\DB::select($wipQuery, [$fpc_id]);
-        
+
         $r1Orders = [];
         foreach ($batches as $batch) {
             if (!empty($batch->order_number_R1)) {
                 $r1Orders[] = $batch->order_number_R1;
             }
         }
-        
+
         $mmsReceipts = [];
         if (count($r1Orders) > 0) {
             $uniqueR1 = array_unique($r1Orders);
@@ -747,7 +747,7 @@ class AnnualPlanController extends Controller
             $startDate = $batch->start_date ? \Carbon\Carbon::parse($batch->start_date) : null;
             $endDate = $batch->end_date ? \Carbon\Carbon::parse($batch->end_date) : null;
             $isFinished = (bool) $batch->is_finished;
-            
+
             $receiptDateStr = !empty($batch->order_number_R1) ? ($mmsReceipts[$batch->order_number_R1] ?? null) : null;
             $receiptDate = $receiptDateStr ? \Carbon\Carbon::parse($receiptDateStr) : null;
 
@@ -756,7 +756,7 @@ class AnnualPlanController extends Controller
             }
 
             $hasStarted = $startDate->lte($endOfMonth);
-            
+
             $hasNotEnded = true;
             if ($receiptDate) {
                 // Đã nhập kho MMS

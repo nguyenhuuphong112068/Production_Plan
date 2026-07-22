@@ -28,7 +28,6 @@ class SchedualAuditController extends Controller
             ->where('pm.active', 1)
             ->where('pm.cancel', 0)
             ->where('pm.only_parkaging', 0)
-            ->where('fpc.active', 1)
             ->where('pm.deparment_code', $production_code)
             ->where('pl.type', 1)
             ->groupBy('pm.plan_list_id')
