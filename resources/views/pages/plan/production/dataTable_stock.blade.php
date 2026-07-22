@@ -588,13 +588,24 @@
                                 style="width:auto;"
                                 type="date"
                                 class="updateInput"
+                                name="forming_before_date"
+                                value="${formatDateForInput(data.forming_before_date)}"
+                                data-id="${data.id}">
+                        </div>
+
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <span>(4):</span>
+                            <input ${authUpdate}
+                                style="width:auto;"
+                                type="date"
+                                class="updateInput"
                                 name="coating_before_date"
                                 value="${formatDateForInput(data.coating_before_date)}"
                                 data-id="${data.id}">
                         </div>
 
                         <div style="display:flex; align-items:center; gap:6px;">
-                            <span>(4):</span>
+                            <span>(5):</span>
                             <input ${authUpdate}
                                 style="width:auto;"
                                 type="date"

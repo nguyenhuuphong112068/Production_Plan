@@ -371,6 +371,14 @@
                                             data-mask value="{{ old('blending_before_date') }}">
                                     </div>
                                 </div>
+                                <div class="col-md-3 mt-2 mt-md-0">
+                                    <label>Định Hình trước ngày (nếu có)</label>
+                                    <div class="input-group">
+                                        <input type="date" class="form-control" data-inputmask-alias="datetime"
+                                            name = "forming_before_date" data-inputmask-inputformat="dd/mm/yyyy"
+                                            data-mask value="{{ old('forming_before_date') }}">
+                                    </div>
+                                </div>
                                 <div class="col-md-3">
                                     <label>Bao Phim trước ngày (nếu có)</label>
                                     <div class="input-group">

@@ -219,8 +219,9 @@
                         <th>
                             <div> {{ '(1) PC trước' }} </div>
                             <div> {{ '(2) THT trước' }} </div>
-                            <div> {{ '(3) BP trước' }} </div>
-                            <div> {{ '(4) ĐG trước' }} </div>
+                            <div> {{ '(3) ĐH trước' }} </div>
+                            <div> {{ '(4) BP trước' }} </div>
+                            <div> {{ '(5) ĐG trước' }} </div>
                         </th>
 
                         <th style="width:15%">Ghi Chú</th>
@@ -499,13 +500,21 @@
                                 <div style="display:flex; align-items:center; gap:6px;">
                                     <span>(3):</span>
                                     <input {{ $auth_update }} type="date" class="updateInput"
+                                        name="forming_before_date"
+                                        value="{{ $data->forming_before_date ? \Carbon\Carbon::parse($data->forming_before_date)->format('Y-m-d') : '' }}"
+                                        data-id="{{ $data->id }}">
+                                </div>
+
+                                <div style="display:flex; align-items:center; gap:6px;">
+                                    <span>(4):</span>
+                                    <input {{ $auth_update }} type="date" class="updateInput"
                                         name="coating_before_date"
                                         value="{{ $data->coating_before_date ? \Carbon\Carbon::parse($data->coating_before_date)->format('Y-m-d') : '' }}"
                                         data-id="{{ $data->id }}">
                                 </div>
 
                                 <div style="display:flex; align-items:center; gap:6px;">
-                                    <span>(4):</span>
+                                    <span>(5):</span>
                                     <input {{ $auth_update }} type="date" class="updateInput"
                                         name="parkaging_before_date"
                                         value="{{ $data->parkaging_before_date ? \Carbon\Carbon::parse($data->parkaging_before_date)->format('Y-m-d') : '' }}"
@@ -924,6 +933,8 @@
                     <td>{{ $data->preperation_before_date ? \Carbon\Carbon::parse($data->preperation_before_date)->format('d/m/Y') : '' }}
                     </td>
                     <td>{{ $data->blending_before_date ? \Carbon\Carbon::parse($data->blending_before_date)->format('d/m/Y') : '' }}
+                    </td>
+                    <td>{{ $data->forming_before_date ? \Carbon\Carbon::parse($data->forming_before_date)->format('d/m/Y') : '' }}
                     </td>
                     <td>{{ $data->coating_before_date ? \Carbon\Carbon::parse($data->coating_before_date)->format('d/m/Y') : '' }}
                     </td>

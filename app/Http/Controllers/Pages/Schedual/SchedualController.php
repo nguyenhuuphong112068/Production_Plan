@@ -436,6 +436,7 @@ class SchedualController extends Controller
 
                 'plan_master.preperation_before_date',
                 'plan_master.blending_before_date',
+                'plan_master.forming_before_date',
                 'plan_master.coating_before_date',
 
                 'plan_master.parkaging_before_date',
@@ -1220,6 +1221,7 @@ class SchedualController extends Controller
             [7,  7,  'expired_packing_date',     '➡️ Ngày hết hạn BB',  '<'],
             [3,  3,  'preperation_before_date',  '➡️ Phải PC trước ngày',  '<'],
             [4,  4,  'blending_before_date',    '➡️ Phải THT trước ngày',  '<'],
+            [5,  5,  'forming_before_date',     '➡️ Phải ĐH trước ngày',  '<'],
             [6,  6,  'coating_before_date',     '➡️ Phải BP trước ngày',  '<'],
             [7,  7,  'parkaging_before_date',     '➡️ Phải ĐG trước ngày ',  '<'],
             [7,  7,  'after_parkaging_date',    '➡️ Ngày có đủ BB',  '>'],
@@ -1393,6 +1395,7 @@ class SchedualController extends Controller
                 'plan_master.allow_weight_before_date',
                 'plan_master.preperation_before_date',
                 'plan_master.blending_before_date',
+                'plan_master.forming_before_date',
                 'plan_master.coating_before_date',
                 'plan_master.expired_material_date',
 
@@ -5870,7 +5873,7 @@ class SchedualController extends Controller
             ->where('sp.active', 1)
             ->where('sp.not_schedule', 0)
             ->where('sp.deparment_code', session('user.production_code'))
-            ->select('sp.id', 'sp.campaign_code', 'sp.stage_code', 'sp.start', 'plan_master.expired_material_date', 'plan_master.preperation_before_date', 'plan_master.blending_before_date', 'plan_master.coating_before_date', 'plan_master.parkaging_before_date', 'plan_master.expired_packing_date')
+            ->select('sp.id', 'sp.campaign_code', 'sp.stage_code', 'sp.start', 'plan_master.expired_material_date', 'plan_master.preperation_before_date', 'plan_master.blending_before_date', 'plan_master.forming_before_date', 'plan_master.coating_before_date', 'plan_master.parkaging_before_date', 'plan_master.expired_packing_date')
             ->get();
 
         foreach ($tasks as $task) {
@@ -5886,6 +5889,10 @@ class SchedualController extends Controller
             } elseif ($task->stage_code == 4) {
                 if ($task->blending_before_date && $start->gt(Carbon::parse($task->blending_before_date)->setTime(6, 0, 0))) {
                     $overdueStart = Carbon::parse($task->blending_before_date)->setTime(6, 0, 0);
+                }
+            } elseif ($task->stage_code == 5) {
+                if ($task->forming_before_date && $start->gt(Carbon::parse($task->forming_before_date)->setTime(6, 0, 0))) {
+                    $overdueStart = Carbon::parse($task->forming_before_date)->setTime(6, 0, 0);
                 }
             } elseif ($task->stage_code == 5 || $task->stage_code == 6) {
                 if ($task->coating_before_date && $start->gt(Carbon::parse($task->coating_before_date)->setTime(6, 0, 0))) {
@@ -5956,6 +5963,7 @@ class SchedualController extends Controller
                 'plan_master.expired_packing_date',
                 'plan_master.preperation_before_date',
                 'plan_master.blending_before_date',
+                'plan_master.forming_before_date',
                 'plan_master.coating_before_date',
                 'plan_master.parkaging_before_date',
 
@@ -6000,6 +6008,7 @@ class SchedualController extends Controller
                     ->orWhereNotNull('plan_master.expired_material_date')
                     ->orWhereNotNull('plan_master.preperation_before_date')
                     ->orWhereNotNull('plan_master.blending_before_date')
+                    ->orWhereNotNull('plan_master.forming_before_date')
                     ->orWhereNotNull('plan_master.coating_before_date');
                 if ($stageCode == 7) {
                     $q->orWhereNotNull('plan_master.after_parkaging_date')
@@ -6015,6 +6024,7 @@ class SchedualController extends Controller
                     COALESCE(plan_master.allow_weight_before_date, '9999-12-31'),
                     COALESCE(plan_master.preperation_before_date, '9999-12-31'),
                     COALESCE(plan_master.blending_before_date, '9999-12-31'),
+                    COALESCE(plan_master.forming_before_date, '9999-12-31'),
                     COALESCE(plan_master.coating_before_date, '9999-12-31'),
                     COALESCE(plan_master.parkaging_before_date, '9999-12-31'),
                     COALESCE(plan_master.expired_packing_date, '9999-12-31')
