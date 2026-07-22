@@ -109,22 +109,7 @@
                                         $defaultTo = Carbon::now()->addMonth()->toDateString();
                                         $isFilterOverdue = request('filter_overdue') == '1';
 
-                                        $wipDatas = collect();
-                                        foreach ($datas as $plan_master_id => $stages) {
-                                            $weighingFinished = false;
-                                            $packagingFinished = false;
-                                            foreach ($stages as $s) {
-                                                if (in_array($s->stage_code, [1, 2]) && $s->finished == 1) {
-                                                    $weighingFinished = true;
-                                                }
-                                                if ($s->stage_code >= 7 && $s->finished == 1) {
-                                                    $packagingFinished = true;
-                                                }
-                                            }
-                                            if ($weighingFinished && !$packagingFinished) {
-                                                $wipDatas->put($plan_master_id, $stages);
-                                            }
-                                        }
+
                                     @endphp
 
                                     <form id="dateFilterForm" method="GET"
@@ -171,7 +156,7 @@
                                         <li class="nav-item">
                                             <a class="nav-link" id="wip-step-tab" data-toggle="tab" href="#wip-step" role="tab" aria-controls="wip-step" aria-selected="false" style="font-size: 16px; font-weight: 600;">
                                                 <i class="fas fa-hourglass-half mr-2 text-warning"></i>Bán Thành Phẩm Dở Dang
-                                                <span class="badge badge-warning ml-1">{{ $wipDatas->count() }}</span>
+                                                <span class="badge badge-warning ml-1">{{ $wipDatas->map->count()->sum() }}</span>
                                             </a>
                                         </li>
                                     </ul>
@@ -185,9 +170,29 @@
                                     </div>
                                 </div>
                                 <div class="tab-pane fade" id="wip-step" role="tabpanel" aria-labelledby="wip-step-tab">
-                                    <div class="table-responsive shadow-sm rounded" style="overflow-x: auto; background: #fff;">
-                                        @include('pages.Schedual.step.tableTemplate', ['tableId' => 'data_table_wip_step', 'tableData' => $wipDatas])
-                                    </div>
+                                    @if($wipDatas->isEmpty())
+                                        <div class="alert alert-info mt-3">Không có bán thành phẩm dở dang nào.</div>
+                                    @else
+                                        <ul class="nav nav-pills mt-3 mb-3" id="wipSubTab" role="tablist">
+                                            @foreach($wipDatas as $stageName => $groupDatas)
+                                                <li class="nav-item">
+                                                    <a class="nav-link {{ $loop->first ? 'active' : '' }}" id="wip-{{ Str::slug($stageName) }}-tab" data-toggle="pill" href="#wip-{{ Str::slug($stageName) }}" role="tab" aria-controls="wip-{{ Str::slug($stageName) }}" aria-selected="{{ $loop->first ? 'true' : 'false' }}" style="font-weight: 500;">
+                                                        {{ $stageName }}
+                                                        <span class="badge badge-light ml-1 text-dark">{{ $groupDatas->count() }}</span>
+                                                    </a>
+                                                </li>
+                                            @endforeach
+                                        </ul>
+                                        <div class="tab-content" id="wipSubTabContent">
+                                            @foreach($wipDatas as $stageName => $groupDatas)
+                                                <div class="tab-pane fade {{ $loop->first ? 'show active' : '' }}" id="wip-{{ Str::slug($stageName) }}" role="tabpanel" aria-labelledby="wip-{{ Str::slug($stageName) }}-tab">
+                                                    <div class="table-responsive shadow-sm rounded" style="overflow-x: auto; background: #fff;">
+                                                        @include('pages.Schedual.step.tableTemplate', ['tableId' => 'data_table_wip_step_' . Str::slug($stageName), 'tableData' => $groupDatas, 'isWip' => true])
+                                                    </div>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    @endif
                                 </div>
                             </div>
 
@@ -230,7 +235,7 @@
             },
         });
 
-        $('#data_table_wip_step').DataTable({
+        $('.table[id^="data_table_wip_step_"]').DataTable({
             paging: true,
             lengthChange: true,
             searching: true,
@@ -254,11 +259,6 @@
             },
         });
 
-        // Tự động căn chỉnh lại độ rộng cột khi chuyển Tab để tránh vỡ giao diện
-        $('a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
-            $($.fn.dataTable.tables(true)).DataTable().columns.adjust();
-        });
-
         $('#btnFilterOverdue').on('click', function() {
             let input = $('#filter_overdue_input');
             if (input.val() == '1') {
@@ -270,6 +270,53 @@
                 $('#to_date').prop('disabled', false);
             }
             $('#dateFilterForm').submit();
+        });
+
+        // Tạo thanh cuộn ngang ở trên (Double Scrollbar) cho tất cả các bảng
+        $('.table-responsive').each(function() {
+            var wrapper = $(this);
+            var table = wrapper.find('table');
+            
+            var topScrollContainer = $('<div class="top-scroll-container" style="overflow-x: auto; overflow-y: hidden; height: 15px; margin-bottom: 5px;"></div>');
+            var topScrollContent = $('<div class="top-scroll-content" style="height: 1px;"></div>');
+            
+            topScrollContainer.append(topScrollContent);
+            wrapper.before(topScrollContainer);
+            
+            var updateTopScrollWidth = function() {
+                if (wrapper.is(':visible')) {
+                    topScrollContent.width(table.width());
+                }
+            };
+            
+            updateTopScrollWidth();
+            
+            // Sync scrolling
+            topScrollContainer.on('scroll', function() {
+                wrapper.scrollLeft(topScrollContainer.scrollLeft());
+            });
+            
+            wrapper.on('scroll', function() {
+                topScrollContainer.scrollLeft(wrapper.scrollLeft());
+            });
+            
+            // Update width on resize or datatables draw
+            $(window).on('resize', updateTopScrollWidth);
+            table.on('draw.dt', updateTopScrollWidth);
+        });
+
+        // Tự động căn chỉnh lại độ rộng cột và cuộn ngang khi chuyển Tab
+        $('a[data-toggle="tab"], a[data-toggle="pill"]').on('shown.bs.tab', function (e) {
+            $($.fn.dataTable.tables(true)).DataTable().columns.adjust();
+            
+            $('.table-responsive:visible').each(function() {
+                var wrapper = $(this);
+                var table = wrapper.find('table');
+                var topScrollContent = wrapper.prev('.top-scroll-container').find('.top-scroll-content');
+                if (topScrollContent.length) {
+                    topScrollContent.width(table.width());
+                }
+            });
         });
 
     })

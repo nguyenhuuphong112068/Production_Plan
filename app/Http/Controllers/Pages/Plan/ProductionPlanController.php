@@ -522,9 +522,9 @@ class ProductionPlanController extends Controller
                 if ($keyword) {
                         $query->where(function ($q) use ($keyword) {
                                 $q->where('finished_product_category.intermediate_code', 'LIKE', '%' . $keyword . '%')
-                                  ->orWhere('finished_product_category.finished_product_code', 'LIKE', '%' . $keyword . '%')
-                                  ->orWhere('fp_name.name', 'LIKE', '%' . $keyword . '%')
-                                  ->orWhere('im_name.name', 'LIKE', '%' . $keyword . '%');
+                                        ->orWhere('finished_product_category.finished_product_code', 'LIKE', '%' . $keyword . '%')
+                                        ->orWhere('fp_name.name', 'LIKE', '%' . $keyword . '%')
+                                        ->orWhere('im_name.name', 'LIKE', '%' . $keyword . '%');
                         });
                 }
 
@@ -545,7 +545,7 @@ class ProductionPlanController extends Controller
                         ->get();
 
                 $planMasterIds = $datas->pluck('id')->toArray();
-                
+
                 $historyCounts = [];
                 if (!empty($planMasterIds)) {
                         $historyCounts = DB::table('plan_master_history')
@@ -555,14 +555,14 @@ class ProductionPlanController extends Controller
                                 ->pluck('total', 'plan_master_id')
                                 ->toArray();
                 }
-                
+
                 $datas = $datas->map(function ($item) use ($historyCounts) {
                         $item->history_count = $historyCounts[$item->id] ?? 0;
                         return $item;
                 });
 
                 $plan_list_id_title = DB::table('plan_list')->pluck('name', 'id');
-                
+
                 $production = 'Tất cả phân xưởng';
                 session()->put(['title' => "Tìm Kiếm Nâng Cao - Toàn Cục"]);
 
@@ -1023,7 +1023,7 @@ class ProductionPlanController extends Controller
                                                                 'validation_tracking_id' => $vt_ic->validation_tracking_id,
                                                                 'plan_master_id' => $planMasterId,
                                                         ]);
-                                                        
+
                                                         $vt_ic->increment('num_of_finished_batch');
                                                 }
                                         }
@@ -1166,65 +1166,65 @@ class ProductionPlanController extends Controller
                 // --- Xử lý Cập nhật Theo dõi Thẩm định ---
                 $submitted_ic_ids = $request->input('validation_tracking_ic_ids', []);
                 $current_vtpms = \App\Models\ValidationTrackingPlanMaster::where('plan_master_id', $plan->id)
-                                    ->where('active', 1)->get();
-                
+                        ->where('active', 1)->get();
+
                 $submitted_vt_ids = [];
                 foreach ($submitted_ic_ids as $vt_ic_id) {
-                    $vt_ic = \App\Models\ValidationTrackingIntermediateCategory::find($vt_ic_id);
-                    if ($vt_ic) {
-                        $submitted_vt_ids[] = $vt_ic->validation_tracking_id;
-                    }
+                        $vt_ic = \App\Models\ValidationTrackingIntermediateCategory::find($vt_ic_id);
+                        if ($vt_ic) {
+                                $submitted_vt_ids[] = $vt_ic->validation_tracking_id;
+                        }
                 }
 
                 // 1. Kiểm tra các tracking ĐÃ BỎ CHỌN
                 foreach ($current_vtpms as $vtpm) {
-                    if (!in_array($vtpm->validation_tracking_id, $submitted_vt_ids)) {
-                        $vtpm->active = 0;
-                        $vtpm->save();
+                        if (!in_array($vtpm->validation_tracking_id, $submitted_vt_ids)) {
+                                $vtpm->active = 0;
+                                $vtpm->save();
 
-                        $fpc = DB::table('finished_product_category')->where('id', $plan->product_caterogy_id)->first();
-                        if ($fpc && $fpc->intermediate_code) {
-                            $vt_ic = \App\Models\ValidationTrackingIntermediateCategory::where('validation_tracking_id', $vtpm->validation_tracking_id)
-                                ->whereHas('intermediateCategory', function($q) use ($fpc) {
-                                    $q->where('intermediate_code', $fpc->intermediate_code);
-                                })->first();
-                            
-                            if ($vt_ic && $vt_ic->num_of_finished_batch > 0) {
-                                $vt_ic->decrement('num_of_finished_batch');
-                                \App\Models\ValidationTracking::where('id', $vtpm->validation_tracking_id)
-                                    ->update(['status' => 'Đang theo dõi']);
-                            }
+                                $fpc = DB::table('finished_product_category')->where('id', $plan->product_caterogy_id)->first();
+                                if ($fpc && $fpc->intermediate_code) {
+                                        $vt_ic = \App\Models\ValidationTrackingIntermediateCategory::where('validation_tracking_id', $vtpm->validation_tracking_id)
+                                                ->whereHas('intermediateCategory', function ($q) use ($fpc) {
+                                                        $q->where('intermediate_code', $fpc->intermediate_code);
+                                                })->first();
+
+                                        if ($vt_ic && $vt_ic->num_of_finished_batch > 0) {
+                                                $vt_ic->decrement('num_of_finished_batch');
+                                                \App\Models\ValidationTracking::where('id', $vtpm->validation_tracking_id)
+                                                        ->update(['status' => 'Đang theo dõi']);
+                                        }
+                                }
                         }
-                    }
                 }
 
                 // 2. Kiểm tra các tracking MỚI ĐƯỢC CHỌN
                 $current_vt_ids = $current_vtpms->pluck('validation_tracking_id')->toArray();
                 foreach ($submitted_ic_ids as $vt_ic_id) {
-                    $vt_ic = \App\Models\ValidationTrackingIntermediateCategory::find($vt_ic_id);
-                    if ($vt_ic && !in_array($vt_ic->validation_tracking_id, $current_vt_ids)) {
-                        if ($vt_ic->num_of_finished_batch < $vt_ic->num_of_tracking_batch) {
-                            $existing_vtpm = \App\Models\ValidationTrackingPlanMaster::where('plan_master_id', $plan->id)
+                        $vt_ic = \App\Models\ValidationTrackingIntermediateCategory::find($vt_ic_id);
+                        if ($vt_ic && !in_array($vt_ic->validation_tracking_id, $current_vt_ids)) {
+                                if ($vt_ic->num_of_finished_batch < $vt_ic->num_of_tracking_batch) {
+                                        $existing_vtpm = \App\Models\ValidationTrackingPlanMaster::where('plan_master_id', $plan->id)
                                                 ->where('validation_tracking_id', $vt_ic->validation_tracking_id)
                                                 ->first();
-                            if ($existing_vtpm) {
-                                $existing_vtpm->active = 1;
-                                $existing_vtpm->save();
-                            } else {
-                                \App\Models\ValidationTrackingPlanMaster::create([
-                                    'validation_tracking_id' => $vt_ic->validation_tracking_id,
-                                    'plan_master_id' => $plan->id,
-                                    'active' => 1
-                                ]);
-                            }
-                            $vt_ic->increment('num_of_finished_batch');
+                                        if ($existing_vtpm) {
+                                                $existing_vtpm->active = 1;
+                                                $existing_vtpm->save();
+                                        } else {
+                                                \App\Models\ValidationTrackingPlanMaster::create([
+                                                        'validation_tracking_id' => $vt_ic->validation_tracking_id,
+                                                        'plan_master_id' => $plan->id,
+                                                        'active' => 1
+                                                ]);
+                                        }
+                                        $vt_ic->increment('num_of_finished_batch');
+                                }
                         }
-                    }
                 }
 
                 $hasActive = \App\Models\ValidationTrackingPlanMaster::where('plan_master_id', $plan->id)->where('active', 1)->exists();
                 DB::table('plan_master')->where('id', $plan->id)->update([
-                    'is_validation_tracking' => $hasActive ? 1 : 0
+                        'is_validation_tracking' => $hasActive ? 1 : 0
                 ]);
 
                 DB::table('plan_master_history')->insert([
@@ -1267,322 +1267,322 @@ class ProductionPlanController extends Controller
 
         public function bulkUpdate(Request $request)
         {
-            $ids = $request->input('ids', []);
-            $fields = $request->input('fields', []);
-            $reason = $request->input('reason');
+                $ids = $request->input('ids', []);
+                $fields = $request->input('fields', []);
+                $reason = $request->input('reason');
 
-            if (empty($ids) || !is_array($ids)) {
-                return response()->json(['success' => false, 'message' => 'Không tìm thấy dòng nào được chọn!']);
-            }
-            $firstPlanForValidation = \Illuminate\Support\Facades\DB::table('plan_master')->where('id', $ids[0])->first();
-            $planListForVal = $firstPlanForValidation ? \Illuminate\Support\Facades\DB::table('plan_list')->where('id', $firstPlanForValidation->plan_list_id)->first() : null;
-            $isSent = $planListForVal && $planListForVal->send == 1;
+                if (empty($ids) || !is_array($ids)) {
+                        return response()->json(['success' => false, 'message' => 'Không tìm thấy dòng nào được chọn!']);
+                }
+                $firstPlanForValidation = \Illuminate\Support\Facades\DB::table('plan_master')->where('id', $ids[0])->first();
+                $planListForVal = $firstPlanForValidation ? \Illuminate\Support\Facades\DB::table('plan_list')->where('id', $firstPlanForValidation->plan_list_id)->first() : null;
+                $isSent = $planListForVal && $planListForVal->send == 1;
 
-            if ($isSent && empty($reason)) {
-                return response()->json(['success' => false, 'message' => 'Vui lòng nhập lý do cập nhật!']);
-            }
-
-            try {
-                \Illuminate\Support\Facades\DB::beginTransaction();
-
-                $user_fullname = session('user')['fullName'] ?? 'Auto-generate';
-                $now = now();
-
-                $sourcePlanMasterId = $ids[0] ?? null;
-                $firstPlan = $sourcePlanMasterId ? \Illuminate\Support\Facades\DB::table('plan_master')->where('id', $sourcePlanMasterId)->first() : null;
-                $planListIdContext = $firstPlan ? $firstPlan->plan_list_id : null;
-                $productCategoryIdContext = $firstPlan ? $firstPlan->product_caterogy_id : null;
-
-                $updateMaterialsFlag = isset($fields['update_materials']) && $fields['update_materials'] == 1;
-                $sourceMaterials = null;
-
-                if ($updateMaterialsFlag && $sourcePlanMasterId) {
-                    $sourceMaterials = \Illuminate\Support\Facades\DB::table('plan_master_materials')
-                        ->where('plan_master_id', $sourcePlanMasterId)
-                        ->get();
+                if ($isSent && empty($reason)) {
+                        return response()->json(['success' => false, 'message' => 'Vui lòng nhập lý do cập nhật!']);
                 }
 
-                $currentBatch = null;
-                if (!empty($fields['batch'])) {
-                    $currentBatch = $fields['batch'];
-                }
-                
-                $formatBatchNo = $fields['format_batch_no'] ?? 'off';
-                $incrementBatch = function($batch, $format) {
-                    if ($format === 'on') {
-                        $prefix = \Illuminate\Support\Str::substr($batch, -4);
-                        $len = \Illuminate\Support\Str::length($batch) - 4;
-                        $aa = intval(\Illuminate\Support\Str::substr($batch, 0, $len > 0 ? $len : 0));
-                        $aa++;
-                        return sprintf("%02d", $aa) . $prefix;
-                    } else {
-                        $prefix = \Illuminate\Support\Str::substr($batch, 0, 3);
-                        $aa = intval(\Illuminate\Support\Str::substr($batch, 3));
-                        $aa++;
-                        return $prefix . sprintf("%02d", $aa);
-                    }
-                };
+                try {
+                        \Illuminate\Support\Facades\DB::beginTransaction();
 
-                foreach ($ids as $id) {
-                    $plan = \Illuminate\Support\Facades\DB::table('plan_master')->where('id', $id)->first();
-                    if (!$plan) continue;
+                        $user_fullname = session('user')['fullName'] ?? 'Auto-generate';
+                        $now = now();
 
-                    // Build update array
-                    $updateData = [];
-                    foreach ($fields as $fieldName => $value) {
-                        if ($fieldName === 'batch') {
-                            if ($currentBatch !== null) {
-                                $updateData['batch'] = $currentBatch;
-                                $currentBatch = $incrementBatch($currentBatch, $formatBatchNo);
-                            } else if (isset($fields['batch'])) {
-                                $updateData['batch'] = $value;
-                            }
-                        } else if ($fieldName === 'is_val') {
-                            $updateData['is_val'] = $value ? 1 : 0;
-                            if ($value && isset($fields['val_index'])) {
-                                $updateData['code_val'] = $plan->plan_list_id . '_' . $fields['val_index'];
-                            } else {
-                                $updateData['code_val'] = null;
-                            }
-                        } else if ($fieldName === 'val_index' || $fieldName === 'update_materials' || $fieldName === 'recipe_status' || $fieldName === 'format_batch_no') {
-                            continue;
-                        } else {
-                            $updateData[$fieldName] = $value;
+                        $sourcePlanMasterId = $ids[0] ?? null;
+                        $firstPlan = $sourcePlanMasterId ? \Illuminate\Support\Facades\DB::table('plan_master')->where('id', $sourcePlanMasterId)->first() : null;
+                        $planListIdContext = $firstPlan ? $firstPlan->plan_list_id : null;
+                        $productCategoryIdContext = $firstPlan ? $firstPlan->product_caterogy_id : null;
+
+                        $updateMaterialsFlag = isset($fields['update_materials']) && $fields['update_materials'] == 1;
+                        $sourceMaterials = null;
+
+                        if ($updateMaterialsFlag && $sourcePlanMasterId) {
+                                $sourceMaterials = \Illuminate\Support\Facades\DB::table('plan_master_materials')
+                                        ->where('plan_master_id', $sourcePlanMasterId)
+                                        ->get();
                         }
-                    }
-                    
-                    if (!empty($updateData)) {
-                        $updateData['prepared_by'] = $user_fullname;
-                        $updateData['updated_at'] = $now;
-                        // Update plan_master
-                        \Illuminate\Support\Facades\DB::table('plan_master')->where('id', $id)->update($updateData);
-                    }
 
-                    // Handle Material synchronization
-                    if ($updateMaterialsFlag && $sourcePlanMasterId && $id != $sourcePlanMasterId && $sourceMaterials) {
-                        \Illuminate\Support\Facades\DB::table('plan_master_materials')
-                            ->where('plan_master_id', $id)
-                            ->delete();
-
-                        $newMaterials = [];
-                        foreach ($sourceMaterials as $m) {
-                            $newMaterials[] = [
-                                'plan_master_id' => $id,
-                                'material_packaging_code' => $m->material_packaging_code,
-                                'material_packaging_type' => $m->material_packaging_type,
-                                'Revno' => $m->Revno,
-                                'qty' => $m->qty,
-                                'unit_bom' => $m->unit_bom,
-                                'MaterialName' => $m->MaterialName,
-                                'active' => $m->active ?? 1,
-                                'created_by' => $user_fullname,
-                                'created_at' => $now,
-                                'updated_at' => $now,
-                            ];
+                        $currentBatch = null;
+                        if (!empty($fields['batch'])) {
+                                $currentBatch = $fields['batch'];
                         }
-                        if (!empty($newMaterials)) {
-                            \Illuminate\Support\Facades\DB::table('plan_master_materials')->insert($newMaterials);
-                        }
-                    }
 
-                    // Handle Material/Packaging Active status from bulk modal
-                    if (isset($fields['recipe_status']) && is_array($fields['recipe_status'])) {
-                        foreach ($fields['recipe_status'] as $rs) {
-                            if (isset($rs['code']) && isset($rs['active'])) {
-                                \Illuminate\Support\Facades\DB::table('plan_master_materials')
-                                    ->where('plan_master_id', $id)
-                                    ->where('material_packaging_code', $rs['code'])
-                                    ->update(['active' => $rs['active'], 'updated_at' => $now]);
-                            }
-                        }
-                    }
-
-                    // Fetch updated plan_master record
-                    $updatedPlan = \Illuminate\Support\Facades\DB::table('plan_master')->where('id', $id)->first();
-
-                    // Calculate history version
-                    $lastVersion = \Illuminate\Support\Facades\DB::table('plan_master_history')
-                        ->where('plan_master_id', $id)
-                        ->max('version');
-                    $newVersion = $lastVersion ? $lastVersion + 1 : 1;
-
-                    // Check is_validation_tracking
-                    $hasActive = \App\Models\ValidationTrackingPlanMaster::where('plan_master_id', $id)->where('active', 1)->exists();
-
-                    // Ghi đè lý do để biết là có cập nhật định mức
-                    $finalReason = $reason;
-                    if ($updateMaterialsFlag) {
-                        $finalReason .= " (Đồng bộ định mức từ lô " . $sourcePlanMasterId . ")";
-                    }
-
-                    // Insert into plan_master_history
-                    if ($isSent) {
-                        \Illuminate\Support\Facades\DB::table('plan_master_history')->insert([
-                            'plan_master_id' => $updatedPlan->id,
-                            'plan_list_id' => $updatedPlan->plan_list_id,
-                            'product_caterogy_id' => $updatedPlan->product_caterogy_id,
-                            'version' => $newVersion,
-
-                            'level' => $updatedPlan->level,
-                            'batch' => $updatedPlan->batch,
-                            'expected_date' => $updatedPlan->expected_date,
-                            'is_val' => $updatedPlan->is_val,
-                            'is_validation_tracking' => $hasActive ? 1 : 0,
-                            'after_weigth_date' => $updatedPlan->after_weigth_date,
-                            'after_parkaging_date' => $updatedPlan->after_parkaging_date,
-                            'allow_weight_before_date' => $updatedPlan->allow_weight_before_date,
-                            'expired_material_date' => $updatedPlan->expired_material_date,
-                            'expired_packing_date' => $updatedPlan->expired_packing_date,
-                            'preperation_before_date' => $updatedPlan->preperation_before_date,
-                            'blending_before_date' => $updatedPlan->blending_before_date,
-                            'coating_before_date' => $updatedPlan->coating_before_date,
-                            'parkaging_before_date' => $updatedPlan->parkaging_before_date,
-                            'material_source_id' => $updatedPlan->material_source_id,
-                            'percent_parkaging' => $updatedPlan->percent_parkaging,
-                            'only_parkaging' => $updatedPlan->only_parkaging,
-                            'number_parkaging' => $updatedPlan->number_parkaging,
-                            'note' => $updatedPlan->note,
-                            'reason' => $finalReason,
-                            'deparment_code' => $updatedPlan->deparment_code,
-
-                            'prepared_by' => $user_fullname,
-                            'created_at' => $now,
-                            'updated_at' => $now,
-                        ]);
-                    }
-                }
-
-                // Handle auto-sequencing for other unselected batches
-                if ($currentBatch !== null && $planListIdContext && $productCategoryIdContext) {
-                    $otherPlans = \Illuminate\Support\Facades\DB::table('plan_master')
-                        ->where('plan_list_id', $planListIdContext)
-                        ->where('product_caterogy_id', $productCategoryIdContext)
-                        ->where('cancel', 0)
-                        ->where('only_parkaging', 0)
-                        ->whereNotIn('id', $ids)
-                        ->orderBy('id', 'asc')
-                        ->get();
-
-                    foreach ($otherPlans as $op) {
-                        \Illuminate\Support\Facades\DB::table('plan_master')
-                            ->where('id', $op->id)
-                            ->update([
-                                'batch' => $currentBatch,
-                                'updated_at' => $now,
-                                'prepared_by' => $user_fullname
-                            ]);
-                        
-                        $lastVersion = \Illuminate\Support\Facades\DB::table('plan_master_history')
-                            ->where('plan_master_id', $op->id)
-                            ->max('version');
-                        $newVersion = $lastVersion ? $lastVersion + 1 : 1;
-                        
-                        $hasActive = \App\Models\ValidationTrackingPlanMaster::where('plan_master_id', $op->id)->where('active', 1)->exists();
-
-                        if ($isSent) {
-                            \Illuminate\Support\Facades\DB::table('plan_master_history')->insert([
-                                'plan_master_id' => $op->id,
-                                'plan_list_id' => $op->plan_list_id,
-                                'product_caterogy_id' => $op->product_caterogy_id,
-                                'version' => $newVersion,
-                                'level' => $op->level,
-                                'batch' => $currentBatch,
-                                'expected_date' => $op->expected_date,
-                                'is_val' => $op->is_val,
-                                'is_validation_tracking' => $hasActive ? 1 : 0,
-                                'after_weigth_date' => $op->after_weigth_date,
-                                'after_parkaging_date' => $op->after_parkaging_date,
-                                'allow_weight_before_date' => $op->allow_weight_before_date,
-                                'expired_material_date' => $op->expired_material_date,
-                                'expired_packing_date' => $op->expired_packing_date,
-                                'preperation_before_date' => $op->preperation_before_date,
-                                'blending_before_date' => $op->blending_before_date,
-                                'coating_before_date' => $op->coating_before_date,
-                                'parkaging_before_date' => $op->parkaging_before_date,
-                                'material_source_id' => $op->material_source_id,
-                                'percent_parkaging' => $op->percent_parkaging,
-                                'only_parkaging' => $op->only_parkaging,
-                                'number_parkaging' => $op->number_parkaging,
-                                'note' => $op->note,
-                                'reason' => 'Auto-sequenced batch number after bulk edit.',
-                                'deparment_code' => $op->deparment_code,
-                                'prepared_by' => $user_fullname,
-                                'created_at' => $now,
-                                'updated_at' => $now,
-                            ]);
-                        }
-                        $currentBatch = $incrementBatch($currentBatch, $formatBatchNo);
-                    }
-
-                    // Update split packaging batches
-                    $splitPlans = \Illuminate\Support\Facades\DB::table('plan_master')
-                        ->where('plan_list_id', $planListIdContext)
-                        ->where('product_caterogy_id', $productCategoryIdContext)
-                        ->where('cancel', 0)
-                        ->where('only_parkaging', 1)
-                        ->get();
-                    
-                    foreach ($splitPlans as $sp) {
-                        if ($sp->main_parkaging_id) {
-                            $parentPlan = \Illuminate\Support\Facades\DB::table('plan_master')->where('id', $sp->main_parkaging_id)->first();
-                            if ($parentPlan && $parentPlan->batch !== $sp->batch) {
-                                \Illuminate\Support\Facades\DB::table('plan_master')
-                                    ->where('id', $sp->id)
-                                    ->update([
-                                        'batch' => $parentPlan->batch, 
-                                        'updated_at' => $now,
-                                        'prepared_by' => $user_fullname
-                                    ]);
-                                
-                                $lastVersion = \Illuminate\Support\Facades\DB::table('plan_master_history')
-                                    ->where('plan_master_id', $sp->id)
-                                    ->max('version');
-                                $newVersion = $lastVersion ? $lastVersion + 1 : 1;
-                                $hasActive = \App\Models\ValidationTrackingPlanMaster::where('plan_master_id', $sp->id)->where('active', 1)->exists();
-
-                                if ($isSent) {
-                                    \Illuminate\Support\Facades\DB::table('plan_master_history')->insert([
-                                        'plan_master_id' => $sp->id,
-                                        'plan_list_id' => $sp->plan_list_id,
-                                        'product_caterogy_id' => $sp->product_caterogy_id,
-                                        'version' => $newVersion,
-                                        'level' => $sp->level,
-                                        'batch' => $parentPlan->batch,
-                                        'expected_date' => $sp->expected_date,
-                                        'is_val' => $sp->is_val,
-                                        'is_validation_tracking' => $hasActive ? 1 : 0,
-                                        'after_weigth_date' => $sp->after_weigth_date,
-                                        'after_parkaging_date' => $sp->after_parkaging_date,
-                                        'allow_weight_before_date' => $sp->allow_weight_before_date,
-                                        'expired_material_date' => $sp->expired_material_date,
-                                        'expired_packing_date' => $sp->expired_packing_date,
-                                        'preperation_before_date' => $sp->preperation_before_date,
-                                        'blending_before_date' => $sp->blending_before_date,
-                                        'coating_before_date' => $sp->coating_before_date,
-                                        'parkaging_before_date' => $sp->parkaging_before_date,
-                                        'material_source_id' => $sp->material_source_id,
-                                        'percent_parkaging' => $sp->percent_parkaging,
-                                        'only_parkaging' => $sp->only_parkaging,
-                                        'number_parkaging' => $sp->number_parkaging,
-                                        'note' => $sp->note,
-                                        'reason' => 'Auto-sequenced batch number (split batch).',
-                                        'deparment_code' => $sp->deparment_code,
-                                        'prepared_by' => $user_fullname,
-                                        'created_at' => $now,
-                                        'updated_at' => $now,
-                                    ]);
+                        $formatBatchNo = $fields['format_batch_no'] ?? 'off';
+                        $incrementBatch = function ($batch, $format) {
+                                if ($format === 'on') {
+                                        $prefix = \Illuminate\Support\Str::substr($batch, -4);
+                                        $len = \Illuminate\Support\Str::length($batch) - 4;
+                                        $aa = intval(\Illuminate\Support\Str::substr($batch, 0, $len > 0 ? $len : 0));
+                                        $aa++;
+                                        return sprintf("%02d", $aa) . $prefix;
+                                } else {
+                                        $prefix = \Illuminate\Support\Str::substr($batch, 0, 3);
+                                        $aa = intval(\Illuminate\Support\Str::substr($batch, 3));
+                                        $aa++;
+                                        return $prefix . sprintf("%02d", $aa);
                                 }
-                            }
-                        }
-                    }
-                }
+                        };
 
-                \Illuminate\Support\Facades\DB::commit();
-                return response()->json(['success' => true, 'message' => 'Cập nhật hàng loạt thành công!']);
-            } catch (\Exception $e) {
-                \Illuminate\Support\Facades\DB::rollBack();
-                return response()->json(['success' => false, 'message' => 'Lỗi hệ thống: ' . $e->getMessage()]);
-            }
+                        foreach ($ids as $id) {
+                                $plan = \Illuminate\Support\Facades\DB::table('plan_master')->where('id', $id)->first();
+                                if (!$plan) continue;
+
+                                // Build update array
+                                $updateData = [];
+                                foreach ($fields as $fieldName => $value) {
+                                        if ($fieldName === 'batch') {
+                                                if ($currentBatch !== null) {
+                                                        $updateData['batch'] = $currentBatch;
+                                                        $currentBatch = $incrementBatch($currentBatch, $formatBatchNo);
+                                                } else if (isset($fields['batch'])) {
+                                                        $updateData['batch'] = $value;
+                                                }
+                                        } else if ($fieldName === 'is_val') {
+                                                $updateData['is_val'] = $value ? 1 : 0;
+                                                if ($value && isset($fields['val_index'])) {
+                                                        $updateData['code_val'] = $plan->plan_list_id . '_' . $fields['val_index'];
+                                                } else {
+                                                        $updateData['code_val'] = null;
+                                                }
+                                        } else if ($fieldName === 'val_index' || $fieldName === 'update_materials' || $fieldName === 'recipe_status' || $fieldName === 'format_batch_no') {
+                                                continue;
+                                        } else {
+                                                $updateData[$fieldName] = $value;
+                                        }
+                                }
+
+                                if (!empty($updateData)) {
+                                        $updateData['prepared_by'] = $user_fullname;
+                                        $updateData['updated_at'] = $now;
+                                        // Update plan_master
+                                        \Illuminate\Support\Facades\DB::table('plan_master')->where('id', $id)->update($updateData);
+                                }
+
+                                // Handle Material synchronization
+                                if ($updateMaterialsFlag && $sourcePlanMasterId && $id != $sourcePlanMasterId && $sourceMaterials) {
+                                        \Illuminate\Support\Facades\DB::table('plan_master_materials')
+                                                ->where('plan_master_id', $id)
+                                                ->delete();
+
+                                        $newMaterials = [];
+                                        foreach ($sourceMaterials as $m) {
+                                                $newMaterials[] = [
+                                                        'plan_master_id' => $id,
+                                                        'material_packaging_code' => $m->material_packaging_code,
+                                                        'material_packaging_type' => $m->material_packaging_type,
+                                                        'Revno' => $m->Revno,
+                                                        'qty' => $m->qty,
+                                                        'unit_bom' => $m->unit_bom,
+                                                        'MaterialName' => $m->MaterialName,
+                                                        'active' => $m->active ?? 1,
+                                                        'created_by' => $user_fullname,
+                                                        'created_at' => $now,
+                                                        'updated_at' => $now,
+                                                ];
+                                        }
+                                        if (!empty($newMaterials)) {
+                                                \Illuminate\Support\Facades\DB::table('plan_master_materials')->insert($newMaterials);
+                                        }
+                                }
+
+                                // Handle Material/Packaging Active status from bulk modal
+                                if (isset($fields['recipe_status']) && is_array($fields['recipe_status'])) {
+                                        foreach ($fields['recipe_status'] as $rs) {
+                                                if (isset($rs['code']) && isset($rs['active'])) {
+                                                        \Illuminate\Support\Facades\DB::table('plan_master_materials')
+                                                                ->where('plan_master_id', $id)
+                                                                ->where('material_packaging_code', $rs['code'])
+                                                                ->update(['active' => $rs['active'], 'updated_at' => $now]);
+                                                }
+                                        }
+                                }
+
+                                // Fetch updated plan_master record
+                                $updatedPlan = \Illuminate\Support\Facades\DB::table('plan_master')->where('id', $id)->first();
+
+                                // Calculate history version
+                                $lastVersion = \Illuminate\Support\Facades\DB::table('plan_master_history')
+                                        ->where('plan_master_id', $id)
+                                        ->max('version');
+                                $newVersion = $lastVersion ? $lastVersion + 1 : 1;
+
+                                // Check is_validation_tracking
+                                $hasActive = \App\Models\ValidationTrackingPlanMaster::where('plan_master_id', $id)->where('active', 1)->exists();
+
+                                // Ghi đè lý do để biết là có cập nhật định mức
+                                $finalReason = $reason;
+                                if ($updateMaterialsFlag) {
+                                        $finalReason .= " (Đồng bộ định mức từ lô " . $sourcePlanMasterId . ")";
+                                }
+
+                                // Insert into plan_master_history
+                                if ($isSent) {
+                                        \Illuminate\Support\Facades\DB::table('plan_master_history')->insert([
+                                                'plan_master_id' => $updatedPlan->id,
+                                                'plan_list_id' => $updatedPlan->plan_list_id,
+                                                'product_caterogy_id' => $updatedPlan->product_caterogy_id,
+                                                'version' => $newVersion,
+
+                                                'level' => $updatedPlan->level,
+                                                'batch' => $updatedPlan->batch,
+                                                'expected_date' => $updatedPlan->expected_date,
+                                                'is_val' => $updatedPlan->is_val,
+                                                'is_validation_tracking' => $hasActive ? 1 : 0,
+                                                'after_weigth_date' => $updatedPlan->after_weigth_date,
+                                                'after_parkaging_date' => $updatedPlan->after_parkaging_date,
+                                                'allow_weight_before_date' => $updatedPlan->allow_weight_before_date,
+                                                'expired_material_date' => $updatedPlan->expired_material_date,
+                                                'expired_packing_date' => $updatedPlan->expired_packing_date,
+                                                'preperation_before_date' => $updatedPlan->preperation_before_date,
+                                                'blending_before_date' => $updatedPlan->blending_before_date,
+                                                'coating_before_date' => $updatedPlan->coating_before_date,
+                                                'parkaging_before_date' => $updatedPlan->parkaging_before_date,
+                                                'material_source_id' => $updatedPlan->material_source_id,
+                                                'percent_parkaging' => $updatedPlan->percent_parkaging,
+                                                'only_parkaging' => $updatedPlan->only_parkaging,
+                                                'number_parkaging' => $updatedPlan->number_parkaging,
+                                                'note' => $updatedPlan->note,
+                                                'reason' => $finalReason,
+                                                'deparment_code' => $updatedPlan->deparment_code,
+
+                                                'prepared_by' => $user_fullname,
+                                                'created_at' => $now,
+                                                'updated_at' => $now,
+                                        ]);
+                                }
+                        }
+
+                        // Handle auto-sequencing for other unselected batches
+                        if ($currentBatch !== null && $planListIdContext && $productCategoryIdContext) {
+                                $otherPlans = \Illuminate\Support\Facades\DB::table('plan_master')
+                                        ->where('plan_list_id', $planListIdContext)
+                                        ->where('product_caterogy_id', $productCategoryIdContext)
+                                        ->where('cancel', 0)
+                                        ->where('only_parkaging', 0)
+                                        ->whereNotIn('id', $ids)
+                                        ->orderBy('id', 'asc')
+                                        ->get();
+
+                                foreach ($otherPlans as $op) {
+                                        \Illuminate\Support\Facades\DB::table('plan_master')
+                                                ->where('id', $op->id)
+                                                ->update([
+                                                        'batch' => $currentBatch,
+                                                        'updated_at' => $now,
+                                                        'prepared_by' => $user_fullname
+                                                ]);
+
+                                        $lastVersion = \Illuminate\Support\Facades\DB::table('plan_master_history')
+                                                ->where('plan_master_id', $op->id)
+                                                ->max('version');
+                                        $newVersion = $lastVersion ? $lastVersion + 1 : 1;
+
+                                        $hasActive = \App\Models\ValidationTrackingPlanMaster::where('plan_master_id', $op->id)->where('active', 1)->exists();
+
+                                        if ($isSent) {
+                                                \Illuminate\Support\Facades\DB::table('plan_master_history')->insert([
+                                                        'plan_master_id' => $op->id,
+                                                        'plan_list_id' => $op->plan_list_id,
+                                                        'product_caterogy_id' => $op->product_caterogy_id,
+                                                        'version' => $newVersion,
+                                                        'level' => $op->level,
+                                                        'batch' => $currentBatch,
+                                                        'expected_date' => $op->expected_date,
+                                                        'is_val' => $op->is_val,
+                                                        'is_validation_tracking' => $hasActive ? 1 : 0,
+                                                        'after_weigth_date' => $op->after_weigth_date,
+                                                        'after_parkaging_date' => $op->after_parkaging_date,
+                                                        'allow_weight_before_date' => $op->allow_weight_before_date,
+                                                        'expired_material_date' => $op->expired_material_date,
+                                                        'expired_packing_date' => $op->expired_packing_date,
+                                                        'preperation_before_date' => $op->preperation_before_date,
+                                                        'blending_before_date' => $op->blending_before_date,
+                                                        'coating_before_date' => $op->coating_before_date,
+                                                        'parkaging_before_date' => $op->parkaging_before_date,
+                                                        'material_source_id' => $op->material_source_id,
+                                                        'percent_parkaging' => $op->percent_parkaging,
+                                                        'only_parkaging' => $op->only_parkaging,
+                                                        'number_parkaging' => $op->number_parkaging,
+                                                        'note' => $op->note,
+                                                        'reason' => 'Auto-sequenced batch number after bulk edit.',
+                                                        'deparment_code' => $op->deparment_code,
+                                                        'prepared_by' => $user_fullname,
+                                                        'created_at' => $now,
+                                                        'updated_at' => $now,
+                                                ]);
+                                        }
+                                        $currentBatch = $incrementBatch($currentBatch, $formatBatchNo);
+                                }
+
+                                // Update split packaging batches
+                                $splitPlans = \Illuminate\Support\Facades\DB::table('plan_master')
+                                        ->where('plan_list_id', $planListIdContext)
+                                        ->where('product_caterogy_id', $productCategoryIdContext)
+                                        ->where('cancel', 0)
+                                        ->where('only_parkaging', 1)
+                                        ->get();
+
+                                foreach ($splitPlans as $sp) {
+                                        if ($sp->main_parkaging_id) {
+                                                $parentPlan = \Illuminate\Support\Facades\DB::table('plan_master')->where('id', $sp->main_parkaging_id)->first();
+                                                if ($parentPlan && $parentPlan->batch !== $sp->batch) {
+                                                        \Illuminate\Support\Facades\DB::table('plan_master')
+                                                                ->where('id', $sp->id)
+                                                                ->update([
+                                                                        'batch' => $parentPlan->batch,
+                                                                        'updated_at' => $now,
+                                                                        'prepared_by' => $user_fullname
+                                                                ]);
+
+                                                        $lastVersion = \Illuminate\Support\Facades\DB::table('plan_master_history')
+                                                                ->where('plan_master_id', $sp->id)
+                                                                ->max('version');
+                                                        $newVersion = $lastVersion ? $lastVersion + 1 : 1;
+                                                        $hasActive = \App\Models\ValidationTrackingPlanMaster::where('plan_master_id', $sp->id)->where('active', 1)->exists();
+
+                                                        if ($isSent) {
+                                                                \Illuminate\Support\Facades\DB::table('plan_master_history')->insert([
+                                                                        'plan_master_id' => $sp->id,
+                                                                        'plan_list_id' => $sp->plan_list_id,
+                                                                        'product_caterogy_id' => $sp->product_caterogy_id,
+                                                                        'version' => $newVersion,
+                                                                        'level' => $sp->level,
+                                                                        'batch' => $parentPlan->batch,
+                                                                        'expected_date' => $sp->expected_date,
+                                                                        'is_val' => $sp->is_val,
+                                                                        'is_validation_tracking' => $hasActive ? 1 : 0,
+                                                                        'after_weigth_date' => $sp->after_weigth_date,
+                                                                        'after_parkaging_date' => $sp->after_parkaging_date,
+                                                                        'allow_weight_before_date' => $sp->allow_weight_before_date,
+                                                                        'expired_material_date' => $sp->expired_material_date,
+                                                                        'expired_packing_date' => $sp->expired_packing_date,
+                                                                        'preperation_before_date' => $sp->preperation_before_date,
+                                                                        'blending_before_date' => $sp->blending_before_date,
+                                                                        'coating_before_date' => $sp->coating_before_date,
+                                                                        'parkaging_before_date' => $sp->parkaging_before_date,
+                                                                        'material_source_id' => $sp->material_source_id,
+                                                                        'percent_parkaging' => $sp->percent_parkaging,
+                                                                        'only_parkaging' => $sp->only_parkaging,
+                                                                        'number_parkaging' => $sp->number_parkaging,
+                                                                        'note' => $sp->note,
+                                                                        'reason' => 'Auto-sequenced batch number (split batch).',
+                                                                        'deparment_code' => $sp->deparment_code,
+                                                                        'prepared_by' => $user_fullname,
+                                                                        'created_at' => $now,
+                                                                        'updated_at' => $now,
+                                                                ]);
+                                                        }
+                                                }
+                                        }
+                                }
+                        }
+
+                        \Illuminate\Support\Facades\DB::commit();
+                        return response()->json(['success' => true, 'message' => 'Cập nhật hàng loạt thành công!']);
+                } catch (\Exception $e) {
+                        \Illuminate\Support\Facades\DB::rollBack();
+                        return response()->json(['success' => false, 'message' => 'Lỗi hệ thống: ' . $e->getMessage()]);
+                }
         }
 
         public function bulkDeActive(Request $request)
@@ -1599,15 +1599,15 @@ class ProductionPlanController extends Controller
                         foreach ($ids as $id) {
                                 $plan = DB::table('plan_master')->where('id', $id)->first();
                                 if (!$plan) continue;
-                                
+
                                 $planList = DB::table('plan_list')->where('id', $plan->plan_list_id)->first();
                                 $send = $planList ? $planList->send : false;
-                                
+
                                 $type = 'delete';
                                 if ($send) {
-                                        $type = 'cancel'; 
+                                        $type = 'cancel';
                                 }
-                                
+
                                 $updatesql = [
                                         'prepared_by' => session('user')['fullName'],
                                         'updated_at' => now(),
@@ -1676,7 +1676,7 @@ class ProductionPlanController extends Controller
                                                         $fpc = DB::table('finished_product_category')->where('id', $p->product_caterogy_id)->first();
                                                         if ($fpc && $fpc->intermediate_code) {
                                                                 $vt_ic = \App\Models\ValidationTrackingIntermediateCategory::where('validation_tracking_id', $vtpm->validation_tracking_id)
-                                                                        ->whereHas('intermediateCategory', function($q) use ($fpc) {
+                                                                        ->whereHas('intermediateCategory', function ($q) use ($fpc) {
                                                                                 $q->where('intermediate_code', $fpc->intermediate_code);
                                                                         })->first();
                                                                 if ($vt_ic && $vt_ic->num_of_finished_batch > 0) {
@@ -2004,7 +2004,7 @@ class ProductionPlanController extends Controller
                                         $fpc = DB::table('finished_product_category')->where('id', $plan->product_caterogy_id)->first();
                                         if ($fpc && $fpc->intermediate_code) {
                                                 $vt_ic = \App\Models\ValidationTrackingIntermediateCategory::where('validation_tracking_id', $vtpm->validation_tracking_id)
-                                                        ->whereHas('intermediateCategory', function($q) use ($fpc) {
+                                                        ->whereHas('intermediateCategory', function ($q) use ($fpc) {
                                                                 $q->where('intermediate_code', $fpc->intermediate_code);
                                                         })->first();
                                                 if ($vt_ic && $vt_ic->num_of_finished_batch > 0) {
@@ -2143,7 +2143,7 @@ class ProductionPlanController extends Controller
                                                 $loopCount = (int) $stageValue;
                                                 $ratios = array_fill(0, $loopCount, 1);
                                         }
-                                        
+
                                         $loopCount = count($ratios);
                                         $totalRatio = array_sum($ratios);
 
@@ -2179,7 +2179,7 @@ class ProductionPlanController extends Controller
                                         $prevStageCandidates = collect($stageList)
                                                 ->where('stage_code', '<', $stageCode)
                                                 ->where('stage_code', '!=', 2);
-                                        
+
                                         if ($prevStageCandidates->isNotEmpty()) {
                                                 $maxPrevStageCode = $prevStageCandidates->max('stage_code');
                                                 $prevStageItems = $prevStageCandidates->where('stage_code', $maxPrevStageCode);
@@ -2206,7 +2206,7 @@ class ProductionPlanController extends Controller
                                         $nextStageCandidates = collect($stageList)
                                                 ->where('stage_code', '>', $stageCode)
                                                 ->where('stage_code', '!=', 2);
-                                        
+
                                         if ($nextStageCandidates->isNotEmpty()) {
                                                 $minNextStageCode = $nextStageCandidates->min('stage_code');
                                                 $nextStageItems = $nextStageCandidates->where('stage_code', $minNextStageCode);
@@ -2243,9 +2243,8 @@ class ProductionPlanController extends Controller
                                         'keep_dry'            => $tank->keep_dry ?? 0,
                                         'deparment_code'      => session('user')['production_code'],
                                         'created_date'        => now(),
-                                        'Theoretical_yields'  => $stageItem['stage_code'] <= 4 ? 
-                                                                    ($plan->batch_size * $stageItem['ratio_part'] / $stageItem['total_ratio']) : 
-                                                                    ($plan->batch_qty * $stageItem['ratio_part'] / $stageItem['total_ratio']),
+                                        'Theoretical_yields'  => $stageItem['stage_code'] <= 4 ?
+                                                ($plan->batch_size * $stageItem['ratio_part'] / $stageItem['total_ratio']) : ($plan->batch_qty * $stageItem['ratio_part'] / $stageItem['total_ratio']),
                                         'Theoretical_yields_qty' => $plan->batch_qty
                                 ];
 
@@ -2265,9 +2264,8 @@ class ProductionPlanController extends Controller
                                                         'keep_dry'            => $tank->keep_dry ?? 0,
                                                         'deparment_code'      => session('user')['production_code'],
                                                         'created_date'        => now(),
-                                                        'Theoretical_yields'  => $stageItem['stage_code'] <= 4 ? 
-                                                                    ($plan_packaging->batch_size * $stageItem['ratio_part'] / $stageItem['total_ratio']) : 
-                                                                    ($plan_packaging->batch_qty * $stageItem['ratio_part'] / $stageItem['total_ratio']),
+                                                        'Theoretical_yields'  => $stageItem['stage_code'] <= 4 ?
+                                                                ($plan_packaging->batch_size * $stageItem['ratio_part'] / $stageItem['total_ratio']) : ($plan_packaging->batch_qty * $stageItem['ratio_part'] / $stageItem['total_ratio']),
                                                         'Theoretical_yields_qty' => $plan->batch_qty
                                                 ];
                                         }
@@ -2454,7 +2452,7 @@ class ProductionPlanController extends Controller
                 }
 
                 // --- Bắt đầu phần lưu History ---
-                if ($request->name != "selected" && $request->name != "selected_all") {
+                if ($request->name != "selected" && $request->name != "selected_all" && $request->source != 'dataTable_feedback') {
                         $affectedIds = [];
                         if ($idOrPlanListId == 'id') {
                                 $affectedIds[] = $request->id;
@@ -2465,15 +2463,15 @@ class ProductionPlanController extends Controller
                         if (!empty($affectedIds)) {
                                 $updatedPlans = DB::table('plan_master')->whereIn('id', $affectedIds)->get();
                                 $historyInserts = [];
-                                
+
                                 foreach ($updatedPlans as $p) {
                                         $lastVersion = DB::table('plan_master_history')
                                                 ->where('plan_master_id', $p->id)
                                                 ->max('version');
                                         $newVersion = $lastVersion ? $lastVersion + 1 : 1;
-                                        
+
                                         $hasActive = \App\Models\ValidationTrackingPlanMaster::where('plan_master_id', $p->id)->where('active', 1)->exists();
-                                        
+
                                         $historyInserts[] = [
                                                 'plan_master_id' => $p->id,
                                                 'plan_list_id' => $p->plan_list_id,
@@ -2505,7 +2503,7 @@ class ProductionPlanController extends Controller
                                                 'updated_at' => $now,
                                         ];
                                 }
-                                
+
                                 if (!empty($historyInserts)) {
                                         DB::table('plan_master_history')->insert($historyInserts);
                                 }
@@ -4072,20 +4070,20 @@ class ProductionPlanController extends Controller
                 try {
                         $unmappedPlans = DB::table('plan_master')
                                 ->join('finished_product_category', 'plan_master.product_caterogy_id', '=', 'finished_product_category.id')
-                                ->where(function($query) {
+                                ->where(function ($query) {
                                         $query->whereNull('plan_master.order_number_R1')
-                                              ->orWhereNull('plan_master.order_number_R2')
-                                              ->orWhere('plan_master.order_number_R1', '')
-                                              ->orWhere('plan_master.order_number_R2', '');
+                                                ->orWhereNull('plan_master.order_number_R2')
+                                                ->orWhere('plan_master.order_number_R1', '')
+                                                ->orWhere('plan_master.order_number_R2', '');
                                 })
-                                ->where(function($query) {
+                                ->where(function ($query) {
                                         $query->whereNotNull('plan_master.actual_batch')
-                                              ->where('plan_master.actual_batch', '<>', '')
-                                              ->orWhere(function($q) {
-                                                      $q->whereNull('plan_master.actual_batch')
-                                                        ->whereNotNull('plan_master.batch')
-                                                        ->where('plan_master.batch', '<>', '');
-                                              });
+                                                ->where('plan_master.actual_batch', '<>', '')
+                                                ->orWhere(function ($q) {
+                                                        $q->whereNull('plan_master.actual_batch')
+                                                                ->whereNotNull('plan_master.batch')
+                                                                ->where('plan_master.batch', '<>', '');
+                                                });
                                 })
                                 ->select(
                                         'plan_master.id',
@@ -4098,12 +4096,12 @@ class ProductionPlanController extends Controller
 
                         if ($unmappedPlans->isNotEmpty()) {
                                 $batchCodes = $unmappedPlans->pluck('batch_code')->filter()->unique()->toArray();
-                                
+
                                 $mmsOrders = DB::connection('mms')->table('dbo.Batch')
                                         ->whereIn('Batchno', $batchCodes)
                                         ->select('Batchno', 'PRDID', 'orderno', 'cron', 'crby')
                                         ->get();
-                                
+
                                 $mmsIndexed = [];
                                 foreach ($mmsOrders as $o) {
                                         $batchCode = trim($o->Batchno);
@@ -4123,7 +4121,7 @@ class ProductionPlanController extends Controller
                                                 $ordernoR2 = null;
                                                 $cronVal = null;
                                                 $crbyVal = null;
-                                                
+
                                                 foreach ($batches as $b) {
                                                         $orderno = trim($b->orderno);
                                                         if (stripos($orderno, 'R1') !== false) {
@@ -4145,13 +4143,13 @@ class ProductionPlanController extends Controller
                                                                 }
                                                         }
                                                 }
-                                                
+
                                                 if (empty($cronVal) && !empty($batches)) {
                                                         $firstBatch = $batches[0];
                                                         $cronVal = $firstBatch->cron ?? null;
                                                         $crbyVal = $firstBatch->crby ?? null;
                                                 }
-                                                
+
                                                 $updateFields = [];
                                                 if ($ordernoR1 && empty($pm->order_number_R1)) {
                                                         $updateFields['order_number_R1'] = $ordernoR1;
@@ -4165,7 +4163,7 @@ class ProductionPlanController extends Controller
                                                 if ($crbyVal) {
                                                         $updateFields['create_by_order_number'] = $crbyVal;
                                                 }
-                                                
+
                                                 if (!empty($updateFields)) {
                                                         DB::table('plan_master')
                                                                 ->where('id', $pm->id)

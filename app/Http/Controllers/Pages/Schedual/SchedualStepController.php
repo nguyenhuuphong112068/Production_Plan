@@ -65,6 +65,7 @@ class SchedualStepController extends Controller
                 'finished_product_category.unit_batch_qty',
                 'market.name as market',
                 'product_name.name as product_name',
+                'intermediate_category.intermediate_code',
                 'intermediate_category.quarantine_total',
                 'intermediate_category.quarantine_weight',
                 'intermediate_category.quarantine_preparing',
@@ -80,9 +81,7 @@ class SchedualStepController extends Controller
                         END as status
                     ")
             )
-            ->when(!$request->has('filter_overdue') || $request->filter_overdue != '1', function($query) use ($fromDate, $toDate) {
-                return $query->whereBetween('plan_master.expected_date', [$fromDate, $toDate]);
-            })
+
             ->where('stage_plan.active', 1)
             ->where('stage_plan.deparment_code', $production)
             ->where('plan_master.only_parkaging',  0)
@@ -92,13 +91,12 @@ class SchedualStepController extends Controller
             ->get()
             ->groupBy('plan_master_id');
 
-        // Logic lọc cảnh báo đỏ (quá hạn biệt trữ) và công đoạn sau chưa hoàn thành
+        $allDatas = $datas;
+
+        $filteredDatas = collect();
         if ($request->has('filter_overdue') && $request->filter_overdue == '1') {
-            $filteredDatas = collect();
             foreach ($datas as $plan_master_id => $stages) {
                 $isOverdue = false;
-                
-                // Nếu lô đã hoàn thành (công đoạn 7 hoặc 8 đã finished) thì bỏ qua, không tính là cảnh báo quá hạn
                 $isPlanFinished = false;
                 foreach ($stages as $s) {
                     if ($s->stage_code >= 7 && $s->finished == 1) {
@@ -110,10 +108,8 @@ class SchedualStepController extends Controller
 
                 foreach ($stages as $stage) {
                     $next = $stages->firstWhere('code', $stage->nextcessor_code);
-                    // Yêu cầu: công đoạn sau chưa hoàn thành (chưa xếp lịch hoặc chưa finished)
                     if (!$next || $next->finished == 1) continue;
 
-                    // Lấy thời gian biệt trữ chuẩn
                     $stdValue = null;
                     if (in_array($stage->stage_code, [1, 2])) $stdValue = $stage->quarantine_weight;
                     elseif ($stage->stage_code == 3) $stdValue = $stage->quarantine_preparing;
@@ -124,13 +120,10 @@ class SchedualStepController extends Controller
                     if ($stage->end && $stdValue !== null && $stdValue > 0) {
                         $stdInMinutes = ($stage->quarantine_time_unit == 1) ? $stdValue * 24 * 60 : $stdValue * 60;
                         
-                        if ($next->start) {
-                            continue; // Đã xếp lịch thì bỏ qua, không lọc cảnh báo
-                        } else {
+                        if (!$next->start) {
                             $endTs = strtotime($stage->end);
                             $nowTs = time();
-                            $diffInMinutes = ($nowTs - $endTs) / 60;
-                            if ($diffInMinutes > $stdInMinutes) {
+                            if ((($nowTs - $endTs) / 60) > $stdInMinutes) {
                                 $isOverdue = true;
                                 break;
                             }
@@ -141,8 +134,16 @@ class SchedualStepController extends Controller
                     $filteredDatas->put($plan_master_id, $stages);
                 }
             }
-            $datas = $filteredDatas;
+        } else {
+            foreach ($datas as $plan_master_id => $stages) {
+                $main = $stages->first();
+                $expected = $main->expected_date ?? null;
+                if ($expected && $expected >= $fromDate && $expected <= $toDate) {
+                    $filteredDatas->put($plan_master_id, $stages);
+                }
+            }
         }
+        $datas = $filteredDatas;
 
         $datas_only_parkaging = DB::table('stage_plan')
             ->when(!in_array(session('user')['userGroup'], ['Schedualer', 'Admin', 'Leader']), fn($query) => $query->where('submit', 1))
@@ -180,6 +181,7 @@ class SchedualStepController extends Controller
                 'finished_product_category.unit_batch_qty',
                 'market.name as market',
                 'product_name.name as product_name',
+                'intermediate_category.intermediate_code',
                 'intermediate_category.quarantine_total',
                 'intermediate_category.quarantine_weight',
                 'intermediate_category.quarantine_preparing',
@@ -206,37 +208,68 @@ class SchedualStepController extends Controller
 
 
         // --- 3. Map thêm stage_name + ghép dữ liệu phụ ---
-        $datas = $datas->map(function ($plans) use ($stage_name, $datas_only_parkaging) {
-
+        $mapFunction = function ($plans) use ($stage_name, $datas_only_parkaging) {
             $plans = $plans->map(function ($item) use ($stage_name) {
                 $item->stage_name = $stage_name[$item->stage_code]->stage ?? null;
                 return $item;
             });
-
-            // Lấy plan_master đầu tiên để kiểm tra percent_parkaging
             $main = $plans->first();
-
-            // Nếu percent_parkaging < 1 → lấy các stage đóng gói phụ tương ứng (main_parkaging_id)
             if ($main && $main->percent_parkaging < 1) {
-
-                $extraStages = $datas_only_parkaging
-                    ->where('main_parkaging_id', $main->plan_master_id)
-                    ->values();
-
-
+                $extraStages = $datas_only_parkaging->where('main_parkaging_id', $main->plan_master_id)->values();
                 if ($extraStages->isNotEmpty()) {
-                    // map thêm stage_name
                     $extraStages = $extraStages->map(function ($item) use ($stage_name) {
                         $item->stage_name = $stage_name[$item->stage_code]->stage ?? null;
                         return $item;
                     });
-
-                    // Gộp thêm vào cuối
                     $plans = $plans->merge($extraStages);
                 }
             }
-
             return $plans->values();
+        };
+
+        $datas = $datas->map($mapFunction);
+        
+        $wipDatasUnmapped = collect();
+        foreach ($allDatas as $plan_master_id => $stages) {
+            $sortedStages = $stages->sortBy('stage_code')->values();
+            $firstStage = $sortedStages->first();
+            $lastStage = $sortedStages->last();
+
+            if ($firstStage && $lastStage) {
+                $hasStarted = $firstStage->finished == 1;
+                $notFinished = $lastStage->finished != 1;
+                
+                if ($hasStarted && $notFinished) {
+                    $lastFinishedStage = $sortedStages->where('finished', 1)->last();
+                    $nextStage = $sortedStages->where('stage_code', '>', $lastFinishedStage->stage_code)
+                                              ->where('stage_code', '!=', 2)
+                                              ->first();
+                    $nextStageName = $nextStage ? ($stage_name[$nextStage->stage_code]->stage ?? 'Khác') : 'Khác';
+                    
+                    if (!isset($wipDatasUnmapped[$nextStageName])) {
+                        $wipDatasUnmapped[$nextStageName] = collect();
+                    }
+                    $wipDatasUnmapped[$nextStageName]->put($plan_master_id, $stages);
+                }
+            }
+        }
+        
+        $wipDatas = collect();
+        foreach ($wipDatasUnmapped as $stageName => $groupStages) {
+            $wipDatas->put($stageName, $groupStages->map($mapFunction));
+        }
+
+        $stageOrder = [
+            'Cân Nguyên Liệu' => 1,
+            'Pha Chế' => 2,
+            'Trộn Hoàn Tất' => 3,
+            'Định Hình' => 4,
+            'Bao Phim' => 5,
+            'ĐGSC-ĐGTC' => 6,
+        ];
+        
+        $wipDatas = $wipDatas->sortBy(function ($groupStages, $stageName) use ($stageOrder) {
+            return $stageOrder[$stageName] ?? 99;
         });
 
 
@@ -247,6 +280,7 @@ class SchedualStepController extends Controller
         //dd ($datas);
         return view('pages.Schedual.step.list', [
             'datas' => $datas,
+            'wipDatas' => $wipDatas
         ]);
     }
 }

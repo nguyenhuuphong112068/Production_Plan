@@ -1,30 +1,37 @@
 <?php
-use Illuminate\Support\Facades\DB;
-use Carbon\Carbon;
+require 'vendor/autoload.php';
+$app = require_once 'bootstrap/app.php';
+$kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
+$kernel->bootstrap();
 
-$planYear = 2026;
+$production = 'PXV1';
 
-$wipQuery = "
-SELECT 
-    pm.id as plan_id,
-    pm.product_caterogy_id AS fpc_id,
-    sp_start.actual_start AS start_date,
-    sp_end.actual_end AS end_date,
-    sp_end.finished as is_finished,
-    fpc.batch_qty
-FROM plan_master pm
-JOIN finished_product_category fpc ON pm.product_caterogy_id = fpc.id
-JOIN stage_plan sp_start ON sp_start.plan_master_id = pm.id AND sp_start.stage_code = 1 AND sp_start.finished = 1
-JOIN (
-    SELECT plan_master_id, MAX(stage_code) as max_stage_code
-    FROM stage_plan
-    GROUP BY plan_master_id
-) max_sp ON max_sp.plan_master_id = pm.id
-JOIN stage_plan sp_end ON sp_end.plan_master_id = pm.id AND sp_end.stage_code = max_sp.max_stage_code
-WHERE pm.active = 1 AND pm.cancel = 0
-";
+$allDatas = Illuminate\Support\Facades\DB::table('stage_plan')
+    ->where('stage_plan.active', 1)
+    ->where('stage_plan.deparment_code', $production)
+    ->leftJoin('plan_master',  'stage_plan.plan_master_id', 'plan_master.id')
+    ->where('plan_master.only_parkaging',  0)
+    ->where('stage_plan.stage_code', '<', 8)
+    ->select('stage_plan.plan_master_id', 'stage_plan.stage_code', 'stage_plan.finished')
+    ->get()
+    ->groupBy('plan_master_id');
 
-$batches = DB::select($wipQuery);
-echo "Found " . count($batches) . " batches.\n";
-$sample = array_slice($batches, 0, 10);
-print_r($sample);
+$wipDatasUnmapped = collect();
+foreach ($allDatas as $plan_master_id => $stages) {
+    $weighingFinished = false;
+    $packagingFinished = false;
+    foreach ($stages as $s) {
+        if (in_array($s->stage_code, [1, 2]) && $s->finished == 1) {
+            $weighingFinished = true;
+        }
+        if ($s->stage_code >= 7 && $s->finished == 1) {
+            $packagingFinished = true;
+        }
+    }
+    if ($weighingFinished && !$packagingFinished) {
+        $wipDatasUnmapped->put($plan_master_id, $stages);
+    }
+}
+
+echo '4396 in wipDatas: ' . ($wipDatasUnmapped->has(4396) ? 'Yes' : 'No') . "\n";
+echo '4454 in wipDatas: ' . ($wipDatasUnmapped->has(4454) ? 'Yes' : 'No') . "\n";
