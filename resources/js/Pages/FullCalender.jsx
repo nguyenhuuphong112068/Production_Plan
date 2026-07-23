@@ -6395,9 +6395,53 @@ const ScheduleTest = () => {
     return events.filter(e => e.submit === 0 && e.finished === 0 && !e.is_clearning && e.stage_code !== 8).length;
   }, [events]);
 
+  // Chiều cao lịch được ĐO theo vị trí thực tế của khung lịch trong viewport,
+  // thay vì trừ một con số px cố định. Cách trừ cứng bị lệch khi máy dùng
+  // display scaling 125/150%, zoom trình duyệt khác 100%, hoặc khi hàng filter
+  // xuống dòng -> đáy lịch (nơi đặt thanh cuộn ngang) bị đẩy khỏi màn hình.
+  const calendarBoxRef = useRef(null);
+  const topBarRef = useRef(null);
+  const [calendarHeight, setCalendarHeight] = useState(600);
+
+  useEffect(() => {
+    const BOTTOM_GAP = 10; // chừa mép dưới cho thanh cuộn ngang
+    let frame = null;
+
+    const measure = () => {
+      const el = calendarBoxRef.current;
+      if (!el) return;
+      // Offset so với đỉnh document => không đổi khi trang bị cuộn
+      const offsetTop = el.getBoundingClientRect().top + window.scrollY;
+      const next = Math.max(320, Math.round(window.innerHeight - offsetTop - BOTTOM_GAP));
+      setCalendarHeight(prev => (Math.abs(prev - next) > 1 ? next : prev));
+    };
+
+    const schedule = () => {
+      if (frame) cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(measure);
+    };
+
+    schedule();
+    window.addEventListener('resize', schedule);
+    // visualViewport bắn sự kiện khi đổi zoom trình duyệt / scaling hệ thống
+    window.visualViewport?.addEventListener('resize', schedule);
+
+    // Hàng filter + badge cảnh báo phía trên có thể cao thấp khác nhau
+    // (chip xuống dòng, badge xuất hiện/biến mất) => đo lại khi nó đổi chiều cao
+    const ro = new ResizeObserver(schedule);
+    if (topBarRef.current) ro.observe(topBarRef.current);
+
+    return () => {
+      if (frame) cancelAnimationFrame(frame);
+      window.removeEventListener('resize', schedule);
+      window.visualViewport?.removeEventListener('resize', schedule);
+      ro.disconnect();
+    };
+  }, []);
+
   return (
 
-    <div className={`transition-all duration-300 ${showSidebar ? percentShow == "30%" ? 'w-[70%]' : 'w-[85%]' : 'w-full'} float-left pt-4 pl-2 pr-2 ${isCleaningHidden ? 'hide-cleaning-events' : ''}`}>
+    <div className={`schedule-page transition-all duration-300 ${showSidebar ? percentShow == "30%" ? 'w-[70%]' : 'w-[85%]' : 'w-full'} float-left pt-4 pl-2 pr-2 ${isCleaningHidden ? 'hide-cleaning-events' : ''}`}>
       <style>{`
         .hide-cleaning-events .cleaning-event {
           display: none !important;
@@ -6410,7 +6454,7 @@ const ScheduleTest = () => {
       `}</style>
 
       {/* Visual Indicator for Selected Events and Pending Changes */}
-      <div className="flex gap-4 mb-2 align-items-center justify-content-between" style={{ minHeight: '20px' }}>
+      <div ref={topBarRef} className="flex gap-4 mb-2 align-items-center justify-content-between" style={{ minHeight: '20px' }}>
         <div style={{ zIndex: 10, marginLeft: '20px', display: 'flex', gap: '10px' }}>
           <MultiSelect
             value={selectedStagesFilter || stageFilterOptions.map(o => o.value)}
@@ -6499,10 +6543,11 @@ const ScheduleTest = () => {
         </div>
       </div>
 
+      <div ref={calendarBoxRef} className="schedule-calendar-box">
       <FullCalendar
         schedulerLicenseKey="GPL-My-Project-Is-Open-Source"
         ref={calendarRef}
-        height="calc(100vh - 130px)"
+        height={calendarHeight}
         plugins={calendarPlugins}
         initialView="resourceTimelineMonth1d"
         firstDay={1}
@@ -7091,6 +7136,7 @@ const ScheduleTest = () => {
         eventContent={EventContent}
 
       />
+      </div>
       <NoteModal show={showNoteModal} setShow={setShowNoteModal} />
 
       {/* <div className="modal-sidebar"> */}

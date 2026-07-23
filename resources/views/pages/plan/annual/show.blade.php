@@ -643,8 +643,8 @@
                 tempColHeaders.push(`BTP dở dang`);
                 tempColHeaders.push(`Tồn kho`);
                 let formula = '';
-                if (m > globalCurrentMonth) {
-                    formula = `<br><small style="color: #666; font-size: 0.75rem;">([Tồn kho (T${globalCurrentMonth})] + [&Sigma; Sản lượng] - [Bán] * ${m - globalCurrentMonth}) / [Bán]</small>`;
+                if (m >= globalCurrentMonth) {
+                    formula = `<br><small style="color: #666; font-size: 0.75rem;">([Tồn kho (T${globalCurrentMonth})] + [&Sigma; Sản lượng] - [Bán] * ${m - globalCurrentMonth + 1}) / [Bán]</small>`;
                 } else {
                     formula = `<br><small style="color: #666; font-size: 0.75rem;">([BTP dở dang] + [Tồn kho] + [Sản lượng]) / [Bán]</small>`;
                 }
@@ -817,7 +817,7 @@
                 className: `month-bg-${m}`
             });
 
-            colHeadersRatio.push(`Tỉ lệ thực xuất/dự trù`);
+            colHeadersRatio.push(`Tỉ lệ thực xuất/dự trù<br><small style="color: #666; font-size: 0.75rem;">([Thực xuất KD] / [Dự trù (viên)])</small>`);
             columnsRatio.push({
                 data: `m${m}_kd_ratio`,
                 readOnly: true,
@@ -828,7 +828,7 @@
                 className: `month-bg-${m}`
             });
 
-            colHeadersRatio.push(`Dự trữ an toàn`);
+            colHeadersRatio.push(`Dự trữ an toàn<br><small style="color: #666; font-size: 0.75rem;">([Tồn kho] / [Dự trù (viên)])</small>`);
             columnsRatio.push({
                 data: `m${m}_kd_safety_stock`,
                 readOnly: true,
@@ -1027,10 +1027,10 @@
                         let fg = parseFloat(String(rowData[`m${m}_expected_inventory`]).replace(/,/g, '')) || 0;
                         let months_sales = 0;
                         if (avg_sales > 0) {
-                            if (m > globalCurrentMonth) {
+                            if (m >= globalCurrentMonth) {
                                 let currentMonthFg = parseFloat(String(rowData[`m${globalCurrentMonth}_expected_inventory`]).replace(/,/g, '')) || fg;
                                 let currentMonthWip = parseFloat(String(rowData[`m${globalCurrentMonth}_wip_inventory`]).replace(/,/g, '')) || wip;
-                                months_sales = (currentMonthWip + currentMonthFg + cumulative_planned_qty - avg_sales * (m - globalCurrentMonth)) / avg_sales;
+                                months_sales = (currentMonthWip + currentMonthFg + cumulative_planned_qty - avg_sales * (m - globalCurrentMonth + 1)) / avg_sales;
                             } else {
                                 months_sales = (wip + fg + planned_qty) / avg_sales;
                             }

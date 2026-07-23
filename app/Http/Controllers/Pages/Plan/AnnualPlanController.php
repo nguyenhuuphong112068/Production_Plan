@@ -120,7 +120,7 @@ class AnnualPlanController extends Controller
         FROM fgisuregitem i
         JOIN fgisureg r ON i.issueno = r.Issueno AND i.isuideno = r.isuideno
         WHERE r.apsts = 1 
-          AND r.rem = 'KHUONG DUY'
+          AND r.rem LIKE '%KHUONG%'
           AND r.issuedate >= ? AND r.issuedate <= ?
         GROUP BY i.prdid, MONTH(r.issuedate)
         ";

@@ -4,6 +4,7 @@
 use App\Http\Controllers\Pages\User\PermissionContoller;
 use App\Http\Controllers\Pages\User\RoleController;
 use App\Http\Controllers\Pages\User\UserController;
+use App\Http\Controllers\Pages\User\UserPermissionController;
 use App\Http\Middleware\CheckLogin;
 use Illuminate\Support\Facades\Route;
    
@@ -22,6 +23,16 @@ Route::prefix('/User')
         Route::post('update', 'update')->name('update');
         Route::post('deActive/{id}','deActive')->name('deActive'); 
     
+    });
+
+    Route::prefix('/user_permission')
+    ->name('user_permission.')
+    ->controller(UserPermissionController::class)
+    ->group(function(){
+
+        Route::get('{userId}','index')->name('list');
+        Route::post('store_or_update','store_or_update')->name('store_or_update');
+
     });
 
     Route::prefix('/permission')

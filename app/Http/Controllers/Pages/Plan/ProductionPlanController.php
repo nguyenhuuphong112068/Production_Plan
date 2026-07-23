@@ -4084,15 +4084,17 @@ class ProductionPlanController extends Controller
         private function updateOrderNumbersFromMMS()
         {
                 try {
-                        $unmappedPlans = DB::table('plan_master')
+                        $deptCode = session('user')['production_code'] ?? null;
+
+                        $query = DB::table('plan_master')
                                 ->join('finished_product_category', 'plan_master.product_caterogy_id', '=', 'finished_product_category.id')
-                                ->where(function ($query) {
-                                        $query->whereNull('plan_master.order_number_R1')
-                                                ->orWhereNull('plan_master.order_number_R2')
-                                                ->orWhere('plan_master.order_number_R1', '')
-                                                ->orWhere('plan_master.order_number_R2', '');
-                                })
-                                ->where(function ($query) {
+                                ->where('plan_master.created_at', '>=', now()->subMonths(3));
+                        
+                        if ($deptCode) {
+                                $query->where('plan_master.deparment_code', $deptCode);
+                        }
+
+                        $unmappedPlans = $query->where(function ($query) {
                                         $query->whereNotNull('plan_master.actual_batch')
                                                 ->where('plan_master.actual_batch', '<>', '')
                                                 ->orWhere(function ($q) {
@@ -4131,15 +4133,16 @@ class ProductionPlanController extends Controller
 
                                 foreach ($unmappedPlans as $pm) {
                                         $key = trim($pm->batch_code) . '_' . trim($pm->intermediate_code);
+                                        
+                                        $ordernoR1 = null;
+                                        $ordernoR2 = null;
+                                        $cronVal = null;
+                                        $crbyVal = null;
+
                                         if (isset($mmsIndexed[$key])) {
                                                 $batches = $mmsIndexed[$key];
-                                                $ordernoR1 = null;
-                                                $ordernoR2 = null;
-                                                $cronVal = null;
-                                                $crbyVal = null;
-
+                                                
                                                 $order_list = [];
-                                                // Chỉ lấy các lệnh chứa ký tự 'R'
                                                 foreach ($batches as $b) {
                                                         if (stripos(trim($b->orderno), 'R') !== false) {
                                                                 $order_list[] = $b;
@@ -4160,7 +4163,6 @@ class ProductionPlanController extends Controller
                                                         }
                                                 }
 
-                                                // Fallback: nếu lệnh R không phải R1, R2 (ví dụ RS, R) thì điền vào ô trống
                                                 foreach ($order_list as $b) {
                                                         $orderno = trim($b->orderno);
                                                         if (stripos($orderno, 'R1') === false && stripos($orderno, 'R2') === false) {
@@ -4179,29 +4181,23 @@ class ProductionPlanController extends Controller
                                                         $cronVal = $firstBatch->cron ?? null;
                                                         $crbyVal = $firstBatch->crby ?? null;
                                                 }
+                                        }
 
-                                                $updateFields = [];
-                                                if ($ordernoR1 && empty($pm->order_number_R1)) {
-                                                        $updateFields['order_number_R1'] = $ordernoR1;
-                                                }
-                                                if ($ordernoR2 && empty($pm->order_number_R2)) {
-                                                        $updateFields['order_number_R2'] = $ordernoR2;
-                                                }
-                                                if ($cronVal) {
+                                        if ($ordernoR1 !== $pm->order_number_R1 || $ordernoR2 !== $pm->order_number_R2) {
+                                                $updateFields = [
+                                                        'order_number_R1' => $ordernoR1,
+                                                        'order_number_R2' => $ordernoR2,
+                                                ];
+                                                if ($ordernoR1 !== null || $ordernoR2 !== null) {
                                                         $updateFields['create_at_order_number'] = $cronVal;
-                                                }
-                                                if ($crbyVal) {
                                                         $updateFields['create_by_order_number'] = $crbyVal;
                                                 }
-
-                                                if (!empty($updateFields)) {
-                                                        DB::table('plan_master')
-                                                                ->where('id', $pm->id)
-                                                                ->update($updateFields);
-                                                }
+                                                
+                                                DB::table('plan_master')
+                                                        ->where('id', $pm->id)
+                                                        ->update($updateFields);
                                         }
                                 }
-                        }
                 } catch (\Exception $e) {
                         Log::error('Error updating order numbers from MMS: ' . $e->getMessage());
                 }

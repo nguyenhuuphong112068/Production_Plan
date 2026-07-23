@@ -28,6 +28,7 @@
                         <th>Mail</th>
                         <th>Người Tạo</th>
                         <th>Ngày Tạo</th>
+                        <th>Quyền Riêng</th>
                         <th>Edit</th>
                         <th>DeActive</th>
                     </tr>
@@ -45,6 +46,14 @@
                             <td>{{ $data->mail }}</td>
                             <td>{{ $data->prepareBy }}</td>
                             <td>{{ \Carbon\Carbon::parse($data->created_at)->format('d/m/Y') }}</td>
+
+                            <td class="text-center align-middle">
+                                <button type="button" class="btn btn-info btn-user-permission"
+                                    data-id="{{ $data->id }}" data-fullname="{{ $data->fullName }}"
+                                    data-toggle="modal" data-target="#UserPermissionModal">
+                                    <i class="fas fa-key"></i>
+                                </button>
+                            </td>
 
                             <td class="text-center align-middle">
                                 <button type="button" class="btn btn-warning btn-edit" data-id="{{ $data->id }}"
