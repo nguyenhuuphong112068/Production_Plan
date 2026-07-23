@@ -2404,29 +2404,44 @@ class ProductionPlanController extends Controller
                                                 ->select('orderno', 'cron', 'crby')
                                                 ->get();
 
+                                        $order_list = [];
+                                        // Chỉ lấy các lệnh chứa ký tự 'R'
                                         foreach ($batches as $b) {
+                                                if (stripos(trim($b->orderno), 'R') !== false) {
+                                                        $order_list[] = $b;
+                                                }
+                                        }
+
+                                        foreach ($order_list as $b) {
                                                 $orderno = trim($b->orderno);
+                                                
                                                 if (stripos($orderno, 'R1') !== false) {
                                                         $ordernoR1 = $orderno;
-                                                        if (isset($b->cron)) {
-                                                                $cronVal = $b->cron;
-                                                        }
-                                                        if (isset($b->crby)) {
-                                                                $crbyVal = $b->crby;
-                                                        }
-                                                }
-                                                if (stripos($orderno, 'R2') !== false) {
+                                                        if (isset($b->cron)) $cronVal = $b->cron;
+                                                        if (isset($b->crby)) $crbyVal = $b->crby;
+                                                } elseif (stripos($orderno, 'R2') !== false) {
                                                         $ordernoR2 = $orderno;
-                                                        if (empty($cronVal) && isset($b->cron)) {
-                                                                $cronVal = $b->cron;
-                                                        }
-                                                        if (empty($crbyVal) && isset($b->crby)) {
-                                                                $crbyVal = $b->crby;
+                                                        if (empty($cronVal) && isset($b->cron)) $cronVal = $b->cron;
+                                                        if (empty($crbyVal) && isset($b->crby)) $crbyVal = $b->crby;
+                                                }
+                                        }
+
+                                        // Fallback: nếu lệnh R không phải R1, R2 (ví dụ RS, R) thì điền vào ô trống
+                                        foreach ($order_list as $b) {
+                                                $orderno = trim($b->orderno);
+                                                if (stripos($orderno, 'R1') === false && stripos($orderno, 'R2') === false) {
+                                                        if (empty($ordernoR1)) {
+                                                                $ordernoR1 = $orderno;
+                                                                if (empty($cronVal) && isset($b->cron)) $cronVal = $b->cron;
+                                                                if (empty($crbyVal) && isset($b->crby)) $crbyVal = $b->crby;
+                                                        } elseif (empty($ordernoR2)) {
+                                                                $ordernoR2 = $orderno;
                                                         }
                                                 }
                                         }
-                                        if (empty($cronVal) && $batches->isNotEmpty()) {
-                                                $firstBatch = $batches->first();
+
+                                        if (empty($cronVal) && count($order_list) > 0) {
+                                                $firstBatch = $order_list[0];
                                                 $cronVal = $firstBatch->cron ?? null;
                                                 $crbyVal = $firstBatch->crby ?? null;
                                         }
@@ -2581,6 +2596,7 @@ class ProductionPlanController extends Controller
 
         public function open_feedback(Request $request)
         {
+                $this->updateOrderNumbersFromMMS();
 
                 $department = DB::table('user_management')->where('userName', session('user')['userName'])->value('deparment');
 
@@ -4122,30 +4138,44 @@ class ProductionPlanController extends Controller
                                                 $cronVal = null;
                                                 $crbyVal = null;
 
+                                                $order_list = [];
+                                                // Chỉ lấy các lệnh chứa ký tự 'R'
                                                 foreach ($batches as $b) {
+                                                        if (stripos(trim($b->orderno), 'R') !== false) {
+                                                                $order_list[] = $b;
+                                                        }
+                                                }
+
+                                                foreach ($order_list as $b) {
                                                         $orderno = trim($b->orderno);
+                                                        
                                                         if (stripos($orderno, 'R1') !== false) {
                                                                 $ordernoR1 = $orderno;
-                                                                if (isset($b->cron)) {
-                                                                        $cronVal = $b->cron;
-                                                                }
-                                                                if (isset($b->crby)) {
-                                                                        $crbyVal = $b->crby;
-                                                                }
-                                                        }
-                                                        if (stripos($orderno, 'R2') !== false) {
+                                                                if (isset($b->cron)) $cronVal = $b->cron;
+                                                                if (isset($b->crby)) $crbyVal = $b->crby;
+                                                        } elseif (stripos($orderno, 'R2') !== false) {
                                                                 $ordernoR2 = $orderno;
-                                                                if (empty($cronVal) && isset($b->cron)) {
-                                                                        $cronVal = $b->cron;
-                                                                }
-                                                                if (empty($crbyVal) && isset($b->crby)) {
-                                                                        $crbyVal = $b->crby;
+                                                                if (empty($cronVal) && isset($b->cron)) $cronVal = $b->cron;
+                                                                if (empty($crbyVal) && isset($b->crby)) $crbyVal = $b->crby;
+                                                        }
+                                                }
+
+                                                // Fallback: nếu lệnh R không phải R1, R2 (ví dụ RS, R) thì điền vào ô trống
+                                                foreach ($order_list as $b) {
+                                                        $orderno = trim($b->orderno);
+                                                        if (stripos($orderno, 'R1') === false && stripos($orderno, 'R2') === false) {
+                                                                if (empty($ordernoR1)) {
+                                                                        $ordernoR1 = $orderno;
+                                                                        if (empty($cronVal) && isset($b->cron)) $cronVal = $b->cron;
+                                                                        if (empty($crbyVal) && isset($b->crby)) $crbyVal = $b->crby;
+                                                                } elseif (empty($ordernoR2)) {
+                                                                        $ordernoR2 = $orderno;
                                                                 }
                                                         }
                                                 }
 
-                                                if (empty($cronVal) && !empty($batches)) {
-                                                        $firstBatch = $batches[0];
+                                                if (empty($cronVal) && count($order_list) > 0) {
+                                                        $firstBatch = $order_list[0];
                                                         $cronVal = $firstBatch->cron ?? null;
                                                         $crbyVal = $firstBatch->crby ?? null;
                                                 }
