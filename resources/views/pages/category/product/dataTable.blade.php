@@ -1,7 +1,8 @@
 <link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet">
-<style> 
+<style>
     .highlight-row {
-        background-color: #fff3cd !important; /* vàng nhạt */
+        background-color: #fff3cd !important;
+        /* vàng nhạt */
     }
 </style>
 <div class="content-wrapper">
@@ -9,29 +10,28 @@
         <div class="card-header mt-4">
             {{-- <h3 class="card-title">Ghi Chú Nếu Có</h3> --}}
         </div>
-            @php
-                $auth_update = user_has_permission(session('user')['userId'], 'category_product_update','disabled');
-                $auth_deActive = user_has_permission(session('user')['userId'], 'category_product_deActive','disabled');
-                $create_i_Hypothesis_category = user_has_permission(session('user')['userId'], 'create_intermediate_Hypothesis_category', 'boolean');
-            @endphp
+        @php
+            $auth_update = user_has_permission(session('user')['userId'], 'category_product_update', 'disabled');
+            $auth_deActive = user_has_permission(session('user')['userId'], 'category_product_deActive', 'disabled');
+            $create_i_Hypothesis_category = user_has_permission(
+                session('user')['userId'],
+                'create_intermediate_Hypothesis_category',
+                'boolean',
+            );
+        @endphp
 
         <!-- /.card-Body -->
         <div class="card-body">
             @if (user_has_permission(session('user')['userId'], 'category_product_create', 'boolean'))
-                <button class="btn btn-success btn-create mb-2" 
-                    data-toggle="modal" 
-                    data-target="#intermediate_category"
-                    data-modal_type="#create_modal"
-                    style="width: 255px">
+                <button class="btn btn-success btn-create mb-2" data-toggle="modal" data-target="#intermediate_category"
+                    data-modal_type="#create_modal" style="width: 255px">
                     <i class="fas fa-plus"></i> Thêm Danh Mục
                 </button>
             @endif
 
             @if ($create_i_Hypothesis_category)
-                <button class="btn btn-success btn-create-hypothesis mb-2" 
-                    data-toggle="modal" 
-                    data-target="#intermediate_category"
-                    data-modal_type="#create_hypothesis_modal"
+                <button class="btn btn-success btn-create-hypothesis mb-2" data-toggle="modal"
+                    data-target="#intermediate_category" data-modal_type="#create_hypothesis_modal"
                     style="width: 255px">
                     <i class="fas fa-plus"></i> Thêm Danh Mục Giả Định
                 </button>
@@ -51,10 +51,10 @@
                         <th>Đóng gói</th>
                         <th>Phân Xưởng</th>
                         <th>Người Tạo/ Ngày Tạo</th>
-                        @if (!$auth_update )
+                        @if (!$auth_update)
                             <th>Cập Nhật</th>
                         @endif
-                        @if ($create_i_Hypothesis_category )
+                        @if ($create_i_Hypothesis_category)
                             <th>Cập Nhật DMGĐ</th>
                         @endif
                         <th>Vô Hiệu</th>
@@ -64,9 +64,11 @@
                 </thead>
                 <tbody>
                     @foreach ($datas as $data)
-                        <tr class = "{{ $data->IsHypothesis? 'highlight-row':'' }}">
-                            <td>{{ $loop->iteration }} 
-                                @if(session('user')['userGroup'] == "Admin") <div> {{ $data->id}} </div> @endif
+                        <tr class = "{{ $data->IsHypothesis ? 'highlight-row' : '' }}">
+                            <td>{{ $loop->iteration }}
+                                @if (session('user')['userGroup'] == 'Admin')
+                                    <div> {{ $data->id }} </div>
+                                @endif
                             </td>
                             @if ($data->active)
                                 <td class="text-success">
@@ -87,7 +89,7 @@
                                     <div>{{ $data->intermediate_product_name }} </div>
                                 </td>
                             @endif
-                            
+
                             <td>
                                 <div> {{ $data->batch_size . ' ' . $data->unit_batch_size . '#' }} </div>
                                 <div> {{ $data->batch_qty . ' ' . $data->unit_batch_qty }} </div>
@@ -107,46 +109,48 @@
                             <td>{{ $data->deparment_code }}</td>
                             <td>
                                 <div> {{ $data->prepared_by }} </div>
-                                <div>{{ $data->created_at?\Carbon\Carbon::parse($data->created_at)->format('d/m/Y') : '' }}</div>
+                                <div>
+                                    {{ $data->created_at ? \Carbon\Carbon::parse($data->created_at)->format('d/m/Y') : '' }}
+                                </div>
                             </td>
 
-                            @if (!$auth_update )
-                            <td class="text-center align-middle">
-                                <button type="button" class="btn btn-warning btn-edit" data-id="{{ $data->id }}"
-                                    data-finished_product_code="{{ $data->finished_product_code }}"
-                                    data-intermediate_code="{{ $data->intermediate_code }}"
-                                    data-product_name_id="{{ $data->product_name_id }}"
-                                    data-market_id="{{ $data->market_id }}"
-                                    data-specification_id="{{ $data->specification_id }}"
-                                    data-batch_size="{{ $data->batch_size }}" data-batch_qty="{{ $data->batch_qty }}"
-                                    data-unit_batch_qty="{{ $data->unit_batch_qty }}"
-                                    data-primary_parkaging="{{ $data->primary_parkaging }}" data-toggle="modal"
-                                    data-target="#update_modal"
-                                    {{ $auth_update }}>
-                                    <i class="fas fa-edit"></i>
-                                </button>
-                            </td>
+                            @if (!$auth_update)
+                                <td class="text-center align-middle">
+                                    <button type="button" class="btn btn-warning btn-edit"
+                                        data-id="{{ $data->id }}"
+                                        data-finished_product_code="{{ $data->finished_product_code }}"
+                                        data-intermediate_code="{{ $data->intermediate_code }}"
+                                        data-product_name_id="{{ $data->product_name_id }}"
+                                        data-market_id="{{ $data->market_id }}"
+                                        data-specification_id="{{ $data->specification_id }}"
+                                        data-batch_size="{{ $data->batch_size }}"
+                                        data-batch_qty="{{ $data->batch_qty }}"
+                                        data-unit_batch_qty="{{ $data->unit_batch_qty }}"
+                                        data-primary_parkaging="{{ $data->primary_parkaging }}" data-toggle="modal"
+                                        data-target="#update_modal" {{ $auth_update }}>
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                </td>
                             @endif
 
-                            @if ($create_i_Hypothesis_category )
-                            <td class="text-center align-middle">
-                                <button type="button" class="btn btn-warning btn-edit-hypothesis" 
-                                    data-id="{{ $data->id }}"
-                                    data-finished_product_code="{{ $data->finished_product_code }}"
-                                    data-intermediate_code="{{ $data->intermediate_code }}"
-                                    data-product_name_id="{{ $data->product_name_id }}"
-                                    data-market_id="{{ $data->market_id }}"
-                                    data-specification_id="{{ $data->specification_id }}"
-                                    data-batch_size="{{ $data->batch_size }}" data-batch_qty="{{ $data->batch_qty }}"
-                                    data-unit_batch_qty="{{ $data->unit_batch_qty }}"
-                                    data-primary_parkaging="{{ $data->primary_parkaging }}" 
-                                    data-toggle="modal"
-                                    data-target="#update_hypothesis_modal"
-                                    {{ $data->IsHypothesis == 0 ? $auth_update :''}}
-                                    >
-                                    <i class="fas fa-edit"></i>
-                                </button>
-                            </td>
+                            @if ($create_i_Hypothesis_category)
+                                <td class="text-center align-middle">
+                                    <button type="button" class="btn btn-warning btn-edit-hypothesis"
+                                        data-id="{{ $data->id }}"
+                                        data-finished_product_code="{{ $data->finished_product_code }}"
+                                        data-intermediate_code="{{ $data->intermediate_code }}"
+                                        data-product_name_id="{{ $data->product_name_id }}"
+                                        data-market_id="{{ $data->market_id }}"
+                                        data-specification_id="{{ $data->specification_id }}"
+                                        data-batch_size="{{ $data->batch_size }}"
+                                        data-batch_qty="{{ $data->batch_qty }}"
+                                        data-unit_batch_qty="{{ $data->unit_batch_qty }}"
+                                        data-primary_parkaging="{{ $data->primary_parkaging }}" data-toggle="modal"
+                                        data-target="#update_hypothesis_modal"
+                                        {{ $data->IsHypothesis == 0 ? $auth_update : '' }}>
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                </td>
                             @endif
 
 
@@ -159,16 +163,15 @@
                                     <input type="hidden" name="IsHypothesis" value="{{ $data->IsHypothesis }}">
 
                                     @if ($data->active)
-                                        <button type="submit" class="btn btn-danger"  data-type="{{ $data->active }}"
+                                        <button type="submit" class="btn btn-danger" data-type="{{ $data->active }}"
                                             data-name="{{ $data->finished_product_code . ' - ' . $data->intermediate_code . ' - ' . $data->finished_product_name }}"
-                                            {{ $data->IsHypothesis == 0 ? $auth_update :''}}
-                                            >
+                                            {{ $data->IsHypothesis == 0 ? $auth_update : '' }}>
                                             <i class="fas fa-lock"></i>
                                         </button>
                                     @else
-                                        <button type="submit" class="btn btn-success" {{ $auth_deActive }} data-type="{{ $data->active }}" 
-                                            data-name="{{ $data->finished_product_code . ' - ' . $data->intermediate_code . ' - ' . $data->finished_product_name }}"
-                                            >
+                                        <button type="submit" class="btn btn-success" {{ $auth_deActive }}
+                                            data-type="{{ $data->active }}"
+                                            data-name="{{ $data->finished_product_code . ' - ' . $data->intermediate_code . ' - ' . $data->finished_product_name }}">
                                             <i class="fas fa-unlock"></i>
                                         </button>
                                     @endif
@@ -177,30 +180,20 @@
 
                             <td class="text-center align-middle">
 
-                                <button type="button"
-                                    class="btn btn-recipe btn-primary mx-1"
+                                <button type="button" class="btn btn-recipe btn-primary mx-1"
                                     data-finished_product_code="{{ $data->finished_product_code }}"
-                                    data-product_name="{{ $data->finished_product_name}} - {{$data->batch_qty}} {{$data->unit_batch_qty }}"
-                                    data-id =  "{{ $data->id }}"
-                                    data-is_hypothesis="{{ $data->IsHypothesis }}"
-                                  
-                                    data-toggle="modal"
-                                    data-target="#intermediateRecipeModal"
-                                    >
+                                    data-product_name="{{ $data->finished_product_name }} - {{ $data->batch_qty }} {{ $data->unit_batch_qty }}"
+                                    data-id =  "{{ $data->id }}" data-is_hypothesis="{{ $data->IsHypothesis }}"
+                                    data-toggle="modal" data-target="#intermediateRecipeModal">
                                     <i class="fas fa-list-alt"></i>
                                 </button>
 
                                 @if ($data->IsHypothesis)
-                                    <button type="button"
-                                        class="btn btn-create-bom btn-success mt-1 "
+                                    <button type="button" class="btn btn-create-bom btn-success mt-1 "
                                         data-id="{{ $data->id }}"
-                                        data-product_name="{{ $data->finished_product_name}} - {{$data->batch_qty}} {{$data->unit_batch_qty }}"
-                                        data-id =  "{{ $data->id }}"
-                                      
-
-                                        data-toggle="modal"
-                                        data-target="#createBOMModal"
-                                        >
+                                        data-product_name="{{ $data->finished_product_name }} - {{ $data->batch_qty }} {{ $data->unit_batch_qty }}"
+                                        data-id =  "{{ $data->id }}" data-toggle="modal"
+                                        data-target="#createBOMModal">
                                         <i class="fas fa-plus"></i>
                                     </button>
                                 @endif
@@ -209,10 +202,12 @@
 
                             </td>
                             <td class="text-center align-middle">
-                                <button class="btn btn-info btn-history mb-1 position-relative" data-id="{{ $data->id }}" title="Lịch sử thay đổi">
+                                <button class="btn btn-info btn-history mb-1 position-relative"
+                                    data-id="{{ $data->id }}" title="Lịch sử thay đổi">
                                     <i class="fas fa-history"></i>
-                                    @if(isset($historyCounts) && isset($historyCounts[$data->id]))
-                                        <span class="badge badge-danger" style="position: absolute; top: -5px; right: -5px; padding: 4px 6px; border-radius: 50%; font-size: 10px;">{{ $historyCounts[$data->id]->total }}</span>
+                                    @if (isset($historyCounts) && isset($historyCounts[$data->id]))
+                                        <span class="badge badge-danger"
+                                            style="position: absolute; top: -5px; right: -5px; padding: 4px 6px; border-radius: 50%; font-size: 10px;">{{ $historyCounts[$data->id]->total }}</span>
                                     @endif
                                 </button>
                             </td>
@@ -278,7 +273,7 @@
             modal.find('input[name="batch_size"]').val(button.data('batch_size'));
             modal.find('input[name="batch_qty"]').val(button.data('batch_qty'));
             modal.find('input[name="unit_batch_qty"]').val(button.data('unit_batch_qty'));
-            
+
         });
 
         $('.form-deActive').on('submit', function(e) {
@@ -357,30 +352,30 @@
             // Gán dữ liệu vào input
             modal.find('#product_caterogy_id').val(button.data('id'));
             modal.find('#recipe_i_title').val(button.data('product_name'));
-            
+
             const history_modal = modal.find('#data_table_create_recipe_body')
-            
-            
+
+
             // const create_recip_modal = $('#data_table_create_recipe_body')
             // // Xóa dữ liệu cũ
             history_modal.empty();
 
             // Gọi Ajax lấy dữ liệu history
             $.ajax({
-                    url: "{{ route('pages.category.intermediate.recipe') }}",
-                    type: 'post',
-                    data: {
-                        IsHypothesis: 1,
-                        product_caterogy_id: product_caterogy_id,
-                        _token: "{{ csrf_token() }}"
-                    },
-                    success: function(res) {
-                        
-                        if (res.length === 0) {
-                            history_modal.append(
-                                `<tr><td colspan="6" class="text-center">Không có công thức</td></tr>`
-                            );
-                        } else {
+                url: "{{ route('pages.category.intermediate.recipe') }}",
+                type: 'post',
+                data: {
+                    IsHypothesis: 1,
+                    product_caterogy_id: product_caterogy_id,
+                    _token: "{{ csrf_token() }}"
+                },
+                success: function(res) {
+
+                    if (res.length === 0) {
+                        history_modal.append(
+                            `<tr><td colspan="6" class="text-center">Không có công thức</td></tr>`
+                        );
+                    } else {
 
                         res.forEach((item, index) => {
                             let code = item.MatID ?? '';
@@ -427,54 +422,54 @@
                             `);
 
                         });
-                                                
-                        }
-                    },
-                    error: function() {
-                        history_modal.append(
-                            `<tr><td colspan="6" class="text-center text-danger">Lỗi tải dữ liệu</td></tr>`
-                        );
+
                     }
+                },
+                error: function() {
+                    history_modal.append(
+                        `<tr><td colspan="6" class="text-center text-danger">Lỗi tải dữ liệu</td></tr>`
+                    );
+                }
             });
 
-            
+
         });
 
     });
 
-    $(document).on('click', '.btn-recipe', function(){
+    $(document).on('click', '.btn-recipe', function() {
 
-            const history_modal = $('#data_table_recipe_body')
-            const intermediate_code = $(this).data('finished_product_code');
-            const product_name = $(this).data('product_name');
-            const IsHypothesis = $(this).data('is_hypothesis');
-            const product_caterogy_id = $(this).data('id')
-            
-            $('#recipe_intermediate_code').text(`${intermediate_code} - ${product_name}`);
+        const history_modal = $('#data_table_recipe_body')
+        const intermediate_code = $(this).data('finished_product_code');
+        const product_name = $(this).data('product_name');
+        const IsHypothesis = $(this).data('is_hypothesis');
+        const product_caterogy_id = $(this).data('id')
 
-                // Xóa dữ liệu cũ
-                history_modal.empty();
+        $('#recipe_intermediate_code').text(`${intermediate_code} - ${product_name}`);
 
-                // Gọi Ajax lấy dữ liệu history
-            $.ajax({
-                    url: "{{ route('pages.category.intermediate.recipe') }}",
-                    type: 'post',
-                    data: {
-                        IsHypothesis: IsHypothesis,
-                        product_caterogy_id: product_caterogy_id,
-                        intermediate_code: intermediate_code,
-                        _token: "{{ csrf_token() }}"
-                    },
-                    success: function(res) {
-                        if (res.length === 0) {
-                            history_modal.append(
-                                `<tr><td colspan="6" class="text-center">Không có công thức</td></tr>`
-                            );
-                        } else {
-                            res.forEach((item, index) => {
-                                // map màu level
-                       
-                                history_modal.append(`
+        // Xóa dữ liệu cũ
+        history_modal.empty();
+
+        // Gọi Ajax lấy dữ liệu history
+        $.ajax({
+            url: "{{ route('pages.category.intermediate.recipe') }}",
+            type: 'post',
+            data: {
+                IsHypothesis: IsHypothesis,
+                product_caterogy_id: product_caterogy_id,
+                intermediate_code: intermediate_code,
+                _token: "{{ csrf_token() }}"
+            },
+            success: function(res) {
+                if (res.length === 0) {
+                    history_modal.append(
+                        `<tr><td colspan="6" class="text-center">Không có công thức</td></tr>`
+                    );
+                } else {
+                    res.forEach((item, index) => {
+                        // map màu level
+
+                        history_modal.append(`
                               <tr>
                                     <td>${index + 1}</td>
                                     <td>${item.MatID ?? ''}</td>
@@ -497,21 +492,17 @@
                                     <td>${Math.round(item.Revno1 ?? 0)}</td>
                               </tr>
                           `);
-                            });
-                        }
-                    },
-                    error: function() {
-                        history_modal.append(
-                            `<tr><td colspan="6" class="text-center text-danger">Lỗi tải dữ liệu</td></tr>`
-                        );
-                    }
-            });
-
+                    });
+                }
+            },
+            error: function() {
+                history_modal.append(
+                    `<tr><td colspan="6" class="text-center text-danger">Lỗi tải dữ liệu</td></tr>`
+                );
+            }
         });
 
-
-
-
+    });
 </script>
 
 
@@ -525,47 +516,95 @@
             $.ajax({
                 url: "{{ route('pages.category.product.history') }}",
                 type: "GET",
-                data: { category_id: id },
+                data: {
+                    category_id: id
+                },
                 success: function(res) {
                     var tbody = $('#data_table_history_body');
                     tbody.empty();
                     var current = res.current;
                     if (current) {
-                        var html = '<tr style="background-color: #e8f4f8; font-weight: bold;">';
-                        html += '<td class="text-center align-middle">' + (current.created_at || current.updated_at || '') + '</td>';
-                        html += '<td class="text-center align-middle">' + ((current.created_by || current.prepareBy || current.prepared_by || '')) + '</td>';
+                        var html =
+                            '<tr style="background-color: #e8f4f8; font-weight: bold;">';
+                        html += '<td class="text-center align-middle">' + (current
+                            .created_at || current.updated_at || '') + '</td>';
+                        html += '<td class="text-center align-middle">' + ((current
+                            .created_by || current.prepareBy || current
+                            .prepared_by || '')) + '</td>';
                         var activeText = '';
                         if (current.active !== null && current.active !== undefined) {
-                            activeText = (current.active == 1 || current.active === true || current.active === '1') ? 'Hiện hành' : 'Hết hiệu lực';
+                            activeText = (current.active == 1 || current.active === true ||
+                                current.active === '1') ? 'Hiện hành' : 'Hết hiệu lực';
                         }
-                        html += '<td class="text-center align-middle">' + activeText + '</td>';
-                        html += '<td class="text-center align-middle">' + (current.product_name !== null && current.product_name !== undefined ? current.product_name : '') + '</td>';
-                        html += '<td class="text-center align-middle">' + (current.finished_product_code !== null && current.finished_product_code !== undefined ? current.finished_product_code : '') + '</td>';
-                        html += '<td class="text-center align-middle">' + (current.intermediate_code !== null && current.intermediate_code !== undefined ? current.intermediate_code : '') + '</td>';
-                        html += '<td class="text-center align-middle">' + (current.market_name !== null && current.market_name !== undefined ? current.market_name : '') + '</td>';
-                        html += '<td class="text-center align-middle">' + (current.specification_name !== null && current.specification_name !== undefined ? current.specification_name : '') + '</td>';
-                        html += '<td class="text-center align-middle">' + (current.batch_qty !== null && current.batch_qty !== undefined ? current.batch_qty : '') + '</td>';
-                        html += '<td class="text-center align-middle">' + (current.primary_parkaging !== null && current.primary_parkaging !== undefined ? current.primary_parkaging : '') + '</td>';
+                        html += '<td class="text-center align-middle">' + activeText +
+                            '</td>';
+                        html += '<td class="text-center align-middle">' + (current
+                            .product_name !== null && current.product_name !==
+                            undefined ? current.product_name : '') + '</td>';
+                        html += '<td class="text-center align-middle">' + (current
+                            .finished_product_code !== null && current
+                            .finished_product_code !== undefined ? current
+                            .finished_product_code : '') + '</td>';
+                        html += '<td class="text-center align-middle">' + (current
+                            .intermediate_code !== null && current.intermediate_code !==
+                            undefined ? current.intermediate_code : '') + '</td>';
+                        html += '<td class="text-center align-middle">' + (current
+                            .market_name !== null && current.market_name !== undefined ?
+                            current.market_name : '') + '</td>';
+                        html += '<td class="text-center align-middle">' + (current
+                            .specification_name !== null && current
+                            .specification_name !== undefined ? current
+                            .specification_name : '') + '</td>';
+                        html += '<td class="text-center align-middle">' + (current
+                            .batch_qty !== null && current.batch_qty !== undefined ?
+                            current.batch_qty : '') + '</td>';
+                        html += '<td class="text-center align-middle">' + (current
+                            .primary_parkaging !== null && current.primary_parkaging !==
+                            undefined ? current.primary_parkaging : '') + '</td>';
                         html += '</tr>';
                         tbody.append(html);
                     }
 
-                    if(res.history.length === 0) {
-                        tbody.append('<tr><td colspan="100%" class="text-center align-middle">Chưa có lịch sử thay đổi</td></tr>');
+                    if (res.history.length === 0) {
+                        tbody.append(
+                            '<tr><td colspan="100%" class="text-center align-middle">Chưa có lịch sử thay đổi</td></tr>'
+                            );
                     } else {
                         res.history.forEach(function(item) {
                             var html = '<tr>';
-                            html += '<td class="text-center align-middle">' + (item.created_at || item.updated_at || '') + '</td>';
-                            html += '<td class="text-center align-middle">' + ((item.created_by || item.prepareBy || item.prepared_by || '')) + '</td>';
+                            html += '<td class="text-center align-middle">' + (item
+                                .created_at || item.updated_at || '') + '</td>';
+                            html += '<td class="text-center align-middle">' + ((item
+                                .created_by || item.prepareBy || item
+                                .prepared_by || '')) + '</td>';
                             var activeTextItem = 'Hết hiệu lực';
-                            html += '<td class="text-center align-middle">' + activeTextItem + '</td>';
-                            html += '<td class="text-center align-middle">' + (item.product_name !== null && item.product_name !== undefined ? item.product_name : '') + '</td>';
-                            html += '<td class="text-center align-middle">' + (item.finished_product_code !== null && item.finished_product_code !== undefined ? item.finished_product_code : '') + '</td>';
-                            html += '<td class="text-center align-middle">' + (item.intermediate_code !== null && item.intermediate_code !== undefined ? item.intermediate_code : '') + '</td>';
-                            html += '<td class="text-center align-middle">' + (item.market_name !== null && item.market_name !== undefined ? item.market_name : '') + '</td>';
-                            html += '<td class="text-center align-middle">' + (item.specification_name !== null && item.specification_name !== undefined ? item.specification_name : '') + '</td>';
-                            html += '<td class="text-center align-middle">' + (item.batch_qty !== null && item.batch_qty !== undefined ? item.batch_qty : '') + '</td>';
-                            html += '<td class="text-center align-middle">' + (item.primary_parkaging !== null && item.primary_parkaging !== undefined ? item.primary_parkaging : '') + '</td>';
+                            html += '<td class="text-center align-middle">' +
+                                activeTextItem + '</td>';
+                            html += '<td class="text-center align-middle">' + (item
+                                .product_name !== null && item.product_name !==
+                                undefined ? item.product_name : '') + '</td>';
+                            html += '<td class="text-center align-middle">' + (item
+                                .finished_product_code !== null && item
+                                .finished_product_code !== undefined ? item
+                                .finished_product_code : '') + '</td>';
+                            html += '<td class="text-center align-middle">' + (item
+                                .intermediate_code !== null && item
+                                .intermediate_code !== undefined ? item
+                                .intermediate_code : '') + '</td>';
+                            html += '<td class="text-center align-middle">' + (item
+                                .market_name !== null && item.market_name !==
+                                undefined ? item.market_name : '') + '</td>';
+                            html += '<td class="text-center align-middle">' + (item
+                                .specification_name !== null && item
+                                .specification_name !== undefined ? item
+                                .specification_name : '') + '</td>';
+                            html += '<td class="text-center align-middle">' + (item
+                                .batch_qty !== null && item.batch_qty !==
+                                undefined ? item.batch_qty : '') + '</td>';
+                            html += '<td class="text-center align-middle">' + (item
+                                .primary_parkaging !== null && item
+                                .primary_parkaging !== undefined ? item
+                                .primary_parkaging : '') + '</td>';
                             html += '</tr>';
                             tbody.append(html);
                         });

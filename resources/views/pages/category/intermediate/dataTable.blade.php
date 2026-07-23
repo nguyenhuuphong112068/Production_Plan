@@ -407,7 +407,8 @@
             };
 
             setCheckboxAndRatio('weight_1', button.data('weight_1'));
-            modal.find('input[name="has_packaging_process"]').prop('checked', button.data('weight_2') == 2);
+            modal.find('input[name="has_packaging_process"]').prop('checked', button.data('weight_2') ==
+                2);
             setCheckboxAndRatio('prepering', button.data('prepering'));
             setCheckboxAndRatio('blending', button.data('blending'));
             setCheckboxAndRatio('forming', button.data('forming'));
@@ -707,15 +708,18 @@
                     if (current) {
                         var html =
                             '<tr style="background-color: #e8f4f8; font-weight: bold;">';
-                        html += '<td class="text-center align-middle">' + (current.created_at || current.updated_at || '') + '</td>';
+                        html += '<td class="text-center align-middle">' + (current
+                            .created_at || current.updated_at || '') + '</td>';
                         html += '<td class="text-center align-middle">' + ((current
                             .created_by || current.prepareBy || current
                             .prepared_by || '')) + '</td>';
                         var activeText = '';
                         if (current.active !== null && current.active !== undefined) {
-                            activeText = (current.active == 1 || current.active === true || current.active === '1') ? 'Hiện hành' : 'Hết hiệu lực';
+                            activeText = (current.active == 1 || current.active === true ||
+                                current.active === '1') ? 'Hiện hành' : 'Hết hiệu lực';
                         }
-                        html += '<td class="text-center align-middle">' + activeText + '</td>';
+                        html += '<td class="text-center align-middle">' + activeText +
+                            '</td>';
                         html += '<td class="text-center align-middle">' + (current
                             .product_name !== null && current.product_name !==
                             undefined ? current.product_name : '') + '</td>';
@@ -764,12 +768,14 @@
                     } else {
                         res.history.forEach(function(item) {
                             var html = '<tr>';
-                            html += '<td class="text-center align-middle">' + (item.created_at || item.updated_at || '') + '</td>';
+                            html += '<td class="text-center align-middle">' + (item
+                                .created_at || item.updated_at || '') + '</td>';
                             html += '<td class="text-center align-middle">' + ((item
                                 .created_by || item.prepareBy || item
                                 .prepared_by || '')) + '</td>';
                             var activeTextItem = 'Hết hiệu lực';
-                            html += '<td class="text-center align-middle">' + activeTextItem + '</td>';
+                            html += '<td class="text-center align-middle">' +
+                                activeTextItem + '</td>';
                             html += '<td class="text-center align-middle">' + (item
                                 .product_name !== null && item.product_name !==
                                 undefined ? item.product_name : '') + '</td>';

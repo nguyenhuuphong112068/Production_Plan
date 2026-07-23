@@ -178,13 +178,35 @@
                                     <b>{{ '(2): ' }}</b>
 
                                     @if (empty($data->actual_batch))
-                                        <input type="text" class="updateInput" name="actual_batch"
-                                            value="{{ $data->batch }}"
-                                            data-id="{{ $data->id }} {{ $auth_update }}"
-                                            style="border: 1px solid #ccc; border-radius: 4px; width: 120px; text-align: left; padding: 2px 5px; background-color: #f9f9f9; display: inline-block; height: auto; color: red; font-weight: bold;">
+                                        <div class="d-flex align-items-center">
+                                            <input type="text"
+                                                class="updateInput actual-batch-input-{{ $data->id }}"
+                                                name="actual_batch" value="{{ $data->batch }}"
+                                                data-id="{{ $data->id }}" disabled
+                                                style="border: 1px solid #ccc; border-radius: 4px; width: 120px; text-align: left; padding: 2px 5px; background-color: #e9ecef; display: inline-block; height: auto; color: red; font-weight: bold;">
+                                            @if ($auth_update != 'disabled')
+                                                <button type="button" class="btn btn-sm btn-primary btn-edit-batch"
+                                                    data-id="{{ $data->id }}"
+                                                    style="margin-left: 5px; padding: 2px 8px;" title="Sửa số lô">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                            @endif
+                                        </div>
                                     @else
-                                        <input type="text" value="{{ $data->actual_batch }}" disabled readonly
-                                            style="border: 1px solid #ccc; border-radius: 4px; width: 120px; text-align: left; padding: 2px 5px; background-color: #e9ecef; display: inline-block; height: auto; color: blue; font-weight: bold;">
+                                        <div class="d-flex align-items-center">
+                                            <input type="text"
+                                                class="updateInput actual-batch-input-{{ $data->id }}"
+                                                name="actual_batch" value="{{ $data->actual_batch }}" disabled
+                                                data-id="{{ $data->id }}"
+                                                style="border: 1px solid #ccc; border-radius: 4px; width: 120px; text-align: left; padding: 2px 5px; background-color: #e9ecef; display: inline-block; height: auto; color: blue; font-weight: bold;">
+                                            @if ($auth_update != 'disabled')
+                                                <button type="button" class="btn btn-sm btn-primary btn-edit-batch"
+                                                    data-id="{{ $data->id }}"
+                                                    style="margin-left: 5px; padding: 2px 8px;" title="Sửa số lô">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                            @endif
+                                        </div>
                                     @endif
                                 </div>
 
@@ -506,6 +528,12 @@
                 $(this).data('old-value', $(this).val());
             });
 
+            $(document).on('keypress', '.updateInput', function(e) {
+                if (e.which == 13) { // Enter key
+                    $(this).blur();
+                }
+            });
+
             $(document).on('blur', '#data_table_plan_master .updateInput', function() {
 
                 let id = $(this).data('id');
@@ -555,7 +583,6 @@
                                     inputField.prop('readonly', true);
                                     inputField.css('color', 'blue');
                                     inputField.css('background-color', '#e9ecef');
-                                    inputField.removeClass('updateInput');
                                 }
                             }
                             Swal.mixin({
@@ -781,6 +808,14 @@
                 });
             });
 
+            $(document).on('click', '.btn-edit-batch', function() {
+                let id = $(this).data('id');
+                let inputField = $('.actual-batch-input-' + id);
+                inputField.prop('disabled', false);
+                inputField.prop('readonly', false);
+                inputField.css('background-color', '#fff');
+                inputField.focus();
+            });
 
         });
     </script>
