@@ -575,11 +575,21 @@ input:checked + .slider:before {
    biến chính thẻ gốc thành khung cuộn dọc và CẤM cuộn ngang. Thanh cuộn ngang
    thật của FullCalendar nằm ở đáy `.fc-scroller`; trên máy có display scaling
    125/150% hoặc zoom != 100% thì đáy đó rơi khỏi màn hình => không thấy,
-   không chạm tới được. Ở trang này chiều cao do JS đo và truyền qua prop
-   `height`, nên trả `.fc` về mặc định của FullCalendar.
+   không chạm tới được. Ở trang này chiều cao khung lịch do JS đo và ghi vào
+   biến --cal-h, nên trả `.fc` về mặc định của FullCalendar.
    ========================================================================== */
+/* Khung bọc lịch: chiều cao do JS đo và ghi vào --cal-h (không qua React state).
+   Giá trị dự phòng chỉ dùng nếu JS chưa kịp chạy / bị lỗi. */
+.schedule-calendar-box {
+  height: var(--cal-h, calc(100vh - 210px));
+  min-height: 320px;
+}
+
+/* FullCalendar nhận height="100%" => nó ghi style="height:100%" lên chính thẻ
+   .fc, rồi tự co giãn theo .schedule-calendar-box bằng flex nội bộ:
+   .fc{display:flex} > .fc-view-harness{flex-grow:1} > .fc-scroller-liquid{height:100%}
+   Toàn bộ chuỗi này là CSS thuần, nên đổi --cal-h KHÔNG cần React render lại. */
 .schedule-page .fc {
-  height: auto;
   overflow: visible !important;
 }
 
@@ -626,5 +636,42 @@ input:checked + .slider:before {
 .fc .fc-scroller {
   scrollbar-width: auto;
   scrollbar-color: #9ca3af #f1f1f1;
+}
+
+/* ==========================================================================
+   CHẾ ĐỘ TOÀN MÀN HÌNH (Alt+F)
+   AdminLTE chừa chỗ cho nav bằng `.content-wrapper{margin-left:250px}` và
+   `margin-top:calc(3.5rem + 1px)`. Ẩn nav rồi ép các khoảng đó về 0 là lịch
+   chiếm trọn viewport. Không dùng position:fixed để giữ nguyên luồng layout
+   (sidebar KHSX, float, ModalSidebar... vẫn hoạt động như cũ).
+   Chiều cao tự khớp vì --cal-h đo theo vị trí thật của khung lịch.
+   ========================================================================== */
+body.gantt-fullscreen .main-header,
+body.gantt-fullscreen .main-sidebar,
+body.gantt-fullscreen .main-footer {
+  display: none !important;
+}
+
+body.gantt-fullscreen .content-wrapper {
+  margin-left: 0 !important;
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+  min-height: 100vh !important;
+}
+
+/* Bỏ luôn khung .card và .mt-5 của #root - chỉ để lấy thêm chỗ */
+body.gantt-fullscreen .content-wrapper > .card {
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+body.gantt-fullscreen #root {
+  margin-top: 0 !important;
+}
+
+body.gantt-fullscreen .schedule-page {
+  padding-top: 2px !important;
 }
 

@@ -1,7 +1,7 @@
 <!-- Modal -->
 <div class="modal fade" id="UserPermissionModal" tabindex="-1" role="dialog" aria-labelledby="UserPermissionLabel"
     aria-hidden="true">
-    <div class="modal-dialog modal-xl" role="document">
+    <div class="modal-dialog modal-xl" role="document" style="max-width: 90%;">
 
         <div class="modal-content">
             <div class="modal-header">
@@ -32,7 +32,7 @@
                         placeholder="Tìm quyền theo tên...">
                 </div>
 
-                <div style="max-height: 55vh; overflow-y: auto">
+                <div style="max-height: 70vh; overflow-y: auto">
                     <table class="table table-bordered table-striped" style="font-size: 15px">
                         <thead style="position: sticky; top: 0; background-color: white; z-index: 1020">
                             <tr>

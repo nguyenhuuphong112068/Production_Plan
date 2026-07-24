@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useRef, useState, useEffect, useLayoutEffect, useCallback, useMemo } from 'react';
 
 import '@fullcalendar/daygrid/index.js';
 import '@fullcalendar/resource-timeline/index.js';
@@ -88,6 +88,7 @@ const ScheduleTest = () => {
   const slotViewMonths = ['resourceTimelineMonth1d', 'resourceTimelineMonth4h', 'resourceTimelineMonth1h',];
   const slotViewQuarters = ['resourceTimelineQuarter1d', 'resourceTimelineQuarter4h'];
   const [slotIndex, setSlotIndex] = useState(0);
+  const [isFullscreen, setIsFullscreen] = useState(false); // ẩn topNAV/leftNAV để xem chart rộng
   const [eventFontSize, setEventFontSize] = useState(22); // default 14px
   const [selectedRows, setSelectedRows] = useState([]);
   const [showNoteModal, setShowNoteModal] = useState(false);
@@ -341,6 +342,23 @@ const ScheduleTest = () => {
     handleSaveChanges();
   },
     { enableOnFormTags: false }
+  );
+
+  useHotkeys("alt+f", (e) => {
+    e.preventDefault();
+
+    setIsFullscreen(v => !v);
+  },
+    { enableOnFormTags: false }
+  );
+
+  // ESC thoát toàn màn hình, nhưng nhường quyền cho popup đang mở
+  // (Swal / Dialog cũng dùng ESC để đóng)
+  useHotkeys("escape", () => {
+    if (document.querySelector('.swal2-container, .p-dialog, .p-sidebar')) return;
+    setIsFullscreen(false);
+  },
+    { enableOnFormTags: false, enabled: isFullscreen }
   );
 
   /// Get dư liệu row được chọn
@@ -6399,29 +6417,38 @@ const ScheduleTest = () => {
   // thay vì trừ một con số px cố định. Cách trừ cứng bị lệch khi máy dùng
   // display scaling 125/150%, zoom trình duyệt khác 100%, hoặc khi hàng filter
   // xuống dòng -> đáy lịch (nơi đặt thanh cuộn ngang) bị đẩy khỏi màn hình.
+  //
+  // QUAN TRỌNG (hiệu năng): kết quả đo được ghi thẳng vào CSS variable --cal-h
+  // trên DOM node, KHÔNG đi qua React state. Component này rất lớn, mỗi lần
+  // setState là render lại toàn bộ + FullCalendar dựng lại layout của hàng trăm
+  // event. Ghi CSS variable chỉ tốn một lần reflow của trình duyệt.
+  // FullCalendar nhận height="100%" cố định nên prop không bao giờ đổi.
   const calendarBoxRef = useRef(null);
   const topBarRef = useRef(null);
-  const [calendarHeight, setCalendarHeight] = useState(600);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const BOTTOM_GAP = 10; // chừa mép dưới cho thanh cuộn ngang
     let frame = null;
+    let lastH = -1;
 
     const measure = () => {
+      frame = null;
       const el = calendarBoxRef.current;
       if (!el) return;
       // Offset so với đỉnh document => không đổi khi trang bị cuộn
       const offsetTop = el.getBoundingClientRect().top + window.scrollY;
-      const next = Math.max(320, Math.round(window.innerHeight - offsetTop - BOTTOM_GAP));
-      setCalendarHeight(prev => (Math.abs(prev - next) > 1 ? next : prev));
+      const h = Math.max(320, Math.round(window.innerHeight - offsetTop - BOTTOM_GAP));
+      if (h === lastH) return; // bỏ qua nếu không đổi -> không gây reflow thừa
+      lastH = h;
+      el.style.setProperty('--cal-h', `${h}px`);
     };
 
     const schedule = () => {
-      if (frame) cancelAnimationFrame(frame);
+      if (frame) return; // gộp nhiều sự kiện dồn dập vào 1 lần đo
       frame = requestAnimationFrame(measure);
     };
 
-    schedule();
+    measure(); // đo đồng bộ trước lần paint đầu -> không bị nhảy chiều cao
     window.addEventListener('resize', schedule);
     // visualViewport bắn sự kiện khi đổi zoom trình duyệt / scaling hệ thống
     window.visualViewport?.addEventListener('resize', schedule);
@@ -6438,6 +6465,18 @@ const ScheduleTest = () => {
       ro.disconnect();
     };
   }, []);
+
+  // Toàn màn hình: chỉ gắn/gỡ 1 class trên <body>, phần ẩn nav do CSS lo.
+  // Sau khi layout đổi thì phát lại sự kiện resize - vừa để đo lại --cal-h,
+  // vừa để FullCalendar tính lại bề rộng cột (cả hai đều đã lắng nghe sẵn).
+  useEffect(() => {
+    document.body.classList.toggle('gantt-fullscreen', isFullscreen);
+    const id = requestAnimationFrame(() => window.dispatchEvent(new Event('resize')));
+    return () => cancelAnimationFrame(id);
+  }, [isFullscreen]);
+
+  // Rời trang mà quên tắt thì nav vẫn phải hiện lại
+  useEffect(() => () => document.body.classList.remove('gantt-fullscreen'), []);
 
   return (
 
@@ -6547,7 +6586,7 @@ const ScheduleTest = () => {
       <FullCalendar
         schedulerLicenseKey="GPL-My-Project-Is-Open-Source"
         ref={calendarRef}
-        height={calendarHeight}
+        height="100%"
         plugins={calendarPlugins}
         initialView="resourceTimelineMonth1d"
         firstDay={1}
@@ -6921,6 +6960,13 @@ const ScheduleTest = () => {
             click: handleShowList,
             hint: 'Mở kế hoạch chờ sắp lịch'
           },
+          toggleFullscreen: {
+            text: isFullscreen ? '🡸🡺' : '⛶',
+            click: () => setIsFullscreen(v => !v),
+            hint: isFullscreen
+              ? 'Thoát toàn màn hình (Alt+F hoặc Esc)'
+              : 'Xem toàn màn hình - ẩn thanh menu trên và trái (Alt+F)'
+          },
           customDay: {
             text: 'Ngày',
             click: () => handleViewChange('resourceTimelineDay'),
@@ -7061,7 +7107,7 @@ const ScheduleTest = () => {
         headerToolbar={{
           left: 'customPre,myToday,customNext noteModal hiddenClearning hiddenTheory cascadeToggle historyToggle detailToggle autoSchedualer deleteAllScheduale changeSchedualer unSelect ShowBadge AcceptQuarantine clearningValidation Cleaninglevelchange togglePersonnel',
           center: 'title',
-          right: 'Submit fontSizeBox searchBox slotDuration customDay,customWeek,customMonth,customQuarter customList' //customYear
+          right: 'Submit fontSizeBox searchBox slotDuration customDay,customWeek,customMonth,customQuarter customList toggleFullscreen' //customYear
         }}
 
 
