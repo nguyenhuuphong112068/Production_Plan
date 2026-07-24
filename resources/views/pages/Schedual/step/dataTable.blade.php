@@ -36,6 +36,7 @@
         color: #856404 !important;
         border: 1px solid #ffeeba;
     }
+
     .badge-warning-dark {
         background-color: #e39235 !important;
         color: white !important;
@@ -46,11 +47,11 @@
     }
 
     /* Dòng quá hạn biệt trữ tổng (PC/THT -> ĐG) */
-    tr.row-quarantine-total-overdue > td {
+    tr.row-quarantine-total-overdue>td {
         background-color: #fdecea !important;
     }
 
-    tr.row-quarantine-total-overdue > td:first-child {
+    tr.row-quarantine-total-overdue>td:first-child {
         box-shadow: inset 4px 0 0 0 #dc3545;
     }
 
@@ -122,7 +123,6 @@
                                         $defaultTo = Carbon::now()->addMonth()->toDateString();
                                         $isFilterOverdue = request('filter_overdue') == '1';
 
-
                                     @endphp
 
                                     <form id="dateFilterForm" method="GET"
@@ -146,7 +146,8 @@
                                         </div>
 
                                         <button type="button" id="btnFilterOverdue"
-                                            class="btn {{ $isFilterOverdue ? 'btn-danger' : 'btn-warning' }} mb-0 ml-auto" style="box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                            class="btn {{ $isFilterOverdue ? 'btn-danger' : 'btn-warning' }} mb-0 ml-auto"
+                                            style="box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                                             @if ($isFilterOverdue)
                                                 <i class="fas fa-times mr-1"></i> Bỏ Lọc Quá Hạn
                                             @else
@@ -161,15 +162,22 @@
                                 <div class="col-12">
                                     <ul class="nav nav-tabs" id="schedualTab" role="tablist">
                                         <li class="nav-item">
-                                            <a class="nav-link active" id="production-progress-tab" data-toggle="tab" href="#production-progress" role="tab" aria-controls="production-progress" aria-selected="true" style="font-size: 16px; font-weight: 600;">
+                                            <a class="nav-link active" id="production-progress-tab" data-toggle="tab"
+                                                href="#production-progress" role="tab"
+                                                aria-controls="production-progress" aria-selected="true"
+                                                style="font-size: 16px; font-weight: 600;">
                                                 <i class="fas fa-tasks mr-2 text-primary"></i>Tiến Trình Sản Xuất
                                                 <span class="badge badge-primary ml-1">{{ $datas->count() }}</span>
                                             </a>
                                         </li>
                                         <li class="nav-item">
-                                            <a class="nav-link" id="wip-step-tab" data-toggle="tab" href="#wip-step" role="tab" aria-controls="wip-step" aria-selected="false" style="font-size: 16px; font-weight: 600;">
-                                                <i class="fas fa-hourglass-half mr-2 text-warning"></i>Bán Thành Phẩm Dở Dang
-                                                <span class="badge badge-warning ml-1">{{ $wipDatas->map->count()->sum() }}</span>
+                                            <a class="nav-link" id="wip-step-tab" data-toggle="tab" href="#wip-step"
+                                                role="tab" aria-controls="wip-step" aria-selected="false"
+                                                style="font-size: 16px; font-weight: 600;">
+                                                <i class="fas fa-hourglass-half mr-2 text-warning"></i>Bán Thành Phẩm Dở
+                                                Dang
+                                                <span
+                                                    class="badge badge-warning ml-1">{{ $wipDatas->map->count()->sum() }}</span>
                                             </a>
                                         </li>
                                     </ul>
@@ -177,16 +185,26 @@
                             </div>
 
                             <div class="tab-content mt-3" id="schedualTabContent">
-                                <div class="tab-pane fade show active" id="production-progress" role="tabpanel" aria-labelledby="production-progress-tab">
-                                    <div class="table-responsive shadow-sm rounded" style="overflow-x: auto; background: #fff;">
-                                        @include('pages.Schedual.step.tableTemplate', ['tableId' => 'data_table_Schedual_step', 'tableData' => $datas])
+                                <div class="tab-pane fade show active" id="production-progress" role="tabpanel"
+                                    aria-labelledby="production-progress-tab">
+                                    <div class="table-responsive shadow-sm rounded"
+                                        style="overflow-x: auto; background: #fff;">
+                                        @include('pages.Schedual.step.tableTemplate', [
+                                            'tableId' => 'data_table_Schedual_step',
+                                            'tableData' => $datas,
+                                        ])
                                     </div>
                                 </div>
-                                <div class="tab-pane fade" id="wip-step" role="tabpanel" aria-labelledby="wip-step-tab">
-                                    @if(isset($wipQuarantineWarnings) && $wipQuarantineWarnings->isNotEmpty())
+                                <div class="tab-pane fade" id="wip-step" role="tabpanel"
+                                    aria-labelledby="wip-step-tab">
+                                    @if (isset($wipQuarantineWarnings) && $wipQuarantineWarnings->isNotEmpty())
                                         @php
                                             $qtHasOverdue = $wipQuarantineSummary['overdue'] > 0;
-                                            $qtHeadClass = $qtHasOverdue ? 'bg-danger' : ($wipQuarantineSummary['urgent'] > 0 ? 'bg-warning-dark' : 'bg-info');
+                                            $qtHeadClass = $qtHasOverdue
+                                                ? 'bg-danger'
+                                                : ($wipQuarantineSummary['urgent'] > 0
+                                                    ? 'bg-warning-dark'
+                                                    : 'bg-info');
                                             $qtStatusMeta = [
                                                 'overdue' => ['badge-danger', 'Quá hạn'],
                                                 'urgent' => ['badge-warning-dark', 'Sắp đến hạn'],
@@ -196,40 +214,47 @@
                                                 'not_started' => ['badge-secondary', 'Chưa bắt đầu PC/THT'],
                                             ];
                                         @endphp
-                                        <div class="card mt-3 mb-0 {{ $qtHasOverdue ? 'border-danger' : 'border-info' }}">
-                                            <div class="card-header {{ $qtHeadClass }} text-white py-2 d-flex flex-wrap align-items-center">
+                                        <div
+                                            class="card mt-3 mb-0 {{ $qtHasOverdue ? 'border-danger' : 'border-info' }}">
+                                            <div
+                                                class="card-header {{ $qtHeadClass }} text-white py-2 d-flex flex-wrap align-items-center">
                                                 <h5 class="mb-0 mr-3">
                                                     <i class="fas fa-shield-alt mr-2"></i>
                                                     Theo Dõi Biệt Trữ TỔNG (PC/THT &rarr; ĐG)
-                                                    <span class="badge badge-light text-dark ml-1">{{ $wipQuarantineSummary['total'] }} lô</span>
+                                                    <span
+                                                        class="badge badge-light text-dark ml-1">{{ $wipQuarantineSummary['total'] }}
+                                                        lô</span>
                                                 </h5>
                                                 <div class="ml-auto" style="font-size: 13px;">
-                                                    @if($wipQuarantineSummary['overdue'])
-                                                        <span class="badge badge-danger p-2 ml-1">Quá hạn: {{ $wipQuarantineSummary['overdue'] }}</span>
+                                                    @if ($wipQuarantineSummary['overdue'])
+                                                        <span class="badge badge-danger p-2 ml-1">Quá hạn:
+                                                            {{ $wipQuarantineSummary['overdue'] }}</span>
                                                     @endif
-                                                    @if($wipQuarantineSummary['urgent'])
-                                                        <span class="badge badge-warning-dark p-2 ml-1">Sắp đến hạn (&lt;3 ngày): {{ $wipQuarantineSummary['urgent'] }}</span>
+                                                    @if ($wipQuarantineSummary['urgent'])
+                                                        <span class="badge badge-warning-dark p-2 ml-1">Sắp đến hạn
+                                                            (&lt;3 ngày): {{ $wipQuarantineSummary['urgent'] }}</span>
                                                     @endif
-                                                    @if($wipQuarantineSummary['near'])
-                                                        <span class="badge badge-warning-light p-2 ml-1">Cần chú ý (&lt;5 ngày): {{ $wipQuarantineSummary['near'] }}</span>
+                                                    @if ($wipQuarantineSummary['near'])
+                                                        <span class="badge badge-warning-light p-2 ml-1">Cần chú ý
+                                                            (&lt;5 ngày): {{ $wipQuarantineSummary['near'] }}</span>
                                                     @endif
-                                                    @if($wipQuarantineSummary['ok'])
-                                                        <span class="badge badge-success p-2 ml-1">Trong hạn: {{ $wipQuarantineSummary['ok'] }}</span>
+                                                    @if ($wipQuarantineSummary['ok'])
+                                                        <span class="badge badge-success p-2 ml-1">Trong hạn:
+                                                            {{ $wipQuarantineSummary['ok'] }}</span>
                                                     @endif
-                                                    @if($wipQuarantineSummary['not_started'])
-                                                        <span class="badge badge-secondary p-2 ml-1">Chưa bắt đầu: {{ $wipQuarantineSummary['not_started'] }}</span>
+                                                    @if ($wipQuarantineSummary['not_started'])
+                                                        <span class="badge badge-secondary p-2 ml-1">Chưa bắt đầu:
+                                                            {{ $wipQuarantineSummary['not_started'] }}</span>
                                                     @endif
                                                 </div>
                                             </div>
                                             <div class="card-body p-2">
-                                                <div class="mb-2" style="font-size: 13px; color: #555;">
-                                                    Áp dụng cho bán thành phẩm có <strong>hạn biệt trữ tổng &gt; 0</strong>: tổng thời gian từ khi bắt đầu
-                                                    <strong>Pha Chế / Trộn Hoàn Tất</strong> (CĐ3 hoặc CĐ4) đến khi kết thúc <strong>Đóng Gói</strong> (CĐ7)
-                                                    không được vượt quá hạn này.
-                                                </div>
+
                                                 <div style="max-height: 320px; overflow-y: auto;">
-                                                    <table class="table table-sm table-hover mb-0 bg-white" style="font-size: 13px;">
-                                                        <thead style="position: sticky; top: 0; background-color: #f4f6f9; z-index: 5;">
+                                                    <table class="table table-sm table-hover mb-0 bg-white"
+                                                        style="font-size: 13px;">
+                                                        <thead
+                                                            style="position: sticky; top: 0; background-color: #f4f6f9; z-index: 5;">
                                                             <tr>
                                                                 <th>Sản Phẩm</th>
                                                                 <th>Số lô</th>
@@ -243,45 +268,61 @@
                                                             </tr>
                                                         </thead>
                                                         <tbody>
-                                                            @foreach($wipQuarantineWarnings as $warning)
+                                                            @foreach ($wipQuarantineWarnings as $warning)
                                                                 @php [$qtBadge, $qtLabel] = $qtStatusMeta[$warning->status]; @endphp
-                                                                <tr class="{{ $warning->is_overdue ? 'row-quarantine-total-overdue' : '' }}">
-                                                                    <td>{{ $warning->product_name }}{{ $warning->intermediate_code ? ' (' . $warning->intermediate_code . ')' : '' }}</td>
+                                                                <tr
+                                                                    class="{{ $warning->is_overdue ? 'row-quarantine-total-overdue' : '' }}">
+                                                                    <td>{{ $warning->product_name }}{{ $warning->intermediate_code ? ' (' . $warning->intermediate_code . ')' : '' }}
+                                                                    </td>
                                                                     <td>{{ $warning->batch }}</td>
                                                                     <td>{{ $warning->stage_group }}</td>
                                                                     <td>{{ $warning->quarantine_total }} ngày</td>
-                                                                    <td>{{ $warning->start_at ? date('d/m/Y H:i', strtotime($warning->start_at)) : '--' }}</td>
-                                                                    <td class="{{ $warning->is_overdue ? 'text-danger font-weight-bold' : '' }}">
+                                                                    <td>{{ $warning->start_at ? date('d/m/Y H:i', strtotime($warning->start_at)) : '--' }}
+                                                                    </td>
+                                                                    <td
+                                                                        class="{{ $warning->is_overdue ? 'text-danger font-weight-bold' : '' }}">
                                                                         {{ $warning->deadline ? date('d/m/Y H:i', strtotime($warning->deadline)) : '--' }}
                                                                     </td>
-                                                                    <td>{{ $warning->pack_end ? date('d/m/Y H:i', strtotime($warning->pack_end)) : 'Chưa xếp' }}</td>
+                                                                    <td>{{ $warning->pack_end ? date('d/m/Y H:i', strtotime($warning->pack_end)) : 'Chưa xếp' }}
+                                                                    </td>
                                                                     <td class="font-weight-bold">
                                                                         @if ($warning->remain_days === null)
                                                                             <span class="text-muted">--</span>
                                                                         @elseif ($warning->remain_days < 0)
-                                                                            <span class="badge badge-danger p-1" style="font-size: 12px;">
-                                                                                Quá hạn {{ number_format(abs($warning->remain_days), 1) }} ngày
+                                                                            <span class="badge badge-danger p-1"
+                                                                                style="font-size: 12px;">
+                                                                                Quá hạn
+                                                                                {{ number_format(abs($warning->remain_days), 1) }}
+                                                                                ngày
                                                                             </span>
                                                                         @else
-                                                                            <span class="badge {{ $qtBadge }} p-1" style="font-size: 12px;">
-                                                                                Còn {{ number_format($warning->remain_days, 1) }} ngày
+                                                                            <span
+                                                                                class="badge {{ $qtBadge }} p-1"
+                                                                                style="font-size: 12px;">
+                                                                                Còn
+                                                                                {{ number_format($warning->remain_days, 1) }}
+                                                                                ngày
                                                                             </span>
                                                                         @endif
                                                                     </td>
-                                                                    <td><span class="badge {{ $qtBadge }} p-1" style="font-size: 12px;">{{ $qtLabel }}</span></td>
+                                                                    <td><span class="badge {{ $qtBadge }} p-1"
+                                                                            style="font-size: 12px;">{{ $qtLabel }}</span>
+                                                                    </td>
                                                                 </tr>
                                                             @endforeach
                                                         </tbody>
                                                     </table>
                                                 </div>
 
-                                                <button type="button" class="btn btn-sm btn-light border mt-2" data-toggle="collapse"
-                                                    data-target="#quarantineTotalProgress" aria-expanded="false"
-                                                    aria-controls="quarantineTotalProgress">
-                                                    <i class="fas fa-tasks mr-1"></i> Xem tiến trình sản xuất tất cả công đoạn
+                                                <button type="button" class="btn btn-sm btn-light border mt-2"
+                                                    data-toggle="collapse" data-target="#quarantineTotalProgress"
+                                                    aria-expanded="false" aria-controls="quarantineTotalProgress">
+                                                    <i class="fas fa-tasks mr-1"></i> Xem tiến trình sản xuất tất cả
+                                                    công đoạn
                                                 </button>
                                                 <div class="collapse mt-2" id="quarantineTotalProgress">
-                                                    <div class="table-responsive shadow-sm rounded" style="overflow-x: auto; background: #fff;">
+                                                    <div class="table-responsive shadow-sm rounded"
+                                                        style="overflow-x: auto; background: #fff;">
                                                         @include('pages.Schedual.step.tableTemplate', [
                                                             'tableId' => 'data_table_quarantine_total_warning',
                                                             'tableData' => $wipQuarantineWarningDatas,
@@ -292,24 +333,38 @@
                                             </div>
                                         </div>
                                     @endif
-                                    @if($wipDatas->isEmpty())
+                                    @if ($wipDatas->isEmpty())
                                         <div class="alert alert-info mt-3">Không có bán thành phẩm dở dang nào.</div>
                                     @else
                                         <ul class="nav nav-pills mt-3 mb-3" id="wipSubTab" role="tablist">
-                                            @foreach($wipDatas as $stageName => $groupDatas)
+                                            @foreach ($wipDatas as $stageName => $groupDatas)
                                                 <li class="nav-item">
-                                                    <a class="nav-link {{ $loop->first ? 'active' : '' }}" id="wip-{{ Str::slug($stageName) }}-tab" data-toggle="pill" href="#wip-{{ Str::slug($stageName) }}" role="tab" aria-controls="wip-{{ Str::slug($stageName) }}" aria-selected="{{ $loop->first ? 'true' : 'false' }}" style="font-weight: 500;">
+                                                    <a class="nav-link {{ $loop->first ? 'active' : '' }}"
+                                                        id="wip-{{ Str::slug($stageName) }}-tab" data-toggle="pill"
+                                                        href="#wip-{{ Str::slug($stageName) }}" role="tab"
+                                                        aria-controls="wip-{{ Str::slug($stageName) }}"
+                                                        aria-selected="{{ $loop->first ? 'true' : 'false' }}"
+                                                        style="font-weight: 500;">
                                                         {{ $stageName }}
-                                                        <span class="badge badge-light ml-1 text-dark">{{ $groupDatas->count() }}</span>
+                                                        <span
+                                                            class="badge badge-light ml-1 text-dark">{{ $groupDatas->count() }}</span>
                                                     </a>
                                                 </li>
                                             @endforeach
                                         </ul>
                                         <div class="tab-content" id="wipSubTabContent">
-                                            @foreach($wipDatas as $stageName => $groupDatas)
-                                                <div class="tab-pane fade {{ $loop->first ? 'show active' : '' }}" id="wip-{{ Str::slug($stageName) }}" role="tabpanel" aria-labelledby="wip-{{ Str::slug($stageName) }}-tab">
-                                                    <div class="table-responsive shadow-sm rounded" style="overflow-x: auto; background: #fff;">
-                                                        @include('pages.Schedual.step.tableTemplate', ['tableId' => 'data_table_wip_step_' . Str::slug($stageName), 'tableData' => $groupDatas, 'isWip' => true])
+                                            @foreach ($wipDatas as $stageName => $groupDatas)
+                                                <div class="tab-pane fade {{ $loop->first ? 'show active' : '' }}"
+                                                    id="wip-{{ Str::slug($stageName) }}" role="tabpanel"
+                                                    aria-labelledby="wip-{{ Str::slug($stageName) }}-tab">
+                                                    <div class="table-responsive shadow-sm rounded"
+                                                        style="overflow-x: auto; background: #fff;">
+                                                        @include('pages.Schedual.step.tableTemplate', [
+                                                            'tableId' =>
+                                                                'data_table_wip_step_' . Str::slug($stageName),
+                                                            'tableData' => $groupDatas,
+                                                            'isWip' => true,
+                                                        ])
                                                     </div>
                                                 </div>
                                             @endforeach
@@ -369,7 +424,9 @@
                 [10, 25, 50, 100, -1],
                 [10, 25, 50, 100, "Tất cả"]
             ],
-            order: [[5, 'asc']], // Mặc định sắp xếp tăng dần theo cột "Số ngày còn HBT" (cột index 5)
+            order: [
+                [5, 'asc']
+            ], // Mặc định sắp xếp tăng dần theo cột "Số ngày còn HBT" (cột index 5)
             language: {
                 search: "Tìm kiếm:",
                 lengthMenu: "Hiển thị _MENU_ dòng",
@@ -395,7 +452,9 @@
                     [10, 25, 50, -1],
                     [10, 25, 50, "Tất cả"]
                 ],
-                order: [[6, 'asc']], // Sắp xếp theo cột "HBT Tổng (PC/THT → ĐG)"
+                order: [
+                    [6, 'asc']
+                ], // Sắp xếp theo cột "HBT Tổng (PC/THT → ĐG)"
                 language: {
                     search: "Tìm kiếm:",
                     lengthMenu: "Hiển thị _MENU_ dòng",
@@ -411,7 +470,8 @@
             $('#quarantineTotalProgress').on('shown.bs.collapse', function() {
                 $('#data_table_quarantine_total_warning').DataTable().columns.adjust();
                 var wrapper = $(this).find('.table-responsive');
-                var topScrollContent = wrapper.prev('.top-scroll-container').find('.top-scroll-content');
+                var topScrollContent = wrapper.prev('.top-scroll-container').find(
+                    '.top-scroll-content');
                 if (topScrollContent.length) {
                     topScrollContent.width(wrapper.find('table').width());
                 }
@@ -435,43 +495,46 @@
         $('.table-responsive').each(function() {
             var wrapper = $(this);
             var table = wrapper.find('table');
-            
-            var topScrollContainer = $('<div class="top-scroll-container" style="overflow-x: auto; overflow-y: hidden; height: 15px; margin-bottom: 5px;"></div>');
+
+            var topScrollContainer = $(
+                '<div class="top-scroll-container" style="overflow-x: auto; overflow-y: hidden; height: 15px; margin-bottom: 5px;"></div>'
+            );
             var topScrollContent = $('<div class="top-scroll-content" style="height: 1px;"></div>');
-            
+
             topScrollContainer.append(topScrollContent);
             wrapper.before(topScrollContainer);
-            
+
             var updateTopScrollWidth = function() {
                 if (wrapper.is(':visible')) {
                     topScrollContent.width(table.width());
                 }
             };
-            
+
             updateTopScrollWidth();
-            
+
             // Sync scrolling
             topScrollContainer.on('scroll', function() {
                 wrapper.scrollLeft(topScrollContainer.scrollLeft());
             });
-            
+
             wrapper.on('scroll', function() {
                 topScrollContainer.scrollLeft(wrapper.scrollLeft());
             });
-            
+
             // Update width on resize or datatables draw
             $(window).on('resize', updateTopScrollWidth);
             table.on('draw.dt', updateTopScrollWidth);
         });
 
         // Tự động căn chỉnh lại độ rộng cột và cuộn ngang khi chuyển Tab
-        $('a[data-toggle="tab"], a[data-toggle="pill"]').on('shown.bs.tab', function (e) {
+        $('a[data-toggle="tab"], a[data-toggle="pill"]').on('shown.bs.tab', function(e) {
             $($.fn.dataTable.tables(true)).DataTable().columns.adjust();
-            
+
             $('.table-responsive:visible').each(function() {
                 var wrapper = $(this);
                 var table = wrapper.find('table');
-                var topScrollContent = wrapper.prev('.top-scroll-container').find('.top-scroll-content');
+                var topScrollContent = wrapper.prev('.top-scroll-container').find(
+                    '.top-scroll-content');
                 if (topScrollContent.length) {
                     topScrollContent.width(table.width());
                 }

@@ -331,12 +331,18 @@ class SchedualController extends Controller
                 $query->where(function ($q) use ($has_permission_production) {
                     $q->where('sp.stage_code', '!=', 8);
                     if (!$has_permission_production) {
-                        $q->where('sp.submit', 1);
+                        $q->where(function ($q2) {
+                            $q2->where('sp.submit', 1)
+                               ->orWhere('sp.finished', 1);
+                        });
                     }
                 })->orWhere(function ($q) use ($has_permission_maintenance) {
                     $q->where('sp.stage_code', '=', 8);
                     if (!$has_permission_maintenance) {
-                        $q->where('sp.submit', 1);
+                        $q->where(function ($q2) {
+                            $q2->where('sp.submit', 1)
+                               ->orWhere('sp.finished', 1);
+                        });
                     }
                 });
             })
