@@ -41,9 +41,16 @@
         color: white !important;
     }
 
+    .bg-warning-dark {
+        background-color: #e39235 !important;
+    }
+
     /* Dòng quá hạn biệt trữ tổng (PC/THT -> ĐG) */
     tr.row-quarantine-total-overdue > td {
         background-color: #fdecea !important;
+    }
+
+    tr.row-quarantine-total-overdue > td:first-child {
         box-shadow: inset 4px 0 0 0 #dc3545;
     }
 
@@ -177,53 +184,111 @@
                                 </div>
                                 <div class="tab-pane fade" id="wip-step" role="tabpanel" aria-labelledby="wip-step-tab">
                                     @if(isset($wipQuarantineWarnings) && $wipQuarantineWarnings->isNotEmpty())
-                                        <div class="alert alert-danger mt-3 mb-0" style="font-size: 15px;">
-                                            <h5 class="mb-2">
-                                                <i class="fas fa-exclamation-triangle mr-2"></i>
-                                                Cảnh báo quá hạn biệt trữ TỔNG
-                                                <span class="badge badge-light text-danger ml-1">{{ $wipQuarantineWarnings->count() }}</span>
-                                            </h5>
-                                            <div class="mb-2" style="font-size: 13px;">
-                                                Tổng thời gian từ khi bắt đầu <strong>Pha Chế / Trộn Hoàn Tất</strong> đến khi kết thúc
-                                                <strong>Đóng Gói</strong> không được vượt quá hạn biệt trữ tổng của bán thành phẩm.
+                                        @php
+                                            $qtHasOverdue = $wipQuarantineSummary['overdue'] > 0;
+                                            $qtHeadClass = $qtHasOverdue ? 'bg-danger' : ($wipQuarantineSummary['urgent'] > 0 ? 'bg-warning-dark' : 'bg-info');
+                                            $qtStatusMeta = [
+                                                'overdue' => ['badge-danger', 'Quá hạn'],
+                                                'urgent' => ['badge-warning-dark', 'Sắp đến hạn'],
+                                                'near' => ['badge-warning-light', 'Cần chú ý'],
+                                                'ok' => ['badge-success', 'Trong hạn'],
+                                                'done' => ['badge-primary', 'Đã ĐG xong - Đạt'],
+                                                'not_started' => ['badge-secondary', 'Chưa bắt đầu PC/THT'],
+                                            ];
+                                        @endphp
+                                        <div class="card mt-3 mb-0 {{ $qtHasOverdue ? 'border-danger' : 'border-info' }}">
+                                            <div class="card-header {{ $qtHeadClass }} text-white py-2 d-flex flex-wrap align-items-center">
+                                                <h5 class="mb-0 mr-3">
+                                                    <i class="fas fa-shield-alt mr-2"></i>
+                                                    Theo Dõi Biệt Trữ TỔNG (PC/THT &rarr; ĐG)
+                                                    <span class="badge badge-light text-dark ml-1">{{ $wipQuarantineSummary['total'] }} lô</span>
+                                                </h5>
+                                                <div class="ml-auto" style="font-size: 13px;">
+                                                    @if($wipQuarantineSummary['overdue'])
+                                                        <span class="badge badge-danger p-2 ml-1">Quá hạn: {{ $wipQuarantineSummary['overdue'] }}</span>
+                                                    @endif
+                                                    @if($wipQuarantineSummary['urgent'])
+                                                        <span class="badge badge-warning-dark p-2 ml-1">Sắp đến hạn (&lt;3 ngày): {{ $wipQuarantineSummary['urgent'] }}</span>
+                                                    @endif
+                                                    @if($wipQuarantineSummary['near'])
+                                                        <span class="badge badge-warning-light p-2 ml-1">Cần chú ý (&lt;5 ngày): {{ $wipQuarantineSummary['near'] }}</span>
+                                                    @endif
+                                                    @if($wipQuarantineSummary['ok'])
+                                                        <span class="badge badge-success p-2 ml-1">Trong hạn: {{ $wipQuarantineSummary['ok'] }}</span>
+                                                    @endif
+                                                    @if($wipQuarantineSummary['not_started'])
+                                                        <span class="badge badge-secondary p-2 ml-1">Chưa bắt đầu: {{ $wipQuarantineSummary['not_started'] }}</span>
+                                                    @endif
+                                                </div>
                                             </div>
-                                            <div style="max-height: 220px; overflow-y: auto;">
-                                                <table class="table table-sm mb-0 bg-white" style="font-size: 13px;">
-                                                    <thead>
-                                                        <tr>
-                                                            <th>Sản Phẩm</th>
-                                                            <th>Số lô</th>
-                                                            <th>Đang chờ</th>
-                                                            <th>HBT tổng</th>
-                                                            <th>Bắt đầu PC/THT</th>
-                                                            <th>Hạn kết thúc ĐG</th>
-                                                            <th>Ngày còn hạn</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        @foreach($wipQuarantineWarnings as $warning)
+                                            <div class="card-body p-2">
+                                                <div class="mb-2" style="font-size: 13px; color: #555;">
+                                                    Áp dụng cho bán thành phẩm có <strong>hạn biệt trữ tổng &gt; 0</strong>: tổng thời gian từ khi bắt đầu
+                                                    <strong>Pha Chế / Trộn Hoàn Tất</strong> (CĐ3 hoặc CĐ4) đến khi kết thúc <strong>Đóng Gói</strong> (CĐ7)
+                                                    không được vượt quá hạn này.
+                                                </div>
+                                                <div style="max-height: 320px; overflow-y: auto;">
+                                                    <table class="table table-sm table-hover mb-0 bg-white" style="font-size: 13px;">
+                                                        <thead style="position: sticky; top: 0; background-color: #f4f6f9; z-index: 5;">
                                                             <tr>
-                                                                <td>{{ $warning->product_name }}{{ $warning->intermediate_code ? ' (' . $warning->intermediate_code . ')' : '' }}</td>
-                                                                <td>{{ $warning->batch }}</td>
-                                                                <td>{{ $warning->stage_group }}</td>
-                                                                <td>{{ $warning->quarantine_total }} ngày</td>
-                                                                <td>{{ date('d/m/Y H:i', strtotime($warning->start_at)) }}</td>
-                                                                <td class="text-danger font-weight-bold">{{ date('d/m/Y H:i', strtotime($warning->deadline)) }}</td>
-                                                                <td class="font-weight-bold">
-                                                                    @if ($warning->remain_days < 0)
-                                                                        <span class="badge badge-danger p-1" style="font-size: 12px;">
-                                                                            Quá hạn {{ number_format(abs($warning->remain_days), 1) }} ngày
-                                                                        </span>
-                                                                    @else
-                                                                        <span class="badge badge-warning-dark p-1" style="font-size: 12px;">
-                                                                            Còn {{ number_format($warning->remain_days, 1) }} ngày
-                                                                        </span>
-                                                                    @endif
-                                                                </td>
+                                                                <th>Sản Phẩm</th>
+                                                                <th>Số lô</th>
+                                                                <th>Đang chờ</th>
+                                                                <th>HBT tổng</th>
+                                                                <th>Bắt đầu PC/THT</th>
+                                                                <th>Hạn kết thúc ĐG</th>
+                                                                <th>ĐG kết thúc</th>
+                                                                <th>Ngày còn hạn</th>
+                                                                <th>Trạng thái</th>
                                                             </tr>
-                                                        @endforeach
-                                                    </tbody>
-                                                </table>
+                                                        </thead>
+                                                        <tbody>
+                                                            @foreach($wipQuarantineWarnings as $warning)
+                                                                @php [$qtBadge, $qtLabel] = $qtStatusMeta[$warning->status]; @endphp
+                                                                <tr class="{{ $warning->is_overdue ? 'row-quarantine-total-overdue' : '' }}">
+                                                                    <td>{{ $warning->product_name }}{{ $warning->intermediate_code ? ' (' . $warning->intermediate_code . ')' : '' }}</td>
+                                                                    <td>{{ $warning->batch }}</td>
+                                                                    <td>{{ $warning->stage_group }}</td>
+                                                                    <td>{{ $warning->quarantine_total }} ngày</td>
+                                                                    <td>{{ $warning->start_at ? date('d/m/Y H:i', strtotime($warning->start_at)) : '--' }}</td>
+                                                                    <td class="{{ $warning->is_overdue ? 'text-danger font-weight-bold' : '' }}">
+                                                                        {{ $warning->deadline ? date('d/m/Y H:i', strtotime($warning->deadline)) : '--' }}
+                                                                    </td>
+                                                                    <td>{{ $warning->pack_end ? date('d/m/Y H:i', strtotime($warning->pack_end)) : 'Chưa xếp' }}</td>
+                                                                    <td class="font-weight-bold">
+                                                                        @if ($warning->remain_days === null)
+                                                                            <span class="text-muted">--</span>
+                                                                        @elseif ($warning->remain_days < 0)
+                                                                            <span class="badge badge-danger p-1" style="font-size: 12px;">
+                                                                                Quá hạn {{ number_format(abs($warning->remain_days), 1) }} ngày
+                                                                            </span>
+                                                                        @else
+                                                                            <span class="badge {{ $qtBadge }} p-1" style="font-size: 12px;">
+                                                                                Còn {{ number_format($warning->remain_days, 1) }} ngày
+                                                                            </span>
+                                                                        @endif
+                                                                    </td>
+                                                                    <td><span class="badge {{ $qtBadge }} p-1" style="font-size: 12px;">{{ $qtLabel }}</span></td>
+                                                                </tr>
+                                                            @endforeach
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+
+                                                <button type="button" class="btn btn-sm btn-light border mt-2" data-toggle="collapse"
+                                                    data-target="#quarantineTotalProgress" aria-expanded="false"
+                                                    aria-controls="quarantineTotalProgress">
+                                                    <i class="fas fa-tasks mr-1"></i> Xem tiến trình sản xuất tất cả công đoạn
+                                                </button>
+                                                <div class="collapse mt-2" id="quarantineTotalProgress">
+                                                    <div class="table-responsive shadow-sm rounded" style="overflow-x: auto; background: #fff;">
+                                                        @include('pages.Schedual.step.tableTemplate', [
+                                                            'tableId' => 'data_table_quarantine_total_warning',
+                                                            'tableData' => $wipQuarantineWarningDatas,
+                                                            'isWip' => true,
+                                                        ])
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     @endif
@@ -315,6 +380,43 @@
                 }
             },
         });
+
+        // Bảng tiến trình đầy đủ trong khối cảnh báo quá hạn biệt trữ TỔNG
+        if ($('#data_table_quarantine_total_warning').length) {
+            $('#data_table_quarantine_total_warning').DataTable({
+                paging: true,
+                lengthChange: true,
+                searching: true,
+                ordering: true,
+                info: true,
+                autoWidth: false,
+                pageLength: 10,
+                lengthMenu: [
+                    [10, 25, 50, -1],
+                    [10, 25, 50, "Tất cả"]
+                ],
+                order: [[6, 'asc']], // Sắp xếp theo cột "HBT Tổng (PC/THT → ĐG)"
+                language: {
+                    search: "Tìm kiếm:",
+                    lengthMenu: "Hiển thị _MENU_ dòng",
+                    info: "Hiển thị _START_ đến _END_ của _TOTAL_ dòng",
+                    paginate: {
+                        previous: "Trước",
+                        next: "Sau"
+                    }
+                },
+            });
+
+            // Căn lại độ rộng cột khi mở khối collapse
+            $('#quarantineTotalProgress').on('shown.bs.collapse', function() {
+                $('#data_table_quarantine_total_warning').DataTable().columns.adjust();
+                var wrapper = $(this).find('.table-responsive');
+                var topScrollContent = wrapper.prev('.top-scroll-container').find('.top-scroll-content');
+                if (topScrollContent.length) {
+                    topScrollContent.width(wrapper.find('table').width());
+                }
+            });
+        }
 
         $('#btnFilterOverdue').on('click', function() {
             let input = $('#filter_overdue_input');

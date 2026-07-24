@@ -3258,23 +3258,34 @@
                     continue;
                 }
 
-                let isValid = true;
+                // Kiểm tra hợp lệ giống saveRoom: bỏ qua ca trống (không có nhân sự),
+                // chỉ báo lỗi khi ca CÓ nhân sự nhưng thiếu nội dung công việc.
+                let validationError = null;
                 $row.find('.assignment-item:not(.foreign-assignment)').each(function() {
-                    const jobDesc = $(this).find('.job-desc').html().trim();
                     let pCount = 0;
                     $(this).find('.person-select').each(function() {
                         if ($(this).val()) pCount++;
                     });
-                    if (!jobDesc || jobDesc === '<br>' || jobDesc === 'Nội dung...' ||
-                        pCount === 0) {
-                        isValid = false;
+                    if (pCount === 0) return true; // Ca trống -> bỏ qua, không chặn cả phòng
+
+                    const jobDesc = $(this).find('.job-desc').html().trim();
+                    if (!jobDesc || jobDesc === '<br>' || jobDesc === 'Nội dung...') {
+                        const shiftName = $(this).find('.shift-select option:selected').text();
+                        validationError = `Ca ${shiftName}: chưa nhập nội dung công việc`;
                         return false; // Break loop
                     }
                 });
 
-                if (!isValid) {
+                if (validationError) {
+                    errors.push(`${roomName}: ${validationError}`);
                     totalProcessed++;
-                    continue; // Bỏ qua không lưu
+                    continue; // Bỏ qua không lưu, có báo lỗi rõ ràng
+                }
+
+                const roomAssignments = getRoomAssignments($row);
+                if (roomAssignments.length === 0) {
+                    totalProcessed++;
+                    continue; // Không có ca hợp lệ nào để lưu
                 }
 
                 try {
@@ -3289,7 +3300,7 @@
                             production_code: "{{ $production_code }}",
                             stage_groups_code: $('select[name="group_code"]').val() || $row
                                 .attr('data-group-code'),
-                            assignments: getRoomAssignments($row)
+                            assignments: roomAssignments
                         }
                     });
 
@@ -3312,6 +3323,10 @@
                     html: `Đã lưu thành công ${successCount}/${rows.length} phòng.<br/><br/><b>Lỗi:</b><br/>${errors.join('<br/>')}`,
                     icon: 'warning'
                 });
+            } else if (successCount === 0) {
+                Swal.fire('Không có gì để lưu',
+                    'Không có phòng nào hợp lệ để lưu. Vui lòng kiểm tra lại nội dung công việc và nhân sự được phân công.',
+                    'info');
             } else {
                 Swal.fire('Hoàn tất', `Đã lưu thành công ${successCount}/${rows.length} phòng.`,
                     'success');

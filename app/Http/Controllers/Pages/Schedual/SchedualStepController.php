@@ -272,8 +272,9 @@ class SchedualStepController extends Controller
             return $stageOrder[$stageName] ?? 99;
         });
 
-        // Cảnh báo biệt trữ TỔNG: từ khi bắt đầu Pha Chế (3) / Trộn Hoàn Tất (4)
-        // đến khi kết thúc Đóng Gói (7) không được vượt quá intermediate_category.quarantine_total (ngày)
+        // Theo dõi biệt trữ TỔNG: từ khi bắt đầu Pha Chế (3) / Trộn Hoàn Tất (4)
+        // đến khi kết thúc Đóng Gói (7) không được vượt quá intermediate_category.quarantine_total (ngày).
+        // Liệt kê MỌI lô BTP dở dang có quarantine_total > 0 để theo dõi xuyên suốt, không chỉ lô đã quá hạn.
         $wipQuarantineWarnings = collect();
         foreach ($wipDatas as $stageName => $groupStages) {
             foreach ($groupStages as $plan_master_id => $stages) {
@@ -285,21 +286,37 @@ class SchedualStepController extends Controller
                     ->filter(fn($s) => !empty($s->start))
                     ->sortBy('stage_code')
                     ->first();
-                if (!$startStage) continue;
-
-                $deadlineTs = strtotime($startStage->start) + (int) round($totalDays * 86400);
 
                 $packStages = $stages->where('stage_code', 7);
                 $packEnded  = $packStages->filter(fn($s) => !empty($s->end));
                 $packEndTs  = $packEnded->isNotEmpty() ? $packEnded->map(fn($s) => strtotime($s->end))->max() : null;
                 $packFinished = $packStages->isNotEmpty() && $packStages->filter(fn($s) => $s->finished != 1)->isEmpty();
 
-                if ($packFinished && $packEndTs) {
-                    $isOverdue = $packEndTs > $deadlineTs;
-                } else {
-                    $isOverdue = time() > $deadlineTs || ($packEndTs && $packEndTs > $deadlineTs);
+                $deadlineTs = null;
+                $remainDays = null;
+                $isOverdue  = false;
+                $statusKey  = 'not_started'; // chưa bắt đầu PC/THT
+
+                if ($startStage) {
+                    $deadlineTs = strtotime($startStage->start) + (int) round($totalDays * 86400);
+                    $remainDays = ($deadlineTs - time()) / 86400;
+
+                    if ($packFinished && $packEndTs) {
+                        $isOverdue = $packEndTs > $deadlineTs;
+                        $statusKey = $isOverdue ? 'overdue' : 'done';
+                    } else {
+                        $isOverdue = time() > $deadlineTs || ($packEndTs && $packEndTs > $deadlineTs);
+                        if ($isOverdue) {
+                            $statusKey = 'overdue';
+                        } elseif ($remainDays < 3) {
+                            $statusKey = 'urgent';   // sắp đến hạn
+                        } elseif ($remainDays < 5) {
+                            $statusKey = 'near';     // cần chú ý
+                        } else {
+                            $statusKey = 'ok';       // còn nhiều thời gian
+                        }
+                    }
                 }
-                if (!$isOverdue) continue;
 
                 $wipQuarantineWarnings->push((object) [
                     'plan_master_id'   => $plan_master_id,
@@ -308,15 +325,38 @@ class SchedualStepController extends Controller
                     'intermediate_code' => $plan->intermediate_code,
                     'batch'            => $plan->batch,
                     'quarantine_total' => $totalDays,
-                    'start_at'         => $startStage->start,
-                    'deadline'         => date('Y-m-d H:i:s', $deadlineTs),
-                    'remain_days'      => ($deadlineTs - time()) / 86400,
+                    'start_at'         => $startStage->start ?? null,
+                    'start_stage_name' => $startStage->stage_name ?? null,
+                    'deadline'         => $deadlineTs ? date('Y-m-d H:i:s', $deadlineTs) : null,
+                    'pack_end'         => $packEndTs ? date('Y-m-d H:i:s', $packEndTs) : null,
+                    'remain_days'      => $remainDays,
+                    'is_overdue'       => $isOverdue,
+                    'status'           => $statusKey,
+                    'stages'           => $stages,
                 ]);
             }
         }
 
-        // Quá hạn nhiều nhất lên đầu
-        $wipQuarantineWarnings = $wipQuarantineWarnings->sortBy('remain_days')->values();
+        // Gấp nhất (quá hạn nhiều nhất) lên đầu; lô chưa bắt đầu PC/THT xuống cuối
+        $wipQuarantineWarnings = $wipQuarantineWarnings
+            ->sortBy(fn($w) => $w->remain_days === null ? PHP_INT_MAX : $w->remain_days)
+            ->values();
+
+        $wipQuarantineSummary = [
+            'total'       => $wipQuarantineWarnings->count(),
+            'overdue'     => $wipQuarantineWarnings->where('status', 'overdue')->count(),
+            'urgent'      => $wipQuarantineWarnings->where('status', 'urgent')->count(),
+            'near'        => $wipQuarantineWarnings->where('status', 'near')->count(),
+            'ok'          => $wipQuarantineWarnings->where('status', 'ok')->count(),
+            'done'        => $wipQuarantineWarnings->where('status', 'done')->count(),
+            'not_started' => $wipQuarantineWarnings->where('status', 'not_started')->count(),
+        ];
+
+        // Dữ liệu để render đầy đủ tiến trình (stepper) của các lô đang theo dõi
+        $wipQuarantineWarningDatas = collect();
+        foreach ($wipQuarantineWarnings as $warning) {
+            $wipQuarantineWarningDatas->put($warning->plan_master_id, $warning->stages);
+        }
 
         //dd ($datas);
 
@@ -325,7 +365,9 @@ class SchedualStepController extends Controller
         return view('pages.Schedual.step.list', [
             'datas' => $datas,
             'wipDatas' => $wipDatas,
-            'wipQuarantineWarnings' => $wipQuarantineWarnings
+            'wipQuarantineWarnings' => $wipQuarantineWarnings,
+            'wipQuarantineWarningDatas' => $wipQuarantineWarningDatas,
+            'wipQuarantineSummary' => $wipQuarantineSummary
         ]);
     }
 }

@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Http\Controllers\Pages\Report\DailyReportController;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
 
 class ProductionAssignmentController extends Controller
 {
@@ -494,35 +495,70 @@ class ProductionAssignmentController extends Controller
         return response()->json(['success' => true]);
     }
 
+    /**
+     * Lấy dữ liệu đi ca của một phòng ban từ API, có cache ngắn hạn (mặc định 2 phút)
+     * để tránh gọi lại API chậm mỗi lần load trang. Trả về mảng đã decode, hoặc null nếu API lỗi.
+     * Lưu ý: chỉ cache khi gọi API thành công, không cache lỗi.
+     */
+    private function fetchShiftData($month, $year, $department, $ttlSeconds = 120)
+    {
+        $cacheKey = "shifts_api:{$month}:{$year}:{$department}";
+        $backupKey = "shifts_api_backup:{$month}:{$year}:{$department}";
+
+        $cached = Cache::get($cacheKey);
+        if (is_array($cached)) {
+            return $cached;
+        }
+
+        $url = "http://s-webdev:5070/api/shifts/by-department?month={$month}&year={$year}&department={$department}";
+        try {
+            $ctx = stream_context_create(['http' => ['timeout' => 10]]);
+            $data = @file_get_contents($url, false, $ctx);
+            if ($data !== false) {
+                $decoded = json_decode($data, true);
+                if (is_array($decoded)) {
+                    Cache::put($cacheKey, $decoded, $ttlSeconds);
+                    // Bản sao lưu dài hạn để dùng khi API lỗi (429/timeout)
+                    Cache::put($backupKey, $decoded, 86400);
+                    return $decoded;
+                }
+            }
+        } catch (\Exception $e) {
+            // rơi xuống dùng bản sao lưu bên dưới
+        }
+
+        // API lỗi và cache đã hết hạn: dùng bản sao lưu gần nhất để sidebar vẫn hoạt động
+        $backup = Cache::get($backupKey);
+        if (is_array($backup)) {
+            return $backup;
+        }
+
+        return null;
+    }
+
     public function getPersonnelShifts(Request $request)
     {
         $month = $request->month;
         $year = $request->year;
         $departmentId = $request->department;
 
-        $url = "http://s-webdev:5070/api/shifts/by-department?month={$month}&year={$year}&department={$departmentId}";
-
         try {
-            $data = file_get_contents($url);
-            $personnelData = json_decode($data, true) ?: [];
+            // Dữ liệu tháng hiện tại (có cache 2 phút, tự gọi API khi cache trống)
+            $personnelData = $this->fetchShiftData($month, $year, $departmentId);
+            if ($personnelData === null) {
+                return response()->json(['error' => 'Không thể tải dữ liệu từ máy chủ API.'], 500);
+            }
 
             if ($departmentId == 15) {
-                try {
-                    $url17 = "http://s-webdev:5070/api/shifts/by-department?month={$month}&year={$year}&department=17";
-                    $ctx = stream_context_create(['http' => ['timeout' => 5]]);
-                    $data17 = @file_get_contents($url17, false, $ctx);
-                    if ($data17) {
-                        $personnelData17 = json_decode($data17, true) ?: [];
-                        if (is_array($personnelData17)) {
-                            foreach ($personnelData17 as &$p17) {
-                                if (isset($p17['employeeName'])) {
-                                    $p17['employeeName'] = trim($p17['employeeName']) . ' - WH';
-                                }
-                            }
-                            $personnelData = array_merge($personnelData, $personnelData17);
+                $personnelData17 = $this->fetchShiftData($month, $year, 17);
+                if (is_array($personnelData17)) {
+                    foreach ($personnelData17 as &$p17) {
+                        if (isset($p17['employeeName'])) {
+                            $p17['employeeName'] = trim($p17['employeeName']) . ' - WH';
                         }
                     }
-                } catch (\Exception $ex17) {
+                    unset($p17);
+                    $personnelData = array_merge($personnelData, $personnelData17);
                 }
             }
 
@@ -548,35 +584,19 @@ class ProductionAssignmentController extends Controller
                     $nextYear += 1;
                 }
 
-                $urlNext = "http://s-webdev:5070/api/shifts/by-department?month={$nextMonth}&year={$nextYear}&department={$departmentId}";
-                $personnelDataNext = [];
-                try {
-                    $ctx = stream_context_create(['http' => ['timeout' => 5]]);
-                    $dataNext = @file_get_contents($urlNext, false, $ctx);
-                    if ($dataNext) {
-                        $personnelDataNext = json_decode($dataNext, true) ?: [];
-                    }
-                } catch (\Exception $exNext) {
-                    // Bỏ qua lỗi lấy dữ liệu tháng tiếp theo nếu chưa có lịch
-                }
+                // Dữ liệu tháng tiếp theo (có cache 2 phút). Bỏ qua nếu chưa có lịch.
+                $personnelDataNext = $this->fetchShiftData($nextMonth, $nextYear, $departmentId) ?: [];
 
                 if ($departmentId == 15) {
-                    try {
-                        $urlNext17 = "http://s-webdev:5070/api/shifts/by-department?month={$nextMonth}&year={$nextYear}&department=17";
-                        $ctx = stream_context_create(['http' => ['timeout' => 5]]);
-                        $dataNext17 = @file_get_contents($urlNext17, false, $ctx);
-                        if ($dataNext17) {
-                            $personnelDataNext17 = json_decode($dataNext17, true) ?: [];
-                            if (is_array($personnelDataNext17)) {
-                                foreach ($personnelDataNext17 as &$p17) {
-                                    if (isset($p17['employeeName'])) {
-                                        $p17['employeeName'] = trim($p17['employeeName']) . ' - WH';
-                                    }
-                                }
-                                $personnelDataNext = array_merge($personnelDataNext, $personnelDataNext17);
+                    $personnelDataNext17 = $this->fetchShiftData($nextMonth, $nextYear, 17);
+                    if (is_array($personnelDataNext17)) {
+                        foreach ($personnelDataNext17 as &$p17) {
+                            if (isset($p17['employeeName'])) {
+                                $p17['employeeName'] = trim($p17['employeeName']) . ' - WH';
                             }
                         }
-                    } catch (\Exception $exNext17) {
+                        unset($p17);
+                        $personnelDataNext = array_merge($personnelDataNext, $personnelDataNext17);
                     }
                 }
 
@@ -960,23 +980,15 @@ class ProductionAssignmentController extends Controller
                 $cacheKey = "{$sheetMonth}_{$sheetYear}";
                 if (!isset($shiftsCache[$cacheKey])) {
                     $shiftsCache[$cacheKey] = [];
-                    $url = "http://s-webdev:5070/api/shifts/by-department?month={$sheetMonth}&year={$sheetYear}&department={$department}";
-                    try {
-                        $ctx = stream_context_create(['http' => ['timeout' => 5]]);
-                        $apiData = @file_get_contents($url, false, $ctx);
-                        if ($apiData) {
-                            $decoded = json_decode($apiData, true);
-                            if (is_array($decoded)) {
-                                foreach ($decoded as $person) {
-                                    $code = $person['employeeId'] ?? $person['code'] ?? null;
-                                    if ($code) {
-                                        $shiftsCache[$cacheKey][$code] = $person;
-                                    }
-                                }
+                    // Dùng cache chung 2 phút (tránh gọi lại API chậm / lỗi 429)
+                    $decoded = $this->fetchShiftData($sheetMonth, $sheetYear, $department);
+                    if (is_array($decoded)) {
+                        foreach ($decoded as $person) {
+                            $code = $person['employeeId'] ?? $person['code'] ?? null;
+                            if ($code) {
+                                $shiftsCache[$cacheKey][$code] = $person;
                             }
                         }
-                    } catch (\Exception $e) {
-                        \Log::error("Failed to fetch shifts in cloneCustomTask for {$cacheKey}: " . $e->getMessage());
                     }
                 }
 

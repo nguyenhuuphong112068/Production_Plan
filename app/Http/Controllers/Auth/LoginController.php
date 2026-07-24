@@ -121,6 +121,13 @@ class LoginController extends Controller
             $employeesFromApi = json_decode($data) ?: [];
             if (!is_array($employeesFromApi)) return;
 
+            // Danh sách mã nhân sự kho (dept 17) được phép hiển thị tại Trung Tâm Cân
+            $warehouseAllowedCodes = ['21049', '21048', '21077', '21064', '21080', '21090', '21120', '21122', '21130', '21143', '21148', '21152'];
+
+            // Cờ đánh dấu API kho (dept 17) có lấy được dữ liệu hay không.
+            // Dùng để tránh vô hiệu hóa nhầm nhân sự kho khi API kho lỗi tạm thời (timeout/429).
+            $api17Ok = false;
+
             if ($departmentCode === 'PXV1') {
                 $url17 = "http://s-webdev:5070/api/shifts/by-department?month={$month}&year={$year}&department=17";
                 try {
@@ -129,6 +136,7 @@ class LoginController extends Controller
                     if ($data17) {
                         $employees17 = json_decode($data17);
                         if (is_array($employees17)) {
+                            $api17Ok = true;
                             foreach ($employees17 as $emp17) {
                                 $emp17->is_warehouse = true;
                                 if (isset($emp17->employeeName)) {
@@ -148,7 +156,12 @@ class LoginController extends Controller
                 return $emp->employeeId;
             }, $employeesFromApi);
 
-            DB::transaction(function () use ($employeesFromApi, $apiEmployeeCodes, $departmentCode) {
+            // Nếu API kho lỗi, coi các mã kho hợp lệ như vẫn còn trong API để không bị vô hiệu hóa nhầm
+            if ($departmentCode === 'PXV1' && !$api17Ok) {
+                $apiEmployeeCodes = array_merge($apiEmployeeCodes, $warehouseAllowedCodes);
+            }
+
+            DB::transaction(function () use ($employeesFromApi, $apiEmployeeCodes, $departmentCode, $warehouseAllowedCodes) {
                 // 1. Vô hiệu hóa các phân công (assignments) không còn trong API cho bộ phận này
                 // Bỏ qua bộ phận QA vì có một số nhân sự được quản lý thủ công (không có trong API)
 
@@ -183,8 +196,6 @@ class LoginController extends Controller
                         }
                     }
                 }
-
-                $warehouseAllowedCodes = ['21049', '21048', '21077', '21064', '21080', '21090', '21120', '21122', '21130', '21143', '21148', '21152'];
 
                 // 2. Cập nhật hoặc thêm mới nhân sự từ API
                 foreach ($employeesFromApi as $emp) {
