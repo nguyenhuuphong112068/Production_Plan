@@ -675,3 +675,14 @@ body.gantt-fullscreen .schedule-page {
   padding-top: 2px !important;
 }
 
+
+/* ==========================================================================
+   Viền vàng cho sự kiện đang được chọn (click / quét chọn)
+   Dùng outline thay cho border: outline KHÔNG chiếm chỗ trong layout nên
+   trình duyệt chỉ cần repaint, không phải reflow lại toàn bộ timeline.
+   ========================================================================== */
+.fc-event.is-batch-selected {
+  outline: 4px solid #ffe600;
+  outline-offset: -2px;
+  z-index: 6;
+}

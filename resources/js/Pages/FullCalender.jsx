@@ -67,9 +67,72 @@ const calendarViews = {
   resourceTimelineQuarter1d: { type: 'resourceTimelineQuarter', slotDuration: { days: 1 } },
 };
 
+/* --------------------------------------------------------------------------
+ * Highlight sự kiện đang chọn.
+ * Dùng class + outline (xem .fc-event.is-batch-selected trong calendar.css)
+ * thay cho việc gán trực tiếp el.style.border:
+ *  - border làm thay đổi kích thước hộp -> trình duyệt phải reflow lại cả
+ *    timeline mỗi lần click / mỗi lần chuột di chuyển khi quét chọn.
+ *  - outline chỉ repaint -> nhanh hơn rất nhiều.
+ * Ngoài ra không còn ghi đè viền cam của các thay đổi chưa lưu (pendingChanges).
+ * ------------------------------------------------------------------------ */
+const SELECTED_CLASS = 'is-batch-selected';
+
+// Hằng số ngoài component: tránh tạo mảng/đối tượng mới mỗi lần render
+const SELECTO_TARGETS = ['.fc-event:not(.fc-bg-event):not(.fc-ngay-nghi)'];
+const SELECTO_TOGGLE_KEYS = ['shift'];
+
+const markEventSelected = (el) => {
+  if (el) el.classList.add(SELECTED_CLASS);
+};
+
+const unmarkEventSelected = (el) => {
+  if (el) el.classList.remove(SELECTED_CLASS);
+};
+
+const clearAllEventSelection = () => {
+  document
+    .querySelectorAll(`.fc-event.${SELECTED_CLASS}`)
+    .forEach((el) => el.classList.remove(SELECTED_CLASS));
+};
+
+/* --------------------------------------------------------------------------
+ * Bọc FullCalendar trong React.memo.
+ *
+ * FullCalendar (@fullcalendar/react v6) KHÔNG có shouldComponentUpdate: mỗi lần
+ * component cha render lại, componentDidUpdate của nó gọi calendar.resetOptions()
+ * với toàn bộ props -> FullCalendar tính lại options và render lại TOÀN BỘ
+ * timeline (chạy lại eventContent / eventClassNames cho từng sự kiện).
+ * Vì vậy chỉ cần setState nhỏ như "chọn 1 sự kiện" cũng làm cả lịch vẽ lại,
+ * gây giật/chậm khi click chọn hoặc quét chọn.
+ *
+ * MemoFullCalendar chỉ render lại khi một trong các giá trị ở prop `__deps`
+ * thay đổi (đó là các state thực sự ảnh hưởng tới hình ảnh của lịch).
+ * Các handler chạy SAU render phải lấy qua ref (fcLatest) để không bị closure cũ.
+ * ------------------------------------------------------------------------ */
+const areCalendarPropsEqual = (prev, next) => {
+  const a = prev.__deps || [];
+  const b = next.__deps || [];
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i += 1) {
+    if (!Object.is(a[i], b[i])) return false;
+  }
+  return true;
+};
+
+const MemoFullCalendar = React.memo(
+  React.forwardRef(function MemoFullCalendarInner({ __deps, ...rest }, ref) {
+    return <FullCalendar ref={ref} {...rest} />;
+  }),
+  areCalendarPropsEqual
+);
+
 const ScheduleTest = () => {
 
   const calendarRef = useRef(null);
+  // Giữ tham chiếu tới bản mới nhất của các handler dùng trong FullCalendar.
+  // Nhờ vậy lịch không cần render lại mà handler vẫn đọc được state mới nhất.
+  const fcLatest = useRef({});
   const previewTargetRef = useRef(null); // Lưu sự kiện mục tiêu của Xem trước chuỗi
   const selectoRef = useRef(null);
   moment.locale('vi');
@@ -863,13 +926,13 @@ const ScheduleTest = () => {
     });
 
     // Sau khi có matches
-    setSelectedEvents(
-      matches.map(ev => ({
-        id: ev.id,
-        stage_code: ev.extendedProps.stage_code,
-        plan_master_id: ev.extendedProps.plan_master_id
-      }))
-    );
+    const matchedSelection = matches.map(ev => ({
+      id: ev.id,
+      stage_code: ev.extendedProps.stage_code,
+      plan_master_id: ev.extendedProps.plan_master_id
+    }));
+    setSelectedEvents(matchedSelection);
+    selectedEventsRef.current = matchedSelection;
 
     // Đặt index ở phần tử đầu tiên
     currentIndexRef.current = searchResultsRef.current.length > 0 ? 0 : -1;
@@ -3951,8 +4014,7 @@ const ScheduleTest = () => {
       setSelectedEvents([]);
       selectedEventsRef.current = [];
       // Xóa toàn bộ highlight border vàng trên calendar
-      document.querySelectorAll('.fc-event[data-event-id]')
-        .forEach(el => { el.style.border = 'none'; });
+      clearAllEventSelection();
       setSaving(false);
 
 
@@ -3987,10 +4049,8 @@ const ScheduleTest = () => {
         : [...prevSelected, { id: event.id, stage_code: event.extendedProps.stage_code, plan_master_id: event.extendedProps.plan_master_id }];
 
       // highlight DOM ngay lập tức
-      const el = document.querySelector(`[data-event-id="${event.id}"]`);
-      if (el) {
-        el.style.border = exists ? 'none' : '5px solid yellow';
-      }
+      const el = document.querySelector(`.fc-event[data-event-id="${event.id}"]`);
+      if (exists) unmarkEventSelected(el); else markEventSelected(el);
       selectedEventsRef.current = newSelected;
       return newSelected;
     });
@@ -4608,7 +4668,7 @@ const ScheduleTest = () => {
   const handleClear = () => {
 
     const sel = selectoRef.current;
-    document.querySelectorAll('.fc-event[data-event-id]').forEach(el => { el.style.border = 'none'; });
+    clearAllEventSelection();
 
     // 1) Nếu thư viện expose clear trực tiếp
     if (typeof sel?.clear === 'function') {
@@ -5672,6 +5732,8 @@ const ScheduleTest = () => {
           });
       }
       setSelectedEvents([]);
+      selectedEventsRef.current = [];
+      clearAllEventSelection();
     });
   }
 
@@ -6273,6 +6335,7 @@ const ScheduleTest = () => {
         setEvents(data.events);
         setSelectedEvents([]);
         selectedEventsRef.current = [];
+        clearAllEventSelection();
       }
       ).catch(err => {
         Swal.fire({
@@ -6360,6 +6423,7 @@ const ScheduleTest = () => {
             setEvents(data.events);
             setSelectedEvents([]);
             selectedEventsRef.current = [];
+            clearAllEventSelection();
             Swal.fire({
               icon: 'success',
               title: 'Thành công',
@@ -6478,6 +6542,69 @@ const ScheduleTest = () => {
   // Rời trang mà quên tắt thì nav vẫn phải hiện lại
   useEffect(() => () => document.body.classList.remove('gantt-fullscreen'), []);
 
+  // Mở/đóng sidebar chỉ đổi bề rộng vùng chứa chứ không bắn sự kiện resize của
+  // window. Trước đây lịch tự tính lại nhờ bị render lại theo cha; nay lịch
+  // không còn render lại theo cha nên phải chủ động báo cho nó đo lại.
+  useEffect(() => {
+    const id = requestAnimationFrame(() => calendarRef.current?.getApi()?.updateSize());
+    return () => cancelAnimationFrame(id);
+  }, [showSidebar, percentShow]);
+
+  // Cập nhật mỗi lần render: FullCalendar có thể không render lại (xem MemoFullCalendar)
+  // nhưng các callback của nó luôn gọi được bản handler mới nhất qua ref này.
+  fcLatest.current = {
+    handleEventClick,
+    handleEventChange,
+    takeSnapshot,
+    handleGroupEventDrop,
+    toggleEventSelect,
+    handleEventReceive,
+    handleEventMouseEnter,
+    handleEventMouseLeave,
+    handleClear,
+    finisedEvent,
+    handleEditEventClick,
+    handleUndoFrontend,
+    handleViewChange,
+    handleShowList,
+    toggleNoteModal,
+    toggleCleaningEvents,
+    toggleHistoryHover,
+    toggleCascadeMode,
+    toggleTheoryEvents,
+    handleAutoSchedualer,
+    handleDeleteAllScheduale,
+    handleSaveChanges,
+    handleDeleteScheduale,
+    toggleSlotDuration,
+    handleSubmit,
+    handleAcceptQuanrantine,
+    handleConfirmClearningValidation,
+    handleCleaninglevelchange,
+  };
+
+  // Các state thực sự làm thay đổi hình ảnh của lịch. Chỉ khi một trong số này
+  // đổi thì FullCalendar mới render lại (chọn/bỏ chọn sự kiện không nằm ở đây).
+  const calendarDeps = [
+    calendarEvents,
+    displayResources,
+    pendingChanges,
+    activePlanMasterIds,
+    selectedRows,
+    sumBatchByStage,
+    stageMap,
+    heightResource,
+    authorization,
+    showRenderBadge,
+    showPersonnel,
+    isCleaningHidden,
+    showHistoryHover,
+    isCascadeMode,
+    isFullscreen,
+    showDetailHover,
+    undoStack.length,
+  ];
+
   return (
 
     <div className={`schedule-page transition-all duration-300 ${showSidebar ? percentShow == "30%" ? 'w-[70%]' : 'w-[85%]' : 'w-full'} float-left pt-4 pl-2 pr-2 ${isCleaningHidden ? 'hide-cleaning-events' : ''}`}>
@@ -6583,7 +6710,8 @@ const ScheduleTest = () => {
       </div>
 
       <div ref={calendarBoxRef} className="schedule-calendar-box">
-      <FullCalendar
+      <MemoFullCalendar
+        __deps={calendarDeps}
         schedulerLicenseKey="GPL-My-Project-Is-Open-Source"
         ref={calendarRef}
         height="100%"
@@ -6627,9 +6755,7 @@ const ScheduleTest = () => {
 
         eventsSet={(events) => {
           const count = events.filter(e => (e.backgroundColor && e.backgroundColor.toLowerCase() === '#4d4b4bff') || (e.extendedProps?.violation_colors?.includes('#4d4b4bff'))).length;
-          if (blackViolationCount !== count) {
-            setBlackViolationCount(count);
-          }
+          setBlackViolationCount(prev => (prev === count ? prev : count));
         }}
 
         editable={true}
@@ -6639,16 +6765,21 @@ const ScheduleTest = () => {
         eventDurationEditable={true}
 
 
-        eventClick={authorization ? handleEventClick : false}
-        eventResize={authorization ? handleEventChange : false}
-        eventResizeStart={(info) => takeSnapshot()}
-        eventDragStart={(info) => takeSnapshot()}
-        eventDrop={authorization ? (info) => handleGroupEventDrop(info, selectedEvents, toggleEventSelect, handleEventChange) : false}
-        eventReceive={authorization ? handleEventReceive : false}
-        eventMouseEnter={(info) => handleEventMouseEnter(info)}
-        eventMouseLeave={(info) => handleEventMouseLeave(info)}
-        dateClick={authorization ? handleClear : false}
-        eventAllow={finisedEvent}
+        eventClick={authorization ? ((info) => fcLatest.current.handleEventClick(info)) : false}
+        eventResize={authorization ? ((info) => fcLatest.current.handleEventChange(info)) : false}
+        eventResizeStart={() => fcLatest.current.takeSnapshot()}
+        eventDragStart={() => fcLatest.current.takeSnapshot()}
+        eventDrop={authorization ? ((info) => fcLatest.current.handleGroupEventDrop(
+          info,
+          selectedEventsRef.current,
+          fcLatest.current.toggleEventSelect,
+          fcLatest.current.handleEventChange
+        )) : false}
+        eventReceive={authorization ? ((info) => fcLatest.current.handleEventReceive(info)) : false}
+        eventMouseEnter={(info) => fcLatest.current.handleEventMouseEnter(info)}
+        eventMouseLeave={(info) => fcLatest.current.handleEventMouseLeave(info)}
+        dateClick={authorization ? ((info) => fcLatest.current.handleClear(info)) : false}
+        eventAllow={(dropInfo, draggedEvent) => fcLatest.current.finisedEvent(dropInfo, draggedEvent)}
 
         resourceGroupField="stage_name"
         resourceOrder='order_by'
@@ -6934,30 +7065,30 @@ const ScheduleTest = () => {
           undoFrontend: {
             text: `Nháp (${undoStack.length})`,
 
-            click: handleUndoFrontend,
+            click: (...args) => fcLatest.current.handleUndoFrontend(...args),
             hint: 'Khôi phục thao tác kéo thả vừa rồi (Ctrl+Z)'
           },
 
           customNext: {
             text: '⏵',
-            click: () => handleViewChange(null, 'next'),
+            click: () => fcLatest.current.handleViewChange(null, 'next'),
             hint: 'Tiến tới 1 khung thời gian'
           },
           customPre: {
             text: '⏴',
-            click: () => handleViewChange(null, 'prev'),
+            click: () => fcLatest.current.handleViewChange(null, 'prev'),
             hint: 'Lùi về 1 khung thời gian'
           },
 
           myToday: {
             text: 'Hiện Tại',
-            click: () => handleViewChange(null, 'today'),
+            click: () => fcLatest.current.handleViewChange(null, 'today'),
             hint: 'Trờ về ngày hiện tại của khung thời gian đã chọn'
           },
 
           customList: {
             text: 'KHSX',
-            click: handleShowList,
+            click: (...args) => fcLatest.current.handleShowList(...args),
             hint: 'Mở kế hoạch chờ sắp lịch'
           },
           toggleFullscreen: {
@@ -6969,73 +7100,73 @@ const ScheduleTest = () => {
           },
           customDay: {
             text: 'Ngày',
-            click: () => handleViewChange('resourceTimelineDay'),
+            click: () => fcLatest.current.handleViewChange('resourceTimelineDay'),
             hint: 'Thay đổi hiển thị lịch theo khung thời gian 1 ngày'
 
           },
           customWeek: {
             text: 'Tuần',
-            click: () => handleViewChange('resourceTimelineWeek'),
+            click: () => fcLatest.current.handleViewChange('resourceTimelineWeek'),
             hint: 'Thay đổi hiển thị lịch theo khung thời gian 1 tuần'
           },
           customMonth: {
             text: 'Tháng',
-            click: () => handleViewChange('resourceTimelineMonth'),
+            click: () => fcLatest.current.handleViewChange('resourceTimelineMonth'),
             hint: 'Thay đổi hiển thị lịch theo khung thời gian 1 tháng'
           },
           customQuarter: {
             text: '3 Tháng',
-            click: () => handleViewChange('resourceTimelineQuarter'),
+            click: () => fcLatest.current.handleViewChange('resourceTimelineQuarter'),
             hint: 'Thay đổi hiển thị lịch theo khung thời gian 3 tháng'
           },
 
 
           noteModal: {
             text: 'ℹ️',
-            click: toggleNoteModal,
+            click: (...args) => fcLatest.current.toggleNoteModal(...args),
             hint: 'Ẩn/ Hiện chú thích màu của lịch'
           },
           hiddenClearning: {
             text: isCleaningHidden ? '👀' : '🙈',
-            click: toggleCleaningEvents,
+            click: (...args) => fcLatest.current.toggleCleaningEvents(...args),
             hint: 'Ẩn/ Hiện lịch vệ sinh'
           },
           historyToggle: {
             text: showHistoryHover ? '⏳' : '📜',
-            click: toggleHistoryHover,
+            click: (...args) => fcLatest.current.toggleHistoryHover(...args),
             hint: 'Bật/Tắt chế độ hiển thị lịch sử thay đổi lịch khi hover chuột vào sự kiện'
           },
           cascadeToggle: {
             text: isCascadeMode ? '⏳' : '🔀',
-            click: toggleCascadeMode,
+            click: (...args) => fcLatest.current.toggleCascadeMode(...args),
             hint: 'Bật/Tắt chế độ tịnh tiến tất cả các sự kiện phía sau trên cùng một Phòng sản xuất'
           },
 
           hiddenTheory: {
             text: '🧭',
-            click: toggleTheoryEvents,
+            click: (...args) => fcLatest.current.toggleTheoryEvents(...args),
             hint: 'Hiển thị lịch lý thuyết đôi với các lịch đã hoàn thành'
           },
 
           autoSchedualer: {
             text: '🤖',
-            click: handleAutoSchedualer,
+            click: (...args) => fcLatest.current.handleAutoSchedualer(...args),
             hint: 'Sắp lịch tự động'
           },
           deleteAllScheduale: {
             text: '🗑️',
-            click: handleDeleteAllScheduale,
+            click: (...args) => fcLatest.current.handleDeleteAllScheduale(...args),
             hint: 'Xóa lịch theo CĐ hoặc Line: chọn ngày bắt đầu xóa, chọn chế độ xóa, bấm Lưu'
           },
 
           changeSchedualer: {
             text: '💾',
-            click: handleSaveChanges,
+            click: (...args) => fcLatest.current.handleSaveChanges(...args),
             hint: 'Lưu thay đổi lịch: sau khi thay đổi lịch bấm 💾 hoặc Ctrl + S để lưu thay đổi'
           },
           unSelect: {
             text: '🚫',
-            click: handleDeleteScheduale,
+            click: (...args) => fcLatest.current.handleDeleteScheduale(...args),
             hint: 'Xóa lịch được chọn: Chọn các lịch cần xóa, sau đó bấm 🚫'
           },
 
@@ -7051,37 +7182,37 @@ const ScheduleTest = () => {
 
           slotDuration: {
             text: 'Slot',
-            click: toggleSlotDuration,
+            click: (...args) => fcLatest.current.toggleSlotDuration(...args),
             hint: 'Tháy đổi độ chia thời gian tại khung tuần'
           },
 
           ShowBadge: {
             text: showRenderBadge ? '❌' : '👁️',
-            click: () => setShowRenderBadge(!showRenderBadge),
+            click: () => setShowRenderBadge(v => !v),
             hint: 'Xem các thông tin thêm như: lý do đổi màu lịch, mã chiến dịch'
           },
 
           Submit: {
             text: '📤',
-            click: handleSubmit,
+            click: (...args) => fcLatest.current.handleSubmit(...args),
             hint: 'Submit Lịch: Sau khi hoàn thành sắp lịch để các bộ phận khác có thể thấy bấm 📤'
           },
 
           AcceptQuarantine: {
             text: '✅',
-            click: handleAcceptQuanrantine,
+            click: (...args) => fcLatest.current.handleAcceptQuanrantine(...args),
             hint: 'Chấp nhận lô quá hạn biệt trữ: Chọn lịch cần chấp nhận sau đó bám nút ✅'
           },
 
           clearningValidation: {
             text: '🚿',
-            click: handleConfirmClearningValidation,
+            click: (...args) => fcLatest.current.handleConfirmClearningValidation(...args),
             hint: 'Xác Định Lịch Thẩm Định Vệ Sinh: Chọn lịch cần xác định sau đó bám nút 🚿'
           },
 
           Cleaninglevelchange: {
             text: '🆚',
-            click: handleCleaninglevelchange,
+            click: (...args) => fcLatest.current.handleCleaninglevelchange(...args),
             hint: 'Thay đổi cấp vệ sinh: Chọn các lịch cần thay đổi, bấm nút 🆚 hộp thoại chọn cấp vệ sinh xuất hiện, chọn cấp vệ sinh cần thay đổi. Bấm Lưu'
           },
 
@@ -7099,7 +7230,7 @@ const ScheduleTest = () => {
 
           detailToggle: {
             text: showDetailHover ? '❌' : '🔍',
-            click: () => setShowDetailHover(!showDetailHover),
+            click: () => setShowDetailHover(v => !v),
             hint: 'Bật/tắt chế độ hiển thị chi tiết lịch khi di chuột'
           }
         }}
@@ -7116,9 +7247,9 @@ const ScheduleTest = () => {
           // Xử lý nút sửa nhanh đơn lẻ
           const editBtn = info.el.querySelector('.edit-single-event-btn');
           if (editBtn) {
-            editBtn.addEventListener('click', (e) => {
+            editBtn.addEventListener('click', () => {
               // e.stopPropagation(); // FullCalendar's eventClick might still trigger
-              handleEditEventClick(info.event);
+              fcLatest.current.handleEditEventClick(info.event);
             });
           }
 
@@ -7131,6 +7262,12 @@ const ScheduleTest = () => {
           const isPending = pendingChanges.some(e => e.id === info.event.id);
           if (isPending) {
             info.el.style.border = '2px dashed orange';
+          }
+
+          // Lịch vẽ lại (đổi dữ liệu, đổi bộ lọc...) thì phần tử DOM là mới,
+          // phải gắn lại viền vàng cho những lô vẫn đang được chọn.
+          if ((selectedEventsRef.current || []).some(ev => String(ev.id) === String(info.event.id))) {
+            markEventSelected(info.el);
           }
 
           info.el.addEventListener('contextmenu', (e) => {
@@ -7147,7 +7284,7 @@ const ScheduleTest = () => {
           info.el.addEventListener("dblclick", (e) => {
             e.stopPropagation();
             if (!e.ctrlKey) {
-              handleEditEventClick(info.event);
+              fcLatest.current.handleEditEventClick(info.event);
               return;
             }
 
@@ -7300,24 +7437,24 @@ const ScheduleTest = () => {
           // ✅ Khu vực cho phép kéo chọn
           container=".calendar-wrapper"
           // ✅ Các phần tử có thể được chọn (Bỏ qua sự kiện nền và ngày nghỉ)
-          selectableTargets={[".fc-event:not(.fc-bg-event):not(.fc-ngay-nghi)"]}
+          selectableTargets={SELECTO_TARGETS}
           // ✅ Phải giữ Shift mới kích hoạt (nếu không thì FullCalendar drag event)
           onDragStart={(e) => {
             if (!e.inputEvent.shiftKey) e.stop();
           }}
           selectByClick={false}
           selectFromInside={true}
-          toggleContinueSelect={["shift"]}
+          toggleContinueSelect={SELECTO_TOGGLE_KEYS}
           hitRate={0} // Changed to 0 so selection is instant upon touching
 
           // 🎯 Cập nhật viền ngay lập tức trong quá trình kéo
           onSelect={(e) => {
             e.added.forEach((el) => {
               if (el.classList.contains('fc-bg-event') || el.classList.contains('fc-ngay-nghi')) return;
-              el.style.border = "5px solid yellow";
+              markEventSelected(el);
             });
             e.removed.forEach((el) => {
-              el.style.border = "none";
+              unmarkEventSelected(el);
             });
           }}
 
@@ -7325,9 +7462,7 @@ const ScheduleTest = () => {
           onSelectEnd={(e) => {
             // 🔹 Nếu kéo ra vùng trống => bỏ chọn hết
             if (e.selected.length === 0) {
-              document.querySelectorAll(".fc-event[data-event-id]").forEach((el) => {
-                el.style.border = "none";
-              });
+              clearAllEventSelection();
               setSelectedEvents([]);
               selectedEventsRef.current = [];
               return;
