@@ -14,8 +14,12 @@ class AnnualPlanController extends Controller
     public function index()
     {
         $plans = AnnualPlan::orderBy('year', 'desc')->get();
+        $departments = \Illuminate\Support\Facades\DB::table('deparments')
+            ->whereIn('shortName', ['PXV1', 'PXV2', 'PXDN', 'PXVH', 'PXTN'])
+            ->get();
+        
         session()->put(['title' => 'KẾ HOẠCH NĂM DỰ KIẾN']);
-        return view('pages.plan.annual.index', compact('plans'));
+        return view('pages.plan.annual.index', compact('plans', 'departments'));
     }
 
     public function show($id)
@@ -393,7 +397,9 @@ class AnnualPlanController extends Controller
     {
         $plan = AnnualPlan::with('products')->findOrFail($id);
         $existingProductIds = $plan->products->pluck('finished_product_category_id')->filter()->toArray();
-        $products = \App\Models\FinishedProductCategory::with('productName');
+        $products = \App\Models\FinishedProductCategory::with('productName')
+            ->where('deparment_code', $plan->deparment_code)
+            ->where('active', 1);
 
         if (!empty($existingProductIds)) {
             $products = $products->whereNotIn('id', $existingProductIds);
@@ -428,12 +434,23 @@ class AnnualPlanController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'year' => 'required|integer|unique:annual_plans,year',
+            'year' => 'required|integer|min:2020|max:2100',
+            'deparment_code' => 'required|string',
             'description' => 'nullable|string'
         ]);
 
+        // Check unique year and department
+        $exists = AnnualPlan::where('year', $request->year)
+            ->where('deparment_code', $request->deparment_code)
+            ->exists();
+            
+        if ($exists) {
+            return redirect()->back()->withErrors(['year' => 'Kế hoạch năm ' . $request->year . ' cho phân xưởng này đã tồn tại!']);
+        }
+
         AnnualPlan::create([
             'year' => $request->year,
+            'deparment_code' => $request->deparment_code,
             'description' => $request->description,
             'created_by' => session('user')['fullName'] ?? 'System'
         ]);

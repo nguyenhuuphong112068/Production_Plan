@@ -41,6 +41,12 @@
         color: white !important;
     }
 
+    /* Dòng quá hạn biệt trữ tổng (PC/THT -> ĐG) */
+    tr.row-quarantine-total-overdue > td {
+        background-color: #fdecea !important;
+        box-shadow: inset 4px 0 0 0 #dc3545;
+    }
+
     /* Mũi tên pointer */
     .step.step-pointer .bs-stepper-circle::before {
         content: "";
@@ -170,6 +176,57 @@
                                     </div>
                                 </div>
                                 <div class="tab-pane fade" id="wip-step" role="tabpanel" aria-labelledby="wip-step-tab">
+                                    @if(isset($wipQuarantineWarnings) && $wipQuarantineWarnings->isNotEmpty())
+                                        <div class="alert alert-danger mt-3 mb-0" style="font-size: 15px;">
+                                            <h5 class="mb-2">
+                                                <i class="fas fa-exclamation-triangle mr-2"></i>
+                                                Cảnh báo quá hạn biệt trữ TỔNG
+                                                <span class="badge badge-light text-danger ml-1">{{ $wipQuarantineWarnings->count() }}</span>
+                                            </h5>
+                                            <div class="mb-2" style="font-size: 13px;">
+                                                Tổng thời gian từ khi bắt đầu <strong>Pha Chế / Trộn Hoàn Tất</strong> đến khi kết thúc
+                                                <strong>Đóng Gói</strong> không được vượt quá hạn biệt trữ tổng của bán thành phẩm.
+                                            </div>
+                                            <div style="max-height: 220px; overflow-y: auto;">
+                                                <table class="table table-sm mb-0 bg-white" style="font-size: 13px;">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Sản Phẩm</th>
+                                                            <th>Số lô</th>
+                                                            <th>Đang chờ</th>
+                                                            <th>HBT tổng</th>
+                                                            <th>Bắt đầu PC/THT</th>
+                                                            <th>Hạn kết thúc ĐG</th>
+                                                            <th>Ngày còn hạn</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        @foreach($wipQuarantineWarnings as $warning)
+                                                            <tr>
+                                                                <td>{{ $warning->product_name }}{{ $warning->intermediate_code ? ' (' . $warning->intermediate_code . ')' : '' }}</td>
+                                                                <td>{{ $warning->batch }}</td>
+                                                                <td>{{ $warning->stage_group }}</td>
+                                                                <td>{{ $warning->quarantine_total }} ngày</td>
+                                                                <td>{{ date('d/m/Y H:i', strtotime($warning->start_at)) }}</td>
+                                                                <td class="text-danger font-weight-bold">{{ date('d/m/Y H:i', strtotime($warning->deadline)) }}</td>
+                                                                <td class="font-weight-bold">
+                                                                    @if ($warning->remain_days < 0)
+                                                                        <span class="badge badge-danger p-1" style="font-size: 12px;">
+                                                                            Quá hạn {{ number_format(abs($warning->remain_days), 1) }} ngày
+                                                                        </span>
+                                                                    @else
+                                                                        <span class="badge badge-warning-dark p-1" style="font-size: 12px;">
+                                                                            Còn {{ number_format($warning->remain_days, 1) }} ngày
+                                                                        </span>
+                                                                    @endif
+                                                                </td>
+                                                            </tr>
+                                                        @endforeach
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    @endif
                                     @if($wipDatas->isEmpty())
                                         <div class="alert alert-info mt-3">Không có bán thành phẩm dở dang nào.</div>
                                     @else

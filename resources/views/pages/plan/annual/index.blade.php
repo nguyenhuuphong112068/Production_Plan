@@ -36,11 +36,21 @@
                     @if (session('success'))
                         <div class="alert alert-success mb-3">{{ session('success') }}</div>
                     @endif
+                    @if ($errors->any())
+                        <div class="alert alert-danger mb-3">
+                            <ul class="mb-0">
+                                @foreach ($errors->all() as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
 
                     <table class="table table-bordered table-striped" style="font-size: 20px">
                         <thead>
                             <tr>
                                 <th>Năm</th>
+                                <th>Phân Xưởng</th>
                                 <th>Ghi chú</th>
                                 <th>Người tạo</th>
                                 <th>Ngày tạo</th>
@@ -51,6 +61,7 @@
                             @foreach ($plans as $plan)
                                 <tr>
                                     <td>{{ $plan->year }}</td>
+                                    <td>{{ $plan->deparment_code }}</td>
                                     <td>{{ $plan->description }}</td>
                                     <td>{{ $plan->created_by }}</td>
                                     <td>{{ $plan->created_at->format('d/m/Y') }}</td>
@@ -62,7 +73,7 @@
                             @endforeach
                             @if ($plans->isEmpty())
                                 <tr>
-                                    <td colspan="5" class="text-center">Chưa có kế hoạch nào</td>
+                                    <td colspan="6" class="text-center">Chưa có kế hoạch nào</td>
                                 </tr>
                             @endif
                         </tbody>
@@ -88,6 +99,14 @@
                                 <label>Năm <span class="text-danger">*</span></label>
                                 <input type="number" name="year" class="form-control" required min="2020"
                                     max="2100" value="{{ date('Y') + 1 }}">
+                            </div>
+                            <div class="form-group">
+                                <label>Phân xưởng <span class="text-danger">*</span></label>
+                                <select name="deparment_code" class="form-control" required>
+                                    @foreach($departments as $dept)
+                                        <option value="{{ $dept->shortName }}">{{ $dept->name }}</option>
+                                    @endforeach
+                                </select>
                             </div>
                             <div class="form-group">
                                 <label>Ghi chú</label>

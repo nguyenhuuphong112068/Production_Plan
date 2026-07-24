@@ -8,7 +8,13 @@ use Illuminate\Database\Eloquent\Model;
 class AnnualPlan extends Model
 {
     use HasFactory;
-    protected $guarded = [];
+    
+    protected $fillable = [
+        'year',
+        'description',
+        'created_by',
+        'deparment_code'
+    ];
 
     public function products()
     {

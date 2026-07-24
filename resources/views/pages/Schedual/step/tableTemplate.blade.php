@@ -9,6 +9,9 @@
             <th>Tiến Trình</th>
             @if (isset($isWip) && $isWip)
                 <th style="min-width: 180px;">Số ngày còn HBT</th>
+                <th style="min-width: 200px;" title="Tổng thời gian biệt trữ từ khi bắt đầu Pha Chế / Trộn Hoàn Tất đến khi kết thúc Đóng Gói">
+                    HBT Tổng (PC/THT &rarr; ĐG)
+                </th>
             @endif
             <th>Tổng kết</th>
         </tr>
@@ -67,10 +70,98 @@
                 // Format gọn lại
                 $totalProductionHours = round($totalProductionHours, 2);
                 $totalCleaningHours = round($totalCleaningHours, 2);
+
+                // ===== Biệt trữ TỔNG: từ khi bắt đầu Pha Chế (3) / Trộn Hoàn Tất (4) đến kết thúc Đóng Gói (7) =====
+                $qtTotalDays = is_numeric($plan->quarantine_total ?? null) ? (float) $plan->quarantine_total : 0;
+                $qtHasRule = $qtTotalDays > 0;
+                $qtTotalLabel = floor($qtTotalDays) == $qtTotalDays ? (int) $qtTotalDays : number_format($qtTotalDays, 1);
+                $qtStartStage = null;
+                $qtDeadlineTs = null;
+                $qtStatusText = '--';
+                $qtBadgeClass = '';
+                $qtNote = null;
+                $qtOverdue = false;
+                $qtOrder = 999999;
+
+                if ($qtHasRule) {
+                    // Mốc bắt đầu: công đoạn 3 nếu có, không thì công đoạn 4
+                    $qtStartStage = $stages
+                        ->whereIn('stage_code', [3, 4])
+                        ->filter(function ($s) {
+                            return !empty($s->start);
+                        })
+                        ->sortBy('stage_code')
+                        ->first();
+
+                    // Mốc kết thúc: đóng gói (có thể có nhiều lệnh ĐG khi chia % đóng gói)
+                    $qtPackStages = $stages->where('stage_code', 7);
+                    $qtPackEnded = $qtPackStages->filter(function ($s) {
+                        return !empty($s->end);
+                    });
+                    $qtPackEndTs = $qtPackEnded->isNotEmpty()
+                        ? $qtPackEnded
+                            ->map(function ($s) {
+                                return strtotime($s->end);
+                            })
+                            ->max()
+                        : null;
+                    $qtPackFinished =
+                        $qtPackStages->isNotEmpty() &&
+                        $qtPackStages->filter(function ($s) {
+                            return $s->finished != 1;
+                        })->isEmpty();
+
+                    if ($qtStartStage) {
+                        $qtStartTs = strtotime($qtStartStage->start);
+                        $qtDeadlineTs = $qtStartTs + (int) round($qtTotalDays * 86400);
+
+                        if ($qtPackFinished && $qtPackEndTs) {
+                            // Đã đóng gói xong -> chốt kết quả
+                            $qtUsedDays = ($qtPackEndTs - $qtStartTs) / 86400;
+                            $qtOverdue = $qtPackEndTs > $qtDeadlineTs;
+                            $qtStatusText = $qtOverdue
+                                ? 'Vượt ' . number_format($qtUsedDays - $qtTotalDays, 1) . ' ngày'
+                                : 'Đạt ' . number_format($qtUsedDays, 1) . '/' . $qtTotalLabel . ' ngày';
+                            $qtBadgeClass = $qtOverdue ? 'badge-danger' : 'badge-success';
+                            $qtOrder = $qtOverdue ? $qtTotalDays - $qtUsedDays : 999998;
+                        } else {
+                            // Chưa đóng gói xong -> đếm ngược tới hạn
+                            $qtRemainDays = ($qtDeadlineTs - time()) / 86400;
+                            $qtOverdue = $qtRemainDays < 0;
+                            $qtStatusText = $qtOverdue
+                                ? 'Quá hạn ' . number_format(abs($qtRemainDays), 1) . ' ngày'
+                                : 'Còn ' . number_format($qtRemainDays, 1) . ' ngày';
+                            $qtOrder = $qtRemainDays;
+
+                            if ($qtRemainDays < 1) {
+                                $qtBadgeClass = 'badge-danger';
+                            } elseif ($qtRemainDays < 3) {
+                                $qtBadgeClass = 'badge-warning-dark';
+                            } elseif ($qtRemainDays < 5) {
+                                $qtBadgeClass = 'badge-warning-light';
+                            } else {
+                                $qtBadgeClass = 'badge-success';
+                            }
+
+                            // Lịch đóng gói dự kiến đã vượt hạn biệt trữ tổng
+                            if (!$qtOverdue && $qtPackEndTs && $qtPackEndTs > $qtDeadlineTs) {
+                                $qtNote = 'Lịch ĐG ' . date('d/m H:i', $qtPackEndTs) . ' vượt hạn';
+                                $qtBadgeClass = 'badge-danger';
+                                $qtOverdue = true;
+                            }
+                        }
+                    } else {
+                        $qtStatusText = 'Chưa bắt đầu PC/THT';
+                        $qtBadgeClass = 'badge-secondary';
+                        $qtOrder = 999997;
+                    }
+                }
+
+                $qtRowWarning = isset($isWip) && $isWip && $qtHasRule && $qtOverdue;
             @endphp
 
             {{-- Hàng 1: Stepper --}}
-            <tr>
+            <tr class="{{ $qtRowWarning ? 'row-quarantine-total-overdue' : '' }}">
                 <td>{{ $loop->iteration }}</td>
                 <td>{{ $plan->product_name . ($plan->intermediate_code ? ' (' . $plan->intermediate_code . ')' : '') . '-' . $plan->batch_qty . ' ' . $plan->unit_batch_qty }}
                 </td>
@@ -467,6 +558,35 @@
                             </span>
                         @else
                             <span class="text-muted">{{ $remainingText }}</span>
+                        @endif
+                    </td>
+                    <td data-order="{{ $qtOrder }}" class="text-center align-middle" style="font-size: 18px;">
+                        @if (!$qtHasRule)
+                            <span class="text-muted">--</span>
+                        @else
+                            @if ($qtOverdue)
+                                <div class="mb-1" style="font-size: 13px; color: #dc3545; font-weight: 600;">
+                                    <i class="fas fa-exclamation-triangle"></i> Quá hạn biệt trữ tổng
+                                </div>
+                            @endif
+                            <span class="badge {{ $qtBadgeClass }} p-2" style="font-size: 16px; border-radius: 4px;">
+                                {{ $qtStatusText }}
+                            </span>
+                            <div class="mt-1" style="font-size: 11px; color: #888;">
+                                HBT tổng: {{ $qtTotalLabel }} ngày
+                            </div>
+                            @if ($qtStartStage)
+                                <div style="font-size: 11px; color: #888;">
+                                    Từ {{ $qtStartStage->stage_name ?? 'CĐ ' . $qtStartStage->stage_code }}:
+                                    {{ date('d/m H:i', strtotime($qtStartStage->start)) }}
+                                </div>
+                                <div style="font-size: 11px; color: {{ $qtOverdue ? '#dc3545' : '#888' }};">
+                                    Hạn ĐG: {{ date('d/m/Y H:i', $qtDeadlineTs) }}
+                                </div>
+                            @endif
+                            @if ($qtNote)
+                                <div style="font-size: 11px; color: #dc3545; font-weight: 600;">{{ $qtNote }}</div>
+                            @endif
                         @endif
                     </td>
                 @endif
