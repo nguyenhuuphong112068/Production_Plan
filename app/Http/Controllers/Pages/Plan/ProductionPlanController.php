@@ -4198,6 +4198,7 @@ class ProductionPlanController extends Controller
                                                         ->update($updateFields);
                                         }
                                 }
+                        }
                 } catch (\Exception $e) {
                         Log::error('Error updating order numbers from MMS: ' . $e->getMessage());
                 }
