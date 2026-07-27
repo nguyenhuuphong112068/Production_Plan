@@ -1,3 +1,3 @@
 <?php
-$schema = Schema::getColumnListing('room_sheet');
+$schema = Schema::getColumnListing('stage_plan');
 echo implode(', ', $schema);
