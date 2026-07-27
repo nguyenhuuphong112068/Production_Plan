@@ -73,7 +73,7 @@ class WeeklyReportController extends Controller
             );
         }
 
-        $time = $this->getOperatedTime($start, $end);
+        $time = $this->getOperatedTime($start, $end, $offDays);
         $yield_actual =    $this->yield_actual($start, $end);
         $yield_theory =   $this->yield_theory($start, $end);
 
@@ -119,7 +119,8 @@ class WeeklyReportController extends Controller
             $row->cleaning_hours = $time['cleaning_hours'] ?? 0;
             $row->busy_hours     = $time['busy_hours']    ?? 0;
             $row->free_hours     = $time['free_hours']    ?? 0;
-            $row->day_in_weeks      = $totalWorkingDays ?? 0;
+            $row->extra_days     = $time['extra_days'] ?? 0;
+            $row->day_in_weeks   = $row->day_in_week ?? ($totalWorkingDays + $row->extra_days);
 
 
             /* ================= YIELD ================= */
@@ -133,7 +134,7 @@ class WeeklyReportController extends Controller
             $row->OEE = $row->output_thery > 0 ? round(($row->yield_actual / $row->output_thery) * 100) : 0;
 
             $row->shift = $row->shift ?? 3; // Mặc định shift = 3 nếu trống
-            $row->H_in_week = $row->shift * $totalWorkingDays  * 8;
+            $row->H_in_week = $row->shift * $row->day_in_weeks  * 8;
 
             $row->loading = $row->H_in_week > 0 ? round($row->work_hours /  $row->H_in_week * 100, 2) : 0;
 
@@ -153,7 +154,7 @@ class WeeklyReportController extends Controller
         ]);
     }
 
-    public function getOperatedTime($startDate, $endDate)
+    public function getOperatedTime($startDate, $endDate, $offDays = [])
     {
         $start = Carbon::parse($startDate);
         $end   = Carbon::parse($endDate);
@@ -218,6 +219,28 @@ class WeeklyReportController extends Controller
             }
             $workMerged  = $mergeIntervals($workIntervals);
             $cleanMerged = $mergeIntervals($cleanIntervals);
+            
+            // Tính số ngày làm việc thêm vào cuối tuần/ngày nghỉ
+            $extraDays = 0;
+            if (!empty($offDays)) {
+                $workedDates = [];
+                foreach ($workMerged as $interval) {
+                    $dtStart = Carbon::createFromTimestamp($interval[0]);
+                    $dtEnd = Carbon::createFromTimestamp($interval[1]);
+                    $currentDt = $dtStart->copy()->startOfDay();
+                    $endDt = $dtEnd->copy()->startOfDay();
+                    while ($currentDt <= $endDt) {
+                        $workedDates[$currentDt->toDateString()] = true;
+                        $currentDt->addDay();
+                    }
+                }
+                foreach (array_keys($workedDates) as $workedDate) {
+                    if (in_array($workedDate, $offDays)) {
+                        $extraDays++;
+                    }
+                }
+            }
+
             $workSeconds = array_sum(array_map(fn($i) => max(0, $i[1] - $i[0]), $workMerged));
             $cleanSeconds = array_sum(array_map(fn($i) => max(0, $i[1] - $i[0]), $cleanMerged));
             $busySeconds = $workSeconds + $cleanSeconds;
@@ -229,6 +252,7 @@ class WeeklyReportController extends Controller
                 'cleaning_hours'  => round($cleanSeconds / 3600, 2),
                 'busy_hours'      => round($busySeconds / 3600, 2),
                 'free_hours'      => round($freeSeconds / 3600, 2),
+                'extra_days'      => $extraDays,
             ];
         }
         return collect($result);

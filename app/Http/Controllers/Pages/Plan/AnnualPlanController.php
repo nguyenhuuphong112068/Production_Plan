@@ -142,8 +142,9 @@ class AnnualPlanController extends Controller
 
         // --- Tính toán BTP dở dang (WIP) từ plan_master ---
         $wipQuery = "
-            SELECT 
+            SELECT
                 pm.product_caterogy_id AS fpc_id,
+                pm.order_number_R1,
                 COALESCE(
                     CASE WHEN pm.order_number_R1 IS NOT NULL AND pm.order_number_R1 <> '' THEN pm.create_at_order_number ELSE NULL END,
                     weighing_sp.start_date
