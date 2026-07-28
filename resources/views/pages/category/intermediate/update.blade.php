@@ -319,36 +319,32 @@
 
 
         // Xử lý check
-        // Biệt trữ từng công đoạn và biệt trữ tổng (PC -> ĐGSC) là độc lập: được phép nhập cả hai.
+        // Mỗi dòng (kể cả dòng biệt trữ tổng PC -> ĐGSC) tự quản ô nhập của chính nó,
+        // nên biệt trữ từng công đoạn và biệt trữ tổng hoàn toàn độc lập: nhập được cả hai.
+        // Chỉ thao tác trong phạm vi #update_modal để không đụng các modal khác dùng trùng id.
+        const $updateModal = $('#update_modal');
+
         function updateInputs() {
-            // Từng công đoạn: chỉ mở/khoá theo đúng checkbox của chính công đoạn đó
-            for (let i = 1; i <= 5; i++) {
-                const cb = $("#update_checkbox" + i);
-                const row = cb.closest(".form-group.row");
-                const input = row.find(".step-input");
+            $updateModal.find('.step-checkbox').each(function() {
+                const cb = $(this);
+                const row = cb.closest('.form-group.row');
+                const input = row.find('.step-input');
 
-                if (cb.is(":checked")) {
-                    input.prop("readonly", false);
-                    row.find(".step-ratio").show();
+                if (cb.is(':checked')) {
+                    input.prop('readonly', false);
+                    row.find('.step-ratio').show();
                 } else {
-                    input.val(0).prop("readonly", true);
-                    row.find(".step-ratio").hide();
+                    input.val(0).prop('readonly', true);
+                    row.find('.step-ratio').hide();
                 }
-            }
-
-            // Biệt trữ tổng: chỉ phụ thuộc checkbox6, không khoá các công đoạn khác
-            const totalRow = $("#update_checkbox6").closest(".form-group.row");
-            if ($("#update_checkbox6").is(":checked")) {
-                totalRow.find(".step-input").prop("readonly", false);
-            } else {
-                totalRow.find(".step-input").val(0).prop("readonly", true);
-            }
+            });
         }
 
-        // Lắng nghe thay đổi của tất cả checkbox
-        $(".step-checkbox, #update_checkbox6").on("change", function() {
-            updateInputs();
-        });
+        // Lắng nghe thay đổi của các checkbox trong chính modal này
+        $updateModal.on('change', '.step-checkbox', updateInputs);
+
+        // Nút sửa nạp dữ liệu trước khi modal hiện -> đồng bộ lại trạng thái ô nhập sau đó
+        $updateModal.on('shown.bs.modal', updateInputs);
 
         // Chạy khi load trang
         updateInputs();

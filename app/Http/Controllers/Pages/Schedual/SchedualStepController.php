@@ -313,10 +313,13 @@ class SchedualStepController extends Controller
         // Theo dõi biệt trữ TỪNG CÔNG ĐOẠN: khoảng chờ từ khi kết thúc một công đoạn
         // đến khi bắt đầu công đoạn kế tiếp không được vượt quá chuẩn biệt trữ của công đoạn đó.
         // Liệt kê các khoảng còn đang chờ (công đoạn sau chưa bắt đầu) và các khoảng đã đóng nhưng bị quá hạn.
+        // Chỉ theo dõi các sản phẩm nhạy cảm - tức có khai báo biệt trữ tổng (quarantine_total > 0).
         $wipStageQuarantineWarnings = collect();
         foreach ($wipDatas as $stageName => $groupStages) {
             foreach ($groupStages as $plan_master_id => $stages) {
                 $plan = $stages->first();
+
+                if (!is_numeric($plan->quarantine_total ?? null) || $plan->quarantine_total <= 0) continue;
 
                 foreach ($stages as $stage) {
                     $stdInMinutes = $stageQuarantineMinutes($stage);

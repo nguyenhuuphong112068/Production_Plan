@@ -427,23 +427,17 @@
                 .bootstrapSwitch('state', button.data('quarantine_time_unit'));
 
 
-            // Biệt trữ từng công đoạn và biệt trữ tổng độc lập nhau: nạp đủ cả hai, mỗi ô
-            // chỉ khoá theo đúng công đoạn của chính nó.
-            modal.find('input[name="quarantine_weight"]').val(button.data('quarantine_weight'))
-                .prop('readonly', !isChecked(button.data('weight_1')));
-            modal.find('input[name="quarantine_preparing"]').val(button.data('quarantine_preparing'))
-                .prop('readonly', !isChecked(button.data('prepering')));
-            modal.find('input[name="quarantine_blending"]').val(button.data('quarantine_blending'))
-                .prop('readonly', !isChecked(button.data('blending')));
-            modal.find('input[name="quarantine_forming"]').val(button.data('quarantine_forming'))
-                .prop('readonly', !isChecked(button.data('forming')));
-            modal.find('input[name="quarantine_coating"]').val(button.data('quarantine_coating'))
-                .prop('readonly', !isChecked(button.data('coating')));
+            // Biệt trữ từng công đoạn và biệt trữ tổng độc lập nhau: nạp đủ giá trị cả hai.
+            // Việc mở/khoá từng ô do updateInputs() của #update_modal đảm nhiệm (chạy ở shown.bs.modal).
+            modal.find('input[name="quarantine_weight"]').val(button.data('quarantine_weight'));
+            modal.find('input[name="quarantine_preparing"]').val(button.data('quarantine_preparing'));
+            modal.find('input[name="quarantine_blending"]').val(button.data('quarantine_blending'));
+            modal.find('input[name="quarantine_forming"]').val(button.data('quarantine_forming'));
+            modal.find('input[name="quarantine_coating"]').val(button.data('quarantine_coating'));
 
-            const hasTotal = button.data('quarantine_total') > 0;
-            modal.find('input[name="quarantine_total"]').val(button.data('quarantine_total') || 0)
-                .prop('readonly', !hasTotal);
-            modal.find('input[name="quarantine_total_checked"]').prop('checked', hasTotal);
+            modal.find('input[name="quarantine_total"]').val(button.data('quarantine_total') || 0);
+            modal.find('input[name="quarantine_total_checked"]')
+                .prop('checked', button.data('quarantine_total') > 0);
 
         });
 
