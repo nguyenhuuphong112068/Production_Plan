@@ -196,33 +196,36 @@
                             <!-- Thời Gian Biệt Trữ (gộp chung 1 cột, ghi tên công đoạn phía trước) -->
                             <td class="text-left align-middle col-quarantine-time">
                                 <div class="d-flex flex-column align-items-start">
+                                    {{-- Biệt trữ từng công đoạn và biệt trữ tổng có thể cùng tồn tại --}}
+                                    @if ($data->weight_1 && $data->weight_1 != '0')
+                                        <span>Cân NL: {{ $data->quarantine_weight . ' ' . $quarantine_time_unit }}</span>
+                                    @endif
+                                    @if ($data->weight_2)
+                                        <span>
+                                            @if (session('user')['production_code'] == 'PXTN')
+                                                Xử lý Bao Bì: {{ '20 ngày' }}
+                                            @else
+                                                Cân NL Khác: {{ '45 ngày' }}
+                                            @endif
+                                        </span>
+                                    @endif
+                                    @if ($data->prepering && $data->prepering != '0')
+                                        <span>PC: {{ $data->quarantine_preparing . ' ' . $quarantine_time_unit }}</span>
+                                    @endif
+                                    @if ($data->blending && $data->blending != '0')
+                                        <span>THT: {{ $data->quarantine_blending . ' ' . $quarantine_time_unit }}</span>
+                                    @endif
+                                    @if ($data->forming && $data->forming != '0')
+                                        <span>ĐH: {{ $data->quarantine_forming . ' ' . $quarantine_time_unit }}</span>
+                                    @endif
+                                    @if ($data->coating && $data->coating != '0')
+                                        <span>BP: {{ $data->quarantine_coating . ' ' . $quarantine_time_unit }}</span>
+                                    @endif
                                     @if ($data->quarantine_total > 0)
-                                        <span>Tổng: {{ $data->quarantine_total . ' ' . $quarantine_time_unit }}</span>
-                                    @else
-                                        @if ($data->weight_1 && $data->weight_1 != '0')
-                                            <span>Cân NL: {{ $data->quarantine_weight . ' ' . $quarantine_time_unit }}</span>
-                                        @endif
-                                        @if ($data->weight_2)
-                                            <span>
-                                                @if (session('user')['production_code'] == 'PXTN')
-                                                    Xử lý Bao Bì: {{ '20 ngày' }}
-                                                @else
-                                                    Cân NL Khác: {{ '45 ngày' }}
-                                                @endif
-                                            </span>
-                                        @endif
-                                        @if ($data->prepering && $data->prepering != '0')
-                                            <span>PC: {{ $data->quarantine_preparing . ' ' . $quarantine_time_unit }}</span>
-                                        @endif
-                                        @if ($data->blending && $data->blending != '0')
-                                            <span>THT: {{ $data->quarantine_blending . ' ' . $quarantine_time_unit }}</span>
-                                        @endif
-                                        @if ($data->forming && $data->forming != '0')
-                                            <span>ĐH: {{ $data->quarantine_forming . ' ' . $quarantine_time_unit }}</span>
-                                        @endif
-                                        @if ($data->coating && $data->coating != '0')
-                                            <span>BP: {{ $data->quarantine_coating . ' ' . $quarantine_time_unit }}</span>
-                                        @endif
+                                        <span class="text-danger font-weight-bold border-top mt-1 pt-1">
+                                            Tổng (PC&rarr;ĐGSC):
+                                            {{ $data->quarantine_total . ' ' . $quarantine_time_unit }}
+                                        </span>
                                     @endif
                                 </div>
                             </td>
@@ -424,32 +427,23 @@
                 .bootstrapSwitch('state', button.data('quarantine_time_unit'));
 
 
-            if (button.data('quarantine_total') > 0) {
-                modal.find('input[name="quarantine_weight"]').val(0).prop('readonly', true);
-                modal.find('input[name="quarantine_preparing"]').val(0).prop('readonly', true);
-                modal.find('input[name="quarantine_blending"]').val(0).prop('readonly', true);
-                modal.find('input[name="quarantine_forming"]').val(0).prop('readonly', true);
-                modal.find('input[name="quarantine_coating"]').val(0).prop('readonly', true);
+            // Biệt trữ từng công đoạn và biệt trữ tổng độc lập nhau: nạp đủ cả hai, mỗi ô
+            // chỉ khoá theo đúng công đoạn của chính nó.
+            modal.find('input[name="quarantine_weight"]').val(button.data('quarantine_weight'))
+                .prop('readonly', !isChecked(button.data('weight_1')));
+            modal.find('input[name="quarantine_preparing"]').val(button.data('quarantine_preparing'))
+                .prop('readonly', !isChecked(button.data('prepering')));
+            modal.find('input[name="quarantine_blending"]').val(button.data('quarantine_blending'))
+                .prop('readonly', !isChecked(button.data('blending')));
+            modal.find('input[name="quarantine_forming"]').val(button.data('quarantine_forming'))
+                .prop('readonly', !isChecked(button.data('forming')));
+            modal.find('input[name="quarantine_coating"]').val(button.data('quarantine_coating'))
+                .prop('readonly', !isChecked(button.data('coating')));
 
-                modal.find('input[name="quarantine_total"]').val(button.data('quarantine_total')).prop(
-                    'readonly', false);
-                modal.find('input[name="quarantine_total_checked"]').prop('checked', true)
-            } else {
-
-                modal.find('input[name="quarantine_weight"]').val(button.data('quarantine_weight'))
-                    .prop('readonly', !isChecked(button.data('weight_1')));
-                modal.find('input[name="quarantine_preparing"]').val(button.data(
-                    'quarantine_preparing')).prop('readonly', !isChecked(button.data('prepering')));
-                modal.find('input[name="quarantine_blending"]').val(button.data('quarantine_blending'))
-                    .prop('readonly', !isChecked(button.data('blending')));
-                modal.find('input[name="quarantine_forming"]').val(button.data('quarantine_forming'))
-                    .prop('readonly', !isChecked(button.data('forming')));
-                modal.find('input[name="quarantine_coating"]').val(button.data('quarantine_coating'))
-                    .prop('readonly', !isChecked(button.data('coating')));
-
-                modal.find('input[name="quarantine_total"]').val(0).prop('readonly', true);
-                modal.find('input[name="quarantine_total_checked"]').prop('checked', false)
-            }
+            const hasTotal = button.data('quarantine_total') > 0;
+            modal.find('input[name="quarantine_total"]').val(button.data('quarantine_total') || 0)
+                .prop('readonly', !hasTotal);
+            modal.find('input[name="quarantine_total_checked"]').prop('checked', hasTotal);
 
         });
 

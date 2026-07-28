@@ -1124,7 +1124,8 @@ class SchedualController extends Controller
         }
 
         /* 5️⃣ biệt trữ */
-        if ($i > 0 && $plan->quarantine_total == 0 && $plan->stage_code > 3 && $plan->stage_code < 7 && $plan->accept_quarantine == 0) {
+        // Biệt trữ từng công đoạn được kiểm tra độc lập với biệt trữ tổng (có thể khai báo cả hai)
+        if ($i > 0 && $plan->stage_code > 3 && $plan->stage_code < 7 && $plan->accept_quarantine == 0) {
 
             $prev = $plans->firstWhere('code', $plan->predecessor_code);
 

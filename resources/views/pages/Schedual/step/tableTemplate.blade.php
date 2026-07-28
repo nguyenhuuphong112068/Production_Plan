@@ -72,7 +72,9 @@
                 $totalCleaningHours = round($totalCleaningHours, 2);
 
                 // ===== Biệt trữ TỔNG: từ khi bắt đầu Pha Chế (3) / Trộn Hoàn Tất (4) đến kết thúc Đóng Gói (7) =====
-                $qtTotalDays = is_numeric($plan->quarantine_total ?? null) ? (float) $plan->quarantine_total : 0;
+                $qtTotalStd = is_numeric($plan->quarantine_total ?? null) ? (float) $plan->quarantine_total : 0;
+                // quarantine_total theo quarantine_time_unit (1 = ngày, 0 = giờ) -> quy về ngày
+                $qtTotalDays = $plan->quarantine_time_unit == 1 ? $qtTotalStd : $qtTotalStd / 24;
                 $qtHasRule = $qtTotalDays > 0;
                 $qtTotalLabel = floor($qtTotalDays) == $qtTotalDays ? (int) $qtTotalDays : number_format($qtTotalDays, 1);
                 $qtStartStage = null;

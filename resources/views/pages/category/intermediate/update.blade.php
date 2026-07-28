@@ -319,33 +319,29 @@
 
 
         // Xử lý check
+        // Biệt trữ từng công đoạn và biệt trữ tổng (PC -> ĐGSC) là độc lập: được phép nhập cả hai.
         function updateInputs() {
-            if ($("#update_checkbox6").is(":checked")) {
+            // Từng công đoạn: chỉ mở/khoá theo đúng checkbox của chính công đoạn đó
+            for (let i = 1; i <= 5; i++) {
+                const cb = $("#update_checkbox" + i);
+                const row = cb.closest(".form-group.row");
+                const input = row.find(".step-input");
 
-                // Chỉ tác động input 1-5, không đổi trạng thái checkbox
-                for (let i = 2; i <= 5; i++) {
-                    const cb = $("#update_checkbox" + i);
-                    const input = cb.closest(".form-group.row").find(".step-input");
+                if (cb.is(":checked")) {
+                    input.prop("readonly", false);
+                    row.find(".step-ratio").show();
+                } else {
                     input.val(0).prop("readonly", true);
+                    row.find(".step-ratio").hide();
                 }
-                $("#update_checkbox6").closest(".form-group.row").find(".step-input").prop("readonly", false);
+            }
+
+            // Biệt trữ tổng: chỉ phụ thuộc checkbox6, không khoá các công đoạn khác
+            const totalRow = $("#update_checkbox6").closest(".form-group.row");
+            if ($("#update_checkbox6").is(":checked")) {
+                totalRow.find(".step-input").prop("readonly", false);
             } else {
-                // Quay lại logic cũ
-
-                for (let i = 1; i <= 5; i++) {
-                    const cb = $("#update_checkbox" + i);
-                    const input = cb.closest(".form-group.row").find(".step-input");
-
-                    if (cb.is(":checked")) {
-                        input.prop("readonly", false);
-                        cb.closest(".form-group.row").find(".step-ratio").show();
-                    } else {
-                        input.val(0).prop("readonly", true);
-                        cb.closest(".form-group.row").find(".step-ratio").hide();
-                    }
-                }
-                $("#update_checkbox6").closest(".form-group.row").find(".step-input").val(0).prop("readonly",
-                    true);
+                totalRow.find(".step-input").val(0).prop("readonly", true);
             }
         }
 

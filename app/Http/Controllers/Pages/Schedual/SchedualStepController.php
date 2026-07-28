@@ -93,6 +93,51 @@ class SchedualStepController extends Controller
 
         $allDatas = $datas;
 
+        // Chuẩn biệt trữ của từng công đoạn, quy về phút theo cấu hình danh mục BTP.
+        // quarantine_time_unit: 1 = ngày, 0 = giờ. Riêng "Cân NL Khác" (stage 2) là hằng số 45 ngày.
+        $stageQuarantineMinutes = function ($stage) {
+            switch ((int) $stage->stage_code) {
+                case 1:
+                    $std = $stage->quarantine_weight;
+                    break;
+                case 2:
+                    return 45 * 24 * 60;
+                case 3:
+                    $std = $stage->quarantine_preparing;
+                    break;
+                case 4:
+                    $std = $stage->quarantine_blending;
+                    break;
+                case 5:
+                    $std = $stage->quarantine_forming;
+                    break;
+                case 6:
+                    $std = $stage->quarantine_coating;
+                    break;
+                default:
+                    return null;
+            }
+
+            if (!is_numeric($std) || $std <= 0) return null;
+
+            return $std * (($stage->quarantine_time_unit == 1) ? 24 * 60 : 60);
+        };
+
+        // Hiển thị khoảng thời gian (phút) dưới dạng "x ngày y giờ" cho dễ đọc
+        $formatDuration = function ($minutes) {
+            $minutes = (int) round(abs($minutes));
+            $days  = intdiv($minutes, 1440);
+            $hours = intdiv($minutes % 1440, 60);
+            $mins  = $minutes % 60;
+
+            $parts = [];
+            if ($days)  $parts[] = $days . ' ngày';
+            if ($hours) $parts[] = $hours . ' giờ';
+            if (!$days && !$hours) $parts[] = $mins . ' phút';
+
+            return implode(' ', $parts);
+        };
+
         $filteredDatas = collect();
         if ($request->has('filter_overdue') && $request->filter_overdue == '1') {
             foreach ($datas as $plan_master_id => $stages) {
@@ -110,17 +155,9 @@ class SchedualStepController extends Controller
                     $next = $stages->firstWhere('code', $stage->nextcessor_code);
                     if (!$next || $next->finished == 1) continue;
 
-                    $stdValue = null;
-                    if ($stage->stage_code == 1) $stdValue = $stage->quarantine_weight;
-                    elseif ($stage->stage_code == 2) $stdValue = 45; // Cân NL Khác: mặc định biệt trữ 45 ngày
-                    elseif ($stage->stage_code == 3) $stdValue = $stage->quarantine_preparing;
-                    elseif ($stage->stage_code == 4) $stdValue = $stage->quarantine_blending;
-                    elseif ($stage->stage_code == 5) $stdValue = $stage->quarantine_forming;
-                    elseif ($stage->stage_code == 6) $stdValue = $stage->quarantine_coating;
-                    
-                    if ($stage->end && $stdValue !== null && $stdValue > 0) {
-                        $stdInMinutes = ($stage->quarantine_time_unit == 1) ? $stdValue * 24 * 60 : $stdValue * 60;
-                        
+                    $stdInMinutes = $stageQuarantineMinutes($stage);
+
+                    if ($stage->end && $stdInMinutes) {
                         if (!$next->start) {
                             $endTs = strtotime($stage->end);
                             $nowTs = time();
@@ -273,6 +310,82 @@ class SchedualStepController extends Controller
             return $stageOrder[$stageName] ?? 99;
         });
 
+        // Theo dõi biệt trữ TỪNG CÔNG ĐOẠN: khoảng chờ từ khi kết thúc một công đoạn
+        // đến khi bắt đầu công đoạn kế tiếp không được vượt quá chuẩn biệt trữ của công đoạn đó.
+        // Liệt kê các khoảng còn đang chờ (công đoạn sau chưa bắt đầu) và các khoảng đã đóng nhưng bị quá hạn.
+        $wipStageQuarantineWarnings = collect();
+        foreach ($wipDatas as $stageName => $groupStages) {
+            foreach ($groupStages as $plan_master_id => $stages) {
+                $plan = $stages->first();
+
+                foreach ($stages as $stage) {
+                    $stdInMinutes = $stageQuarantineMinutes($stage);
+                    if (!$stdInMinutes || empty($stage->end) || empty($stage->nextcessor_code)) continue;
+
+                    $next = $stages->firstWhere('code', $stage->nextcessor_code);
+                    if (!$next) continue;
+
+                    $endTs      = strtotime($stage->end);
+                    $deadlineTs = $endTs + (int) round($stdInMinutes * 60);
+
+                    // Khoảng biệt trữ "đóng" khi công đoạn kế tiếp đã bắt đầu; ngược lại vẫn đang chờ đến hiện tại.
+                    $nextStartTs = !empty($next->start) ? strtotime($next->start) : null;
+                    $isClosed    = $nextStartTs !== null;
+                    $refTs       = $nextStartTs ?? time();
+
+                    $waitMinutes   = ($refTs - $endTs) / 60;
+                    $remainMinutes = ($deadlineTs - $refTs) / 60;
+                    $isOverdue     = $refTs > $deadlineTs;
+
+                    // Khoảng đã đóng và đạt chuẩn thì không cần cảnh báo nữa
+                    if ($isClosed && !$isOverdue) continue;
+
+                    if ($isOverdue) {
+                        $statusKey = 'overdue';
+                    } elseif ($remainMinutes < $stdInMinutes * 0.25) {
+                        $statusKey = 'urgent';   // còn dưới 25% hạn biệt trữ
+                    } elseif ($remainMinutes < $stdInMinutes * 0.5) {
+                        $statusKey = 'near';     // còn dưới 50% hạn biệt trữ
+                    } else {
+                        $statusKey = 'ok';
+                    }
+
+                    $wipStageQuarantineWarnings->push((object) [
+                        'plan_master_id'    => $plan_master_id,
+                        'stage_group'       => $stageName,
+                        'product_name'      => $plan->product_name,
+                        'intermediate_code' => $plan->intermediate_code,
+                        'batch'             => $plan->batch,
+                        'stage_name'        => $stage->stage_name ?? ($stage_name[$stage->stage_code]->stage ?? '--'),
+                        'next_stage_name'   => $next->stage_name ?? ($stage_name[$next->stage_code]->stage ?? '--'),
+                        'std_text'          => $formatDuration($stdInMinutes),
+                        'end_at'            => $stage->end,
+                        'deadline'          => date('Y-m-d H:i:s', $deadlineTs),
+                        'next_start_at'     => $nextStartTs ? date('Y-m-d H:i:s', $nextStartTs) : null,
+                        'waited_text'       => $formatDuration($waitMinutes),
+                        'remain_minutes'    => $remainMinutes,
+                        'remain_text'       => $formatDuration($remainMinutes),
+                        'is_closed'         => $isClosed,
+                        'is_overdue'        => $isOverdue,
+                        'status'            => $statusKey,
+                    ]);
+                }
+            }
+        }
+
+        // Quá hạn nhiều nhất / sắp hết hạn lên đầu
+        $wipStageQuarantineWarnings = $wipStageQuarantineWarnings
+            ->sortBy('remain_minutes')
+            ->values();
+
+        $wipStageQuarantineSummary = [
+            'total'   => $wipStageQuarantineWarnings->count(),
+            'overdue' => $wipStageQuarantineWarnings->where('status', 'overdue')->count(),
+            'urgent'  => $wipStageQuarantineWarnings->where('status', 'urgent')->count(),
+            'near'    => $wipStageQuarantineWarnings->where('status', 'near')->count(),
+            'ok'      => $wipStageQuarantineWarnings->where('status', 'ok')->count(),
+        ];
+
         // Theo dõi biệt trữ TỔNG: từ khi bắt đầu Pha Chế (3) / Trộn Hoàn Tất (4)
         // đến khi kết thúc Đóng Gói (7) không được vượt quá intermediate_category.quarantine_total (ngày).
         // Liệt kê MỌI lô BTP dở dang có quarantine_total > 0 để theo dõi xuyên suốt, không chỉ lô đã quá hạn.
@@ -280,8 +393,11 @@ class SchedualStepController extends Controller
         foreach ($wipDatas as $stageName => $groupStages) {
             foreach ($groupStages as $plan_master_id => $stages) {
                 $plan = $stages->first();
-                $totalDays = is_numeric($plan->quarantine_total ?? null) ? (float) $plan->quarantine_total : 0;
-                if ($totalDays <= 0) continue;
+                $totalStd = is_numeric($plan->quarantine_total ?? null) ? (float) $plan->quarantine_total : 0;
+                if ($totalStd <= 0) continue;
+
+                // quarantine_total cũng theo quarantine_time_unit (1 = ngày, 0 = giờ)
+                $totalMinutes = $totalStd * (($plan->quarantine_time_unit == 1) ? 24 * 60 : 60);
 
                 $startStage = $stages->whereIn('stage_code', [3, 4])
                     ->filter(fn($s) => !empty($s->start))
@@ -299,7 +415,7 @@ class SchedualStepController extends Controller
                 $statusKey  = 'not_started'; // chưa bắt đầu PC/THT
 
                 if ($startStage) {
-                    $deadlineTs = strtotime($startStage->start) + (int) round($totalDays * 86400);
+                    $deadlineTs = strtotime($startStage->start) + (int) round($totalMinutes * 60);
                     $remainDays = ($deadlineTs - time()) / 86400;
 
                     if ($packFinished && $packEndTs) {
@@ -325,7 +441,8 @@ class SchedualStepController extends Controller
                     'product_name'     => $plan->product_name,
                     'intermediate_code' => $plan->intermediate_code,
                     'batch'            => $plan->batch,
-                    'quarantine_total' => $totalDays,
+                    'quarantine_total' => $totalStd,
+                    'quarantine_total_text' => $formatDuration($totalMinutes),
                     'start_at'         => $startStage->start ?? null,
                     'start_stage_name' => $startStage->stage_name ?? null,
                     'deadline'         => $deadlineTs ? date('Y-m-d H:i:s', $deadlineTs) : null,
@@ -368,7 +485,9 @@ class SchedualStepController extends Controller
             'wipDatas' => $wipDatas,
             'wipQuarantineWarnings' => $wipQuarantineWarnings,
             'wipQuarantineWarningDatas' => $wipQuarantineWarningDatas,
-            'wipQuarantineSummary' => $wipQuarantineSummary
+            'wipQuarantineSummary' => $wipQuarantineSummary,
+            'wipStageQuarantineWarnings' => $wipStageQuarantineWarnings,
+            'wipStageQuarantineSummary' => $wipStageQuarantineSummary
         ]);
     }
 }

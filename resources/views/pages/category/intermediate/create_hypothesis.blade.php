@@ -275,29 +275,26 @@
 
 
         // Xử lý check
+        // Biệt trữ từng công đoạn và biệt trữ tổng (PC -> ĐGSC) là độc lập: được phép nhập cả hai.
         function updateInputs() {
-            if ($("#checkbox6").is(":checked")) {
-                // Chỉ tác động input 1-5, không đổi trạng thái checkbox
-                for (let i = 1; i <= 5; i++) {
-                    const cb = $("#checkbox" + i);
-                    const input = cb.closest(".form-group.row").find(".step-input");
+            // Từng công đoạn: chỉ mở/khoá theo đúng checkbox của chính công đoạn đó
+            for (let i = 1; i <= 5; i++) {
+                const cb = $("#checkbox" + i);
+                const input = cb.closest(".form-group.row").find(".step-input");
+
+                if (cb.is(":checked")) {
+                    input.prop("readonly", false);
+                } else {
                     input.val(0).prop("readonly", true);
                 }
-                $("#checkbox6").closest(".form-group.row").find(".step-input").prop("readonly", false);
+            }
+
+            // Biệt trữ tổng: chỉ phụ thuộc checkbox6, không khoá các công đoạn khác
+            const totalRow = $("#checkbox6").closest(".form-group.row");
+            if ($("#checkbox6").is(":checked")) {
+                totalRow.find(".step-input").prop("readonly", false);
             } else {
-                // Quay lại logic cũ
-
-                for (let i = 1; i <= 5; i++) {
-                    const cb = $("#checkbox" + i);
-                    const input = cb.closest(".form-group.row").find(".step-input");
-
-                    if (cb.is(":checked")) {
-                        input.prop("readonly", false);
-                    } else {
-                        input.val(0).prop("readonly", true);
-                    }
-                }
-                $("#checkbox6").closest(".form-group.row").find(".step-input").val(0).prop("readonly", true);
+                totalRow.find(".step-input").val(0).prop("readonly", true);
             }
         }
 

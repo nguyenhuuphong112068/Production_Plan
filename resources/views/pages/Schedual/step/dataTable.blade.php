@@ -197,6 +197,122 @@
                                 </div>
                                 <div class="tab-pane fade" id="wip-step" role="tabpanel"
                                     aria-labelledby="wip-step-tab">
+                                    @php
+                                        $qtStageStatusMeta = [
+                                            'overdue' => ['badge-danger', 'Quá hạn'],
+                                            'urgent' => ['badge-warning-dark', 'Sắp đến hạn'],
+                                            'near' => ['badge-warning-light', 'Cần chú ý'],
+                                            'ok' => ['badge-success', 'Trong hạn'],
+                                        ];
+                                    @endphp
+                                    @if (isset($wipStageQuarantineWarnings) && $wipStageQuarantineWarnings->isNotEmpty())
+                                        @php
+                                            $qsHasOverdue = $wipStageQuarantineSummary['overdue'] > 0;
+                                            $qsHeadClass = $qsHasOverdue
+                                                ? 'bg-danger'
+                                                : ($wipStageQuarantineSummary['urgent'] > 0
+                                                    ? 'bg-warning-dark'
+                                                    : 'bg-info');
+                                        @endphp
+                                        <div
+                                            class="card mt-3 mb-0 {{ $qsHasOverdue ? 'border-danger' : 'border-info' }}">
+                                            <div
+                                                class="card-header {{ $qsHeadClass }} text-white py-2 d-flex flex-wrap align-items-center">
+                                                <h5 class="mb-0 mr-3">
+                                                    <i class="fas fa-hourglass-half mr-2"></i>
+                                                    Theo Dõi Biệt Trữ TỪNG CÔNG ĐOẠN
+                                                    <span
+                                                        class="badge badge-light text-dark ml-1">{{ $wipStageQuarantineSummary['total'] }}
+                                                        khoảng chờ</span>
+                                                </h5>
+                                                <div class="ml-auto" style="font-size: 13px;">
+                                                    @if ($wipStageQuarantineSummary['overdue'])
+                                                        <span class="badge badge-danger p-2 ml-1">Quá hạn:
+                                                            {{ $wipStageQuarantineSummary['overdue'] }}</span>
+                                                    @endif
+                                                    @if ($wipStageQuarantineSummary['urgent'])
+                                                        <span class="badge badge-warning-dark p-2 ml-1">Sắp đến hạn:
+                                                            {{ $wipStageQuarantineSummary['urgent'] }}</span>
+                                                    @endif
+                                                    @if ($wipStageQuarantineSummary['near'])
+                                                        <span class="badge badge-warning-light p-2 ml-1">Cần chú ý:
+                                                            {{ $wipStageQuarantineSummary['near'] }}</span>
+                                                    @endif
+                                                    @if ($wipStageQuarantineSummary['ok'])
+                                                        <span class="badge badge-success p-2 ml-1">Trong hạn:
+                                                            {{ $wipStageQuarantineSummary['ok'] }}</span>
+                                                    @endif
+                                                </div>
+                                            </div>
+                                            <div class="card-body p-2">
+                                                <div style="max-height: 320px; overflow-y: auto;">
+                                                    <table class="table table-sm table-hover mb-0 bg-white"
+                                                        style="font-size: 13px;">
+                                                        <thead
+                                                            style="position: sticky; top: 0; background-color: #f4f6f9; z-index: 5;">
+                                                            <tr>
+                                                                <th>Sản Phẩm</th>
+                                                                <th>Số lô</th>
+                                                                <th>Khoảng biệt trữ</th>
+                                                                <th>HBT chuẩn</th>
+                                                                <th>Kết thúc CĐ trước</th>
+                                                                <th>Hạn vào CĐ sau</th>
+                                                                <th>Thực tế vào CĐ sau</th>
+                                                                <th>Đã chờ</th>
+                                                                <th>Còn lại</th>
+                                                                <th>Trạng thái</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            @foreach ($wipStageQuarantineWarnings as $warning)
+                                                                @php [$qsBadge, $qsLabel] = $qtStageStatusMeta[$warning->status]; @endphp
+                                                                <tr
+                                                                    class="{{ $warning->is_overdue ? 'row-quarantine-total-overdue' : '' }}">
+                                                                    <td>{{ $warning->product_name }}{{ $warning->intermediate_code ? ' (' . $warning->intermediate_code . ')' : '' }}
+                                                                    </td>
+                                                                    <td>{{ $warning->batch }}</td>
+                                                                    <td>{{ $warning->stage_name }} &rarr;
+                                                                        {{ $warning->next_stage_name }}</td>
+                                                                    <td>{{ $warning->std_text }}</td>
+                                                                    <td>{{ date('d/m/Y H:i', strtotime($warning->end_at)) }}
+                                                                    </td>
+                                                                    <td
+                                                                        class="{{ $warning->is_overdue ? 'text-danger font-weight-bold' : '' }}">
+                                                                        {{ date('d/m/Y H:i', strtotime($warning->deadline)) }}
+                                                                    </td>
+                                                                    <td>{{ $warning->next_start_at ? date('d/m/Y H:i', strtotime($warning->next_start_at)) : 'Chưa xếp' }}
+                                                                    </td>
+                                                                    <td>{{ $warning->waited_text }}</td>
+                                                                    <td class="font-weight-bold">
+                                                                        @if ($warning->remain_minutes < 0)
+                                                                            <span class="badge badge-danger p-1"
+                                                                                style="font-size: 12px;">
+                                                                                Quá hạn {{ $warning->remain_text }}
+                                                                            </span>
+                                                                        @else
+                                                                            <span class="badge {{ $qsBadge }} p-1"
+                                                                                style="font-size: 12px;">
+                                                                                Còn {{ $warning->remain_text }}
+                                                                            </span>
+                                                                        @endif
+                                                                    </td>
+                                                                    <td>
+                                                                        <span class="badge {{ $qsBadge }} p-1"
+                                                                            style="font-size: 12px;">{{ $qsLabel }}</span>
+                                                                        @if ($warning->is_closed)
+                                                                            <span class="badge badge-light border p-1"
+                                                                                style="font-size: 11px;">Đã vào CĐ
+                                                                                sau</span>
+                                                                        @endif
+                                                                    </td>
+                                                                </tr>
+                                                            @endforeach
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @endif
                                     @if (isset($wipQuarantineWarnings) && $wipQuarantineWarnings->isNotEmpty())
                                         @php
                                             $qtHasOverdue = $wipQuarantineSummary['overdue'] > 0;
@@ -276,7 +392,7 @@
                                                                     </td>
                                                                     <td>{{ $warning->batch }}</td>
                                                                     <td>{{ $warning->stage_group }}</td>
-                                                                    <td>{{ $warning->quarantine_total }} ngày</td>
+                                                                    <td>{{ $warning->quarantine_total_text }}</td>
                                                                     <td>{{ $warning->start_at ? date('d/m/Y H:i', strtotime($warning->start_at)) : '--' }}
                                                                     </td>
                                                                     <td
