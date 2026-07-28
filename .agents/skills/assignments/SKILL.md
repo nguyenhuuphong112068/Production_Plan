@@ -81,9 +81,15 @@ Kỹ năng này tài liệu hóa quy trình quản lý nhân sự và phân côn
     - *Ghi chú:* Các mã ID này được sử dụng làm tham số `department` trong URL API để lấy đúng dữ liệu ca trực của từng đơn vị.
 - **Quy tắc Ghép nối Dữ liệu Thời gian (Date Mapping Rule):**
     - Khoảng thời gian chấm công/đi ca của hệ thống bắt đầu từ ngày 21 tháng trước đến ngày 20 tháng hiện tại.
-    - Khi truy vấn lịch trực cho một tháng `M` (ví dụ: `M = 6`), dữ liệu sẽ được lấy và ghép nối từ hai nguồn API:
-        - **Ngày 01 -> 20:** Lấy từ API theo tháng hiện tại `month = M` (ví dụ: `month = 6`).
-        - **Ngày 21 -> 31:** Lấy từ API theo tháng tiếp theo `month = M + 1` (ví dụ: `month = 7`). (Hệ thống sẽ tự động tăng lên `month = 1` của năm `year + 1` nếu `M = 12`).
+    - **Cách API trả dữ liệu (chiều đọc):** Với một URL `month = N`, payload chứa `day1`..`day31` KHÔNG cùng thuộc tháng `N`:
+        - `day1` -> `day20` = ngày 01/N -> 20/N (đúng tháng `N`).
+        - `day21` -> `day31` = ngày 21/(N-1) -> 31/(N-1) (thuộc tháng **TRƯỚC** đó).
+    - **Cách ghép cho một tháng lịch `M` (chiều dựng):** Do quy tắc trên, muốn có đủ 31 ngày thực tế của tháng `M` phải gọi 2 URL:
+        - **Ngày 01 -> 20 của tháng `M`:** Lấy `day1`..`day20` từ API `month = M`.
+        - **Ngày 21 -> 31 của tháng `M`:** Lấy `day21`..`day31` từ API `month = M + 1` (vì trong payload đó, `day21`..`day31` chính là tháng `M`). Hệ thống tự động chuyển sang `month = 1`, `year + 1` nếu `M = 12`.
+        - *Ví dụ tháng 7/2026:* `month=7` cho ngày 01-20/07, và `month=8` cho ngày 21-31/07.
+    - **Cảnh báo:** Không được đọc thẳng `day21`..`day31` từ API `month = M` rồi coi đó là ngày 21-31 của tháng `M` — đó thực chất là tháng `M - 1`.
+    - **Nơi triển khai:** `ProductionAssignmentController::getPersonnelShifts()`, `MaintenanceAssignmentController::getPersonnelShifts()`, `PersonnelController::getMergedMonthlyShifts()`.
 
 ### 7.1 Tự động Phân công Nhân sự Sản Xuất (Auto Assign)
 - **Chỉ định theo ca:** Nhân sự được tự động lấy từ danh sách lịch trực (sidebar) và gom vào các nhóm (pool) tương ứng với từng ca làm việc (C1, C2, HC...). Những nhân sự đang nghỉ phép (P) sẽ bị loại bỏ.

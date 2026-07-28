@@ -32,6 +32,87 @@ class DashBoardController extends Controller
         return view('pages.assignment.DashBoard.index', compact('departments', 'groups'));
     }
 
+    /**
+     * Gọi API lịch trực cho một tháng payload. Với PXV1 (dep 15) gộp thêm Kho (dep 17).
+     * Trả về mảng đã decode, mảng rỗng nếu API lỗi.
+     */
+    private function fetchShiftApi($month, $year, $departmentId)
+    {
+        $ctx = stream_context_create(['http' => ['timeout' => 3]]);
+        $base = "http://s-webdev:5070/api/shifts/by-department?month={$month}&year={$year}&department=";
+
+        $personnelData = [];
+        try {
+            $data = @file_get_contents($base . $departmentId, false, $ctx);
+            if ($data) {
+                $personnelData = json_decode($data, true) ?: [];
+            }
+        } catch (\Exception $e) {
+        }
+        if (!is_array($personnelData)) {
+            $personnelData = [];
+        }
+
+        if ($departmentId == 15) {
+            try {
+                $data17 = @file_get_contents($base . '17', false, $ctx);
+                if ($data17) {
+                    $personnelData17 = json_decode($data17, true) ?: [];
+                    if (is_array($personnelData17)) {
+                        $personnelData = array_merge($personnelData, $personnelData17);
+                    }
+                }
+            } catch (\Exception $ex) {
+            }
+        }
+
+        return $personnelData;
+    }
+
+    /**
+     * Xây bảng tra cứu ca trực theo NGÀY LỊCH THỰC TẾ.
+     *
+     * API trả về day1..day31 nhưng không cùng một tháng: với URL month = N thì
+     * day1..day20 thuộc tháng N, còn day21..day31 thuộc tháng N-1. Do đó mỗi ngày
+     * thực tế phải lấy từ đúng payload tương ứng (xem skill assignments §6):
+     *   - ngày 01-20 của tháng M -> URL month = M
+     *   - ngày 21-31 của tháng M -> URL month = M + 1
+     * Mỗi tháng payload chỉ gọi API một lần dù khoảng thời gian bắc qua nhiều tháng.
+     *
+     * @return array [employeeCode => ['Y-m-d' => dayData]]
+     */
+    private function buildShiftIndex(Carbon $startDate, $daysInPeriod, $departmentId)
+    {
+        $index = [];
+        $apiCache = [];
+
+        for ($d = 0; $d < $daysInPeriod; $d++) {
+            $currentDay = $startDate->copy()->addDays($d);
+
+            $apiMonth = $currentDay->day <= 20 ? $currentDay->month : $currentDay->month + 1;
+            $apiYear = $currentDay->year;
+            if ($apiMonth > 12) {
+                $apiMonth = 1;
+                $apiYear++;
+            }
+
+            $cacheKey = "{$apiYear}-{$apiMonth}";
+            if (!isset($apiCache[$cacheKey])) {
+                $apiCache[$cacheKey] = $this->fetchShiftApi($apiMonth, $apiYear, $departmentId);
+            }
+
+            $dayKey = 'day' . $currentDay->day;
+            $dateKey = $currentDay->format('Y-m-d');
+            foreach ($apiCache[$cacheKey] as $person) {
+                $code = $person['employeeId'] ?? $person['code'] ?? null;
+                if (!$code) continue;
+                $index[$code][$dateKey] = $person['days'][$dayKey] ?? null;
+            }
+        }
+
+        return $index;
+    }
+
     public function getData(Request $request)
     {
         $production_code = $request->production_code ?? session('user')['production_code'] ?? 'PXV1';
@@ -198,9 +279,6 @@ class DashBoardController extends Controller
         }
 
         // --- Fetch Shifts to determine Leave (P) AND collect overtime ---
-        $month = $startDate->format('m');
-        $year = $startDate->format('Y');
-
         $deptMapping = [
             'EN' => 3,
             'PXTN' => 6,
@@ -235,93 +313,63 @@ class DashBoardController extends Controller
         }
 
         if ($departmentId) {
-            $url = "http://s-webdev:5070/api/shifts/by-department?month={$month}&year={$year}&department={$departmentId}";
-            try {
-                $ctx = stream_context_create(['http' => ['timeout' => 3]]);
-                $data = @file_get_contents($url, false, $ctx);
-                if ($data) {
-                    $personnelData = json_decode($data, true) ?: [];
+            $shiftIndex = $this->buildShiftIndex($startDate, $daysInPeriod, $departmentId);
 
-                    if ($departmentId == 15) {
-                        try {
-                            $url17 = "http://s-webdev:5070/api/shifts/by-department?month={$month}&year={$year}&department=17";
-                            $data17 = @file_get_contents($url17, false, $ctx);
-                            if ($data17) {
-                                $personnelData17 = json_decode($data17, true) ?: [];
-                                if (is_array($personnelData17)) {
-                                    $personnelData = array_merge($personnelData, $personnelData17);
-                                }
-                            }
-                        } catch (\Exception $ex) {
-                        }
+            foreach ($shiftIndex as $code => $daysByDate) {
+                $totalOT = 0;
+                $shifts = [];
+                $totalEoffice = 0;
+
+                for ($d = 0; $d < $daysInPeriod; $d++) {
+                    $currentDay = $startDate->copy()->addDays($d);
+                    $dayStr = $currentDay->format('Y-m-d');
+                    $dayData = $daysByDate[$dayStr] ?? null;
+
+                    // Hỗ trợ cả cấu trúc API cũ (string) và mới (object)
+                    if (is_array($dayData)) {
+                        $shiftCode = strtoupper(trim($dayData['shift'] ?? ''));
+                        $ot = floatval($dayData['overtime'] ?? 0);
+                        $eoffice = floatval($dayData['regular_working_Hours'] ?? 0);
+                    } else {
+                        $shiftCode = strtoupper(trim($dayData ?? ''));
+                        $ot = 0;
+                        $eoffice = 0; // Cũ không có giờ làm việc e-office
                     }
 
-                    foreach ($personnelData as $person) {
-                        $code = $person['employeeId'] ?? $person['code'] ?? null;
-                        if (!$code) continue;
+                    // Reset regular working hours nếu rơi vào ngày nghỉ (off-date)
+                    if (isset($offDatesMap[$dayStr])) {
+                        $eoffice = 0;
+                    }
 
-                        $pCount = 0;
-                        $totalOT = 0;
-                        $shifts = [];
-                        $totalEoffice = 0;
-
-                        for ($d = 0; $d < $daysInPeriod; $d++) {
-                            $currentDay = $startDate->copy()->addDays($d);
-                            if ($currentDay->month == $month) {
-                                $dayKey = 'day' . $currentDay->day;
-                                $dayData = $person['days'][$dayKey] ?? null;
-
-                                // Hỗ trợ cả cấu trúc API cũ (string) và mới (object)
-                                if (is_array($dayData)) {
-                                    $shiftCode = strtoupper(trim($dayData['shift'] ?? ''));
-                                    $ot = floatval($dayData['overtime'] ?? 0);
-                                    $eoffice = floatval($dayData['regular_working_Hours'] ?? 0);
-                                } else {
-                                    $shiftCode = strtoupper(trim($dayData ?? ''));
-                                    $ot = 0;
-                                    $eoffice = 0; // Cũ không có giờ làm việc e-office
-                                }
-
-                                // Reset regular working hours nếu rơi vào ngày nghỉ (off-date)
-                                $dayStr = $currentDay->format('Y-m-d');
-                                if (isset($offDatesMap[$dayStr])) {
-                                    $eoffice = 0;
-                                }
-
-                                if ($shiftCode === 'P') {
-                                    $pCount++;
-                                    if (isset($empCodeToId[$code])) {
-                                        $empId = $empCodeToId[$code];
-                                        $employeeDailyLeave[$empId][$d] = true;
-                                    }
-                                }
-                                if ($shiftCode && $shiftCode !== 'OFF' && $shiftCode !== '') {
-                                    if ($daysInPeriod == 1) {
-                                        $shifts[] = $shiftCode;
-                                    } else {
-                                        $shifts[] = $currentDay->format('d/m') . ': ' . $shiftCode;
-                                    }
-                                }
-                                $totalOT += $ot;
-                                $totalEoffice += $eoffice;
-
-                                if (isset($employeeOvertimeHours[$code]) && $ot > 0) {
-                                    if (!isset($employeeDailyOT[$code])) {
-                                        $employeeDailyOT[$code] = array_fill(0, $daysInPeriod, 0);
-                                    }
-                                    $employeeDailyOT[$code][$d] += $ot;
-                                }
-                            }
+                    if ($shiftCode === 'P') {
+                        if (isset($empCodeToId[$code])) {
+                            $empId = $empCodeToId[$code];
+                            $employeeDailyLeave[$empId][$d] = true;
                         }
-
-                        if (isset($employeeOvertimeHours[$code])) {
-                            $employeeOvertimeHours[$code] += $totalOT;
-                            $employeeRegisteredShifts[$code] = array_merge($employeeRegisteredShifts[$code], $shifts);
-                            $employeeEofficeHours[$code] += $totalEoffice;
+                    }
+                    if ($shiftCode && $shiftCode !== 'OFF' && $shiftCode !== '') {
+                        if ($daysInPeriod == 1) {
+                            $shifts[] = $shiftCode;
+                        } else {
+                            $shifts[] = $currentDay->format('d/m') . ': ' . $shiftCode;
                         }
+                    }
+                    $totalOT += $ot;
+                    $totalEoffice += $eoffice;
+
+                    if (isset($employeeOvertimeHours[$code]) && $ot > 0) {
+                        if (!isset($employeeDailyOT[$code])) {
+                            $employeeDailyOT[$code] = array_fill(0, $daysInPeriod, 0);
+                        }
+                        $employeeDailyOT[$code][$d] += $ot;
                     }
                 }
-            } catch (\Exception $e) {
+
+                if (isset($employeeOvertimeHours[$code])) {
+                    $employeeOvertimeHours[$code] += $totalOT;
+                    $employeeRegisteredShifts[$code] = array_merge($employeeRegisteredShifts[$code], $shifts);
+                    $employeeEofficeHours[$code] += $totalEoffice;
+                }
             }
         }
 
