@@ -164,7 +164,7 @@
                                       </div>
                                     <div class="col-md-6">
                                         <input type="number" min="0" class="form-control step-input"
-                                            placeholder="Biệt trữ sau cân" name ="quarantine_weight">
+                                            placeholder="Biệt trữ sau cân" name ="quarantine_weight" value="{{ old('quarantine_weight') }}">
                                     </div>
                                 </div>
 

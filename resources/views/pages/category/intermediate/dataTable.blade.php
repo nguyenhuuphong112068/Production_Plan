@@ -4,6 +4,11 @@
         background-color: #fff3cd !important;
         /* vàng nhạt */
     }
+
+    .col-quarantine-time {
+        min-width: 160px;
+        white-space: nowrap;
+    }
 </style>
 <div class="content-wrapper">
     <!-- /.card-header -->
@@ -65,8 +70,10 @@
                         <th rowspan="2">Cỡ Lô</th>
                         <th rowspan="2">Dạng Bào Chế</th>
 
-                        <!-- Gom nhóm 6 cột -->
-                        <th colspan="6" class="text-center">Công Đoạn/Thời gian Biệt Trữ</th>
+                        <!-- Gom nhóm 6 cột công đoạn -->
+                        <th colspan="6" class="text-center">Công Đoạn</th>
+                        <!-- Cột thời gian biệt trữ gộp chung (không chia nhỏ) -->
+                        <th rowspan="2" class="text-center col-quarantine-time">Thời Gian Biệt Trữ</th>
 
                         <th rowspan="2">Phân Xưởng</th>
                         <th rowspan="2">Người Tạo/ Ngày Tạo</th>
@@ -130,10 +137,6 @@
                                         @if ($data->weight_1 != '1')
                                             <span class="badge badge-info mt-1">{{ $data->weight_1 }}</span>
                                         @endif
-                                        <span>
-                                            {{ $data->quarantine_weight . ' ' . $quarantine_time_unit }}
-
-                                        </span>
                                     @endif
                                 </div>
                             </td>
@@ -142,13 +145,6 @@
                                 <div class="d-flex flex-column align-items-center">
                                     @if ($data->weight_2)
                                         <i class="fas fa-check-circle text-primary fs-4"></i>
-                                        <span>
-                                            @if (session('user')['production_code'] == 'PXTN')
-                                                {{ '20 ngày' }}
-                                            @elseif ($data->quarantine_total == 0)
-                                                {{ $data->quarantine_weight . ' ' . $quarantine_time_unit }}
-                                            @endif
-                                        </span>
                                     @endif
                                 </div>
                             </td>
@@ -160,11 +156,6 @@
                                         @if ($data->prepering != '1')
                                             <span class="badge badge-info mt-1">{{ $data->prepering }}</span>
                                         @endif
-                                        <span>
-                                            @if ($data->quarantine_total == 0)
-                                                {{ $data->quarantine_preparing . ' ' . $quarantine_time_unit }}
-                                            @endif
-                                        </span>
                                     @endif
                                 </div>
                             </td>
@@ -176,13 +167,7 @@
                                         @if ($data->blending != '1')
                                             <span class="badge badge-info mt-1">{{ $data->blending }}</span>
                                         @endif
-                                        <span>
-                                            @if ($data->quarantine_total == 0)
-                                                {{ $data->quarantine_blending . ' ' . $quarantine_time_unit }}
-                                            @endif
-                                        </span>
                                     @endif
-
                                 </div>
                             </td>
 
@@ -193,13 +178,7 @@
                                         @if ($data->forming != '1')
                                             <span class="badge badge-info mt-1">{{ $data->forming }}</span>
                                         @endif
-                                        <span>
-                                            @if ($data->quarantine_total == 0)
-                                                {{ $data->quarantine_forming . ' ' . $quarantine_time_unit }}
-                                            @endif
-                                        </span>
                                     @endif
-
                                 </div>
                             </td>
 
@@ -210,18 +189,41 @@
                                         @if ($data->coating != '1')
                                             <span class="badge badge-info mt-1">{{ $data->coating }}</span>
                                         @endif
-                                        <span>
-                                            @if ($data->quarantine_total == 0)
-                                                {{ $data->quarantine_coating . ' ' . $quarantine_time_unit }}
-                                            @endif
-
-                                        </span>
                                     @endif
+                                </div>
+                            </td>
 
+                            <!-- Thời Gian Biệt Trữ (gộp chung 1 cột, ghi tên công đoạn phía trước) -->
+                            <td class="text-left align-middle col-quarantine-time">
+                                <div class="d-flex flex-column align-items-start">
                                     @if ($data->quarantine_total > 0)
-                                        {{ 'total:' . $data->quarantine_total . ' ' . $quarantine_time_unit }}
+                                        <span>Tổng: {{ $data->quarantine_total . ' ' . $quarantine_time_unit }}</span>
+                                    @else
+                                        @if ($data->weight_1 && $data->weight_1 != '0')
+                                            <span>Cân NL: {{ $data->quarantine_weight . ' ' . $quarantine_time_unit }}</span>
+                                        @endif
+                                        @if ($data->weight_2)
+                                            <span>
+                                                @if (session('user')['production_code'] == 'PXTN')
+                                                    Xử lý Bao Bì: {{ '20 ngày' }}
+                                                @else
+                                                    Cân NL Khác: {{ '45 ngày' }}
+                                                @endif
+                                            </span>
+                                        @endif
+                                        @if ($data->prepering && $data->prepering != '0')
+                                            <span>PC: {{ $data->quarantine_preparing . ' ' . $quarantine_time_unit }}</span>
+                                        @endif
+                                        @if ($data->blending && $data->blending != '0')
+                                            <span>THT: {{ $data->quarantine_blending . ' ' . $quarantine_time_unit }}</span>
+                                        @endif
+                                        @if ($data->forming && $data->forming != '0')
+                                            <span>ĐH: {{ $data->quarantine_forming . ' ' . $quarantine_time_unit }}</span>
+                                        @endif
+                                        @if ($data->coating && $data->coating != '0')
+                                            <span>BP: {{ $data->quarantine_coating . ' ' . $quarantine_time_unit }}</span>
+                                        @endif
                                     @endif
-
                                 </div>
                             </td>
                             <td>{{ $data->deparment_code }}</td>

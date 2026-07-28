@@ -464,10 +464,14 @@ class SchedualController extends Controller
 
                 DB::raw('
                                 CASE
-                                WHEN sp.stage_code IN (1,2) THEN
+                                WHEN sp.stage_code = 1 THEN
                                         CASE WHEN intermediate_category.quarantine_time_unit = 1
                                         THEN intermediate_category.quarantine_weight * 24
                                         ELSE intermediate_category.quarantine_weight END
+                                WHEN sp.stage_code = 2 THEN
+                                        CASE WHEN intermediate_category.quarantine_time_unit = 1
+                                        THEN 45 * 24
+                                        ELSE 45 END
                                 WHEN sp.stage_code = 3 THEN
                                         CASE WHEN intermediate_category.quarantine_time_unit = 1
                                         THEN intermediate_category.quarantine_preparing * 24

@@ -235,8 +235,10 @@
 
                                     // Lấy thời gian biệt trữ chuẩn
                                     $stdValue = null;
-                                    if (in_array($stage->stage_code, [1, 2])) {
+                                    if ($stage->stage_code == 1) {
                                         $stdValue = $stage->quarantine_weight;
+                                    } elseif ($stage->stage_code == 2) {
+                                        $stdValue = 45; // Cân NL Khác: mặc định biệt trữ 45 ngày
                                     } elseif ($stage->stage_code == 3) {
                                         $stdValue = $stage->quarantine_preparing;
                                     } elseif ($stage->stage_code == 4) {
@@ -382,7 +384,7 @@
                                         $next = $stages->firstWhere('code', $stage->nextcessor_code);
 
                                         // Lấy thời gian biệt trữ chuẩn (công đoạn 2 luôn là cân NL khác)
-                                        $stdValue = $stage->quarantine_weight;
+                                        $stdValue = 45; // Cân NL Khác: mặc định biệt trữ 45 ngày
                                         $stdWaiting = null;
 
                                         if ($stdValue !== null) {
@@ -508,8 +510,10 @@
 
                         if ($lastFinished) {
                             $stdValue = null;
-                            if (in_array($lastFinished->stage_code, [1, 2])) {
+                            if ($lastFinished->stage_code == 1) {
                                 $stdValue = $lastFinished->quarantine_weight;
+                            } elseif ($lastFinished->stage_code == 2) {
+                                $stdValue = 45; // Cân NL Khác: mặc định biệt trữ 45 ngày
                             } elseif ($lastFinished->stage_code == 3) {
                                 $stdValue = $lastFinished->quarantine_preparing;
                             } elseif ($lastFinished->stage_code == 4) {

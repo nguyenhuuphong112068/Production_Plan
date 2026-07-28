@@ -111,7 +111,8 @@ class SchedualStepController extends Controller
                     if (!$next || $next->finished == 1) continue;
 
                     $stdValue = null;
-                    if (in_array($stage->stage_code, [1, 2])) $stdValue = $stage->quarantine_weight;
+                    if ($stage->stage_code == 1) $stdValue = $stage->quarantine_weight;
+                    elseif ($stage->stage_code == 2) $stdValue = 45; // Cân NL Khác: mặc định biệt trữ 45 ngày
                     elseif ($stage->stage_code == 3) $stdValue = $stage->quarantine_preparing;
                     elseif ($stage->stage_code == 4) $stdValue = $stage->quarantine_blending;
                     elseif ($stage->stage_code == 5) $stdValue = $stage->quarantine_forming;
