@@ -44,7 +44,10 @@
                     <!-- Danh sách BTP -->
                     <div class="card card-outline card-success">
                         <div class="card-header d-flex justify-content-between align-items-center">
-                            <h3 class="card-title font-weight-bold">Danh sách Bán Thành Phẩm áp dụng</h3>
+                            <h3 class="card-title font-weight-bold">
+                                Danh sách Bán Thành Phẩm áp dụng
+                                <span class="badge badge-success ml-1" id="ic_count_badge">0</span>
+                            </h3>
                             <button type="button" class="btn btn-sm btn-success ml-auto" data-toggle="modal" data-target="#select_intermediate_category_modal" onclick="window.activeICContainer = '#ic_container'">
                                 <i class="fas fa-list-check"></i> Chọn từ danh mục BTP
                             </button>
@@ -53,15 +56,16 @@
                             <table class="table table-bordered table-striped mb-0">
                                 <thead class="thead-light">
                                     <tr>
-                                        <th style="width: 45%;">Mã / Tên Bán Thành Phẩm</th>
+                                        <th style="width: 5%;" class="text-center">STT</th>
+                                        <th style="width: 40%;">Mã / Tên Bán Thành Phẩm</th>
                                         <th style="width: 20%;">Số lô theo dõi</th>
                                         <th style="width: 25%;">Ghi chú (BTP)</th>
                                         <th style="width: 10%;" class="text-center">Thao tác</th>
                                     </tr>
                                 </thead>
-                                <tbody id="ic_container">
+                                <tbody id="ic_container" data-badge="#ic_count_badge">
                                     <tr id="empty-ic-row">
-                                        <td colspan="4" class="text-center text-muted py-4">
+                                        <td colspan="5" class="text-center text-muted py-4">
                                             <em>Chưa có Bán thành phẩm nào được chọn. Hãy bấm "Chọn từ danh mục BTP" để thêm.</em>
                                         </td>
                                     </tr>
@@ -81,14 +85,29 @@
 </div>
 
 <script>
+// Đánh lại STT + cập nhật badge đếm số lượng BTP đã chọn
+window.refreshICTable = function(container) {
+    let $rows = $(container + ' tr.ic-row');
+    $rows.each(function(index) {
+        $(this).find('.stt-cell').text(index + 1);
+    });
+
+    let badge = $(container).data('badge');
+    if (badge) {
+        $(badge).text($rows.length);
+    }
+};
+
 document.addEventListener('DOMContentLoaded', function () {
 
     // Remove row event
     $(document).on('click', '.btn-remove-ic', function() {
+        let container = '#' + $(this).closest('tbody').attr('id');
         $(this).closest('tr').remove();
-        if($('#ic_container tr.ic-row').length === 0) {
+        if($(container + ' tr.ic-row').length === 0) {
             $('#empty-ic-row').show();
         }
+        window.refreshICTable(container);
     });
 
     // Form submit
@@ -139,6 +158,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if($(container + ' input[value="'+icId+'"]').length === 0) {
                 html += `
                 <tr class="ic-row">
+                    <td class="text-center align-middle font-weight-bold stt-cell"></td>
                     <td>
                         <input type="hidden" name="intermediate_category_ids[]" value="${icId}">
                         <div class="font-weight-bold text-primary">${icCode}</div>
@@ -161,6 +181,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if(html !== '') {
             $(container).append(html);
         }
+        window.refreshICTable(container);
 
         // Đóng modal chọn nhiều
         $('#select_intermediate_category_modal').modal('hide');

@@ -45,7 +45,10 @@
                     <!-- Danh sách BTP -->
                     <div class="card card-outline card-success">
                         <div class="card-header d-flex justify-content-between align-items-center">
-                            <h3 class="card-title font-weight-bold">Danh sách Bán Thành Phẩm áp dụng</h3>
+                            <h3 class="card-title font-weight-bold">
+                                Danh sách Bán Thành Phẩm áp dụng
+                                <span class="badge badge-success ml-1" id="edit_ic_count_badge">0</span>
+                            </h3>
                             <button type="button" class="btn btn-sm btn-success ml-auto" data-toggle="modal" data-target="#select_intermediate_category_modal" onclick="window.activeICContainer = '#edit_ic_container'">
                                 <i class="fas fa-list-check"></i> Chọn từ danh mục BTP
                             </button>
@@ -54,13 +57,14 @@
                             <table class="table table-bordered table-striped mb-0">
                                 <thead class="thead-light">
                                     <tr>
-                                        <th style="width: 45%;">Mã / Tên Bán Thành Phẩm</th>
+                                        <th style="width: 5%;" class="text-center">STT</th>
+                                        <th style="width: 40%;">Mã / Tên Bán Thành Phẩm</th>
                                         <th style="width: 20%;">Số lô theo dõi</th>
                                         <th style="width: 25%;">Ghi chú (BTP)</th>
                                         <th style="width: 10%;" class="text-center">Thao tác</th>
                                     </tr>
                                 </thead>
-                                <tbody id="edit_ic_container">
+                                <tbody id="edit_ic_container" data-badge="#edit_ic_count_badge">
                                     <!-- Render via JS -->
                                 </tbody>
                             </table>

@@ -219,6 +219,7 @@
                                 ic.intermediate_category.product_name.name : '';
                             html += `
                   <tr class="ic-row">
+                      <td class="text-center align-middle font-weight-bold stt-cell"></td>
                       <td>
                           <input type="hidden" name="intermediate_category_ids[]" value="${ic.intermediate_category_id}">
                           <div class="font-weight-bold text-primary">${icCode}</div>
@@ -236,6 +237,7 @@
                   </tr>`;
                         });
                         $('#edit_ic_container').html(html);
+                        window.refreshICTable('#edit_ic_container');
 
                         $('#updateModal').modal('show');
                     });
