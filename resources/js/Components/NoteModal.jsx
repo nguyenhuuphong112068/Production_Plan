@@ -9,6 +9,7 @@ export default function NoteModal({ show, setShow }) {
     { color: "#40E0D0", label: "Lô Thẩm Định - Đáp Ứng Ngày Cần Hàng" },
     { color: "#e4e405e2", label: "Lô Thẩm Định Vệ Sinh" },
     { color: "#bda124ff", label: "Quá Hạn Biệt Trữ" },
+    { color: "#ffd500ff", label: "Thiếu Khuôn/Trung Khuôn" },
     { color: "#f99e02ff", label: "Nguyên Liệu Hoặc Bao Bì Không Đáp Ứng Kế Hoạch" },
     { color: "#e54a4aff", label: "Không Đáp Ứng Ngày Cần Hàng Theo Kế Hoạch" },
     { color: "#920000ff", label: "Cảnh Báo Ngày Đáp Ứng NL/BB" },
@@ -25,6 +26,7 @@ export default function NoteModal({ show, setShow }) {
     { color: "transparent", label: "Viền Đỏ Dày: Lịch BT-HC quá hạn hoặc trễ kế hoạch", border: "6px solid #ff0000ff" },
     { color: "transparent", label: "Viền Xanh + Outline Đỏ: Lịch BT-HC đã được chấp nhận nhưng bị trễ kế hoạch", border: "3px solid #22ff00ff", outline: "3px solid #ff0000" },
     { color: "#fff3cd", label: "⚠️ Tên: Lịch bị Phân xưởng thay đổi", icon: "⚠️", border: "1px solid #ffeeba" },
+
   ];
 
   return (
