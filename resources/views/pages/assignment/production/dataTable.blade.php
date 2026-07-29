@@ -609,6 +609,7 @@
                                             @endif
                                             <tr class="assignment-item {{ $assignment->is_foreign ?? false ? 'foreign-assignment' : '' }}"
                                                 data-id="{{ $assignment->id }}"
+                                                data-stage-group="{{ $assignment->stage_groups_code ?? '' }}"
                                                 data-theory-start="{{ $task->theory_start }}"
                                                 data-theory-end="{{ $task->theory_end }}">
                                                 <td style="width: 100px">
@@ -5709,6 +5710,12 @@
                 const $item = $(this);
                 const shiftVal = $item.find('.shift-select').val() || '1';
 
+                // Tổ tính TC = tổ của chính phân công (stage_groups_code), không phải tổ của phòng.
+                // Phòng của ĐGSC/ĐGTC đều lưu group_code = 7 nên nếu lấy theo phòng thì tổ 8 luôn = 0.
+                // Dòng mới thêm trên giao diện chưa có data-stage-group → lấy theo tổ đang xem.
+                let itemGroup = ($item.attr('data-stage-group') || '').toString();
+                if (!itemGroup) itemGroup = (currentGroupCode || '').toString() || groupCode;
+
                 $item.find('.personnel-row').each(function() {
                     const pid = $(this).find('.person-select').val();
                     if (!pid) return;
@@ -5746,7 +5753,7 @@
                     
                     personData[pid].intervals.push(...basicIntervals);
                     personData[pid].details.push(`Phòng: ${roomName}, Ca: ${shiftVal}`);
-                    if (groupCode) personData[pid].groupCodes.add(groupCode);
+                    if (itemGroup) personData[pid].groupCodes.add(itemGroup.toString());
                 });
             });
         });
@@ -5828,7 +5835,7 @@
                 let groupName = typeof stageGroupsMap !== 'undefined' && stageGroupsMap[gCode] ? stageGroupsMap[
                     gCode] : `Tổ ${gCode}`;
                 if (gCode === '7') {
-                    groupName = 'ĐGTC';
+                    groupName = 'ĐGSC'; // stage_groups.name của tổ 7 là "ĐGSC-ĐGTC", hiển thị gọn cho khớp danh sách tổ
                 }
                 title = groupName;
             }
@@ -5886,9 +5893,12 @@
                 curH = otData.dept.hours;
                 title = 'Toàn phân xưởng';
             } else {
-                curP = otData.groups.persons[pol.group_id] || 0;
-                curH = otData.groups.hours[pol.group_id] || 0;
-                title = `Tổ ${pol.group_code_value || pol.group_id}`;
+                // Dùng cùng key với renderOvertimeBadge (stage_groups.code) để 2 nơi luôn khớp số liệu
+                const gCode = (pol.group_code_value !== null && pol.group_code_value !== undefined ?
+                    pol.group_code_value : pol.group_id).toString();
+                curP = otData.groups.persons[gCode] || 0;
+                curH = otData.groups.hours[gCode] || 0;
+                title = `Tổ ${gCode === '7' ? 'ĐGSC' : (typeof stageGroupsMap !== 'undefined' && stageGroupsMap[gCode] ? stageGroupsMap[gCode] : gCode)}`;
             }
 
             if (maxP > 0 && curP > maxP) {

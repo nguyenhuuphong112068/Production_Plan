@@ -261,6 +261,7 @@ class ProductionAssignmentController extends Controller
                     foreach ($foreignAssignments as $fa) {
                         $assignments->push((object)[
                             'id' => null,
+                            'stage_groups_code' => $active_group_code,
                             'Sheet' => $fa->Sheet,
                             'start' => $fa->start,
                             'end' => $fa->end,
@@ -314,6 +315,7 @@ class ProductionAssignmentController extends Controller
 
                         $assignments->push((object)[
                             'id' => null,
+                            'stage_groups_code' => $active_group_code,
                             'Sheet' => $code,
                             'start' => $sTime->toDateTimeString(),
                             'end' => $eTime->toDateTimeString(),
