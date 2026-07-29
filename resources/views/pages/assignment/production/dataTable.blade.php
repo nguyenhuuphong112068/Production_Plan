@@ -470,10 +470,17 @@
             </form>
 
             <div class="d-flex align-items-center">
-                @if ($hasAuthorizeOvertime && !$isOvertimeApproved)
+                @if ($hasAuthorizeOvertime)
+                    {{-- Nút luôn được render; JS sẽ ẩn/hiện và đổi nhãn tuỳ theo lịch đã duyệt hay cần duyệt lại --}}
                     <button class="btn btn-sm btn-warning shadow-sm ml-2" id="btn-approve-overtime"
-                        title="Chấp Nhân Vượt Trần Chính Sách Tăng ca ">
-                        <i class="fas fa-check-circle"></i> Chấp Nhân Tăng ca
+                        style="display:none;" title="Chấp Nhân Vượt Trần Chính Sách Tăng ca ">
+                        <i class="fas fa-check-circle"></i> <span class="approve-ot-label">Chấp Nhân Tăng ca</span>
+                    </button>
+                @endif
+                @if (trim($production_code) === 'PXV1')
+                    <button class="btn btn-sm btn-outline-secondary shadow-sm ml-2" id="btn-overtime-history"
+                        title="Lịch sử duyệt giờ tăng ca của các tổ">
+                        <i class="fas fa-history"></i> Lịch sử duyệt TC
                     </button>
                 @endif
                 <button class="btn btn-sm btn-secondary shadow-sm ml-2" id="btn-view-report"
@@ -3334,11 +3341,106 @@
         });
 
         let isOvertimeApproved = {{ $isOvertimeApproved ? 'true' : 'false' }};
+        // Mốc tăng ca đã được duyệt của ngày đang xem (0 nếu chưa duyệt lần nào)
+        let approvedOvertimeHours = {{ (float) ($approvedOvertimeHours ?? 0) }};
+        let approvedOvertimePersons = {{ (int) ($approvedOvertimePersons ?? 0) }};
+        // false = bản ghi duyệt cũ chưa lưu mốc giờ → không bắt duyệt lại
+        let hasOvertimeBaseline = {{ ($hasOvertimeBaseline ?? false) ? 'true' : 'false' }};
+        let overtimeApprovedBy = @json($overtimeApprovedBy ?? '');
+        let overtimeApprovedAt = @json($overtimeApprovedAt ?? '');
+
+        // Sai số cho phép khi so sánh giờ (tránh chênh lệch do làm tròn)
+        const OT_HOURS_EPSILON = 0.01;
+
+        /**
+         * Xác định lịch hiện tại có cần duyệt (hoặc duyệt lại) tăng ca hay không.
+         * - Chưa duyệt lần nào mà có nhân sự tăng ca  → cần duyệt.
+         * - Đã duyệt nhưng tổng giờ tăng ca hiện tại lớn hơn mốc đã duyệt → cần duyệt lại.
+         */
+        function getOvertimeApprovalState(otData) {
+            otData = otData || calculateTotalOvertime();
+            const curHours = parseFloat((otData.dept.hours || 0).toFixed(2));
+            const curPersons = otData.dept.persons || 0;
+            const hasOvertime = curPersons > 0;
+
+            let needApproval = false;
+            let reason = '';
+            if (hasOvertime) {
+                if (!isOvertimeApproved) {
+                    needApproval = true;
+                    reason = 'new';
+                } else if (hasOvertimeBaseline && curHours > approvedOvertimeHours + OT_HOURS_EPSILON) {
+                    needApproval = true;
+                    reason = 'increased';
+                }
+            }
+
+            return {
+                otData,
+                hasOvertime,
+                curHours,
+                curPersons,
+                needApproval,
+                reason
+            };
+        }
+
+        // Nội dung cảnh báo khi chặn in / xuất Excel
+        function buildOvertimeBlockHtml(state) {
+            if (state.reason === 'increased') {
+                return `Tổng giờ tăng ca hiện tại là <b>${state.curHours.toFixed(2)} giờ</b> (${state.curPersons} người), ` +
+                    `lớn hơn mức đã duyệt là <b>${approvedOvertimeHours.toFixed(2)} giờ</b>` +
+                    (overtimeApprovedAt ? ` (duyệt lúc ${overtimeApprovedAt}${overtimeApprovedBy ? ' bởi ' + overtimeApprovedBy : ''})` : '') +
+                    `.<br>Vui lòng bấm <b>Duyệt lại Tăng ca</b> trước khi tiếp tục.`;
+            }
+            return 'Có nhân sự tăng ca (làm việc > 8h). Vui lòng bấm <b>Chấp Nhận Tăng ca</b> trước khi tiếp tục.';
+        }
+
+        // Ẩn/hiện và đổi nhãn nút duyệt theo trạng thái hiện tại của lịch
+        function refreshOvertimeApprovalButton(otData) {
+            const $btn = $('#btn-approve-overtime');
+            if ($btn.length === 0) return; // không có quyền duyệt
+            if ('{{ trim($production_code) }}' !== 'PXV1') return;
+
+            const state = getOvertimeApprovalState(otData);
+            if (!state.needApproval) {
+                $btn.hide();
+                return;
+            }
+
+            if (state.reason === 'increased') {
+                $btn.removeClass('btn-warning').addClass('btn-danger')
+                    .attr('title',
+                        `Giờ tăng ca đã tăng từ ${approvedOvertimeHours.toFixed(2)}h lên ${state.curHours.toFixed(2)}h so với lần duyệt trước`)
+                    .find('.approve-ot-label').text('Duyệt lại Tăng ca');
+            } else {
+                $btn.removeClass('btn-danger').addClass('btn-warning')
+                    .attr('title', 'Chấp Nhân Vượt Trần Chính Sách Tăng ca')
+                    .find('.approve-ot-label').text('Chấp Nhân Tăng ca');
+            }
+            $btn.show();
+        }
+
+        // Các hàm trên nằm trong scope của document.ready này, export ra window
+        // để phần code tính tăng ca (ngoài scope) gọi lại được sau mỗi lần chỉnh giờ.
+        window.refreshOvertimeApprovalButton = refreshOvertimeApprovalButton;
+        window.getOvertimeApprovalState = getOvertimeApprovalState;
 
         $(document).on('click', '#btn-approve-overtime', function() {
+            const state = getOvertimeApprovalState();
+            const isReapproval = isOvertimeApproved;
+
+            let confirmHtml = `Tổng giờ tăng ca sẽ được duyệt: <b>${state.curHours.toFixed(2)} giờ</b> / <b>${state.curPersons} người</b>.`;
+            if (isReapproval) {
+                confirmHtml +=
+                    `<br>Mức đã duyệt trước đó: <b>${approvedOvertimeHours.toFixed(2)} giờ</b> / <b>${approvedOvertimePersons} người</b>` +
+                    (overtimeApprovedAt ? ` (${overtimeApprovedAt})` : '') + `.`;
+            }
+            confirmHtml += `<br><br>Bạn có chắc chắn muốn phê duyệt cho ngày này? (Sẽ cho phép in lịch)`;
+
             Swal.fire({
-                title: 'Xác nhận Phê duyệt',
-                text: 'Bạn có chắc chắn muốn phê duyệt vượt mức trần tăng ca cho ngày này? (Sẽ cho phép in lịch)',
+                title: isReapproval ? 'Xác nhận Duyệt lại' : 'Xác nhận Phê duyệt',
+                html: confirmHtml,
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#3085d6',
@@ -3354,15 +3456,26 @@
                             _token: '{{ csrf_token() }}',
                             reportedDate: '{{ $reportedDate }}',
                             production_code: '{{ $production_code }}',
-                            group_code: '{{ $group_code ?? '' }}'
+                            group_code: '{{ $group_code ?? '' }}',
+                            total_hours: state.curHours,
+                            total_persons: state.curPersons,
+                            groups_detail: JSON.stringify({
+                                hours: state.otData.groups.hours,
+                                persons: state.otData.groups.persons
+                            })
                         },
                         success: function(res) {
                             if (res.success) {
                                 isOvertimeApproved = true;
+                                hasOvertimeBaseline = true;
+                                approvedOvertimeHours = parseFloat(res.approved_hours) || state.curHours;
+                                approvedOvertimePersons = parseInt(res.approved_persons) || state.curPersons;
+                                overtimeApprovedBy = res.approved_by || overtimeApprovedBy;
+                                overtimeApprovedAt = res.approved_at || overtimeApprovedAt;
                                 Swal.fire('Thành công',
-                                    'Đã phê duyệt vượt mức trần tăng ca. Bạn đã có thể in lịch.',
+                                    `Đã phê duyệt tăng ca ở mức ${approvedOvertimeHours.toFixed(2)} giờ. Bạn đã có thể in lịch.`,
                                     'success');
-                                $('#btn-approve-overtime').hide();
+                                refreshOvertimeApprovalButton();
                             } else {
                                 Swal.fire('Lỗi', res.message ||
                                     'Không thể phê duyệt', 'error');
@@ -3378,16 +3491,100 @@
             });
         });
 
+        // Lịch sử duyệt giờ tăng ca của các tổ
+        // onlyThisDate = true: chỉ ngày đang xem; false: toàn bộ (200 lượt duyệt gần nhất)
+        function showOvertimeApprovalHistory(onlyThisDate) {
+            Swal.fire({
+                title: 'Đang tải lịch sử...',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+
+            $.ajax({
+                url: '{{ route('pages.assignment.production.overtime_approval_history') }}',
+                type: 'GET',
+                data: {
+                    production_code: '{{ $production_code }}',
+                    reportedDate: onlyThisDate ? '{{ $reportedDate }}' : ''
+                },
+                success: function(res) {
+                    if (!res.success) {
+                        Swal.fire('Lỗi', res.message || 'Không tải được lịch sử', 'error');
+                        return;
+                    }
+
+                    let html = '';
+                    if (!res.data || res.data.length === 0) {
+                        html = `<div class="alert alert-secondary p-2 small mb-0"><i class="fas fa-info-circle"></i> Chưa có lần duyệt tăng ca nào ` +
+                            (onlyThisDate ?
+                                `cho ngày {{ \Carbon\Carbon::parse($reportedDate)->format('d/m/Y') }}.` :
+                                `được ghi nhận.`) + `</div>`;
+                    } else {
+                        html = `<div style="max-height:60vh; overflow:auto;">
+                            <table class="table table-sm table-bordered mb-0" style="font-size:0.85rem;">
+                                <thead class="thead-light">
+                                    <tr>
+                                        <th>Ngày lịch</th>
+                                        <th>Tổ</th>
+                                        <th>Giờ TC duyệt</th>
+                                        <th>Số người</th>
+                                        <th>Mức trước đó</th>
+                                        <th>Người duyệt</th>
+                                        <th>Thời điểm duyệt</th>
+                                    </tr>
+                                </thead>
+                                <tbody>`;
+                        res.data.forEach(function(r) {
+                            const changeBadge = r.previous_hours > 0 ?
+                                `<span class="badge badge-${r.approved_hours > r.previous_hours ? 'danger' : 'secondary'}">${r.previous_hours.toFixed(2)}h / ${r.previous_persons} người</span>` :
+                                '<span class="text-muted">Duyệt lần đầu</span>';
+                            html += `<tr>
+                                    <td>${r.reported_date}</td>
+                                    <td>${r.group_name}</td>
+                                    <td><b>${r.approved_hours.toFixed(2)}</b> giờ</td>
+                                    <td>${r.approved_persons}</td>
+                                    <td>${changeBadge}</td>
+                                    <td>${r.approved_by || ''}</td>
+                                    <td>${r.approved_at}</td>
+                                </tr>`;
+                        });
+                        html += `</tbody></table></div>`;
+                    }
+
+                    Swal.fire({
+                        title: onlyThisDate ?
+                            'Lịch sử duyệt tăng ca - ngày {{ \Carbon\Carbon::parse($reportedDate)->format('d/m/Y') }}' :
+                            'Lịch sử duyệt tăng ca - tất cả các ngày',
+                        html: html,
+                        width: '900px',
+                        showDenyButton: true,
+                        denyButtonText: onlyThisDate ? 'Xem tất cả các ngày' : 'Chỉ ngày đang xem',
+                        denyButtonColor: '#6c757d',
+                        confirmButtonText: 'Đóng'
+                    }).then((result) => {
+                        if (result.isDenied) showOvertimeApprovalHistory(!onlyThisDate);
+                    });
+                },
+                error: function() {
+                    Swal.fire('Lỗi', 'Đã xảy ra lỗi khi kết nối với máy chủ', 'error');
+                }
+            });
+        }
+
+        $(document).on('click', '#btn-overtime-history', function() {
+            showOvertimeApprovalHistory(true);
+        });
+
         $(document).on('click', '#btn-print-schedule', function(e) {
             e.preventDefault();
             if ('{{ trim($production_code) }}' === 'PXV1') {
-                let otData = calculateTotalOvertime();
-                let hasOvertime = otData.dept.persons > 0;
-                if (hasOvertime && !isOvertimeApproved) {
+                const state = getOvertimeApprovalState();
+                if (state.needApproval) {
+                    refreshOvertimeApprovalButton(state.otData);
                     Swal.fire({
                         icon: 'warning',
                         title: 'Không thể In',
-                        html: 'Có nhân sự tăng ca (làm việc > 8h). Vui lòng bấm <b>Chấp Nhận Tăng ca</b> trước khi in lịch.'
+                        html: buildOvertimeBlockHtml(state)
                     });
                     return;
                 }
@@ -4360,13 +4557,13 @@
         $(document).on('click', '#btn-export-excel', function(e) {
             e.preventDefault();
             if ('{{ trim($production_code) }}' === 'PXV1') {
-                let otData = calculateTotalOvertime();
-                let hasOvertime = otData.dept.persons > 0;
-                if (hasOvertime && !isOvertimeApproved) {
+                const state = getOvertimeApprovalState();
+                if (state.needApproval) {
+                    refreshOvertimeApprovalButton(state.otData);
                     Swal.fire({
                         icon: 'warning',
                         title: 'Không thể Xuất Excel',
-                        html: 'Có nhân sự tăng ca (làm việc > 8h). Vui lòng bấm <b>Chấp Nhận Tăng ca</b> trước khi xuất file Excel.'
+                        html: buildOvertimeBlockHtml(state)
                     });
                     return;
                 }
@@ -5397,8 +5594,11 @@
             row.find('.p-start-input').val(values[0]);
             row.find('.p-end-input').val(values[1]);
 
-            // Cập nhật badge cảnh báo tăng ca realtime
-            if (typeof renderOvertimeBadge === 'function') {
+            // Cập nhật badge cảnh báo tăng ca + trạng thái nút duyệt tăng ca realtime
+            if (typeof refreshOvertimeOverview === 'function') {
+                clearTimeout(window._overtimeBadgeTimer);
+                window._overtimeBadgeTimer = setTimeout(refreshOvertimeOverview, 300);
+            } else if (typeof renderOvertimeBadge === 'function') {
                 clearTimeout(window._overtimeBadgeTimer);
                 window._overtimeBadgeTimer = setTimeout(renderOvertimeBadge, 300);
             }
@@ -5457,7 +5657,30 @@
                     renderOvertimeBadge();
                 }
             });
+
+        // Trạng thái nút duyệt tăng ca (hiện "Duyệt lại" khi giờ TC vượt mốc đã duyệt)
+        setTimeout(refreshOvertimeOverview, 800);
     });
+
+    // Tính lại giờ tăng ca + cập nhật badge và nút duyệt (debounce vì gắn vào nhiều sự kiện)
+    let _otRefreshTimer = null;
+    function refreshOvertimeOverview() {
+        const otData = calculateTotalOvertime();
+        if (typeof window.refreshOvertimeApprovalButton === 'function') {
+            window.refreshOvertimeApprovalButton(otData);
+        }
+        if (currentOvertimePolicies.length > 0) renderOvertimeBadge();
+    }
+
+    function scheduleOvertimeOverviewRefresh() {
+        clearTimeout(_otRefreshTimer);
+        _otRefreshTimer = setTimeout(refreshOvertimeOverview, 400);
+    }
+
+    $(document).on('change',
+        '.p-start-input, .p-end-input, .shift-select, .person-select, .start-time-input, .end-time-input',
+        scheduleOvertimeOverviewRefresh);
+    $(document).on('click', '.btn-remove-person, .btn-add-person', scheduleOvertimeOverviewRefresh);
 
     let currentOvertimePolicies = [];
     const currentGroupCode = '{{ $group_code ?? '' }}';

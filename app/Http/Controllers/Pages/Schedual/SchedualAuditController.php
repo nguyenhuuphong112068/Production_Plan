@@ -9,114 +9,181 @@ use Illuminate\Support\Facades\DB;
 
 class SchedualAuditController extends Controller
 {
+    /**
+     * Lý do chuẩn hoá (rỗng/null -> nhãn mặc định), dùng chung cho query thống kê & chi tiết.
+     */
+    private const REASON_EXPR = "COALESCE(NULLIF(TRIM(h.type_of_change), ''), 'Không ghi nhận lý do')";
+
+    /** Nhóm người dùng được xem cột "Lý do". */
+    private const REASON_USER_GROUPS = ['Admin', 'Schedualer'];
+
+    /** Phòng ban được xem cột "Lý do". */
+    private const REASON_DEPARTMENTS = ['COMP'];
+
+    /**
+     * Chỉ Admin / Schedualer hoặc user thuộc phòng COMP mới được xem lý do thay đổi.
+     */
+    private function canViewReason(): bool
+    {
+        $user = session('user') ?? [];
+
+        return in_array($user['userGroup'] ?? '', self::REASON_USER_GROUPS, true)
+            || in_array($user['department'] ?? '', self::REASON_DEPARTMENTS, true);
+    }
+
+    /**
+     * THỐNG KÊ LỊCH SỬ THAY ĐỔI THEO NGÀY.
+     *
+     * Quy tắc đếm: các bản ghi stage_plan_history có CÙNG NGÀY THAY ĐỔI và CÙNG LÝ DO
+     * được tính là 1 lần thay đổi.
+     */
     public function index(Request $request)
     {
         $production_code = session('user')['production_code'];
 
-        // 1. LẤY DANH SÁCH PLAN LIST
-        $rawDatas = DB::table('plan_list')
-            ->where('active', 1)
-            ->where('deparment_code', $production_code)
-            ->where('type', 1)
-            ->orderBy('id', 'desc')
+        // 0. KHOẢNG THỜI GIAN LỌC (mặc định: từ đầu tháng hiện tại đến hôm nay)
+        $from = $request->input('from_date') ?: Carbon::now()->startOfMonth()->toDateString();
+        $to   = $request->input('to_date') ?: Carbon::now()->toDateString();
+
+        // Nếu nhập ngược thì tự đảo lại cho đúng
+        if ($from > $to) {
+            [$from, $to] = [$to, $from];
+        }
+
+        $fromAt = Carbon::parse($from)->startOfDay();
+        $toAt   = Carbon::parse($to)->endOfDay();
+
+        // 1. GOM NHÓM THEO (NGÀY THAY ĐỔI + LÝ DO) => mỗi nhóm là 1 lần thay đổi
+        $groups = DB::table('stage_plan_history as h')
+            ->where('h.deparment_code', $production_code)
+            ->whereNotNull('h.created_date')
+            ->whereBetween('h.created_date', [$fromAt, $toAt])
+            ->selectRaw('DATE(h.created_date) as change_date')
+            ->selectRaw(self::REASON_EXPR . ' as reason')
+            ->selectRaw('COUNT(DISTINCT h.stage_plan_id) as plan_count')
+            ->selectRaw('COUNT(*) as history_count')
+            ->selectRaw("GROUP_CONCAT(DISTINCT h.created_by ORDER BY h.created_by SEPARATOR '|') as changed_by")
+            ->selectRaw('MIN(h.created_date) as first_at')
+            ->selectRaw('MAX(h.created_date) as last_at')
+            // Group theo alias để tương thích chế độ ONLY_FULL_GROUP_BY của MySQL
+            ->groupByRaw('change_date, reason')
             ->get();
 
-        // 2. TỔNG BATCH THEO PLAN_LIST
-        $total_batch_qtys = DB::table('plan_master as pm')
-            ->join('finished_product_category as fpc', 'pm.product_caterogy_id', '=', 'fpc.id')
-            ->join('plan_list as pl', 'pm.plan_list_id', '=', 'pl.id')
-            ->where('pm.active', 1)
-            ->where('pm.cancel', 0)
-            ->where('pm.only_parkaging', 0)
-            ->where('pm.deparment_code', $production_code)
-            ->where('pl.type', 1)
-            ->groupBy('pm.plan_list_id')
-            ->select(
-                'pm.plan_list_id',
-                DB::raw('SUM(fpc.batch_qty) as total_batch_qty')
-            )
-            ->get()
-            ->keyBy('plan_list_id');
+        // 2. GOM CÁC NHÓM LÝ DO LẠI THEO NGÀY => 1 dòng / 1 ngày
+        $datas = $groups
+            ->groupBy('change_date')
+            ->map(function ($group, $date) {
+                $users = $group
+                    ->pluck('changed_by')
+                    ->flatMap(fn($u) => explode('|', (string) $u))
+                    ->map(fn($u) => trim($u))
+                    ->filter()
+                    ->unique()
+                    ->sort()
+                    ->values();
 
-        // 3. TÍNH TỔNG SỐ LÔ THEO PLAN_LIST
-        $tong_lo_counts = DB::table('plan_master')
-            ->where('active', 1)
-            ->where('deparment_code', $production_code)
-            ->groupBy('plan_list_id')
-            ->select('plan_list_id', DB::raw('COUNT(*) as total'))
-            ->get()
-            ->keyBy('plan_list_id');
+                return (object) [
+                    'change_date'  => $date,
+                    // Số lần thay đổi = số nhóm lý do khác nhau trong ngày
+                    'change_count' => $group->count(),
+                    'plan_count'   => $group->sum('plan_count'),
+                    'reasons'      => $group->sortByDesc('plan_count')->values(),
+                    'changed_by'   => $users,
+                    'last_at'      => $group->max('last_at'),
+                ];
+            })
+            ->sortByDesc('change_date')
+            ->values();
 
-        // 4. THỐNG KÊ SỐ LẦN THAY ĐỔI THEO CÔNG ĐOẠN (stage_plan_history version > 1)
-        $historyCounts = DB::table('stage_plan_history as h')
-            ->join('stage_plan as sp', 'h.stage_plan_id', '=', 'sp.id')
-            ->select('sp.plan_list_id', 'sp.stage_code', DB::raw('COUNT(*) as total'))
-            ->where('h.version', '>', 1)
-            ->groupBy('sp.plan_list_id', 'sp.stage_code')
-            ->get();
-
-        $historyCountsGrouped = $historyCounts->groupBy('plan_list_id');
-
-        // 5. GOM NHÓM THEO THÁNG VÀ NĂM
-        $grouped = $rawDatas->groupBy(function ($item) {
-            return $item->month . '-' . $item->year;
-        });
-
-        $datas = $grouped->map(function ($group) use ($total_batch_qtys, $tong_lo_counts, $historyCountsGrouped) {
-            $first = $group->first();
-
-            // Gom tất cả ID trong nhóm này lại thành chuỗi phân cách bởi dấu phẩy
-            $ids = $group->pluck('id')->toArray();
-            $first->id = implode(',', $ids);
-
-            // Đặt lại tên chuẩn hóa dạng: KHSX Tháng X - Y
-            $first->name = "KHSX Tháng " . $first->month . " - " . $first->year;
-
-            // Tính tổng batch qty và tổng lô của tất cả plan_list trong nhóm
-            $first->total_batch_qty = 0;
-            $first->tong_lo = 0;
-            foreach ($group as $item) {
-                $first->total_batch_qty += $total_batch_qtys[$item->id]->total_batch_qty ?? 0;
-                $first->tong_lo += $tong_lo_counts[$item->id]->total ?? 0;
-            }
-
-            // Tổng hợp tình trạng: nếu có ít nhất 1 cái chưa gửi (send = 0), thì để Pending (0), ngược lại là Send (1)
-            $first->send = $group->every('send', 1) ? 1 : 0;
-
-            // Lấy ngày tạo mới nhất và người tạo tương ứng
-            $latest = $group->sortByDesc('created_at')->first();
-            $first->created_at = $latest->created_at;
-            $first->prepared_by = $latest->prepared_by;
-
-            // Khởi tạo bộ đếm số lần thay đổi
-            $first->status_counts = [
-                'Đã Cân' => 0,
-                'Đã Pha chế' => 0,
-                'Đã THT' => 0,
-                'Đã định hình' => 0,
-                'Đã Bao phim' => 0,
-                'Hoàn Tất ĐG' => 0,
-            ];
-
-            foreach ($group as $item) {
-                $itemHistory = $historyCountsGrouped->get($item->id) ?? collect();
-
-                $first->status_counts['Đã Cân'] += $itemHistory->whereIn('stage_code', [1, 2])->sum('total');
-                $first->status_counts['Đã Pha chế'] += $itemHistory->firstWhere('stage_code', 3)->total ?? 0;
-                $first->status_counts['Đã THT'] += $itemHistory->firstWhere('stage_code', 4)->total ?? 0;
-                $first->status_counts['Đã định hình'] += $itemHistory->firstWhere('stage_code', 5)->total ?? 0;
-                $first->status_counts['Đã Bao phim'] += $itemHistory->firstWhere('stage_code', 6)->total ?? 0;
-                $first->status_counts['Hoàn Tất ĐG'] += $itemHistory->firstWhere('stage_code', 7)->total ?? 0;
-            }
-
-            return $first;
-        })->values();
+        // 3. TỔNG HỢP TOÀN KHOẢNG THỜI GIAN
+        $summary = (object) [
+            'from'          => $from,
+            'to'            => $to,
+            // Tổng số lần thay đổi = tổng số nhóm (ngày + lý do) trong khoảng
+            'change_count'  => $groups->count(),
+            'day_count'     => $datas->count(),
+            'history_count' => $groups->sum('history_count'),
+            'plan_count'    => DB::table('stage_plan_history as h')
+                ->where('h.deparment_code', $production_code)
+                ->whereBetween('h.created_date', [$fromAt, $toAt])
+                ->distinct()
+                ->count('h.stage_plan_id'),
+        ];
 
         session()->put(['title' => 'LỊCH SỬ THAY ĐỔI LỊCH SẢN XUẤT']);
+
         return view('pages.Schedual.audit.plan_list', [
             'datas' => $datas,
+            'summary' => $summary,
+            'canViewReason' => $this->canViewReason(),
         ]);
     }
+
+    /**
+     * CHI TIẾT CÁC STAGE_PLAN ĐÃ THAY ĐỔI TRONG 1 NGÀY (tuỳ chọn: lọc theo 1 lý do).
+     */
+    public function daily(Request $request)
+    {
+        $production_code = session('user')['production_code'];
+        $date = $request->input('date');
+        $canViewReason = $this->canViewReason();
+
+        if (! $date) {
+            return response()->json([]);
+        }
+
+        $datas = DB::table('stage_plan_history as h')
+            ->select(
+                'h.stage_plan_id',
+                'h.version',
+                'h.title',
+                'h.stage_code',
+                'h.start',
+                'h.end',
+                'h.start_clearning',
+                'h.end_clearning',
+                // Không có quyền xem lý do => không trả dữ liệu lý do về client
+                $canViewReason ? 'h.type_of_change' : DB::raw('NULL as type_of_change'),
+                'h.created_by',
+                'h.created_date',
+                'room.name as room_name',
+                'room.code as room_code',
+                'room.stage as stage',
+                'prev.start as prev_start',
+                'prev.end as prev_end',
+                'prev_room.name as prev_room_name',
+                'prev_room.code as prev_room_code',
+                DB::raw('COALESCE(plan_master.actual_batch, plan_master.batch) AS batch'),
+                'finished_product_category.intermediate_code',
+                'finished_product_category.finished_product_code',
+                'finished_product_category.batch_qty',
+                'finished_product_category.unit_batch_qty',
+                'product_name.name as product_name'
+            )
+            ->leftJoin('stage_plan as sp', 'h.stage_plan_id', '=', 'sp.id')
+            ->leftJoin('room', 'h.resourceId', '=', 'room.id')
+            // Phiên bản liền trước để so sánh "trước - sau"
+            ->leftJoin('stage_plan_history as prev', function ($join) {
+                $join->on('prev.stage_plan_id', '=', 'h.stage_plan_id')
+                    ->whereRaw('prev.version = h.version - 1');
+            })
+            ->leftJoin('room as prev_room', 'prev.resourceId', '=', 'prev_room.id')
+            ->leftJoin('plan_master', 'sp.plan_master_id', '=', 'plan_master.id')
+            ->leftJoin('finished_product_category', 'sp.product_caterogy_id', '=', 'finished_product_category.id')
+            ->leftJoin('product_name', 'finished_product_category.product_name_id', '=', 'product_name.id')
+            ->where('h.deparment_code', $production_code)
+            ->whereDate('h.created_date', $date)
+            ->when($canViewReason && $request->filled('reason'), function ($q) use ($request) {
+                return $q->whereRaw(self::REASON_EXPR . ' = ?', [$request->input('reason')]);
+            })
+            ->orderBy('h.created_date')
+            ->orderBy('h.stage_code')
+            ->orderBy('h.start')
+            ->get();
+
+        return response()->json($datas);
+    }
+
 
     public function open(Request $request)
     {

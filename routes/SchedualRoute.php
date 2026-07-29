@@ -184,6 +184,7 @@ Route::prefix('/Schedual')
                         ->name('audit.')
                         ->group(function () {
                                 Route::get('', 'index')->name('index');
+                                Route::get('daily', 'daily')->name('daily');
                                 Route::get('open', 'open')->name('open');
                                 Route::get('history', 'history')->name('history');
                                 Route::get('compare', 'compare')->name('compare');

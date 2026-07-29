@@ -3879,59 +3879,104 @@ const ScheduleTest = () => {
     if (hasSubmittedEvent) {
       // 🟨 Tạo datalist từ state "reasons"
       const htmlOptions = reasons
-        .map(r => `<option value="${r}">`)
+        .map(r => `<option value="${String(r).replace(/"/g, '&quot;')}"></option>`)
         .join("");
 
       // 🟨 Swal datalist (select hoặc nhập)
       const { value: swalResult } = await Swal.fire({
         title: 'Chọn lý do thay đổi',
-        width: '800px',
+        width: '560px',
         html: `
           <style>
-            #reasonInput {
-              width: 650px !important;   
-              max-width: 650px !important;
+            .rm-wrap {
+              text-align: left;
+              padding: 4px 4px 0;
+              font-size: 14px;
+              color: #344054;
+            }
+            .rm-note {
+              display: flex;
+              align-items: flex-start;
+              gap: 8px;
+              background: #f0f7ff;
+              border: 1px solid #cfe4ff;
+              border-left: 3px solid #3085d6;
+              border-radius: 8px;
+              padding: 10px 12px;
+              margin-bottom: 16px;
+              font-size: 13px;
+              color: #1c4e80;
+              line-height: 1.45;
+            }
+            .rm-label {
+              display: block;
+              font-weight: 600;
+              margin-bottom: 6px;
+              color: #344054;
+            }
+            .rm-label .rm-req { color: #e03131; margin-left: 2px; }
+            .rm-field {
+              width: 100%;
+              box-sizing: border-box;
+              height: 44px;
+              margin: 0;
+              padding: 0 12px;
+              font-size: 14px;
+              color: #1f2937;
+              background: #fff;
+              border: 1px solid #d0d5dd;
+              border-radius: 8px;
+              outline: none;
+              transition: border-color .15s ease, box-shadow .15s ease;
+            }
+            .rm-field::placeholder { color: #98a2b3; }
+            .rm-field:hover { border-color: #b6bec9; }
+            .rm-field:focus {
+              border-color: #3085d6;
+              box-shadow: 0 0 0 3px rgba(48,133,214,.18);
+            }
+            .rm-hint {
+              margin-top: 8px;
+              font-size: 12.5px;
+              color: #667085;
+              line-height: 1.45;
             }
           </style>
 
-        
+          <div class="rm-wrap">
+            <div class="rm-note">
+              <span>ℹ️</span>
+              <span>Có sự kiện đã trình duyệt bị thay đổi. Vui lòng nhập lý do — lý do sẽ được lưu lại vào danh sách dùng chung.</span>
+            </div>
+
+            <label class="rm-label" for="reasonInput">Lý do thay đổi<span class="rm-req">*</span></label>
             <input list="reasonList" id="reasonInput" name="reason"
-                  class="swal2-input"
-                  placeholder="Chọn hoặc nhập lý do">
+                  class="rm-field" autocomplete="off"
+                  placeholder="Chọn hoặc nhập lý do thay đổi...">
             <datalist id="reasonList">
               ${htmlOptions}
             </datalist>
-
-
-            <div class="cfg-row">
-                <label class="mt-2 cfg-label" for="work-sunday">Lưu Lại Lý Do:</label>
-                <label class="switch">
-                  <input id="saveReason" type="checkbox">
-                  <span class="slider round"></span>
-                  <span class="switch-labels">
-                    <span class="off">No</span>
-                    <span class="on">Yes</span>
-                  </span>
-                </label>
-            </div>
-        
+            <div class="rm-hint">Nhấn vào ô để xem danh sách lý do có sẵn, hoặc gõ lý do mới.</div>
+          </div>
         `,
         focusConfirm: false,
         showCancelButton: true,
         confirmButtonText: 'Xác nhận lưu',
         cancelButtonText: 'Hủy',
+        didOpen: () => {
+          const el = document.getElementById('reasonInput');
+          if (el) el.focus();
+        },
         preConfirm: () => {
-          const formValues = {};
           const r = document.getElementById('reasonInput').value;
-          const s = document.getElementById('saveReason');
-          formValues.saveReason = s.checked;
 
           if (!r || r.trim() === '') {
             Swal.showValidationMessage('Bạn phải nhập hoặc chọn lý do!');
             return false;
           }
-          formValues.reason = r;
-          return formValues;
+
+          // 🟨 Luôn lưu lại lý do (bắt buộc)
+          return { reason: r.trim(), saveReason: true };
         }
       });
 

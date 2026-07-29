@@ -446,11 +446,23 @@ class ProductionAssignmentController extends Controller
             ->where('deparment_code', $production_code)
             ->get();
 
-        $isOvertimeApproved = DB::table('overtime_approvals')
+        $overtimeApproval = DB::table('overtime_approvals')
             ->where('reported_date', $reportedDate)
             ->where('production_code', $production_code)
             ->where('group_code', $active_group_code ?? '')
-            ->exists();
+            ->first();
+
+        $isOvertimeApproved = (bool) $overtimeApproval;
+        // Mốc giờ tăng ca đã được duyệt của ngày này. Nếu lịch bị sửa làm tổng giờ
+        // tăng ca vượt mốc này thì phía client sẽ bắt duyệt lại trước khi in/xuất Excel.
+        $approvedOvertimeHours = $overtimeApproval ? (float) $overtimeApproval->approved_hours : 0;
+        $approvedOvertimePersons = $overtimeApproval ? (int) $overtimeApproval->approved_persons : 0;
+        // Bản ghi duyệt cũ không lưu mốc giờ → không bắt duyệt lại (giữ hành vi cũ)
+        $hasOvertimeBaseline = $overtimeApproval ? (bool) $overtimeApproval->has_baseline : false;
+        $overtimeApprovedBy = $overtimeApproval->approved_by ?? '';
+        $overtimeApprovedAt = $overtimeApproval && $overtimeApproval->updated_at
+            ? Carbon::parse($overtimeApproval->updated_at)->format('d/m/Y H:i')
+            : '';
 
         return view('pages.assignment.production.index', [
             'tasks' => $tasks,
@@ -465,7 +477,12 @@ class ProductionAssignmentController extends Controller
             'allRooms' => $allRooms,
             'dbAssignments' => $dbAssignments,
             'suggestions' => $suggestions,
-            'isOvertimeApproved' => $isOvertimeApproved
+            'isOvertimeApproved' => $isOvertimeApproved,
+            'approvedOvertimeHours' => $approvedOvertimeHours,
+            'approvedOvertimePersons' => $approvedOvertimePersons,
+            'hasOvertimeBaseline' => $hasOvertimeBaseline,
+            'overtimeApprovedBy' => $overtimeApprovedBy,
+            'overtimeApprovedAt' => $overtimeApprovedAt
         ]);
     }
 
@@ -474,25 +491,113 @@ class ProductionAssignmentController extends Controller
         $reportedDate = $request->reportedDate;
         $production_code = $request->production_code;
         $group_code = $request->group_code ?? '';
+        $totalHours = round((float) $request->total_hours, 2);
+        $totalPersons = (int) $request->total_persons;
+        $groupsDetail = $request->groups_detail;
 
         if (!$reportedDate || !$production_code) {
             return response()->json(['success' => false, 'message' => 'Thiếu thông tin bắt buộc']);
         }
 
+        if (is_array($groupsDetail)) {
+            $groupsDetail = json_encode($groupsDetail, JSON_UNESCAPED_UNICODE);
+        }
+
+        $date = Carbon::parse($reportedDate)->format('Y-m-d');
+        $approvedBy = session('user')['fullName'] ?? 'System';
+
+        $current = DB::table('overtime_approvals')
+            ->where('reported_date', $date)
+            ->where('production_code', $production_code)
+            ->where('group_code', $group_code)
+            ->first();
+
         DB::table('overtime_approvals')->updateOrInsert(
             [
-                'reported_date' => Carbon::parse($reportedDate)->format('Y-m-d'),
+                'reported_date' => $date,
                 'production_code' => $production_code,
                 'group_code' => $group_code,
             ],
             [
-                'approved_by' => session('user')['fullName'] ?? 'System',
-                'created_at' => now(),
+                'approved_hours' => $totalHours,
+                'approved_persons' => $totalPersons,
+                'groups_detail' => $groupsDetail,
+                'has_baseline' => 1,
+                'approved_by' => $approvedBy,
+                'created_at' => $current->created_at ?? now(),
                 'updated_at' => now(),
             ]
         );
 
-        return response()->json(['success' => true]);
+        // Ghi lịch sử duyệt (mỗi lần duyệt / duyệt lại là 1 dòng)
+        DB::table('overtime_approval_logs')->insert([
+            'reported_date' => $date,
+            'production_code' => $production_code,
+            'group_code' => $group_code,
+            'approved_hours' => $totalHours,
+            'approved_persons' => $totalPersons,
+            'previous_hours' => $current ? (float) $current->approved_hours : 0,
+            'previous_persons' => $current ? (int) $current->approved_persons : 0,
+            'groups_detail' => $groupsDetail,
+            'approved_by' => $approvedBy,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'approved_hours' => $totalHours,
+            'approved_persons' => $totalPersons,
+            'approved_by' => $approvedBy,
+            'approved_at' => now()->format('d/m/Y H:i'),
+            'is_reapproval' => (bool) $current
+        ]);
+    }
+
+    /**
+     * Lịch sử duyệt giờ tăng ca của các tổ theo ngày (dùng cho modal "Lịch sử duyệt tăng ca")
+     */
+    public function overtimeApprovalHistory(Request $request)
+    {
+        $production_code = $request->production_code;
+        $reportedDate = $request->reportedDate;
+        $group_code = $request->group_code;
+
+        if (!$production_code) {
+            return response()->json(['success' => false, 'message' => 'Thiếu production_code']);
+        }
+
+        $query = DB::table('overtime_approval_logs as l')
+            ->leftJoin('stage_groups as sg', 'l.group_code', '=', 'sg.code')
+            ->where('l.production_code', $production_code)
+            ->select('l.*', 'sg.name as group_name');
+
+        if ($reportedDate) {
+            $query->where('l.reported_date', Carbon::parse($reportedDate)->format('Y-m-d'));
+        }
+        // Chỉ lọc theo tổ khi client yêu cầu rõ ràng (group_code = '' nghĩa là toàn xưởng)
+        if ($group_code !== null && $group_code !== '') {
+            $query->where('l.group_code', $group_code);
+        }
+
+        $logs = $query->orderBy('l.created_at', 'desc')->orderBy('l.id', 'desc')->limit(200)->get();
+
+        $data = $logs->map(function ($l) {
+            return [
+                'reported_date' => Carbon::parse($l->reported_date)->format('d/m/Y'),
+                'group_code' => $l->group_code,
+                'group_name' => $l->group_code ? ($l->group_name ?: 'Tổ ' . $l->group_code) : 'Toàn phân xưởng',
+                'approved_hours' => (float) $l->approved_hours,
+                'approved_persons' => (int) $l->approved_persons,
+                'previous_hours' => (float) $l->previous_hours,
+                'previous_persons' => (int) $l->previous_persons,
+                'groups_detail' => $l->groups_detail ? json_decode($l->groups_detail, true) : null,
+                'approved_by' => $l->approved_by,
+                'approved_at' => Carbon::parse($l->created_at)->format('d/m/Y H:i'),
+            ];
+        });
+
+        return response()->json(['success' => true, 'data' => $data]);
     }
 
     /**
@@ -505,32 +610,82 @@ class ProductionAssignmentController extends Controller
         $cacheKey = "shifts_api:{$month}:{$year}:{$department}";
         $backupKey = "shifts_api_backup:{$month}:{$year}:{$department}";
 
-        $cached = Cache::get($cacheKey);
+        $cached = $this->readShiftCache($cacheKey);
         if (is_array($cached)) {
             return $cached;
         }
 
         $url = "http://s-webdev:5070/api/shifts/by-department?month={$month}&year={$year}&department={$department}";
         try {
-            $ctx = stream_context_create(['http' => ['timeout' => 10]]);
+            // API đi ca trả về ~1.3MB và khi "nguội" có thể mất tới ~15s → timeout 10s cũ hay bị hụt.
+            $ctx = stream_context_create(['http' => ['timeout' => 30]]);
             $data = @file_get_contents($url, false, $ctx);
             if ($data !== false) {
                 $decoded = json_decode($data, true);
                 if (is_array($decoded)) {
-                    Cache::put($cacheKey, $decoded, $ttlSeconds);
+                    $this->writeShiftCache($cacheKey, $data, $ttlSeconds);
                     // Bản sao lưu dài hạn để dùng khi API lỗi (429/timeout)
-                    Cache::put($backupKey, $decoded, 86400);
+                    $this->writeShiftCache($backupKey, $data, 86400);
                     return $decoded;
                 }
+                Log::warning('Shift API tra ve du lieu khong hop le', ['url' => $url]);
+            } else {
+                $err = error_get_last();
+                Log::warning('Shift API khong goi duoc', ['url' => $url, 'error' => $err['message'] ?? null]);
             }
         } catch (\Exception $e) {
-            // rơi xuống dùng bản sao lưu bên dưới
+            Log::warning('Shift API loi: ' . $e->getMessage(), ['url' => $url]);
         }
 
         // API lỗi và cache đã hết hạn: dùng bản sao lưu gần nhất để sidebar vẫn hoạt động
-        $backup = Cache::get($backupKey);
+        $backup = $this->readShiftCache($backupKey);
         if (is_array($backup)) {
             return $backup;
+        }
+
+        return null;
+    }
+
+    /**
+     * Ghi cache dữ liệu đi ca.
+     * Payload JSON thô ~1.3MB, nếu cache thẳng mảng PHP đã serialize thì query INSERT vượt
+     * `max_allowed_packet` của MySQL (mặc định 1MB) → Cache::put ném exception.
+     * Vì vậy nén gzip + base64 (còn khoảng ~100KB) trước khi ghi.
+     * Lỗi ghi cache không được phép làm hỏng request: chỉ ghi log và bỏ qua.
+     */
+    private function writeShiftCache($key, $rawJson, $ttlSeconds)
+    {
+        try {
+            Cache::put($key, 'gz:' . base64_encode(gzcompress($rawJson, 6)), $ttlSeconds);
+        } catch (\Throwable $e) {
+            Log::warning('Khong ghi duoc cache đi ca: ' . $e->getMessage(), ['key' => $key]);
+        }
+    }
+
+    /**
+     * Đọc cache dữ liệu đi ca, hỗ trợ cả bản ghi cũ (mảng PHP chưa nén).
+     */
+    private function readShiftCache($key)
+    {
+        try {
+            $cached = Cache::get($key);
+        } catch (\Throwable $e) {
+            Log::warning('Khong doc duoc cache đi ca: ' . $e->getMessage(), ['key' => $key]);
+            return null;
+        }
+
+        if (is_array($cached)) {
+            return $cached; // định dạng cũ
+        }
+
+        if (is_string($cached) && str_starts_with($cached, 'gz:')) {
+            $json = @gzuncompress(base64_decode(substr($cached, 3)));
+            if ($json !== false) {
+                $decoded = json_decode($json, true);
+                if (is_array($decoded)) {
+                    return $decoded;
+                }
+            }
         }
 
         return null;

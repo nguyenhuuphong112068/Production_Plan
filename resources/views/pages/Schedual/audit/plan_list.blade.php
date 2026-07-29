@@ -14,5 +14,5 @@
   @include('pages.Schedual.audit.dataTable_plan_list')
 @endsection
 @section('model')
-  @include('pages.Schedual.audit.history')
+  @include('pages.Schedual.audit.daily_detail')
 @endsection
