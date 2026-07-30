@@ -66,6 +66,8 @@ class SchedualStepController extends Controller
                 'market.name as market',
                 'product_name.name as product_name',
                 'intermediate_category.intermediate_code',
+                'intermediate_category.prepering',
+                'intermediate_category.blending',
                 'intermediate_category.quarantine_total',
                 'intermediate_category.quarantine_weight',
                 'intermediate_category.quarantine_preparing',
@@ -74,7 +76,7 @@ class SchedualStepController extends Controller
                 'intermediate_category.quarantine_coating',
                 'intermediate_category.quarantine_time_unit',
                 DB::raw("
-                        CASE 
+                        CASE
                             WHEN stage_plan.finished = 1 THEN 'finished'
                             WHEN stage_plan.end IS NOT NULL THEN 'scheduled'
                             ELSE 'pending'
@@ -93,10 +95,27 @@ class SchedualStepController extends Controller
 
         $allDatas = $datas;
 
+        // Công đoạn dùng để tra chuẩn biệt trữ (có thể khác công đoạn thực tế của lịch).
+        // Một số BTP khai báo cả PC (3) và THT (4) trong danh mục nhưng thực tế 2 công đoạn này
+        // chạy chung 1 phòng nên lịch chỉ giữ lại PC (stage_plan của THT bị active = 0).
+        // Khi đó BTP ra khỏi PC đã là BTP sau THT => phải lấy chuẩn biệt trữ của THT.
+        $quarantineStageCode = function ($stage, $stages) {
+            if ((int) $stage->stage_code !== 3 || empty($stage->prepering) || empty($stage->blending)) {
+                return (int) $stage->stage_code;
+            }
+
+            // Chỉ xét các công đoạn của cùng lô (tránh các lệnh đóng gói ghép từ lô khác)
+            $hasBlendingStage = $stages->contains(
+                fn($s) => (int) $s->stage_code === 4 && $s->plan_master_id == $stage->plan_master_id
+            );
+
+            return $hasBlendingStage ? 3 : 4;
+        };
+
         // Chuẩn biệt trữ của từng công đoạn, quy về phút theo cấu hình danh mục BTP.
         // quarantine_time_unit: 1 = ngày, 0 = giờ. Riêng "Cân NL Khác" (stage 2) là hằng số 45 ngày.
-        $stageQuarantineMinutes = function ($stage) {
-            switch ((int) $stage->stage_code) {
+        $stageQuarantineMinutes = function ($stage, $stages) use ($quarantineStageCode) {
+            switch ($quarantineStageCode($stage, $stages)) {
                 case 1:
                     $std = $stage->quarantine_weight;
                     break;
@@ -155,7 +174,7 @@ class SchedualStepController extends Controller
                     $next = $stages->firstWhere('code', $stage->nextcessor_code);
                     if (!$next || $next->finished == 1) continue;
 
-                    $stdInMinutes = $stageQuarantineMinutes($stage);
+                    $stdInMinutes = $stageQuarantineMinutes($stage, $stages);
 
                     if ($stage->end && $stdInMinutes) {
                         if (!$next->start) {
@@ -220,6 +239,8 @@ class SchedualStepController extends Controller
                 'market.name as market',
                 'product_name.name as product_name',
                 'intermediate_category.intermediate_code',
+                'intermediate_category.prepering',
+                'intermediate_category.blending',
                 'intermediate_category.quarantine_total',
                 'intermediate_category.quarantine_weight',
                 'intermediate_category.quarantine_preparing',
@@ -246,7 +267,7 @@ class SchedualStepController extends Controller
 
 
         // --- 3. Map thêm stage_name + ghép dữ liệu phụ ---
-        $mapFunction = function ($plans) use ($stage_name, $datas_only_parkaging) {
+        $mapFunction = function ($plans) use ($stage_name, $datas_only_parkaging, $quarantineStageCode) {
             $plans = $plans->map(function ($item) use ($stage_name) {
                 $item->stage_name = $stage_name[$item->stage_code]->stage ?? null;
                 return $item;
@@ -262,7 +283,12 @@ class SchedualStepController extends Controller
                     $plans = $plans->merge($extraStages);
                 }
             }
-            return $plans->values();
+            $plans = $plans->values();
+
+            // Gắn sẵn công đoạn dùng tra chuẩn biệt trữ để view dùng lại (trường hợp PC & THT gộp phòng)
+            return $plans->each(function ($item) use ($plans, $quarantineStageCode) {
+                $item->quarantine_stage_code = $quarantineStageCode($item, $plans);
+            });
         };
 
         $datas = $datas->map($mapFunction);
@@ -322,11 +348,17 @@ class SchedualStepController extends Controller
                 if (!is_numeric($plan->quarantine_total ?? null) || $plan->quarantine_total <= 0) continue;
 
                 foreach ($stages as $stage) {
-                    $stdInMinutes = $stageQuarantineMinutes($stage);
+                    $stdInMinutes = $stageQuarantineMinutes($stage, $stages);
                     if (!$stdInMinutes || empty($stage->end) || empty($stage->nextcessor_code)) continue;
 
                     $next = $stages->firstWhere('code', $stage->nextcessor_code);
                     if (!$next) continue;
+
+                    // Chuẩn biệt trữ có thể được lấy theo công đoạn khác khi PC & THT gộp phòng
+                    $stdStageCode = $quarantineStageCode($stage, $stages);
+                    $stdNote = $stdStageCode !== (int) $stage->stage_code
+                        ? ' (theo ' . ($stage_name[$stdStageCode]->stage ?? ('CĐ ' . $stdStageCode)) . ')'
+                        : '';
 
                     $endTs      = strtotime($stage->end);
                     $deadlineTs = $endTs + (int) round($stdInMinutes * 60);
@@ -361,7 +393,7 @@ class SchedualStepController extends Controller
                         'batch'             => $plan->batch,
                         'stage_name'        => $stage->stage_name ?? ($stage_name[$stage->stage_code]->stage ?? '--'),
                         'next_stage_name'   => $next->stage_name ?? ($stage_name[$next->stage_code]->stage ?? '--'),
-                        'std_text'          => $formatDuration($stdInMinutes),
+                        'std_text'          => $formatDuration($stdInMinutes) . $stdNote,
                         'end_at'            => $stage->end,
                         'deadline'          => date('Y-m-d H:i:s', $deadlineTs),
                         'next_start_at'     => $nextStartTs ? date('Y-m-d H:i:s', $nextStartTs) : null,

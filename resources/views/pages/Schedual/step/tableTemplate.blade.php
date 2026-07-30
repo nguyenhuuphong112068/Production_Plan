@@ -235,25 +235,32 @@
                                     // Tìm công đoạn tiếp theo dựa vào nextcessor_code
                                     $next = $stages->firstWhere('code', $stage->nextcessor_code);
 
-                                    // Lấy thời gian biệt trữ chuẩn
+                                    // Lấy thời gian biệt trữ chuẩn.
+                                    // quarantine_stage_code khác stage_code khi PC & THT được gộp chung 1 phòng
+                                    // (danh mục BTP có cả PC + THT nhưng lịch chỉ còn PC active) -> lấy chuẩn của THT.
+                                    $stdStageCode = (int) ($stage->quarantine_stage_code ?? $stage->stage_code);
+                                    $stdFromOtherStage = $stdStageCode != (int) $stage->stage_code;
                                     $stdValue = null;
-                                    if ($stage->stage_code == 1) {
+                                    if ($stdStageCode == 1) {
                                         $stdValue = $stage->quarantine_weight;
-                                    } elseif ($stage->stage_code == 2) {
+                                    } elseif ($stdStageCode == 2) {
                                         $stdValue = 45; // Cân NL Khác: mặc định biệt trữ 45 ngày
-                                    } elseif ($stage->stage_code == 3) {
+                                    } elseif ($stdStageCode == 3) {
                                         $stdValue = $stage->quarantine_preparing;
-                                    } elseif ($stage->stage_code == 4) {
+                                    } elseif ($stdStageCode == 4) {
                                         $stdValue = $stage->quarantine_blending;
-                                    } elseif ($stage->stage_code == 5) {
+                                    } elseif ($stdStageCode == 5) {
                                         $stdValue = $stage->quarantine_forming;
-                                    } elseif ($stage->stage_code == 6) {
+                                    } elseif ($stdStageCode == 6) {
                                         $stdValue = $stage->quarantine_coating;
                                     }
 
                                     if ($stdValue !== null) {
                                         $unitStr = $stage->quarantine_time_unit == 1 ? 'd' : 'h';
                                         $stdWaiting = $stdValue . $unitStr;
+                                        if ($stdFromOtherStage) {
+                                            $stdWaiting .= ' (THT)';
+                                        }
                                     }
 
                                     $color_div = $next && $next->finished ? '#007bff' : '#28a745';
@@ -511,18 +518,20 @@
                         $badgeClass = '';
 
                         if ($lastFinished) {
+                            // Xem chú thích ở stepper: PC & THT gộp phòng thì lấy chuẩn biệt trữ của THT
+                            $lfStageCode = (int) ($lastFinished->quarantine_stage_code ?? $lastFinished->stage_code);
                             $stdValue = null;
-                            if ($lastFinished->stage_code == 1) {
+                            if ($lfStageCode == 1) {
                                 $stdValue = $lastFinished->quarantine_weight;
-                            } elseif ($lastFinished->stage_code == 2) {
+                            } elseif ($lfStageCode == 2) {
                                 $stdValue = 45; // Cân NL Khác: mặc định biệt trữ 45 ngày
-                            } elseif ($lastFinished->stage_code == 3) {
+                            } elseif ($lfStageCode == 3) {
                                 $stdValue = $lastFinished->quarantine_preparing;
-                            } elseif ($lastFinished->stage_code == 4) {
+                            } elseif ($lfStageCode == 4) {
                                 $stdValue = $lastFinished->quarantine_blending;
-                            } elseif ($lastFinished->stage_code == 5) {
+                            } elseif ($lfStageCode == 5) {
                                 $stdValue = $lastFinished->quarantine_forming;
-                            } elseif ($lastFinished->stage_code == 6) {
+                            } elseif ($lfStageCode == 6) {
                                 $stdValue = $lastFinished->quarantine_coating;
                             }
 
