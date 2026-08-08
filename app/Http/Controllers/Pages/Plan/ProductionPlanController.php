@@ -3,6 +3,9 @@
 namespace App\Http\Controllers\Pages\Plan;
 
 use App\Http\Controllers\Controller;
+use App\Models\PublicationTrackingDetail;
+use App\Models\PublicationTrackingPeriod;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -11,6 +14,13 @@ use Illuminate\Support\Str;
 
 class ProductionPlanController extends Controller
 {
+        /**
+         * Kỳ kế hoạch (yyyymm) đầu tiên bỏ ô phản hồi QA ở màn hình Phản Hồi KHSX:
+         * từ tháng 09/2026, nội dung này được theo dõi ở "Theo dõi lên ấn bản".
+         */
+        private const QA_FEEDBACK_LAST_PERIOD = 202609;
+
+
         public function index()
         {
                 $this->updateOrderNumbersFromMMS();
@@ -2613,13 +2623,26 @@ class ProductionPlanController extends Controller
                                 'finished_product_category.unit_batch_qty',
                                 'finished_product_category.deparment_code',
                                 'source_material.name as source_material_name',
-                                'stage_plan.end as end'
+                                'stage_plan.end as end',
+                                // Ngày KCS thực tế và ngày ra hồ sơ PX nay do chức năng
+                                // "Theo dõi hồ sơ KCS" quản lý, trang này chỉ hiển thị lại.
+                                //
+                                // Vẫn lùi về cột cũ trên plan_master khi lô chưa có dòng theo dõi:
+                                // phần lớn lô cũ mới chỉ có dữ liệu ở plan_master, bỏ đi sẽ làm
+                                // các kế hoạch tháng trước hiện "chưa có ngày" hàng loạt.
+                                DB::raw('COALESCE(plan_master_KCS.kcs_date, plan_master.actual_KCS) AS kcs_effective_date'),
+                                DB::raw('COALESCE(plan_master_KCS.record_received_date, plan_master.actual_record_date) AS record_effective_date'),
+                                'plan_master_KCS.kcs_date as kcs_tracking_date',
+                                'plan_master_KCS.record_received_date as kcs_record_received_date',
+                                'plan_master_KCS.updated_by as kcs_tracking_by',
+                                'plan_master_KCS.updated_at as kcs_tracking_at'
                         )
                         ->leftJoin('finished_product_category', 'plan_master.product_caterogy_id', 'finished_product_category.id')
                         ->leftJoin('source_material', 'plan_master.material_source_id', 'source_material.id')
                         ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
                         ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
                         ->leftJoin('specification', 'finished_product_category.specification_id', 'specification.id')
+                        ->leftJoin('plan_master_KCS', 'plan_master.id', '=', 'plan_master_KCS.plan_master_id')
                         ->leftJoin('stage_plan', function ($join) use ($request) {
                                 $join->on('plan_master.id', '=', 'stage_plan.plan_master_id')
                                         ->where('stage_plan.stage_code', 7)
@@ -2643,7 +2666,22 @@ class ProductionPlanController extends Controller
                 $production_name  =  session('user')['production_name'];
                 $production =  session('user')['production_code'];
 
-                $send_date = DB::table('plan_list')->where('id',  $request->plan_list_id)->value('send_date');
+                $plan_list = DB::table('plan_list')->where('id', $request->plan_list_id)->first();
+                $send_date = $plan_list->send_date ?? null;
+
+                [$pt_period, $pt_details] = $this->publicationTrackingForPlan($plan_list, $datas);
+
+                // Từ KHSX tháng 09/2026, ô phản hồi QA nhường chỗ hẳn cho nội dung
+                // "Theo dõi lên ấn bản"; kế hoạch cũ vẫn giữ nguyên phản hồi đã nhập
+                $show_qa_feedback = !$plan_list
+                        || !$plan_list->month
+                        || !$plan_list->year
+                        || ($plan_list->year * 100 + $plan_list->month) < self::QA_FEEDBACK_LAST_PERIOD;
+
+                // Kế hoạch cũ giữ nguyên ô "Hồ sơ lô" QA đã tích tay, không ghi đè lịch sử
+                if (!$show_qa_feedback) {
+                        $this->syncHasBmrFromPublicationTracking($datas, $pt_period, $pt_details);
+                }
 
                 session()->put(['title' => "Phản Hồi $request->name - $production_name"]);
 
@@ -2653,8 +2691,131 @@ class ProductionPlanController extends Controller
                         'send' => $request->send ?? 1,
                         'department' => $department,
                         'production' => $production,
-                        'send_date' => $send_date
+                        'send_date' => $send_date,
+                        'pt_period' => $pt_period,
+                        'pt_details' => $pt_details,
+                        'show_qa_feedback' => $show_qa_feedback
                 ]);
+        }
+
+        /**
+         * Nội dung "Theo dõi lên ấn bản" của kỳ trùng tháng kế hoạch, để cột Đảm Bảo
+         * Chất Lượng của màn hình phản hồi KHSX đọc lại mà không phải mở trang khác.
+         *
+         * Kỳ theo dõi tháng m/y là chu kỳ bắt đầu ngày 20 của tháng m-2
+         * (xem PublicationTrackingPeriod::labelForCycleStart), nên tra kỳ bằng
+         * year/month của tháng bắt đầu chu kỳ chứ không phải tháng kế hoạch.
+         *
+         * @return array{0: ?PublicationTrackingPeriod, 1: \Illuminate\Support\Collection}
+         *         Kỳ tương ứng và các mã đã có nội dung, khoá theo "TP-<mã>" / "BTP-<mã>".
+         */
+        private function publicationTrackingForPlan($plan_list, $datas): array
+        {
+                $empty = [null, collect()];
+
+                if (!$plan_list || !$plan_list->month || !$plan_list->year) {
+                        return $empty;
+                }
+
+                $cycle_start = Carbon::create($plan_list->year, $plan_list->month, 1)->subMonthsNoOverflow(2);
+
+                $period = PublicationTrackingPeriod::where('deparment_code', $plan_list->deparment_code)
+                        ->where('year', $cycle_start->year)
+                        ->where('month', $cycle_start->month)
+                        ->first();
+
+                if (!$period) {
+                        return $empty;
+                }
+
+                // Chỉ lấy các mã thật sự có trong kế hoạch: kỳ theo dõi chứa toàn bộ
+                // danh mục còn hiệu lực của phân xưởng, cả nghìn mã, phần lớn không liên quan
+                $product_codes = collect($datas)->pluck('finished_product_code')->filter()->unique()->values();
+                $intermediate_codes = collect($datas)->pluck('intermediate_code')->filter()->unique()->values();
+
+                if ($product_codes->isEmpty() && $intermediate_codes->isEmpty()) {
+                        return [$period, collect()];
+                }
+
+                $details = PublicationTrackingDetail::with(['taskItems.task'])
+                        ->where('period_id', $period->id)
+                        ->where(function ($q) use ($product_codes, $intermediate_codes) {
+                                $q->where(function ($sub) use ($product_codes) {
+                                        $sub->where('category_type', 'TP')->whereIn('code', $product_codes);
+                                })->orWhere(function ($sub) use ($intermediate_codes) {
+                                        $sub->where('category_type', 'BTP')->whereIn('code', $intermediate_codes);
+                                });
+                        })
+                        ->get()
+                        // Mã chưa ai đụng tới thì bỏ hẳn, cột phản hồi giữ nguyên như cũ
+                        ->filter(fn($detail) => $detail->taskItems->isNotEmpty()
+                                || $detail->decision !== null
+                                || $detail->completed_date
+                                || filled($detail->comment))
+                        ->keyBy(fn($detail) => $detail->category_type . '-' . $detail->code);
+
+                return [$period, $details];
+        }
+
+        /**
+         * Đặt lại "Hồ sơ lô" theo tình trạng lên ấn bản của các mã TP / BTP của dòng:
+         * mọi mã liên quan đều đã chốt (không lên ấn bản, hoặc đã lên xong đúng hạn)
+         * thì hồ sơ lô sẵn sàng, còn một mã đang chờ là chưa. Dòng không khớp mã nào
+         * trong kỳ nghĩa là không có gì phải chờ nên cũng tính là sẵn sàng.
+         *
+         * Ghi thẳng xuống plan_master để báo cáo và số đếm "chưa có N lô" không lệch
+         * với ô hiển thị, kèm pt_expected_date cho view nêu ngày dự kiến hoàn thành.
+         */
+        private function syncHasBmrFromPublicationTracking($datas, $pt_period, $pt_details): void
+        {
+                // Chưa có kỳ theo dõi thì chưa kết luận được gì, giữ nguyên dữ liệu cũ
+                if (!$pt_period) {
+                        return;
+                }
+
+                $updates = [0 => [], 1 => []];
+
+                foreach ($datas as $data) {
+                        $blocking = collect(['TP-' . $data->finished_product_code, 'BTP-' . $data->intermediate_code])
+                                ->map(fn($key) => $pt_details->get($key))
+                                ->filter()
+                                ->reject(fn($detail) => $this->publicationTrackingSettled($detail));
+
+                        $ready = (int) $blocking->isEmpty();
+
+                        // Mã cuối cùng lên xong mới là lúc hồ sơ lô sẵn sàng, nên lấy hạn muộn nhất
+                        $data->pt_expected_date = $blocking->pluck('due_date')->filter()->max();
+
+                        if ((int) $data->has_BMR !== $ready) {
+                                $updates[$ready][] = $data->id;
+                        }
+
+                        $data->has_BMR = $ready;
+                }
+
+                foreach ($updates as $value => $ids) {
+                        foreach (array_chunk($ids, 500) as $chunk) {
+                                DB::table('plan_master')->whereIn('id', $chunk)->update(['has_BMR' => $value]);
+                        }
+                }
+        }
+
+        /**
+         * Mã này không còn chặn hồ sơ lô: hoặc đã quyết định không thực hiện,
+         * hoặc đã hoàn thành không trễ hơn ngày dự kiến - đúng điều kiện mà trang
+         * Theo Dõi Lên Ấn Bản gắn nhãn "Đáp ứng". Thiếu ngày dự kiến thì chưa
+         * kết luận được là đáp ứng nên vẫn tính là đang chờ.
+         */
+        private function publicationTrackingSettled($detail): bool
+        {
+                if (!$detail->decision) {
+                        return true;
+                }
+
+                $due = $detail->due_date?->format('Y-m-d');
+                $completed = $detail->completed_date?->format('Y-m-d');
+
+                return $due && $completed && $completed <= $due;
         }
 
         public function accept_expected_date(Request $request)
@@ -3394,7 +3555,13 @@ class ProductionPlanController extends Controller
                                 "plan_master.order_number",
                                 "plan_master.expected_date",
                                 "plan_master.responsed_date",
+                                // actual_KCS giữ nguyên để không làm gãy bên đang gọi API này.
+                                // Ngày KCS thực tế và ngày ra hồ sơ nay do chức năng "Theo dõi hồ sơ
+                                // KCS" quản lý: bên tiêu thụ nên chuyển sang dùng *_effective_date
+                                // (ưu tiên dữ liệu theo dõi, lùi về cột cũ khi lô chưa được theo dõi).
                                 "plan_master.actual_KCS",
+                                DB::raw('COALESCE(plan_master_KCS.kcs_date, plan_master.actual_KCS) AS kcs_effective_date'),
+                                DB::raw('COALESCE(plan_master_KCS.record_received_date, plan_master.actual_record_date) AS record_effective_date'),
                                 "plan_master.is_val",
                                 "plan_master.code_val",
                                 "plan_master.after_weigth_date",
@@ -3472,6 +3639,7 @@ class ProductionPlanController extends Controller
                         ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
                         ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
                         ->leftJoin('specification', 'finished_product_category.specification_id', 'specification.id')
+                        ->leftJoin('plan_master_KCS', 'plan_master.id', '=', 'plan_master_KCS.plan_master_id')
                         ->leftJoinSub($maxStageFinished, 'sp_max', function ($join) {
                                 $join->on('plan_master.id', '=', 'sp_max.plan_master_id');
                         })

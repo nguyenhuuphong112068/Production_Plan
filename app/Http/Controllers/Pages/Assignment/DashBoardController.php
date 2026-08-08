@@ -207,10 +207,22 @@ class DashBoardController extends Controller
             ->leftJoin('room as r', 'a.room_id', '=', 'r.id')
             ->where('a.deparment_code', $production_code)
             ->where('a.active', 1)
+            ->where('a.start', '>=', $startDate)
             ->where('a.start', '<', $endDate)
-            ->where('a.end', '>', $startDate)
             ->whereIn('ap.personnel_id', $employeeIds)
-            ->select('ap.personnel_id', 'a.start', 'a.end', 'r.name as room_name', 'r.id as room_id', 'a.work_location', 'a.Sheet')
+            ->select(
+                'ap.personnel_id',
+                'a.start',
+                'a.end',
+                // Giờ riêng của từng nhân sự mới là giờ thực tế được phân công
+                // (trang Lịch công tác và panel Tình Hình Nhân Sự đều dùng giờ này)
+                DB::raw('COALESCE(ap.start, a.start) as p_start'),
+                DB::raw('COALESCE(ap.end, a.end) as p_end'),
+                'r.name as room_name',
+                'r.id as room_id',
+                'a.work_location',
+                'a.Sheet'
+            )
             ->get();
 
         // Calculate hours per employee and room
@@ -225,50 +237,46 @@ class DashBoardController extends Controller
         }
 
         foreach ($assignments as $assignment) {
+            // Ngày công tác lấy theo giờ của công tác, để trùng đúng tập bản ghi
+            // mà trang Lịch công tác hiển thị cho ngày đó.
             $aStart = Carbon::parse($assignment->start);
-            $aEnd = Carbon::parse($assignment->end);
 
-            // Limit to the selected period
-            if ($aStart->lt($startDate)) {
-                $aStart = $startDate->copy();
-            }
-            if ($aEnd->gt($endDate)) {
-                $aEnd = $endDate->copy();
+            // Số giờ thì lấy theo giờ riêng của nhân sự, vì đó mới là giờ thực tế
+            // người này được phân công (UI cho phép chỉnh riêng từng người).
+            $pStart = Carbon::parse($assignment->p_start);
+            $pEnd = Carbon::parse($assignment->p_end);
+
+            if ($pEnd->lte($pStart)) {
+                continue;
             }
 
-            $isNoLunchBreakShift = false;
+            // Mỗi công tác thuộc trọn về ngày công tác chứa giờ bắt đầu của nó,
+            // giống hệt cách trang Lịch công tác hiển thị: không cắt phần tràn
+            // qua mốc 06:00 hôm sau, nếu không số giờ đó sẽ biến mất khỏi mọi ngày.
+            $d = (int) floor(($aStart->getTimestamp() - $startDate->getTimestamp()) / 86400);
+            if ($d < 0 || $d >= $daysInPeriod) {
+                continue;
+            }
+
+            $durationMin = $pStart->diffInMinutes($pEnd);
+
             // Sheet: 1=C1, 2=C2, 3=C3, 6=C4. Chỉ trừ nghỉ trưa cho 4=HC, 5=Khác
-            if (in_array($assignment->Sheet, [1, 2, 3, 6])) {
-                $isNoLunchBreakShift = true;
+            if (!in_array($assignment->Sheet, [1, 2, 3, 6])) {
+                $lunchStart = $pStart->copy()->setTime(11, 30, 0);
+                $lunchEnd = $pStart->copy()->setTime(12, 15, 0);
+
+                $lOverlapStart = $pStart->copy()->max($lunchStart);
+                $lOverlapEnd = $pEnd->copy()->min($lunchEnd);
+
+                if ($lOverlapStart->lt($lOverlapEnd)) {
+                    $durationMin -= $lOverlapStart->diffInMinutes($lOverlapEnd);
+                }
             }
 
-            for ($d = 0; $d < $daysInPeriod; $d++) {
-                $dayStart = $startDate->copy()->addDays($d);
-                $dayEnd = $dayStart->copy()->addDays(1);
+            $hours = $durationMin / 60;
 
-                $overlapStart = $aStart->copy()->max($dayStart);
-                $overlapEnd = $aEnd->copy()->min($dayEnd);
-
-                if ($overlapStart->lt($overlapEnd)) {
-                    $durationMin = $overlapStart->diffInMinutes($overlapEnd);
-
-                    if (!$isNoLunchBreakShift) {
-                        $lunchStart = $dayStart->copy()->setTime(11, 30, 0);
-                        $lunchEnd = $dayStart->copy()->setTime(12, 15, 0);
-
-                        $lOverlapStart = $overlapStart->copy()->max($lunchStart);
-                        $lOverlapEnd = $overlapEnd->copy()->min($lunchEnd);
-
-                        if ($lOverlapStart->lt($lOverlapEnd)) {
-                            $durationMin -= $lOverlapStart->diffInMinutes($lOverlapEnd);
-                        }
-                    }
-
-                    $hours = $durationMin / 60;
-                    if (isset($employeeDailyHours[$assignment->personnel_id])) {
-                        $employeeDailyHours[$assignment->personnel_id][$d] += $hours;
-                    }
-                }
+            if (isset($employeeDailyHours[$assignment->personnel_id])) {
+                $employeeDailyHours[$assignment->personnel_id][$d] += $hours;
             }
 
             $roomName = $assignment->room_name ?? $assignment->work_location ?? 'Khác';

@@ -26,6 +26,7 @@ Route::prefix('/assignemnt/production')
         Route::post('approve-overtime', 'approveOvertime')->name('approve_overtime');
         Route::get('overtime-approval-history', 'overtimeApprovalHistory')->name('overtime_approval_history');
         Route::post('update-personnel-time', 'updatePersonnelTime')->name('update_personnel_time');
+        Route::get('personnel-time-history', 'personnelTimeHistory')->name('personnel_time_history');
         Route::post('update-has-assignment', 'updateHasAssignment')->name('update_has_assignment');
         Route::delete('destroy/{id}', 'destroy')->name('destroy');
 

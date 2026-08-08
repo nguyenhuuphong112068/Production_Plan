@@ -394,6 +394,12 @@
         background-color: #ffe8cc !important;
     }
 
+    /* Icon xem lịch sử chỉnh giờ công tác, đặt cuối thanh trượt thời gian */
+    .btn-time-history:hover {
+        color: #007bff !important;
+        opacity: 1 !important;
+    }
+
     /* Styles for assigned personnel in sidebar */
     .draggable-person.person-assigned {
         opacity: 0.6;
@@ -724,6 +730,12 @@
                                                                     <div class="time-display ml-2 font-weight-bold"
                                                                         style="font-size: 0.7rem; width: 140px; text-align: right; line-height: 1.4; flex-shrink: 0;">
                                                                     </div>
+                                                                    @if (!empty($assignment->id) && !($assignment->is_foreign ?? false))
+                                                                        {{-- pointer-events: auto để vẫn xem được lịch sử khi hàng ở chế độ chỉ đọc --}}
+                                                                        <i class="fas fa-history text-muted ml-2 btn-time-history cursor-pointer"
+                                                                            title="Lịch sử chỉnh giờ công tác"
+                                                                            style="font-size: 0.8rem; flex-shrink: 0; pointer-events: auto; opacity: 0.75;"></i>
+                                                                    @endif
                                                                     <input type="hidden" class="p-start-input"
                                                                         value="{{ $p_info->start ? \Carbon\Carbon::parse($p_info->start)->format('H:i') : '' }}">
                                                                     <input type="hidden" class="p-end-input"
@@ -3574,6 +3586,106 @@
 
         $(document).on('click', '#btn-overtime-history', function() {
             showOvertimeApprovalHistory(true);
+        });
+
+        // Lịch sử chỉnh giờ công tác của nhân sự bằng thanh trượt
+        // scope = {assignmentId, personnelId, personName}: 1 dòng nhân sự; scope = null: toàn bộ ngày đang xem
+        function showPersonnelTimeHistory(scope) {
+            Swal.fire({
+                title: 'Đang tải lịch sử...',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+
+            $.ajax({
+                url: '{{ route('pages.assignment.production.personnel_time_history') }}',
+                type: 'GET',
+                data: scope ? {
+                    assignment_id: scope.assignmentId,
+                    personnel_id: scope.personnelId
+                } : {
+                    reportedDate: '{{ $reportedDate }}',
+                    production_code: '{{ $production_code }}',
+                    group_code: $('select[name="group_code"]').val() || ''
+                },
+                success: function(res) {
+                    if (!res.success) {
+                        Swal.fire('Lỗi', res.message || 'Không tải được lịch sử', 'error');
+                        return;
+                    }
+
+                    let html = '';
+                    if (!res.data || res.data.length === 0) {
+                        html = `<div class="alert alert-secondary p-2 small mb-0"><i class="fas fa-info-circle"></i> ` +
+                            (scope ?
+                                `Nhân sự này chưa có lần chỉnh giờ công tác nào.` :
+                                `Chưa có lần chỉnh giờ công tác nào trong ngày {{ \Carbon\Carbon::parse($reportedDate)->format('d/m/Y') }}.`
+                            ) + `</div>`;
+                    } else {
+                        html = `<div style="max-height:60vh; overflow:auto;">
+                            <table class="table table-sm table-bordered mb-0" style="font-size:0.85rem;">
+                                <thead class="thead-light">
+                                    <tr>
+                                        ${scope ? '' : '<th>Nhân sự</th><th>Phòng / Thiết bị</th>'}
+                                        <th>Giờ trước đó</th>
+                                        <th>Giờ sau khi đổi</th>
+                                        <th>Người chỉnh</th>
+                                        <th>Thời điểm chỉnh</th>
+                                    </tr>
+                                </thead>
+                                <tbody>`;
+                        res.data.forEach(function(r) {
+                            const oldHrs = r.old_hours !== null ? ` <span class="text-muted">(${r.old_hours}h)</span>` : '';
+                            const newHrs = r.new_hours !== null ? ` <span class="text-muted">(${r.new_hours}h)</span>` : '';
+                            const isUp = r.new_hours !== null && r.old_hours !== null && r.new_hours > r.old_hours;
+                            html += `<tr>
+                                    ${scope ? '' : `<td>${r.personnel_name || ''}</td><td>${r.room_name || ''}</td>`}
+                                    <td><span class="text-muted">${r.old_time}</span>${oldHrs}</td>
+                                    <td><b class="${isUp ? 'text-danger' : 'text-primary'}">${r.new_time}</b>${newHrs}</td>
+                                    <td>${r.changed_by || ''}</td>
+                                    <td>${r.changed_at}</td>
+                                </tr>`;
+                        });
+                        html += `</tbody></table></div>`;
+                    }
+
+                    Swal.fire({
+                        title: scope ?
+                            'Lịch sử chỉnh giờ - ' + (scope.personName || 'nhân sự') :
+                            'Lịch sử chỉnh giờ công tác - ngày {{ \Carbon\Carbon::parse($reportedDate)->format('d/m/Y') }}',
+                        html: html,
+                        width: scope ? '750px' : '950px',
+                        showDenyButton: !!scope,
+                        denyButtonText: 'Xem tất cả trong ngày',
+                        denyButtonColor: '#6c757d',
+                        confirmButtonText: 'Đóng'
+                    }).then((result) => {
+                        if (result.isDenied) showPersonnelTimeHistory(null);
+                    });
+                },
+                error: function() {
+                    Swal.fire('Lỗi', 'Đã xảy ra lỗi khi kết nối với máy chủ', 'error');
+                }
+            });
+        }
+
+        $(document).on('click', '.btn-time-history', function() {
+            const row = $(this).closest('.personnel-row');
+            const assignmentId = row.closest('.assignment-item').attr('data-id');
+            const personnelSelect = row.find('.person-select');
+            const personnelId = personnelSelect.val();
+
+            if (!assignmentId || !personnelId) {
+                Swal.fire('Chưa có lịch sử',
+                    'Dòng phân công này chưa được lưu nên chưa ghi nhận thay đổi giờ công tác.', 'info');
+                return;
+            }
+
+            showPersonnelTimeHistory({
+                assignmentId: assignmentId,
+                personnelId: personnelId,
+                personName: personnelSelect.find('option:selected').text().trim()
+            });
         });
 
         $(document).on('click', '#btn-print-schedule', function(e) {

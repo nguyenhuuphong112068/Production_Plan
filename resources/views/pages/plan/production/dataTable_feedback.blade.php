@@ -21,6 +21,11 @@
         box-shadow: 0 0 5px #007bff;
     }
 
+    /* Tình trạng hồ sơ lô dạng chữ, thay ô tích từ kỳ 09/2026 */
+    .pt-bmr-status {
+        font-weight: bold;
+    }
+
     .updateInput {
         width: 100%;
         border: none;
@@ -44,6 +49,42 @@
         display: block;
         margin: auto;
     }
+
+    /* Khối "Theo dõi lên ấn bản" chèn vào cột Đảm Bảo Chất Lượng: chữ nhỏ hơn
+       phần phản hồi để đọc là biết ngay đây là thông tin tham chiếu, không phải ô nhập */
+    .pt-inline {
+        margin-top: 6px;
+        padding-top: 6px;
+        border-top: 1px dashed #adb5bd;
+        font-size: 13px;
+        line-height: 1.35;
+    }
+
+    .pt-inline-title {
+        display: block;
+        font-weight: bold;
+        color: #0056b3;
+        margin-bottom: 3px;
+    }
+
+    .pt-inline-item+.pt-inline-item {
+        margin-top: 5px;
+        padding-top: 5px;
+        border-top: 1px dotted #dee2e6;
+    }
+
+    .pt-inline-code {
+        font-weight: bold;
+    }
+
+    .pt-inline-task {
+        padding-left: 6px;
+        word-break: break-word;
+    }
+
+    .pt-inline-meta {
+        color: #495057;
+    }
 </style>
 
 @php
@@ -59,7 +100,8 @@
         @php
             $plan_feedback = user_has_permission(session('user')['userId'], 'plan_feedback', 'boolean');
             $plan_feedback_leader = user_has_permission(session('user')['userId'], 'plan_feedback_leader', 'boolean');
-            $Record_KCS_Date = user_has_permission(session('user')['userId'], 'Record_KCS_Date', 'boolean');
+            // Quyền Record_KCS_Date không còn dùng ở trang này: ngày KCS thực tế đã chuyển
+            // sang chức năng "Theo dõi hồ sơ KCS" (quyền kcs_tracking_update).
 
             $colors = [
                 1 => 'background-color: #f44336; color: white;', // đỏ
@@ -86,10 +128,10 @@
                             if ($data->actual_CoA_date == null) {
                                 $actual_CoA_Count++;
                             }
-                            if ($data->actual_KCS == null) {
+                            if ($data->kcs_effective_date == null) {
                                 $actual_KCS_Count++;
                             }
-                            if ($data->actual_record_date == null) {
+                            if ($data->record_effective_date == null) {
                                 $actual_export_record_Count++;
                             }
                             if ($data->has_BMR == 0) {
@@ -244,10 +286,12 @@
 
 
 
+                                {{-- (2) Ngày ra hồ sơ PX: chỉ xem, lấy từ "Ngày Nhận Hồ Sơ"
+                                     của chức năng "Theo dõi hồ sơ KCS" --}}
                                 @if ($department == $production && $plan_feedback)
                                     <b> {{ '(2):' }}</b>
-                                    <input type= "date" class="updateInput" name="actual_record_date"
-                                        value="{{ $data->actual_record_date }}" data-id={{ $data->id }}></input>
+                                    {{ $data->record_effective_date ? \Carbon\Carbon::parse($data->record_effective_date)->format('d/m/Y') : 'Chưa có ngày ra hồ sơ' }}
+                                    <br>
                                     <b> {{ '(3):' }}</b>
                                     <textarea class="updateInput text-left" name="pro_feedback" data-id="{{ $data->id }}"
                                         placeholder="Phân Xưởng Phản Hồi Tại Đây">
@@ -257,7 +301,7 @@
 </textarea>
                                 @else
                                     <b> {{ '(2):' }}</b>
-                                    {{ empty($data->actual_record_date) || $data->actual_record_date == null ? 'Chưa có ngày ra hồ sơ' : \Carbon\Carbon::parse($data->actual_record_date)->format('d/m/Y') }}
+                                    {{ $data->record_effective_date ? \Carbon\Carbon::parse($data->record_effective_date)->format('d/m/Y') : 'Chưa có ngày ra hồ sơ' }}
                                     <br>
                                     <b> {{ '(3):' }}</b>
                                     {{ empty($data->pro_feedback) ? 'Chưa có phản hồi' : $data->pro_feedback }}
@@ -272,36 +316,76 @@
                             {{-- QA Phản hồi --}}
                             <td class="text-left">
 
-                                <div class="input-group mx-4">
-                                    <label for="{{ $data->id }}"> : Hồ sơ lô</label>
-                                    <input class="form-check-input step-checkbox" type="checkbox" name ="has_BMR"
-                                        id="{{ $data->id }}" data-id="{{ $data->id }}"
-                                        data-permission="{{ (\Carbon\Carbon::parse($send_date)->addDays(16)->gt(now()) && $department == 'QA' && $plan_feedback) ||
-                                        ($department == 'QA' && $plan_feedback_leader)
-                                            ? '1'
-                                            : '0' }}"
-                                        {{ $data->has_BMR ? 'checked' : '' }}>
-                                </div>
+                                {{-- Theo dõi lên ấn bản của kỳ trùng tháng kế hoạch: mã nào chưa có
+                                     nội dung nào thì không hiện gì, cột giữ nguyên như trước --}}
+                                @php
+                                    $pt_entries = [];
+                                    if ($pt_period) {
+                                        foreach ([['TP', $data->finished_product_code], ['BTP', $data->intermediate_code]] as [$pt_type, $pt_code]) {
+                                            $pt_detail = $pt_code ? $pt_details->get($pt_type . '-' . $pt_code) : null;
+                                            if ($pt_detail) {
+                                                $pt_entries[] = ['type' => $pt_type, 'detail' => $pt_detail];
+                                            }
+                                        }
+                                    }
 
-                                <div>
-                                    @if (
-                                        ($department == 'QA' && $plan_feedback && \Carbon\Carbon::parse($send_date)->addDays(16)->gt(now())) ||
-                                            ($department == 'QA' && $plan_feedback_leader))
-                                        <textarea class="updateInput text-left" name="qa_feedback" data-id="{{ $data->id }}"
-                                            placeholder="QA Phản Hồi Tại Đây">
+                                @endphp
+
+                                @if ($show_qa_feedback)
+                                    <div class="input-group mx-4">
+                                        <label for="{{ $data->id }}"> : Hồ sơ lô</label>
+                                        <input class="form-check-input step-checkbox" type="checkbox" name ="has_BMR"
+                                            id="{{ $data->id }}" data-id="{{ $data->id }}"
+                                            data-permission="{{ (\Carbon\Carbon::parse($send_date)->addDays(16)->gt(now()) && $department == 'QA' && $plan_feedback) ||
+                                            ($department == 'QA' && $plan_feedback_leader)
+                                                ? '1'
+                                                : '0' }}"
+                                            {{ $data->has_BMR ? 'checked' : '' }}>
+                                    </div>
+
+                                    <div>
+                                        @if (
+                                            ($department == 'QA' && $plan_feedback && \Carbon\Carbon::parse($send_date)->addDays(16)->gt(now())) ||
+                                                ($department == 'QA' && $plan_feedback_leader))
+                                            <textarea class="updateInput text-left" name="qa_feedback" data-id="{{ $data->id }}"
+                                                placeholder="QA Phản Hồi Tại Đây">
 @if (!empty($data->qa_feedback))
 {{ $data->qa_feedback }}
 @endif
 </textarea>
-                                    @else
-                                        {{ empty($data->qa_feedback) ? 'Chưa có phản hồi' : $data->qa_feedback }}
-                                    @endif
+                                        @else
+                                            {{ empty($data->qa_feedback) ? 'Chưa có phản hồi' : $data->qa_feedback }}
+                                        @endif
 
-                                </div>
-                                <div> {{ 'Updated_by: ' . $data->qa_feedback_by }} </div>
-                                <div>{{ 'Updated_date: ' }}
-                                    {{ $data->qa_feedback_date ? \Carbon\Carbon::parse($data->qa_feedback_date)->format('d/m/Y') : '' }}
-                                </div>
+                                    </div>
+                                    <div> {{ 'Updated_by: ' . $data->qa_feedback_by }} </div>
+                                    <div>{{ 'Updated_date: ' }}
+                                        {{ $data->qa_feedback_date ? \Carbon\Carbon::parse($data->qa_feedback_date)->format('d/m/Y') : '' }}
+                                    </div>
+                                @else
+                                    {{-- Từ 09/2026 tình trạng hồ sơ lô do "Theo dõi lên ấn bản" quyết định
+                                         nên nói thẳng bằng chữ, không còn ô tích để hiểu nhầm là nhập tay --}}
+                                    <div class="pt-bmr-status {{ $data->has_BMR ? 'text-success' : 'text-danger' }}">
+                                        <i
+                                            class="fas {{ $data->has_BMR ? 'fa-check-circle' : 'fa-exclamation-circle' }}"></i>
+                                        @if ($data->has_BMR)
+                                            Hồ sơ lô sẵn sàng
+                                        @else
+                                            Hồ sơ lô chưa sẵn sàng
+                                            @if ($data->pt_expected_date ?? null)
+                                                - dự kiến hoàn thành lên ấn bản ngày
+                                                {{ $data->pt_expected_date->format('d/m/Y') }}
+                                            @endif
+                                        @endif
+                                    </div>
+                                @endif
+
+                                @if (!empty($pt_entries))
+                                    @include('pages.plan.production.publication_tracking_cell', [
+                                        'period' => $pt_period,
+                                        'entries' => $pt_entries,
+                                    ])
+                                @endif
 
                             </td>
 
@@ -377,22 +461,28 @@
 
                             </td>
 
-                            {{-- KCS thực tế Phản hồi --}}
+                            {{-- KCS thực tế: chỉ xem, dữ liệu do chức năng "Theo dõi hồ sơ KCS" nhập --}}
                             <td class="text-left">
 
-                                @if (!$data->actual_KCS && $department == 'QA' && $Record_KCS_Date)
-                                    <input type= "date" class="updateInput" name="actual_KCS"
-                                        value="{{ $data->actual_KCS }}" data-id={{ $data->id }}></input>
-                                @else
-                                    <b class="{{ $data->actual_KCS ? 'text-green' : '' }}">
-                                        {{ $data->actual_KCS ? \Carbon\Carbon::parse($data->actual_KCS)->format('d/m/Y') : 'Chưa có ngày KCS' }}
-                                    </b>
-                                @endif
+                                @php
+                                    // Có dòng theo dõi KCS thì lấy người/ngày cập nhật của nó,
+                                    // chưa có thì giữ thông tin cũ đã ghi trên plan_master
+                                    $kcsBy = $data->kcs_tracking_date ? $data->kcs_tracking_by : $data->kcs_record_by;
+                                    $kcsAt = $data->kcs_tracking_date ? $data->kcs_tracking_at : $data->kcs_record_date;
+                                @endphp
 
-                                <div> {{ 'Updated_by: ' . $data->kcs_record_by }} </div>
+                                <b class="{{ $data->kcs_effective_date ? 'text-green' : '' }}">
+                                    {{ $data->kcs_effective_date ? \Carbon\Carbon::parse($data->kcs_effective_date)->format('d/m/Y') : 'Chưa có ngày KCS' }}
+                                </b>
+
+                                <div> {{ 'Updated_by: ' . $kcsBy }} </div>
                                 <div>
-                                    {{ 'Updated_date: ' }}{{ $data->kcs_record_date ? \Carbon\Carbon::parse($data->kcs_record_date)->format('d/m/Y') : '' }}
+                                    {{ 'Updated_date: ' }}{{ $kcsAt ? \Carbon\Carbon::parse($kcsAt)->format('d/m/Y') : '' }}
                                 </div>
+                                <a href="{{ route('pages.plan.kcs_tracking.list') }}"
+                                    class="small text-muted text-decoration-none">
+                                    <i class="fas fa-external-link-alt"></i> Nhập tại Theo Dõi Hồ Sơ KCS
+                                </a>
                             </td>
 
                         </tr>
@@ -433,7 +523,7 @@
                             <div>{{ '(1) Tình hình hồ sơ lô' }} <span class ="text-red">
                                     {{ "(chưa có:  $has_BMR lô)" }} </span></div>
                             {{-- <div>{{"(2) Hồ sơ thực tế?"}} </div> --}}
-                            <div>{{ '(2) Phản hồi' }} </div>
+                            <div>{{ $show_qa_feedback ? '(2) Phản hồi' : '(2) Theo dõi lên ấn bản' }} </div>
                             {{-- @if ($department == 'QA' && $plan_feedback)
                                 <button class = "btn btn-success"
                                         data-toggle="modal"

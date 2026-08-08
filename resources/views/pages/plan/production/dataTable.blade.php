@@ -221,7 +221,7 @@
                             <div> {{ '(2) THT trước' }} </div>
                             <div> {{ '(3) ĐH trước' }} </div>
                             <div> {{ '(4) BP trước' }} </div>
-                            <div> {{ '(5) ĐG trước' }} </div>
+                            {{-- <div> {{ '(5) ĐG trước' }} </div> --}}
                         </th>
 
                         <th style="width:15%">Ghi Chú</th>
@@ -260,7 +260,8 @@
                             data-allow-weight-before-date="{{ $data->allow_weight_before_date ? \Carbon\Carbon::parse($data->allow_weight_before_date)->format('Y-m-d') : '' }}"
                             data-expired-material-date="{{ $data->expired_material_date ? \Carbon\Carbon::parse($data->expired_material_date)->format('Y-m-d') : '' }}"
                             data-expired-packing-date="{{ $data->expired_packing_date ? \Carbon\Carbon::parse($data->expired_packing_date)->format('Y-m-d') : '' }}"
-                            data-note="{{ $data->note }}" data-promotional_products="{{ $data->promotional_products }}" style="cursor: pointer;">
+                            data-note="{{ $data->note }}"
+                            data-promotional_products="{{ $data->promotional_products }}" style="cursor: pointer;">
 
                             <td>
                                 <div> {{ $loop->iteration }} </div>
@@ -391,10 +392,11 @@
                                         value = "{{ $data->level }}" data-id={{ $data->id }}
                                         {{ $auth_update }}>
                                 </span>
-                                @if(isset($data->promotional_products) && $data->promotional_products == 1)
-                                <div class="mt-2 text-center" style="font-size: 13px;">
-                                    <span class="badge badge-primary px-2 py-1"><i class="fas fa-gift mr-1"></i> Hàng KH</span>
-                                </div>
+                                @if (isset($data->promotional_products) && $data->promotional_products == 1)
+                                    <div class="mt-2 text-center" style="font-size: 13px;">
+                                        <span class="badge badge-primary px-2 py-1"><i class="fas fa-gift mr-1"></i>
+                                            Hàng KH</span>
+                                    </div>
                                 @endif
                             </td>
 
@@ -752,18 +754,21 @@
 
                                 <!-- Promotional Products -->
                                 <div class="form-group mb-2">
-                                    <div class="card shadow-sm border-0" style="border-left: 4px solid #007bff !important; border-radius: 4px;">
+                                    <div class="card shadow-sm border-0"
+                                        style="border-left: 4px solid #007bff !important; border-radius: 4px;">
                                         <div class="card-body py-2 px-3">
                                             <div class="icheck-primary d-inline">
                                                 <input type="checkbox" id="bulk_promotional_products" value="1">
-                                                <label for="bulk_promotional_products" class="text-primary font-weight-bold mb-0" style="cursor: pointer; font-size: 14px; vertical-align: middle;">
+                                                <label for="bulk_promotional_products"
+                                                    class="text-primary font-weight-bold mb-0"
+                                                    style="cursor: pointer; font-size: 14px; vertical-align: middle;">
                                                     <i class="fas fa-gift mr-1"></i> SẢN PHẨM KHUYẾN MÃI
                                                 </label>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                                
+
                                 <!-- Note -->
                                 <div class="form-group mb-2">
                                     <label class="font-weight-bold mb-1">Ghi chú (nếu có)</label>
@@ -1031,7 +1036,8 @@
                     'source_material_name'));
                 modal.find('input[name="after_weigth_date"]').val(button.data('after_weigth_date'));
                 modal.find('input[name="after_parkaging_date"]').val(button.data('after_parkaging_date'));
-                modal.find('input[name="promotional_products"][type="checkbox"]').prop('checked', button.data('promotional_products') == 1 || button.data('promotional_products') === true);
+                modal.find('input[name="promotional_products"][type="checkbox"]').prop('checked', button
+                    .data('promotional_products') == 1 || button.data('promotional_products') === true);
                 modal.find('textarea[name="note"]').val(button.data('note'));
 
                 modal.find('input[name="batch_qty"]').val(button.data('batch_qty') + " - " + button.data(
@@ -1248,13 +1254,13 @@
                                   <td class="text-center align-middle">
                                       ${item.is_val ? '<i class="fas fa-check-circle text-primary fs-4"></i>' : ''}
                                       ${item.vts && item.vts.length > 0 ? item.vts.map(vt => `
-                                                                                  <div class="mt-1 text-left">
-                                                                                      <span class="badge badge-warning" style="white-space: normal; text-align: left; line-height: 1.4; border: 1px solid #ffc107;">
-                                                                                          <i class="fas fa-exclamation-triangle"></i> TĐNL: ${vt.MaterialName}
-                                                                                          ${vt.purpose ? `<br><small>${vt.purpose}</small>` : ''}
-                                                                                      </span>
-                                                                                  </div>
-                                                                              `).join('') : ''}
+                                                                                      <div class="mt-1 text-left">
+                                                                                          <span class="badge badge-warning" style="white-space: normal; text-align: left; line-height: 1.4; border: 1px solid #ffc107;">
+                                                                                              <i class="fas fa-exclamation-triangle"></i> TĐNL: ${vt.MaterialName}
+                                                                                              ${vt.purpose ? `<br><small>${vt.purpose}</small>` : ''}
+                                                                                          </span>
+                                                                                      </div>
+                                                                                  `).join('') : ''}
                                   </td>
 
 
@@ -1683,7 +1689,8 @@
                 $('#bulk_allow_weight_before_date').val(firstRow.data('allow-weight-before-date') || '');
                 $('#bulk_expired_material_date').val(firstRow.data('expired-material-date') || '');
                 $('#bulk_expired_packing_date').val(firstRow.data('expired-packing-date') || '');
-                $('#bulk_promotional_products').prop('checked', firstRow.data('promotional_products') == 1 || firstRow.data('promotional_products') === true);
+                $('#bulk_promotional_products').prop('checked', firstRow.data('promotional_products') ==
+                    1 || firstRow.data('promotional_products') === true);
                 $('#bulk_note').val(firstRow.data('note') || '');
 
                 // --- Lấy dữ liệu công thức của dòng đầu tiên ---

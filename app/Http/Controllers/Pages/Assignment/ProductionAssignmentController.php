@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Http\Controllers\Pages\Report\DailyReportController;
+use App\Support\WorkingDay;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
 
@@ -127,7 +128,8 @@ class ProductionAssignmentController extends Controller
             ->leftJoin('user_management as u', 'a.assigned_by', '=', 'u.userName')
             ->select('a.*', 'u.fullname as assigner_name')
             ->where('a.deparment_code', $production_code)
-            ->whereDate('a.start', $reportedDate)
+            ->where('a.start', '>=', $startDate)
+            ->where('a.start', '<', $endDate)
             ->where('a.active', 1);
 
         if ($active_group_code) {
@@ -864,7 +866,8 @@ class ProductionAssignmentController extends Controller
             // 1. Xóa (đánh dấu active=0) các phân công cũ
             $deleteQuery = DB::table('assignments')
                 ->where('deparment_code', $production_code)
-                ->whereDate('start', $reportedDate)
+                ->where('start', '>=', WorkingDay::start($reportedDate))
+                ->where('start', '<', WorkingDay::end($reportedDate))
                 ->where('active', 1);
 
             // Cũng xóa các gợi ý nhân sự đã được render để chúng không xuất hiện lại nếu người dùng đã xóa trên UI
@@ -927,11 +930,12 @@ class ProductionAssignmentController extends Controller
                         continue; // Bỏ qua nếu thiếu thời gian
                     }
 
-                    $startDt = $reportedDate . ' ' . $row['start_time'];
-                    $endDt = $reportedDate . ' ' . $row['end_time'];
+                    // Giờ trước 06:00 thuộc phần rạng sáng của ngày công tác nên rơi vào ngày lịch kế tiếp
+                    $startDt = WorkingDay::toDateTime($reportedDate, $row['start_time']);
+                    $endDt = WorkingDay::toDateTime($reportedDate, $row['end_time']);
 
                     // Xử lý ca đêm (kết thúc vào ngày hôm sau)
-                    if ($row['end_time'] < $row['start_time']) {
+                    if ($endDt < $startDt) {
                         $endDt = Carbon::parse($endDt)->addDay()->format('Y-m-d H:i:s');
                     }
 
@@ -939,8 +943,8 @@ class ProductionAssignmentController extends Controller
                     foreach ($p_data as $p) {
                         if (empty($p['personnel_id'])) continue;
 
-                        $pStart = empty($p['start']) ? $startDt : Carbon::parse($reportedDate . ' ' . $p['start'])->format('Y-m-d H:i:s');
-                        $pEnd = empty($p['end']) ? $endDt : Carbon::parse($reportedDate . ' ' . $p['end'])->format('Y-m-d H:i:s');
+                        $pStart = empty($p['start']) ? $startDt : WorkingDay::toDateTime($reportedDate, $p['start']);
+                        $pEnd = empty($p['end']) ? $endDt : WorkingDay::toDateTime($reportedDate, $p['end']);
                         if ($pEnd < $pStart) {
                             $pEnd = Carbon::parse($pEnd)->addDay()->format('Y-m-d H:i:s');
                         }
@@ -1001,8 +1005,8 @@ class ProductionAssignmentController extends Controller
                     foreach ($unique_p_data as $p) {
                         if (empty($p['personnel_id'])) continue;
 
-                        $pStart = empty($p['start']) ? $startDt : Carbon::parse($reportedDate . ' ' . $p['start'])->format('Y-m-d H:i:s');
-                        $pEnd = empty($p['end']) ? $endDt : Carbon::parse($reportedDate . ' ' . $p['end'])->format('Y-m-d H:i:s');
+                        $pStart = empty($p['start']) ? $startDt : WorkingDay::toDateTime($reportedDate, $p['start']);
+                        $pEnd = empty($p['end']) ? $endDt : WorkingDay::toDateTime($reportedDate, $p['end']);
                         if ($pEnd < $pStart) {
                             $pEnd = Carbon::parse($pEnd)->addDay()->format('Y-m-d H:i:s');
                         }
@@ -1187,10 +1191,10 @@ class ProductionAssignmentController extends Controller
                         continue;
                     }
 
-                    $startDt = $targetDate . ' ' . $row['start_time'];
-                    $endDt = $targetDate . ' ' . $row['end_time'];
+                    $startDt = WorkingDay::toDateTime($targetDate, $row['start_time']);
+                    $endDt = WorkingDay::toDateTime($targetDate, $row['end_time']);
 
-                    if ($row['end_time'] < $row['start_time']) {
+                    if ($endDt < $startDt) {
                         $endDt = Carbon::parse($endDt)->addDay()->format('Y-m-d H:i:s');
                     }
 
@@ -1293,9 +1297,9 @@ class ProductionAssignmentController extends Controller
                         $pEnd = $endDt;
 
                         if (!empty($p['start']) && !empty($p['end'])) {
-                            $pStart = $targetDate . ' ' . $p['start'];
-                            $pEnd = $targetDate . ' ' . $p['end'];
-                            if ($p['end'] < $p['start']) {
+                            $pStart = WorkingDay::toDateTime($targetDate, $p['start']);
+                            $pEnd = WorkingDay::toDateTime($targetDate, $p['end']);
+                            if ($pEnd < $pStart) {
                                 $pEnd = \Carbon\Carbon::parse($pEnd)->addDay()->format('Y-m-d H:i:s');
                             }
                         }
@@ -1341,13 +1345,22 @@ class ProductionAssignmentController extends Controller
                 return response()->json(['success' => false, 'message' => 'Không tìm thấy phân công']);
             }
 
-            $reportedDate = $request->input('reportedDate') ?? Carbon::parse($assignment->start)->format('Y-m-d');
+            $reportedDate = $request->input('reportedDate') ?? WorkingDay::of($assignment->start);
 
-            $pStart = Carbon::parse($reportedDate . ' ' . $start)->format('Y-m-d H:i:s');
-            $pEnd = Carbon::parse($reportedDate . ' ' . $end)->format('Y-m-d H:i:s');
+            $pStart = WorkingDay::toDateTime($reportedDate, $start);
+            $pEnd = WorkingDay::toDateTime($reportedDate, $end);
             if ($pEnd < $pStart) {
                 $pEnd = Carbon::parse($pEnd)->addDay()->format('Y-m-d H:i:s');
             }
+
+            // Giờ cũ (trước khi kéo slider) để ghi lịch sử thay đổi
+            $current = DB::table('assignment_personnel')
+                ->where('assignment_id', $assignmentId)
+                ->where('personnel_id', $personnelId)
+                ->first();
+
+            $oldStart = $current->start ?? $assignment->start;
+            $oldEnd = $current->end ?? $assignment->end;
 
             DB::table('assignment_personnel')
                 ->where('assignment_id', $assignmentId)
@@ -1357,10 +1370,136 @@ class ProductionAssignmentController extends Controller
                     'end' => $pEnd
                 ]);
 
-            return response()->json(['success' => true]);
+            // Chỉ ghi log khi có dòng nhân sự thật và giờ thực sự đổi
+            // (slider bắn sự kiện 'set' cả khi kéo rồi thả về đúng chỗ cũ)
+            $changed = $current
+                && ($this->toDbTime($oldStart) !== $this->toDbTime($pStart)
+                    || $this->toDbTime($oldEnd) !== $this->toDbTime($pEnd));
+
+            if ($changed) {
+                $roomName = null;
+                if (!empty($assignment->room_id)) {
+                    $roomName = DB::table('room')->where('id', $assignment->room_id)->value('name');
+                }
+
+                DB::table('assignment_personnel_time_logs')->insert([
+                    'assignment_id' => $assignmentId,
+                    'personnel_id' => $personnelId,
+                    'personnel_name' => DB::table('employees')->where('id', $personnelId)->value('name'),
+                    'reported_date' => Carbon::parse($reportedDate)->format('Y-m-d'),
+                    'production_code' => $assignment->deparment_code ?? null,
+                    'group_code' => $assignment->stage_groups_code ?? null,
+                    'room_name' => $roomName,
+                    'old_start' => $oldStart,
+                    'old_end' => $oldEnd,
+                    'new_start' => $pStart,
+                    'new_end' => $pEnd,
+                    'old_hours' => $this->diffHours($oldStart, $oldEnd, $assignment->Sheet ?? null),
+                    'new_hours' => $this->diffHours($pStart, $pEnd, $assignment->Sheet ?? null),
+                    'changed_by' => session('user')['userName'] ?? 'System',
+                    'changed_by_name' => session('user')['fullName'] ?? 'System',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+
+            return response()->json(['success' => true, 'logged' => $changed]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()]);
         }
+    }
+
+    /**
+     * Chuẩn hoá giá trị thời gian về chuỗi 'Y-m-d H:i:s' để so sánh giờ cũ / giờ mới.
+     */
+    private function toDbTime($value)
+    {
+        return $value ? Carbon::parse($value)->format('Y-m-d H:i:s') : null;
+    }
+
+    /**
+     * Số giờ công tác giữa 2 mốc, trừ nghỉ trưa 11:30-12:15 với các ca có nghỉ trưa (HC).
+     * Áp dụng đúng quy tắc đang hiển thị trên slider ở giao diện.
+     */
+    private function diffHours($start, $end, $shift = null)
+    {
+        if (!$start || !$end) return null;
+
+        $s = Carbon::parse($start);
+        $e = Carbon::parse($end);
+        if ($e < $s) $e = $e->copy()->addDay();
+
+        $minutes = $s->diffInMinutes($e);
+
+        // Ca 1, 2, 3, 6 chạy liên tục, không trừ nghỉ trưa
+        if (!in_array((string) $shift, ['1', '2', '3', '6'], true)) {
+            $lunchStart = $s->copy()->startOfDay()->addMinutes(11 * 60 + 30);
+            $lunchEnd = $s->copy()->startOfDay()->addMinutes(12 * 60 + 15);
+
+            $overlapStart = $s->greaterThan($lunchStart) ? $s : $lunchStart;
+            $overlapEnd = $e->lessThan($lunchEnd) ? $e : $lunchEnd;
+            if ($overlapStart < $overlapEnd) {
+                $minutes -= $overlapStart->diffInMinutes($overlapEnd);
+            }
+        }
+
+        return round(max(0, $minutes) / 60, 2);
+    }
+
+    /**
+     * Lịch sử chỉnh giờ công tác của nhân sự bằng slider.
+     * - Truyền assignment_id (+ personnel_id): lịch sử của đúng dòng nhân sự đó.
+     * - Truyền reportedDate (+ production_code, group_code): toàn bộ thay đổi trong ngày.
+     */
+    public function personnelTimeHistory(Request $request)
+    {
+        $assignmentId = $request->input('assignment_id');
+        $personnelId = $request->input('personnel_id');
+        $reportedDate = $request->input('reportedDate');
+        $production_code = $request->input('production_code');
+        $group_code = $request->input('group_code');
+
+        if (!$assignmentId && !$reportedDate) {
+            return response()->json(['success' => false, 'message' => 'Thiếu thông tin tra cứu']);
+        }
+
+        $query = DB::table('assignment_personnel_time_logs as l')
+            ->leftJoin('stage_groups as sg', 'l.group_code', '=', 'sg.code')
+            ->select('l.*', 'sg.name as group_name');
+
+        if ($assignmentId) {
+            $query->where('l.assignment_id', $assignmentId);
+            if ($personnelId) {
+                $query->where('l.personnel_id', $personnelId);
+            }
+        } else {
+            $query->where('l.reported_date', Carbon::parse($reportedDate)->format('Y-m-d'));
+            if ($production_code) {
+                $query->where('l.production_code', $production_code);
+            }
+            if ($group_code !== null && $group_code !== '') {
+                $query->where('l.group_code', $group_code);
+            }
+        }
+
+        $logs = $query->orderBy('l.created_at', 'desc')->orderBy('l.id', 'desc')->limit(200)->get();
+
+        $data = $logs->map(function ($l) {
+            return [
+                'reported_date' => $l->reported_date ? Carbon::parse($l->reported_date)->format('d/m/Y') : '',
+                'personnel_name' => $l->personnel_name,
+                'room_name' => $l->room_name ?: 'Công tác khác',
+                'group_name' => $l->group_code ? ($l->group_name ?: 'Tổ ' . $l->group_code) : '',
+                'old_time' => $l->old_start ? Carbon::parse($l->old_start)->format('H:i') . ' - ' . Carbon::parse($l->old_end)->format('H:i') : '',
+                'new_time' => $l->new_start ? Carbon::parse($l->new_start)->format('H:i') . ' - ' . Carbon::parse($l->new_end)->format('H:i') : '',
+                'old_hours' => $l->old_hours !== null ? (float) $l->old_hours : null,
+                'new_hours' => $l->new_hours !== null ? (float) $l->new_hours : null,
+                'changed_by' => $l->changed_by_name ?: $l->changed_by,
+                'changed_at' => Carbon::parse($l->created_at)->format('d/m/Y H:i'),
+            ];
+        });
+
+        return response()->json(['success' => true, 'data' => $data]);
     }
 
     public function publicView(Request $request)
@@ -1447,7 +1586,8 @@ class ProductionAssignmentController extends Controller
             ->leftJoin('user_management as u', 'a.assigned_by', '=', 'u.userName')
             ->select('a.*', 'u.fullname as assigner_name')
             ->where('a.deparment_code', $production_code)
-            ->whereDate('a.start', $reportedDate)
+            ->where('a.start', '>=', $startDate)
+            ->where('a.start', '<', $endDate)
             ->where('a.active', 1);
 
         if ($group_code) {
@@ -1643,7 +1783,8 @@ class ProductionAssignmentController extends Controller
             ->join('assignment_personnel as ap', 'a.id', '=', 'ap.assignment_id')
             ->leftJoin('room as r', 'a.room_id', '=', 'r.id')
             ->leftJoin('stage_groups as sg', 'a.stage_groups_code', '=', 'sg.code')
-            ->whereDate('a.start', $reportedDate)
+            ->where('a.start', '>=', WorkingDay::start($reportedDate))
+            ->where('a.start', '<', WorkingDay::end($reportedDate))
             ->where('a.active', 1)
             ->select(
                 'ap.personnel_id',
@@ -2001,7 +2142,8 @@ class ProductionAssignmentController extends Controller
 
             $deleteQuery = DB::table('assignments')
                 ->where('deparment_code', $production_code)
-                ->whereDate('start', $reportedDate)
+                ->where('start', '>=', WorkingDay::start($reportedDate))
+                ->where('start', '<', WorkingDay::end($reportedDate))
                 ->where('active', 1);
 
             if ($group_code) {

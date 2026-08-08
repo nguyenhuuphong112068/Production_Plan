@@ -202,13 +202,20 @@
   });
 
   $('.btn_save_recipe').on('click', function () {
- 
+
+    const productCategoryId = $('#product_caterogy_id').val();
+
+    if (!productCategoryId) {
+        alert("Không xác định được danh mục cần lưu công thức. Vui lòng đóng cửa sổ và bấm lại nút tạo công thức!");
+        return;
+    }
+
     let data = [];
 
     $('#data_table_create_recipe_body tr').each(function () {
 
         let row = {
-            product_caterogy_id: $('#product_caterogy_id').val(),
+            product_caterogy_id: productCategoryId,
             code: $(this).find('.code').val(),
             name: $(this).find('.name').val(),
             qty: $(this).find('.qty').val(),
@@ -233,11 +240,15 @@
             items: data
         },
         success: function (res) {
+            if (res && res.success === false) {
+                alert(res.message || "Có lỗi xảy ra!");
+                return;
+            }
             alert("Lưu thành công!");
             location.reload();
         },
         error: function (err) {
-            alert("Có lỗi xảy ra!");
+            alert((err.responseJSON && err.responseJSON.message) || "Có lỗi xảy ra!");
         }
     });
 

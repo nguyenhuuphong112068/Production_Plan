@@ -6255,7 +6255,11 @@ const ScheduleTest = () => {
               </span>
             ` : ''}
   
-            <b style="color: ${props.textColor};">  ${event.title} ${!props.is_clearning && showRenderBadge ? props.subtitle : ''} </b>
+            <b style="color: ${props.textColor};">  ${event.title} ${!props.is_clearning && showRenderBadge ? props.subtitle : ''} </b>${!props.is_clearning && props.blister_mold_code && props.stage_code == 7 ? `
+              <span class="px-1 py-0 rounded shadow-sm bg-[#3b82f6] text-white" style="font-size: 8.8px; line-height: 1.2; display: inline-block; vertical-align: middle; margin-left: 4px;">
+                <b>${props.blister_mold_code}</b>
+              </span>
+            ` : ''}
             ${!isTimelineMonth ? `
               <br/>
               ${arg.view.type !== 'resourceTimelineQuarter' && !props.is_clearning ?
@@ -6263,13 +6267,6 @@ const ScheduleTest = () => {
           : ''}
             ` : ''}
 
-            ${!props.is_clearning && props.blister_mold_code && props.stage_code == 7 ? `
-              <div style="margin-top: 4px; margin-bottom: 2px;">
-                <span class="px-1.5 py-0.5 rounded shadow-sm bg-[#3b82f6] text-white" style="font-size: 11px; display: inline-block;">
-                  <b>${props.blister_mold_code}</b>
-                </span>
-              </div>
-            ` : ''}
         </div>
       `;
 

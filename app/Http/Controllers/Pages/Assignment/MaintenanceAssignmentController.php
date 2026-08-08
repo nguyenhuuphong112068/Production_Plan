@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use App\Support\WorkingDay;
 use Illuminate\Support\Facades\Validator;
 
 class MaintenanceAssignmentController extends Controller
@@ -49,7 +50,8 @@ class MaintenanceAssignmentController extends Controller
         // Pre-fetch tất cả assignment_personnel của ngày để tránh N+1 Query
         $allPersonnelData = DB::table('assignment_personnel')
             ->join('assignments as a', 'a.id', '=', 'assignment_personnel.assignment_id')
-            ->whereDate('a.start', $reportedDate)
+            ->where('a.start', '>=', $startDate)
+            ->where('a.start', '<', $endDate)
             ->where('a.deparment_code', $dept_code)
             ->where('a.active', 1)
             ->select('assignment_personnel.assignment_id', 'assignment_personnel.personnel_id', 'assignment_personnel.notification', 'assignment_personnel.start', 'assignment_personnel.end')
@@ -273,7 +275,8 @@ class MaintenanceAssignmentController extends Controller
                     ->orWhere('ma.stage_plan_id', '')
                     ->orWhere('ma.stage_plan_id', 'like', 'EXT_%');
             })
-            ->whereDate('ma.start', $reportedDate)
+            ->where('ma.start', '>=', $startDate)
+            ->where('ma.start', '<', $endDate)
             ->where('ma.active', 1)
             ->select('ma.*', 'room.name as room_name', 'room.code as room_code', 'room.deparment_code as workshop_code', 'room.group_code as group_code');
 
@@ -563,9 +566,10 @@ class MaintenanceAssignmentController extends Controller
                     $p_data = $row['personnel_list'] ?? [];
                     if (empty($p_data)) continue;
 
-                    $startDt = $reportedDate . ' ' . $row['start_time'];
-                    $endDt = $reportedDate . ' ' . $row['end_time'];
-                    if ($row['end_time'] < $row['start_time']) {
+                    // Giờ trước 06:00 thuộc phần rạng sáng của ngày công tác nên rơi vào ngày lịch kế tiếp
+                    $startDt = WorkingDay::toDateTime($reportedDate, $row['start_time']);
+                    $endDt = WorkingDay::toDateTime($reportedDate, $row['end_time']);
+                    if ($endDt < $startDt) {
                         $endDt = Carbon::parse($endDt)->addDay()->format('Y-m-d H:i:s');
                     }
 
@@ -627,8 +631,8 @@ class MaintenanceAssignmentController extends Controller
                         $pStart = null;
                         $pEnd = null;
                         if (!empty($p['start_time']) && !empty($p['end_time'])) {
-                            $pStart = Carbon::parse($reportedDate . ' ' . $p['start_time'])->format('Y-m-d H:i:s');
-                            $pEnd = Carbon::parse($reportedDate . ' ' . $p['end_time'])->format('Y-m-d H:i:s');
+                            $pStart = WorkingDay::toDateTime($reportedDate, $p['start_time']);
+                            $pEnd = WorkingDay::toDateTime($reportedDate, $p['end_time']);
                             if ($pEnd < $pStart) {
                                 $pEnd = Carbon::parse($pEnd)->addDay()->format('Y-m-d H:i:s');
                             }
@@ -787,10 +791,10 @@ class MaintenanceAssignmentController extends Controller
                         continue;
                     }
 
-                    $startDt = $targetDate . ' ' . $row['start_time'];
-                    $endDt = $targetDate . ' ' . $row['end_time'];
+                    $startDt = WorkingDay::toDateTime($targetDate, $row['start_time']);
+                    $endDt = WorkingDay::toDateTime($targetDate, $row['end_time']);
 
-                    if ($row['end_time'] < $row['start_time']) {
+                    if ($endDt < $startDt) {
                         $endDt = \Carbon\Carbon::parse($endDt)->addDay()->format('Y-m-d H:i:s');
                     }
 
@@ -935,7 +939,8 @@ class MaintenanceAssignmentController extends Controller
         // Pre-fetch tất cả assignment_personnel của ngày để tránh N+1 Query
         $allPersonnelData = DB::table('assignment_personnel')
             ->join('assignments as a', 'a.id', '=', 'assignment_personnel.assignment_id')
-            ->whereDate('a.start', $reportedDate)
+            ->where('a.start', '>=', $startDate)
+            ->where('a.start', '<', $endDate)
             ->where('a.deparment_code', $dept_code)
             ->where('a.active', 1)
             ->select('assignment_personnel.assignment_id', 'assignment_personnel.personnel_id', 'assignment_personnel.notification', 'assignment_personnel.start', 'assignment_personnel.end')
@@ -1095,7 +1100,8 @@ class MaintenanceAssignmentController extends Controller
                     ->orWhere('ma.stage_plan_id', '')
                     ->orWhere('ma.stage_plan_id', 'like', 'EXT_%');
             })
-            ->whereDate('ma.start', $reportedDate)
+            ->where('ma.start', '>=', $startDate)
+            ->where('ma.start', '<', $endDate)
             ->where('ma.active', 1)
             ->select('ma.*', 'room.name as room_name', 'room.code as room_code', 'room.deparment_code as workshop_code', 'room.group_code as group_code');
 
@@ -1189,7 +1195,8 @@ class MaintenanceAssignmentController extends Controller
             ->join('assignment_personnel as ap', 'a.id', '=', 'ap.assignment_id')
             ->leftJoin('room as r', 'a.room_id', '=', 'r.id')
             ->leftJoin('stage_groups as sg', 'a.stage_groups_code', '=', 'sg.code')
-            ->whereDate('a.start', $reportedDate)
+            ->where('a.start', '>=', WorkingDay::start($reportedDate))
+            ->where('a.start', '<', WorkingDay::end($reportedDate))
             ->where('a.active', 1)
             ->select(
                 'ap.personnel_id',
@@ -1264,10 +1271,10 @@ class MaintenanceAssignmentController extends Controller
                 return response()->json(['success' => false, 'message' => 'Không tìm thấy phân công']);
             }
             
-            $reportedDate = $request->input('reportedDate') ?? Carbon::parse($assignment->start)->format('Y-m-d');
-            
-            $pStart = Carbon::parse($reportedDate . ' ' . $start)->format('Y-m-d H:i:s');
-            $pEnd = Carbon::parse($reportedDate . ' ' . $end)->format('Y-m-d H:i:s');
+            $reportedDate = $request->input('reportedDate') ?? WorkingDay::of($assignment->start);
+
+            $pStart = WorkingDay::toDateTime($reportedDate, $start);
+            $pEnd = WorkingDay::toDateTime($reportedDate, $end);
             if ($pEnd < $pStart) {
                 $pEnd = Carbon::parse($pEnd)->addDay()->format('Y-m-d H:i:s');
             }

@@ -26,17 +26,19 @@ class IntermediateCategoryController extends Controller
         public function history(Request $request)
         {
                 $history = DB::table('intermediate_category_history')
-                        ->select('intermediate_category_history.*', 'dosage.name as dosage_name', 'product_name.name as product_name')
+                        ->select('intermediate_category_history.*', 'dosage.name as dosage_name', 'product_name.name as product_name', 'pharmacist.fullName as pharmacist_name')
                         ->leftJoin('product_name', 'intermediate_category_history.product_name_id', 'product_name.id')
                         ->leftJoin('dosage', 'intermediate_category_history.dosage_id', 'dosage.id')
+                        ->leftJoin('user_management as pharmacist', 'intermediate_category_history.pharmacist_id', 'pharmacist.id')
                         ->where('intermediate_category_history.category_id', $request->category_id)
                         ->orderBy('intermediate_category_history.id', 'desc')
                         ->get();
 
                 $current = DB::table('intermediate_category')
-                        ->select('intermediate_category.*', 'dosage.name as dosage_name', 'product_name.name as product_name')
+                        ->select('intermediate_category.*', 'dosage.name as dosage_name', 'product_name.name as product_name', 'pharmacist.fullName as pharmacist_name')
                         ->leftJoin('product_name', 'intermediate_category.product_name_id', 'product_name.id')
                         ->leftJoin('dosage', 'intermediate_category.dosage_id', 'dosage.id')
+                        ->leftJoin('user_management as pharmacist', 'intermediate_category.pharmacist_id', 'pharmacist.id')
                         ->where('intermediate_category.id', $request->category_id)
                         ->first();
 
@@ -52,10 +54,12 @@ class IntermediateCategoryController extends Controller
                 $productNames = DB::table('product_name')->where('active', true)->orderBy('name', 'asc')->get();
                 $dosages = DB::table('dosage')->where('active', true)->get();
                 $units = DB::table('unit')->where('active', true)->get();
+                $pharmacists = pharmacist_options();
 
-                $datas = DB::table('intermediate_category')->select('intermediate_category.*', 'dosage.name as dosage_name', 'product_name.name as product_name')
+                $datas = DB::table('intermediate_category')->select('intermediate_category.*', 'dosage.name as dosage_name', 'product_name.name as product_name', 'pharmacist.fullName as pharmacist_name')
                         ->leftJoin('product_name', 'intermediate_category.product_name_id', 'product_name.id')
                         ->leftJoin('dosage', 'intermediate_category.dosage_id', 'dosage.id')
+                        ->leftJoin('user_management as pharmacist', 'intermediate_category.pharmacist_id', 'pharmacist.id')
                         ->where('intermediate_category.deparment_code', session('user')['production_code'])
                         ->when(
                                 !user_has_permission(session('user')['userId'], 'view_Hypothesis_category', 'boolean'),
@@ -73,6 +77,10 @@ class IntermediateCategoryController extends Controller
                         ->get()
                         ->keyBy('category_id');
 
+                // Ấn bản công thức MMS của từng mã BTP: mã không có ở đây là mã chưa có công thức trên MMS.
+                $mmsRevisions = mms_bom_revisions($datas->pluck('intermediate_code'));
+                $hypothesisBomCounts = hypothesis_bom_counts(0);
+
                 session()->put(['title' => 'DANH MỤC BÁN THÀNH PHẨM']);
 
                 return view('pages.category.intermediate.list', [
@@ -80,7 +88,10 @@ class IntermediateCategoryController extends Controller
                         'productNames' => $productNames,
                         'dosages' => $dosages,
                         'units' => $units,
-                        'historyCounts' => $historyCounts
+                        'pharmacists' => $pharmacists,
+                        'historyCounts' => $historyCounts,
+                        'mmsRevisions' => $mmsRevisions,
+                        'hypothesisBomCounts' => $hypothesisBomCounts
                 ]);
         }
 
@@ -147,6 +158,7 @@ class IntermediateCategoryController extends Controller
                         'quarantine_time_unit' => $request->quarantine_time_unit === "on" ? true : false,
                         'IsHypothesis' => $request->is_Hypothesis ?? 0,
                         'deparment_code' => session('user')['production_code'],
+                        'pharmacist_id' => $request->pharmacist_id ?: null,
                         'prepared_by' => session('user')['fullName'],
                         'created_at' => now(),
                 ]);
@@ -216,6 +228,7 @@ class IntermediateCategoryController extends Controller
                         'quarantine_time_unit' => $request->quarantine_time_unit === "on" ? true : false,
 
                         'deparment_code' => session('user')['production_code'],
+                        'pharmacist_id' => $request->pharmacist_id ?: null,
                         'prepared_by' => session('user')['fullName'],
                         'updated_at' => now(),
                 ]);
@@ -248,19 +261,9 @@ class IntermediateCategoryController extends Controller
         public function recipe(Request $request)
         {
 
-                if ($request->IsHypothesis == 1) {
-                        $datas = DB::table('bom_item')
-                                ->select([
-                                        'code as MatID',
-                                        'name as MaterialName',
-                                        'qty as MatQty',
-                                        'uom',
-                                        'Revno'
-                                ])
-                                ->where('active', 1)
-                                ->where('product_caterogy_id', $request->product_caterogy_id)
-                                ->get();
-                } else {
+                $datas = collect();
+
+                if ($request->IsHypothesis != 1) {
                         $datas = DB::connection('mms')
                                 ->table('yfBOM_BOMItemHP')
                                 ->where('PrdID', $request->intermediate_code)
@@ -272,6 +275,28 @@ class IntermediateCategoryController extends Controller
                                 ->distinct()
                                 ->orderBy('PrdStage')
                                 ->orderBy('MatID')
+                                ->get();
+                }
+
+                // Mã chưa có công thức chính thức trên MMS thì dùng công thức giả định của danh mục.
+                // Không có product_caterogy_id nghĩa là bên gọi chỉ muốn tra đúng công thức MMS
+                // (ví dụ nút "lấy công thức từ MMS" trong màn hình tạo công thức giả định).
+                if ($datas->isEmpty() && $request->filled('product_caterogy_id')) {
+                        $datas = DB::table('bom_item')
+                                ->select([
+                                        'code as MatID',
+                                        'name as MaterialName',
+                                        'qty as MatQty',
+                                        'uom',
+                                        'Revno'
+                                ])
+                                ->where('active', 1)
+                                ->where('product_caterogy_id', $request->product_caterogy_id)
+                                // id của intermediate_category và finished_product_category có thể trùng nhau,
+                                // mat_par_type là thứ tách công thức nguyên liệu (0) khỏi công thức bao bì (1).
+                                ->when($request->filled('mat_par_type'), function ($q) use ($request) {
+                                        return $q->where('mat_par_type', $request->mat_par_type);
+                                })
                                 ->get();
                 }
 

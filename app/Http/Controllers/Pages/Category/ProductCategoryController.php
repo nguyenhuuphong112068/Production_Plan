@@ -26,11 +26,13 @@ class ProductCategoryController extends Controller
                     'finished_product_category_history.*', 
                     'product_name.name as product_name',
                     'market.code as market_name',
-                    'specification.name as specification_name'
+                    'specification.name as specification_name',
+                    'pharmacist.fullName as pharmacist_name'
                 )
                 ->leftJoin('product_name', 'finished_product_category_history.product_name_id', 'product_name.id')
                 ->leftJoin('market', 'finished_product_category_history.market_id', 'market.id')
                 ->leftJoin('specification', 'finished_product_category_history.specification_id', 'specification.id')
+                ->leftJoin('user_management as pharmacist', 'finished_product_category_history.pharmacist_id', 'pharmacist.id')
                 ->where('finished_product_category_history.category_id', $request->category_id)
                 ->orderBy('finished_product_category_history.id', 'desc')
                 ->get();
@@ -40,11 +42,13 @@ class ProductCategoryController extends Controller
                     'finished_product_category.*', 
                     'product_name.name as product_name',
                     'market.code as market_name',
-                    'specification.name as specification_name'
+                    'specification.name as specification_name',
+                    'pharmacist.fullName as pharmacist_name'
                 )
                 ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
                 ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
                 ->leftJoin('specification', 'finished_product_category.specification_id', 'specification.id')
+                ->leftJoin('user_management as pharmacist', 'finished_product_category.pharmacist_id', 'pharmacist.id')
                 ->where('finished_product_category.id', $request->category_id)
                 ->first();
 
@@ -86,6 +90,7 @@ class ProductCategoryController extends Controller
                         'intermediate_category.unit_batch_size',
                         'market.code as market',
                         'specification.name as specification',
+                        'pharmacist.fullName as pharmacist_name',
                         DB::raw('fp_name.name AS finished_product_name'),
                         DB::raw('im_name.name AS intermediate_product_name'),
                 )
@@ -100,27 +105,36 @@ class ProductCategoryController extends Controller
                 ->leftJoin('product_name as im_name','intermediate_category.product_name_id','=','im_name.id')
                 ->leftJoin('market','finished_product_category.market_id','market.id')
                 ->leftJoin('specification','finished_product_category.specification_id','specification.id')
+                ->leftJoin('user_management as pharmacist','finished_product_category.pharmacist_id','pharmacist.id')
                 ->orderBy('IsHypothesis','desc')
                 ->orderBy('finished_product_name','asc')
                 ->get();
 
                 $units = DB::table('unit')->where('active', true)->get();
+                $pharmacists = pharmacist_options();
 
                 $historyCounts = DB::table('finished_product_category_history')
                         ->select('category_id', DB::raw('count(*) as total'))
                         ->groupBy('category_id')
                         ->get()
                         ->keyBy('category_id');
-              
+
+                // Ấn bản công thức MMS của từng mã TP: mã không có ở đây là mã chưa có công thức trên MMS.
+                $mmsRevisions = mms_bom_revisions($datas->pluck('finished_product_code'));
+                $hypothesisBomCounts = hypothesis_bom_counts(1);
+
                 session()->put(['title'=> 'DANH MỤC THÀNH PHẨM']);
                 return view('pages.category.product.list',[
                         'datas' => $datas,
-                        'intermediate_category' => $intermediate_category,                      
-                        'productNames' => $productNames,   
-                        'markets' => $markets,     
+                        'intermediate_category' => $intermediate_category,
+                        'productNames' => $productNames,
+                        'markets' => $markets,
                         'specifications' => $specifications,
                         'units' => $units,
-                        'historyCounts' => $historyCounts      
+                        'pharmacists' => $pharmacists,
+                        'historyCounts' => $historyCounts,
+                        'mmsRevisions' => $mmsRevisions,
+                        'hypothesisBomCounts' => $hypothesisBomCounts
                 ]);
         }
 
@@ -162,6 +176,7 @@ class ProductCategoryController extends Controller
                         'secondary_parkaging' => false,
                          'IsHypothesis' => $request->is_Hypothesis??0,
                         'deparment_code'=> session('user')['production_code'],
+                        'pharmacist_id' => $request->pharmacist_id ?: null,
                         'prepared_by' => session('user')['fullName'],
                         'created_at' => now(),
                 ]);
@@ -197,6 +212,7 @@ class ProductCategoryController extends Controller
                         'specification_id' => $request->specification_id,
                         'batch_qty' => $request->batch_qty,
                         'primary_parkaging'=> $request->primary_parkaging == "on"? true:false,
+                        'pharmacist_id' => $request->pharmacist_id ?: null,
                         'prepared_by' => session('user')['fullName'],
                         'updated_at' => now(),
                 ]);
@@ -288,7 +304,22 @@ class ProductCategoryController extends Controller
                         return response()->json(['success' => false, 'message' => 'No items']);
                 }
 
-                $productCategoryId = $items[0]['product_caterogy_id'];
+                $productCategoryId = $items[0]['product_caterogy_id'] ?? null;
+
+                // Thiếu id danh mục thì mọi dòng lưu xuống đều mồ côi (product_caterogy_id NULL)
+                // và không màn hình nào đọc lại được -> chặn ngay thay vì ghi rác.
+                if (empty($productCategoryId)) {
+                        Log::warning('save_bom: thiếu product_caterogy_id', ['items' => $items]);
+
+                        return response()->json([
+                                'success' => false,
+                                'message' => 'Thiếu mã danh mục, vui lòng đóng cửa sổ và bấm lại nút tạo công thức.'
+                        ], 422);
+                }
+
+                // id của intermediate_category và finished_product_category có thể trùng nhau nên
+                // mọi thao tác trên bom_item đều phải giới hạn theo loại: 0 = nguyên liệu, 1 = bao bì.
+                $matParType = $items[0]['mat_par_type'] ?? 0;
 
                 // 1️⃣ Lấy danh sách code gửi lên
                 $requestCodes = collect($items)->pluck('code')->toArray();
@@ -296,6 +327,7 @@ class ProductCategoryController extends Controller
                  // 2️⃣ Soft delete những code không có trong request
                 DB::table('bom_item')
                         ->where('product_caterogy_id', $productCategoryId)
+                        ->where('mat_par_type', $matParType)
                         ->whereNotIn('code', $requestCodes)
                         ->update([
                                 'active' => 0,
@@ -310,14 +342,14 @@ class ProductCategoryController extends Controller
                         
                         DB::table('bom_item')->updateOrInsert(
                         [
-                                'product_caterogy_id' => $item['product_caterogy_id'],
+                                'product_caterogy_id' => $productCategoryId,
+                                'mat_par_type' => $item['mat_par_type'] ?? $matParType,
                                 'code' => $item['code'],
                         ],
                         [
                                 'name' => $item['name'],
                                 'qty' => $item['qty'],
                                 'uom' => $item['uom'],
-                                'mat_par_type' => $item['mat_par_type'],
                                 'Revno' => 0,
                                 'active' => 1, // đảm bảo nếu thêm lại thì active lại
                                 'updated_at' => now(),

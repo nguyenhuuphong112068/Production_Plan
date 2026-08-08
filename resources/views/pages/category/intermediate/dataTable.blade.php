@@ -9,6 +9,23 @@
         min-width: 160px;
         white-space: nowrap;
     }
+
+    /* Ấn bản hiện hành của công thức, gắn ở góc trên bên phải nút Công Thức */
+    .btn-recipe {
+        position: relative;
+        overflow: visible;
+    }
+
+    .recipe-badge {
+        position: absolute;
+        top: -7px;
+        right: -7px;
+        z-index: 2;
+        padding: 3px 6px;
+        border-radius: 10px;
+        font-size: 10px;
+        line-height: 1;
+    }
 </style>
 <div class="content-wrapper">
     <!-- /.card-header -->
@@ -37,11 +54,12 @@
                     'category_intermediate_create',
                     'boolean',
                 );
-                $create_i_Hypothesis_category = user_has_permission(
-                    session('user')['userId'],
-                    'create_intermediate_Hypothesis_category',
-                    'boolean',
-                );
+                // TẠM ẨN: chức năng "Thêm Danh Mục Giả Định" / "Cập Nhật DMGĐ"
+                // $create_i_Hypothesis_category = user_has_permission(
+                //     session('user')['userId'],
+                //     'create_intermediate_Hypothesis_category',
+                //     'boolean',
+                // );
             @endphp
 
             @if ($category_intermediate_create)
@@ -51,12 +69,14 @@
                 </button>
             @endif
 
+            {{-- TẠM ẨN: nút "Thêm Danh Mục Giả Định"
             @if ($create_i_Hypothesis_category)
                 <button class="btn btn-success btn-create mb-2" data-toggle="modal"
                     data-target="#create_hypothesis_modal" style="width: 255px">
                     <i class="fas fa-plus"></i> Thêm Danh Mục Giả Định
                 </button>
             @endif
+            --}}
 
 
             <table id="data_table_intermediate_category" class="table table-bordered table-striped">
@@ -69,6 +89,7 @@
                         <th rowspan="2">Tên Sản Phẩm</th>
                         <th rowspan="2">Cỡ Lô</th>
                         <th rowspan="2">Dạng Bào Chế</th>
+                        <th rowspan="2">Dược Sĩ Phụ Trách</th>
 
                         <!-- Gom nhóm 6 cột công đoạn -->
                         <th colspan="6" class="text-center">Công Đoạn</th>
@@ -80,9 +101,11 @@
                         @if (!$auth_update)
                             <th rowspan="2">Cập Nhật</th>
                         @endif
+                        {{-- TẠM ẨN: cột "Cập Nhật DMGĐ"
                         @if ($create_i_Hypothesis_category)
                             <th rowspan="2">Cập Nhật DMGĐ</th>
                         @endif
+                        --}}
                         <th rowspan="2">Vô Hiệu</th>
                         <th rowspan="2">Công Thức</th>
                     </tr>
@@ -129,6 +152,7 @@
                                 <div> {{ $data->batch_qty . ' ' . $data->unit_batch_qty }} </div>
                             </td>
                             <td> {{ $data->dosage_name }}</td>
+                            <td>{{ $data->pharmacist_name }}</td>
 
                             <td class="text-center align-middle">
                                 <div class="d-flex flex-column align-items-center">
@@ -253,7 +277,9 @@
                                         data-unit_batch_size="{{ $data->unit_batch_size }}"
                                         data-batch_qty="{{ $data->batch_qty }}"
                                         data-unit_batch_qty="{{ $data->unit_batch_qty }}"
-                                        data-dosage_id="{{ $data->dosage_id }}" data-weight_1="{{ $data->weight_1 }}"
+                                        data-dosage_id="{{ $data->dosage_id }}"
+                                        data-pharmacist_id="{{ $data->pharmacist_id }}"
+                                        data-weight_1="{{ $data->weight_1 }}"
                                         data-weight_2="{{ $data->weight_2 }}" data-prepering="{{ $data->prepering }}"
                                         data-blending="{{ $data->blending }}" data-forming="{{ $data->forming }}"
                                         data-coating="{{ $data->coating }}"
@@ -270,6 +296,7 @@
                                 </td>
                             @endif
 
+                            {{-- TẠM ẨN: ô "Cập Nhật DMGĐ"
                             @if ($create_i_Hypothesis_category)
                                 <td class="text-center align-middle">
                                     <button type="button" class="btn btn-warning btn-edit-hypothesis"
@@ -280,7 +307,8 @@
                                         data-unit_batch_size="{{ $data->unit_batch_size }}"
                                         data-batch_qty="{{ $data->batch_qty }}"
                                         data-unit_batch_qty="{{ $data->unit_batch_qty }}"
-                                        data-dosage_id="{{ $data->dosage_id }}" data-toggle="modal"
+                                        data-dosage_id="{{ $data->dosage_id }}"
+                                        data-pharmacist_id="{{ $data->pharmacist_id }}" data-toggle="modal"
                                         data-target="#update_hypothesis_modal"
                                         {{ $data->IsHypothesis == 0 ? $auth_update : '' }}>
                                         <i class="fas fa-edit"></i>
@@ -288,6 +316,7 @@
 
                                 </td>
                             @endif
+                            --}}
 
 
                             <td class="text-center align-middle">
@@ -319,21 +348,39 @@
 
                             </td>
 
+                            @php
+                                $mmsRevision = $mmsRevisions[trim($data->intermediate_code)] ?? null;
+                                $hasMmsRecipe = $mmsRevision !== null;
+                                $hypothesisBomCount = $hypothesisBomCounts[$data->id] ?? 0;
+                                // MMS đã có công thức chính thức thì công thức giả định bị ẩn hoàn toàn:
+                                // chỉ mã chưa có trên MMS mới đọc và tạo công thức từ bom_item.
+                                $useHypothesisRecipe = !$hasMmsRecipe;
+                            @endphp
+
                             <td class="text-center align-middle">
-                                <button type="button" class="btn btn-recipe btn-primary mt-1 "
+                                <button type="button"
+                                    class="btn btn-recipe mt-1 position-relative {{ $hasMmsRecipe ? 'btn-success' : 'btn-danger' }}"
+                                    title="{{ $hasMmsRecipe ? 'Công thức MMS - ấn bản hiện hành: ' . $mmsRevision : 'Chưa có công thức trên MMS' }}"
                                     data-intermediate_code="{{ $data->intermediate_code }}"
                                     data-product_name="{{ $data->product_name }} - {{ $data->batch_size }} {{ $data->unit_batch_size }}"
-                                    data-id =  "{{ $data->id }}" data-is_hypothesis="{{ $data->IsHypothesis }}"
-                                    data-toggle="modal" data-target="#intermediateRecipeModal">
+                                    data-id="{{ $data->id }}"
+                                    data-is_hypothesis="{{ $useHypothesisRecipe ? 1 : 0 }}" data-toggle="modal"
+                                    data-target="#intermediateRecipeModal">
                                     <i class="fas fa-list-alt"></i>
+                                    @if ($hasMmsRecipe)
+                                        <span
+                                            class="badge badge-light border border-secondary recipe-badge">{{ $mmsRevision }}</span>
+                                    @elseif ($hypothesisBomCount > 0)
+                                        <span class="badge badge-warning recipe-badge">GĐ</span>
+                                    @endif
                                 </button>
 
-                                @if ($data->IsHypothesis)
+                                @if ($useHypothesisRecipe)
                                     <button type="button" class="btn btn-create-bom btn-success mt-1 "
                                         data-id="{{ $data->id }}"
                                         data-product_name="{{ $data->product_name }} - {{ $data->batch_size }} {{ $data->unit_batch_size }}"
-                                        data-id =  "{{ $data->id }}" data-toggle="modal"
-                                        data-target="#createBOMModal">
+                                        title="{{ $hypothesisBomCount > 0 ? 'Sửa công thức giả định' : 'Tạo công thức giả định' }}"
+                                        data-toggle="modal" data-target="#createBOMModal">
                                         <i class="fas fa-plus"></i>
                                     </button>
                                 @endif
@@ -396,6 +443,7 @@
             modal.find('select[name="unit_batch_qty"]').val(button.data('unit_batch_qty'));
             modal.find('input[name="excution_time"]').val(button.data('excution-time'));
             modal.find('select[name="dosage_id"]').val(button.data('dosage_id'));
+            modal.find('select[name="pharmacist_id"]').val(button.data('pharmacist_id') || '');
 
 
             const isChecked = (val) => val && val != '0';
@@ -441,21 +489,23 @@
 
         });
 
-        $('.btn-edit-hypothesis').click(function() {
-            const button = $(this);
-            const modal = $('#update_hypothesis_modal');
-
-            // Gán dữ liệu vào input
-            modal.find('input[name="id"]').val(button.data('id'));
-            modal.find('input[name="intermediate_code"]').val(button.data('intermediate_code'));
-            modal.find('select[name="product_name_id"]').val(button.data('product_name_id'));
-            modal.find('input[name="batch_size"]').val(button.data('batch_size'));
-            modal.find('input[name="batch_qty"]').val(button.data('batch_qty'));
-            modal.find('select[name="unit_batch_qty"]').val(button.data('unit_batch_qty'));
-            modal.find('input[name="excution_time"]').val(button.data('excution-time'));
-            modal.find('select[name="dosage_id"]').val(button.data('dosage_id'));
-
-        });
+        // TẠM ẨN: handler của nút "Cập Nhật DMGĐ"
+        // $('.btn-edit-hypothesis').click(function() {
+        //     const button = $(this);
+        //     const modal = $('#update_hypothesis_modal');
+        //
+        //     // Gán dữ liệu vào input
+        //     modal.find('input[name="id"]').val(button.data('id'));
+        //     modal.find('input[name="intermediate_code"]').val(button.data('intermediate_code'));
+        //     modal.find('select[name="product_name_id"]').val(button.data('product_name_id'));
+        //     modal.find('input[name="batch_size"]').val(button.data('batch_size'));
+        //     modal.find('input[name="batch_qty"]').val(button.data('batch_qty'));
+        //     modal.find('select[name="unit_batch_qty"]').val(button.data('unit_batch_qty'));
+        //     modal.find('input[name="excution_time"]').val(button.data('excution-time'));
+        //     modal.find('select[name="dosage_id"]').val(button.data('dosage_id'));
+        //     modal.find('select[name="pharmacist_id"]').val(button.data('pharmacist_id') || '');
+        //
+        // });
 
         $('.form-deActive').on('submit', function(e) {
             e.preventDefault(); // chặn submit mặc định
@@ -526,7 +576,10 @@
             }
         });
 
-        $('.btn-create-bom').click(function() {
+        // Bind uỷ quyền qua document: DataTables chỉ giữ các dòng của trang hiện tại trong DOM,
+        // bind trực tiếp $('.btn-create-bom') sau khi khởi tạo bảng sẽ bỏ sót nút ở trang 2 trở đi
+        // và product_caterogy_id không được gán -> lưu vào bom_item bị NULL.
+        $(document).on('click', '.btn-create-bom', function() {
             const button = $(this);
             const modal = $('#createBOMModal');
             const product_caterogy_id = $(this).data('id')
@@ -548,15 +601,14 @@
                 data: {
                     IsHypothesis: 1,
                     product_caterogy_id: product_caterogy_id,
+                    mat_par_type: 0,
                     _token: "{{ csrf_token() }}"
                 },
                 success: function(res) {
 
-                    if (res.length === 0) {
-                        history_modal.append(
-                            `<tr><td colspan="6" class="text-center">Không có công thức</td></tr>`
-                        );
-                    } else {
+                    // Chưa có công thức giả định thì để bảng trống cho người dùng nhập mới,
+                    // không chèn dòng thông báo vì lúc lưu nó cũng bị gom vào danh sách nguyên liệu.
+                    if (res.length > 0) {
 
                         res.forEach((item, index) => {
                             let code = item.MatID ?? '';
@@ -637,6 +689,7 @@
                 IsHypothesis: IsHypothesis,
                 product_caterogy_id: product_caterogy_id,
                 intermediate_code: intermediate_code,
+                mat_par_type: 0,
                 _token: "{{ csrf_token() }}"
             },
             success: function(res) {

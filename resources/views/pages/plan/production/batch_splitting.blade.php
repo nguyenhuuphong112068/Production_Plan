@@ -375,6 +375,8 @@
                     product_caterogy_id: product_caterogy_id,
                     IsHypothesis: IsHypothesis,
                     intermediate_code: finished_product_code,
+                    // 1 = công thức bao bì, dùng khi phải lấy công thức giả định của mã TP
+                    mat_par_type: 1,
                     _token: "{{ csrf_token() }}"
                 },
                 success: function(res) {

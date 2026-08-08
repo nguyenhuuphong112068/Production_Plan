@@ -216,12 +216,16 @@
                                         </div>
                                     </div>
 
-                                    <div class="card shadow-sm mt-3" style="border-left: 4px solid #007bff; border-radius: 4px;">
+                                    <div class="card shadow-sm mt-3"
+                                        style="border-left: 4px solid #007bff; border-radius: 4px;">
                                         <div class="card-body py-2 px-3">
                                             <div class="icheck-primary d-inline">
                                                 <input type="hidden" name="promotional_products" value="0">
-                                                <input type="checkbox" id="promotional_products_update" name="promotional_products" value="1">
-                                                <label for="promotional_products_update" class="text-primary font-weight-bold mb-0" style="cursor: pointer; font-size: 14px; vertical-align: middle;">
+                                                <input type="checkbox" id="promotional_products_update"
+                                                    name="promotional_products" value="1">
+                                                <label for="promotional_products_update"
+                                                    class="text-primary font-weight-bold mb-0"
+                                                    style="cursor: pointer; font-size: 14px; vertical-align: middle;">
                                                     <i class="fas fa-gift mr-1"></i> SẢN PHẨM KHUYẾN MÃI
                                                 </label>
                                             </div>
@@ -387,14 +391,14 @@
                                             data-mask value="{{ old('coating_before_date') }}">
                                     </div>
                                 </div>
-                                <div class="col-md-3">
+                                {{-- <div class="col-md-3">
                                     <label>Đóng Gói Trước Ngày (nếu có)</label>
                                     <div class="input-group">
                                         <input type="date" class="form-control" data-inputmask-alias="datetime"
                                             name = "parkaging_before_date" data-inputmask-inputformat="dd/mm/yyyy"
                                             data-mask value="{{ old('parkaging_before_date') }}">
                                     </div>
-                                </div>
+                                </div> --}}
                             </div>
 
                             {{-- Ghi chú --}}
@@ -628,7 +632,8 @@
             });
 
             $.when(req1, req2).done(function() {
-                let intermediateCode = $('#updateModal').find('input[name="intermediate_code"]').val() || "";
+                let intermediateCode = $('#updateModal').find('input[name="intermediate_code"]')
+                    .val() || "";
                 let planMasterId = $('#updateModal').find('input[name="id"]').val() || "";
                 checkValidationTrackingUpdate(intermediateCode, planMasterId);
             });
@@ -838,7 +843,9 @@
             form.find('.validation-tracked-mat').each(function() {
                 if ($(this).is(':checked')) {
                     hasValidationTracking = true;
-                    form.append(`<input type="hidden" name="validation_tracking_ic_ids[]" value="${$(this).attr('data-validation-id')}">`);
+                    form.append(
+                        `<input type="hidden" name="validation_tracking_ic_ids[]" value="${$(this).attr('data-validation-id')}">`
+                        );
                 }
             });
 
@@ -852,7 +859,10 @@
             $.ajax({
                 url: "{{ route('pages.plan.validation_tracking.check_validation') }}",
                 type: "GET",
-                data: { intermediate_code: ic_code, plan_master_id: plan_master_id },
+                data: {
+                    intermediate_code: ic_code,
+                    plan_master_id: plan_master_id
+                },
                 success: function(res) {
                     if (res && res.length > 0) {
                         res.forEach(function(item) {
@@ -861,11 +871,17 @@
                             let purposeHtml = purpose ? ` - ${purpose}` : '';
                             let cell = $(`#update_mat_name_${matId}`);
                             if (cell.length) {
-                                cell.append(`<div class="mt-1"><span class="badge badge-warning text-wrap text-left" style="font-size:0.8rem; padding: 5px 8px; font-weight: normal; border: 1px solid #ffc107; line-height: 1.4; display: inline-block; max-width: 100%; word-break: break-word;" title="Nguyên liệu đang theo dõi thẩm định. Đã chạy ${item.num_of_finished_batch}/${item.num_of_tracking_batch} lô."><i class="fas fa-exclamation-triangle"></i> Nhắc nhở Thẩm định${purposeHtml} (${item.num_of_finished_batch}/${item.num_of_tracking_batch})</span></div>`);
-                                
-                                let checkbox = $(`input[name="materials[${matId}][active]"][type="checkbox"]`);
+                                cell.append(
+                                    `<div class="mt-1"><span class="badge badge-warning text-wrap text-left" style="font-size:0.8rem; padding: 5px 8px; font-weight: normal; border: 1px solid #ffc107; line-height: 1.4; display: inline-block; max-width: 100%; word-break: break-word;" title="Nguyên liệu đang theo dõi thẩm định. Đã chạy ${item.num_of_finished_batch}/${item.num_of_tracking_batch} lô."><i class="fas fa-exclamation-triangle"></i> Nhắc nhở Thẩm định${purposeHtml} (${item.num_of_finished_batch}/${item.num_of_tracking_batch})</span></div>`
+                                    );
+
+                                let checkbox = $(
+                                    `input[name="materials[${matId}][active]"][type="checkbox"]`
+                                    );
                                 if (!checkbox.length) {
-                                    checkbox = $(`input[name="packagings[${matId}][active]"][type="checkbox"]`);
+                                    checkbox = $(
+                                        `input[name="packagings[${matId}][active]"][type="checkbox"]`
+                                        );
                                 }
                                 if (checkbox.length) {
                                     checkbox.addClass('validation-tracked-mat');

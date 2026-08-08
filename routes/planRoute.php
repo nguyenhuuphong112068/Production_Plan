@@ -71,6 +71,16 @@ Route::prefix('/plan')
 
 
 
+        Route::prefix('/kcs_tracking')
+            ->name('kcs_tracking.')
+            ->controller(App\Http\Controllers\Pages\Plan\KcsTrackingController::class)
+            ->group(function () {
+                Route::get('', 'index')->name('list');
+                Route::get('summary', 'summary')->name('summary');
+                Route::get('history', 'history')->name('history');
+                Route::post('save', 'save')->name('save');
+            });
+
         Route::prefix('/maintenance')
             ->name('maintenance.')
             ->controller(MaintenancePlanController::class)

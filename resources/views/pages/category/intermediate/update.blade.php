@@ -85,6 +85,9 @@
                     </div>
 
 
+                    {{-- Dược Sĩ Phụ Trách --}}
+                    @include('pages.category.pharmacist_select', ['selected' => null])
+
                     {{-- Cở lô --}}
                     <div class="row">
                         <div class="col-md-6">

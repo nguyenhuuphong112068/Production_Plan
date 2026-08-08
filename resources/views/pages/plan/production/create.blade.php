@@ -244,12 +244,17 @@
                                         </div>
                                     </div>
 
-                                    <div class="card shadow-sm mt-3" style="border-left: 4px solid #007bff; border-radius: 4px;">
+                                    <div class="card shadow-sm mt-3"
+                                        style="border-left: 4px solid #007bff; border-radius: 4px;">
                                         <div class="card-body py-2 px-3">
                                             <div class="icheck-primary d-inline">
                                                 <input type="hidden" name="promotional_products" value="0">
-                                                <input type="checkbox" id="promotional_products_create" name="promotional_products" value="1" {{ old('promotional_products') ? 'checked' : '' }}>
-                                                <label for="promotional_products_create" class="text-primary font-weight-bold mb-0" style="cursor: pointer; font-size: 14px; vertical-align: middle;">
+                                                <input type="checkbox" id="promotional_products_create"
+                                                    name="promotional_products" value="1"
+                                                    {{ old('promotional_products') ? 'checked' : '' }}>
+                                                <label for="promotional_products_create"
+                                                    class="text-primary font-weight-bold mb-0"
+                                                    style="cursor: pointer; font-size: 14px; vertical-align: middle;">
                                                     <i class="fas fa-gift mr-1"></i> SẢN PHẨM KHUYẾN MÃI
                                                 </label>
                                             </div>
@@ -420,14 +425,14 @@
                                             data-mask value="{{ old('coating_before_date') }}">
                                     </div>
                                 </div>
-                                <div class="col-md-3">
+                                {{-- <div class="col-md-3">
                                     <label>Đóng Gói Trước Ngày (nếu có)</label>
                                     <div class="input-group">
                                         <input type="date" class="form-control" data-inputmask-alias="datetime"
                                             name = "parkaging_before_date" data-inputmask-inputformat="dd/mm/yyyy"
                                             data-mask value="{{ old('parkaging_before_date') }}">
                                     </div>
-                                </div>
+                                </div> --}}
                             </div>
 
                             {{-- Ghi chú --}}
@@ -540,6 +545,8 @@
                     product_caterogy_id: intermediate_caterogy_id,
                     IsHypothesis: IsHypothesis,
                     intermediate_code: intermediate_code,
+                    // 0 = công thức nguyên liệu, dùng khi phải lấy công thức giả định của mã BTP
+                    mat_par_type: 0,
                     _token: "{{ csrf_token() }}"
                 },
                 success: function(res) {
@@ -628,6 +635,8 @@
                     product_caterogy_id: product_caterogy_id,
                     IsHypothesis: IsHypothesis,
                     intermediate_code: finished_product_code,
+                    // 1 = công thức bao bì, dùng khi phải lấy công thức giả định của mã TP
+                    mat_par_type: 1,
                     _token: "{{ csrf_token() }}"
                 },
                 success: function(res) {
@@ -913,7 +922,7 @@
                 hasValidationTracking = true;
                 form.append(
                     `<input type="hidden" name="validation_tracking_ic_ids[]" value="${$(this).attr('data-validation-id')}">`
-                    );
+                );
             }
         });
 
@@ -940,7 +949,7 @@
                         if (cell.length) {
                             cell.append(
                                 `<div class="mt-1"><span class="badge badge-warning text-wrap text-left" style="font-size:0.8rem; padding: 5px 8px; font-weight: normal; border: 1px solid #ffc107; line-height: 1.4; display: inline-block; max-width: 100%; word-break: break-word;" title="Nguyên liệu đang theo dõi thẩm định. Đã chạy ${item.num_of_finished_batch}/${item.num_of_tracking_batch} lô."><i class="fas fa-exclamation-triangle"></i> Nhắc nhở Thẩm định${purposeHtml} (${item.num_of_finished_batch}/${item.num_of_tracking_batch})</span></div>`
-                                );
+                            );
 
                             // Attach data to checkbox
                             let checkbox = $(
@@ -948,7 +957,7 @@
                             if (!checkbox.length) {
                                 checkbox = $(
                                     `input[name="packagings[${matId}][active]"][type="checkbox"]`
-                                    );
+                                );
                             }
                             if (checkbox.length) {
                                 checkbox.addClass('validation-tracked-mat');

@@ -261,6 +261,28 @@
                                 <p>Thành Phẩm</p>
                             </a>
                         </li>
+
+                        <li class="nav-item">
+                            <a href="{{ route('pages.category.publication_tracking.list') }}" class="nav-link">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Theo Dõi Lên Ấn Bản</p>
+                            </a>
+                        </li>
+
+                        <li class="nav-item">
+                            <a href="{{ route('pages.category.material_check.list') }}" class="nav-link">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Kiểm Tra NL/BB</p>
+                            </a>
+                        </li>
+
+                        <li class="nav-item">
+                            <a href="{{ route('pages.category.material_source_warning.list') }}" class="nav-link">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Cảnh Báo Nguồn NL</p>
+                            </a>
+                        </li>
+
                         <li class="nav-item has-treeview">
                             <a href="#" class="nav-link">
                                 <i class="far fa-circle nav-icon"></i>
@@ -433,6 +455,13 @@
                             <a href="{{ route('pages.plan.validation_tracking.list') }}" class="nav-link">
                                 <i class="far fa-circle nav-icon"></i>
                                 <p>Theo Dõi Thẩm Định</p>
+                            </a>
+                        </li>
+
+                        <li class="nav-item">
+                            <a href="{{ route('pages.plan.kcs_tracking.list') }}" class="nav-link">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Theo Dõi Hồ Sơ KCS</p>
                             </a>
                         </li>
 
