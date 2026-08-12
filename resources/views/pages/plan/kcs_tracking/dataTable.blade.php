@@ -58,7 +58,7 @@
     @endforeach
 </datalist>
 
-<div class="table-responsive" style="max-height: calc(100vh - 330px); overflow: auto;">
+<div class="table-responsive" id="kcs_table_scroll">
     <table class="table table-bordered table-sm table-hover mb-0" id="kcs_tracking_table">
         <thead class="text-center align-middle">
             <tr>
@@ -256,6 +256,13 @@
 </div>
 
 <style>
+    /* Chiều cao thật do fitTableHeight() tính theo vị trí bảng trên màn hình;
+       giá trị dưới đây chỉ là dự phòng khi JS chưa chạy. */
+    #kcs_table_scroll {
+        max-height: calc(100vh - 330px);
+        overflow: auto;
+    }
+
     #kcs_tracking_table thead th {
         position: sticky;
         top: 0;
@@ -323,6 +330,34 @@
     document.addEventListener('DOMContentLoaded', function() {
         const RESULT_MET = @json(\App\Models\PlanMasterKcs::RESULT_MET);
         const saveUrl = '{{ route('pages.plan.kcs_tracking.save') }}';
+
+        // Cho bảng cao hết phần màn hình còn lại thay vì trừ một số cố định:
+        // thanh lọc có thể xuống dòng, có thể hiện thêm cảnh báo "chỉ có quyền xem"...
+        // nên vị trí bắt đầu của bảng không cố định.
+        function fitTableHeight() {
+            const box = document.getElementById('kcs_table_scroll');
+
+            // Tab đang ẩn thì không đo được, để lần hiện tab tính lại
+            if (!box || box.offsetParent === null) {
+                return;
+            }
+
+            const footer = document.querySelector('.main-footer');
+            const footerHeight = footer && footer.offsetParent !== null ?
+                footer.getBoundingClientRect().height :
+                0;
+
+            // Chừa chỗ cho padding dưới của card và footer
+            const available = window.innerHeight - box.getBoundingClientRect().top - footerHeight - 24;
+
+            box.style.maxHeight = Math.max(available, 240) + 'px';
+        }
+
+        fitTableHeight();
+        window.addEventListener('resize', fitTableHeight);
+        $('#tab-records-tab').on('shown.bs.tab', fitTableHeight);
+        // Thu/mở menu trái làm bảng đổi bề ngang -> thanh lọc có thể xuống dòng
+        $(document).on('collapsed.lte.pushmenu shown.lte.pushmenu', fitTableHeight);
 
         // Lưu cả dòng mỗi khi một ô đổi giá trị: các cột dẫn xuất phụ thuộc lẫn nhau
         // nên phải để server tính lại trên toàn bộ dữ liệu của dòng.
