@@ -1,4 +1,5 @@
-{{-- Ô chọn "Dược sĩ phụ trách", dùng chung cho các modal tạo mới / cập nhật BTP và TP.
+{{-- Ô chọn "Dược sĩ phụ trách", dùng cho các modal tạo mới / cập nhật danh mục BTP.
+     Danh mục TP không khai báo dược sĩ riêng mà dùng theo mã BTP tương ứng.
      $pharmacists lấy từ user_management qua helper pharmacist_options().
      $selected chỉ cần truyền ở form tạo mới (giữ lại old input); form cập nhật do JS gán. --}}
 <div class="form-group">

@@ -68,7 +68,8 @@
                         <th>Cỡ Lô</th>
                         <th>Thị Trường</th>
                         <th>Qui Cách</th>
-                        <th>Dược Sĩ Phụ Trách</th>
+                        {{-- Chỉ để xem: giá trị lấy theo mã BTP, khai báo bên danh mục bán thành phẩm --}}
+                        <th>Dược Sĩ Phụ Trách <small class="text-muted d-block">(theo mã BTP)</small></th>
                         <th>Đóng gói</th>
                         <th>Phân Xưởng</th>
                         <th>Người Tạo/ Ngày Tạo</th>
@@ -150,8 +151,7 @@
                                         data-batch_size="{{ $data->batch_size }}"
                                         data-batch_qty="{{ $data->batch_qty }}"
                                         data-unit_batch_qty="{{ $data->unit_batch_qty }}"
-                                        data-primary_parkaging="{{ $data->primary_parkaging }}"
-                                        data-pharmacist_id="{{ $data->pharmacist_id }}" data-toggle="modal"
+                                        data-primary_parkaging="{{ $data->primary_parkaging }}" data-toggle="modal"
                                         data-target="#update_modal" {{ $auth_update }}>
                                         <i class="fas fa-edit"></i>
                                     </button>
@@ -171,8 +171,7 @@
                                         data-batch_size="{{ $data->batch_size }}"
                                         data-batch_qty="{{ $data->batch_qty }}"
                                         data-unit_batch_qty="{{ $data->unit_batch_qty }}"
-                                        data-primary_parkaging="{{ $data->primary_parkaging }}"
-                                        data-pharmacist_id="{{ $data->pharmacist_id }}" data-toggle="modal"
+                                        data-primary_parkaging="{{ $data->primary_parkaging }}" data-toggle="modal"
                                         data-target="#update_hypothesis_modal"
                                         {{ $data->IsHypothesis == 0 ? $auth_update : '' }}>
                                         <i class="fas fa-edit"></i>
@@ -301,7 +300,6 @@
             modal.find('input[name="unit_batch_qty"]').val(button.data('unit_batch_qty'));
             modal.find('input[name="primary_parkaging"]').prop('checked', button.data(
                 'primary_parkaging'));
-            modal.find('select[name="pharmacist_id"]').val(button.data('pharmacist_id') || '');
         });
 
         // TẠM ẨN: handler của nút "Cập Nhật DMGĐ"
@@ -319,7 +317,6 @@
         //     modal.find('input[name="batch_size"]').val(button.data('batch_size'));
         //     modal.find('input[name="batch_qty"]').val(button.data('batch_qty'));
         //     modal.find('input[name="unit_batch_qty"]').val(button.data('unit_batch_qty'));
-        //     modal.find('select[name="pharmacist_id"]').val(button.data('pharmacist_id') || '');
         //
         // });
 

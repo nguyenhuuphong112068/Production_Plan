@@ -1050,6 +1050,11 @@ const ScheduleTest = () => {
         })
         .catch(err => {
           // Lỗi tạo lịch
+          Swal.fire({
+            icon: 'error',
+            title: 'Không tạo được lịch',
+            text: err.response?.data?.message || err.message || 'Lỗi không xác định',
+          });
         });
     } else if (selectedRows[0].stage_code == 8) {
 

@@ -20,16 +20,20 @@ class PublicationTrackingDetail extends Model
         'product_name',
         'batch_size',
         'dosage_name',
+        'market',
         'pharmacist_id',
         'pharmacist_name',
         'decision',
         'due_date',
         'completed_date',
         'comment',
+        'pharmacist_opinion',
         'decision_by',
         'decision_at',
         'result_by',
         'result_at',
+        'opinion_by',
+        'opinion_at',
         'sort_order',
         'updated_by',
     ];
@@ -40,6 +44,7 @@ class PublicationTrackingDetail extends Model
         'completed_date' => 'date',
         'decision_at' => 'datetime',
         'result_at' => 'datetime',
+        'opinion_at' => 'datetime',
     ];
 
     public function period()

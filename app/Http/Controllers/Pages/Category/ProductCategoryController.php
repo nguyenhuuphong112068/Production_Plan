@@ -26,13 +26,11 @@ class ProductCategoryController extends Controller
                     'finished_product_category_history.*', 
                     'product_name.name as product_name',
                     'market.code as market_name',
-                    'specification.name as specification_name',
-                    'pharmacist.fullName as pharmacist_name'
+                    'specification.name as specification_name'
                 )
                 ->leftJoin('product_name', 'finished_product_category_history.product_name_id', 'product_name.id')
                 ->leftJoin('market', 'finished_product_category_history.market_id', 'market.id')
                 ->leftJoin('specification', 'finished_product_category_history.specification_id', 'specification.id')
-                ->leftJoin('user_management as pharmacist', 'finished_product_category_history.pharmacist_id', 'pharmacist.id')
                 ->where('finished_product_category_history.category_id', $request->category_id)
                 ->orderBy('finished_product_category_history.id', 'desc')
                 ->get();
@@ -42,13 +40,11 @@ class ProductCategoryController extends Controller
                     'finished_product_category.*', 
                     'product_name.name as product_name',
                     'market.code as market_name',
-                    'specification.name as specification_name',
-                    'pharmacist.fullName as pharmacist_name'
+                    'specification.name as specification_name'
                 )
                 ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
                 ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
                 ->leftJoin('specification', 'finished_product_category.specification_id', 'specification.id')
-                ->leftJoin('user_management as pharmacist', 'finished_product_category.pharmacist_id', 'pharmacist.id')
                 ->where('finished_product_category.id', $request->category_id)
                 ->first();
 
@@ -90,6 +86,8 @@ class ProductCategoryController extends Controller
                         'intermediate_category.unit_batch_size',
                         'market.code as market',
                         'specification.name as specification',
+                        // Dược sĩ phụ trách của mã TP là dược sĩ phụ trách của mã BTP tương ứng,
+                        // danh mục thành phẩm không tự xác định nữa
                         'pharmacist.fullName as pharmacist_name',
                         DB::raw('fp_name.name AS finished_product_name'),
                         DB::raw('im_name.name AS intermediate_product_name'),
@@ -105,13 +103,12 @@ class ProductCategoryController extends Controller
                 ->leftJoin('product_name as im_name','intermediate_category.product_name_id','=','im_name.id')
                 ->leftJoin('market','finished_product_category.market_id','market.id')
                 ->leftJoin('specification','finished_product_category.specification_id','specification.id')
-                ->leftJoin('user_management as pharmacist','finished_product_category.pharmacist_id','pharmacist.id')
+                ->leftJoin('user_management as pharmacist','intermediate_category.pharmacist_id','pharmacist.id')
                 ->orderBy('IsHypothesis','desc')
                 ->orderBy('finished_product_name','asc')
                 ->get();
 
                 $units = DB::table('unit')->where('active', true)->get();
-                $pharmacists = pharmacist_options();
 
                 $historyCounts = DB::table('finished_product_category_history')
                         ->select('category_id', DB::raw('count(*) as total'))
@@ -131,7 +128,6 @@ class ProductCategoryController extends Controller
                         'markets' => $markets,
                         'specifications' => $specifications,
                         'units' => $units,
-                        'pharmacists' => $pharmacists,
                         'historyCounts' => $historyCounts,
                         'mmsRevisions' => $mmsRevisions,
                         'hypothesisBomCounts' => $hypothesisBomCounts
@@ -176,7 +172,6 @@ class ProductCategoryController extends Controller
                         'secondary_parkaging' => false,
                          'IsHypothesis' => $request->is_Hypothesis??0,
                         'deparment_code'=> session('user')['production_code'],
-                        'pharmacist_id' => $request->pharmacist_id ?: null,
                         'prepared_by' => session('user')['fullName'],
                         'created_at' => now(),
                 ]);
@@ -212,7 +207,6 @@ class ProductCategoryController extends Controller
                         'specification_id' => $request->specification_id,
                         'batch_qty' => $request->batch_qty,
                         'primary_parkaging'=> $request->primary_parkaging == "on"? true:false,
-                        'pharmacist_id' => $request->pharmacist_id ?: null,
                         'prepared_by' => session('user')['fullName'],
                         'updated_at' => now(),
                 ]);

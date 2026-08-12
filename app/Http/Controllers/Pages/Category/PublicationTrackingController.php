@@ -86,8 +86,49 @@ class PublicationTrackingController extends Controller
                         }
                 }
 
+                if (empty($inserts)) {
+                        return;
+                }
+
                 foreach (array_chunk($inserts, 200) as $chunk) {
                         DB::table('publication_tracking_period')->insert($chunk);
+                }
+
+                $this->carryIntoNewPeriods($inserts);
+        }
+
+        /**
+         * Các kỳ vừa được mở tự động nhận toàn bộ nội dung theo dõi còn dang dở
+         * của kỳ liền trước (xem carryPendingItems()).
+         *
+         * Duyệt theo thứ tự thời gian để nếu mở một lúc nhiều kỳ liên tiếp thì
+         * nội dung vẫn chảy đúng dây chuyền từ kỳ cũ nhất tới kỳ mới nhất.
+         *
+         * @param array $created các dòng vừa insert vào publication_tracking_period
+         */
+        private function carryIntoNewPeriods(array $created): void
+        {
+                $periods = PublicationTrackingPeriod::where(function ($q) use ($created) {
+                        foreach ($created as $row) {
+                                $q->orWhere(fn($w) => $w->where('deparment_code', $row['deparment_code'])
+                                        ->where('year', $row['year'])
+                                        ->where('month', $row['month']));
+                        }
+                })
+                        ->get()
+                        ->sortBy(fn($period) => $period->start_date->toDateString());
+
+                foreach ($periods as $period) {
+                        $previousStart = $period->start_date->copy()->subMonthNoOverflow();
+
+                        $previous = PublicationTrackingPeriod::where('deparment_code', $period->deparment_code)
+                                ->where('year', $previousStart->year)
+                                ->where('month', $previousStart->month)
+                                ->first();
+
+                        if ($previous) {
+                                $this->carryPendingItems($previous, $period);
+                        }
                 }
         }
 
@@ -227,6 +268,7 @@ class PublicationTrackingController extends Controller
                                 'product_name' => $item['product_name'],
                                 'batch_size' => $item['batch_size'],
                                 'dosage_name' => $item['dosage_name'],
+                                'market' => $item['market'],
                                 'pharmacist_id' => $item['pharmacist_id'],
                                 'pharmacist_name' => $item['pharmacist_name'],
                                 'sort_order' => $index,
@@ -322,6 +364,7 @@ class PublicationTrackingController extends Controller
                                 'product_name' => $row->product_name,
                                 'batch_size' => $this->formatBatchSize($row->batch_size, $row->unit_batch_size),
                                 'dosage_name' => $row->dosage_name,
+                                'market' => null, // mã BTP không gắn thị trường
                                 'pharmacist_id' => $row->pharmacist_id,
                                 'pharmacist_name' => $row->pharmacist_name,
                         ]);
@@ -332,6 +375,8 @@ class PublicationTrackingController extends Controller
         {
                 $endDate = $period->end_date->toDateString();
 
+                // Dược sĩ phụ trách của mã TP (BPR) lấy theo mã BTP (BMR) tương ứng:
+                // danh mục thành phẩm không còn tự xác định dược sĩ phụ trách nữa.
                 return DB::table('finished_product_category')
                         ->select(
                                 'finished_product_category.id',
@@ -339,15 +384,17 @@ class PublicationTrackingController extends Controller
                                 'finished_product_category.process_code',
                                 'finished_product_category.batch_qty',
                                 'finished_product_category.unit_batch_qty',
-                                'finished_product_category.pharmacist_id',
+                                'intermediate_category.pharmacist_id',
                                 'fp_name.name as product_name',
                                 'dosage.name as dosage_name',
+                                'market.code as market',
                                 'pharmacist.fullName as pharmacist_name'
                         )
                         ->leftJoin('product_name as fp_name', 'finished_product_category.product_name_id', 'fp_name.id')
                         ->leftJoin('intermediate_category', 'finished_product_category.intermediate_code', 'intermediate_category.intermediate_code')
                         ->leftJoin('dosage', 'intermediate_category.dosage_id', 'dosage.id')
-                        ->leftJoin('user_management as pharmacist', 'finished_product_category.pharmacist_id', 'pharmacist.id')
+                        ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
+                        ->leftJoin('user_management as pharmacist', 'intermediate_category.pharmacist_id', 'pharmacist.id')
                         ->where('finished_product_category.deparment_code', $period->deparment_code)
                         ->where('finished_product_category.active', 1)
                         ->where('finished_product_category.cancel', 0)
@@ -370,6 +417,7 @@ class PublicationTrackingController extends Controller
                                 'product_name' => $row->product_name,
                                 'batch_size' => $this->formatBatchSize($row->batch_qty, $row->unit_batch_qty),
                                 'dosage_name' => $row->dosage_name,
+                                'market' => $row->market,
                                 'pharmacist_id' => $row->pharmacist_id,
                                 'pharmacist_name' => $row->pharmacist_name,
                         ]);
@@ -481,6 +529,29 @@ class PublicationTrackingController extends Controller
                         'changed_by' => session('user')['fullName'] ?? 'System',
                         'created_at' => Carbon::now(),
                 ]);
+        }
+
+        /**
+         * Ghi nhiều dòng lịch sử cùng lúc. Chuyển kỳ hàng loạt sinh ra 1 dòng cho
+         * mỗi mã nên insert từng dòng qua model là quá tốn truy vấn.
+         *
+         * Dòng nào tự khai changed_by / created_at thì giữ nguyên giá trị đó.
+         */
+        private function logTaskHistoryBatch(array $rows): void
+        {
+                if (empty($rows)) {
+                        return;
+                }
+
+                $common = [
+                        'changed_by' => session('user')['fullName'] ?? 'System',
+                        'created_at' => Carbon::now(),
+                ];
+
+                foreach (array_chunk($rows, 500) as $chunk) {
+                        DB::table('publication_tracking_task_history')
+                                ->insert(array_map(fn($row) => $row + $common, $chunk));
+                }
         }
 
         /**
@@ -633,7 +704,141 @@ class PublicationTrackingController extends Controller
                         'created_by' => session('user')['fullName'] ?? 'System',
                 ]);
 
+                // Mở kỳ mới là lúc các nội dung còn dang dở của kỳ này đi theo sang
+                $this->carryPendingItems($period, $next);
+
                 return [$next, true];
+        }
+
+        /**
+         * Chuyển toàn bộ nội dung theo dõi còn dang dở của $from sang kỳ $to.
+         *
+         * "Còn dang dở" = nội dung chưa bị xoá, nằm trên mã chưa được quyết định
+         * "Có thực hiện" và bản thân nội dung đó chưa từng được chuyển kỳ. Kỳ cũ
+         * vẫn giữ nguyên nội dung để lưu vết, chỉ đánh dấu là đã chuyển đi.
+         *
+         * @return int số nội dung đã chuyển
+         */
+        private function carryPendingItems(PublicationTrackingPeriod $from, PublicationTrackingPeriod $to): int
+        {
+                if ($to->status === 'Đã chốt') {
+                        return 0;
+                }
+
+                // Mã đã chốt "Có thực hiện" coi như đã xử lý xong trong kỳ, không mang sang
+                $details = PublicationTrackingDetail::where('period_id', $from->id)
+                        ->where(fn($q) => $q->whereNull('decision')->orWhere('decision', 0))
+                        ->get()
+                        ->keyBy('id');
+
+                if ($details->isEmpty()) {
+                        return 0;
+                }
+
+                $items = PublicationTrackingTaskItem::with('task')
+                        ->whereIn('detail_id', $details->keys())
+                        ->whereNull('moved_to_item_id')
+                        ->orderBy('id')
+                        ->get()
+                        ->filter(fn($item) => $item->task); // nội dung đã bị xoá thì không còn gì để chuyển
+
+                if ($items->isEmpty()) {
+                        return 0;
+                }
+
+                // Đây là việc của hệ thống lúc mở kỳ mới, không phải thao tác của người
+                // vừa mở trang, nên mọi dấu vết đều ghi tên System
+                $userName = 'System';
+                $now = Carbon::now();
+
+                return DB::transaction(function () use ($items, $details, $from, $to, $userName, $now) {
+                        // Mã và nội dung đã có sẵn ở kỳ đích thì dùng lại, giữ đúng cách
+                        // 1 nội dung dùng chung cho nhiều mã như khi tạo mới
+                        $targets = PublicationTrackingDetail::where('period_id', $to->id)
+                                ->get()
+                                ->keyBy(fn($row) => $row->category_type . '-' . $row->category_id);
+
+                        $tasks = PublicationTrackingTask::where('period_id', $to->id)
+                                ->get()
+                                ->keyBy('content');
+
+                        $history = [];
+
+                        foreach ($items as $item) {
+                                $detail = $details->get($item->detail_id);
+                                $key = $detail->category_type . '-' . $detail->category_id;
+
+                                $target = $targets->get($key);
+
+                                if (!$target) {
+                                        $target = $this->cloneDetailInto($detail, $to, $userName);
+                                        $targets->put($key, $target);
+                                }
+
+                                $content = $item->task->content;
+                                $task = $tasks->get($content);
+
+                                if (!$task) {
+                                        $task = PublicationTrackingTask::create([
+                                                'period_id' => $to->id,
+                                                'content' => $content,
+                                                'created_by' => $userName,
+                                        ]);
+                                        $tasks->put($content, $task);
+                                }
+
+                                $newItem = PublicationTrackingTaskItem::firstOrCreate(
+                                        ['task_id' => $task->id, 'detail_id' => $target->id],
+                                        ['updated_by' => $userName]
+                                );
+
+                                $item->update([
+                                        'moved_to_period_id' => $to->id,
+                                        'moved_to_item_id' => $newItem->id,
+                                        'moved_at' => $now,
+                                        'moved_by' => $userName,
+                                ]);
+
+                                // Ghi vết ở kỳ cũ: nội dung nào của mã nào đã đi sang kỳ nào
+                                $history[] = [
+                                        'task_id' => $item->task_id,
+                                        'period_id' => $from->id,
+                                        'action' => 'carry',
+                                        'old_content' => $content,
+                                        'new_content' => $to->label,
+                                        'detail_id' => $detail->id,
+                                        'detail_code' => $detail->code,
+                                        'changed_by' => $userName,
+                                ];
+                        }
+
+                        $this->logTaskHistoryBatch($history);
+
+                        return count($history);
+                });
+        }
+
+        /** Dựng lại 1 mã ở kỳ khác từ snapshot của kỳ hiện tại */
+        private function cloneDetailInto(
+                PublicationTrackingDetail $detail,
+                PublicationTrackingPeriod $period,
+                string $userName
+        ): PublicationTrackingDetail {
+                return PublicationTrackingDetail::create([
+                        'period_id' => $period->id,
+                        'category_type' => $detail->category_type,
+                        'category_id' => $detail->category_id,
+                        'code' => $detail->code,
+                        'process_code' => $detail->process_code,
+                        'product_name' => $detail->product_name,
+                        'batch_size' => $detail->batch_size,
+                        'dosage_name' => $detail->dosage_name,
+                        'market' => $detail->market,
+                        'pharmacist_id' => $detail->pharmacist_id,
+                        'pharmacist_name' => $detail->pharmacist_name,
+                        'sort_order' => $detail->sort_order,
+                        'updated_by' => $userName,
+                ]);
         }
 
         /**
@@ -684,6 +889,20 @@ class PublicationTrackingController extends Controller
                 // nội dung chuyển sang nằm đúng dòng của mã trong bảng kỳ sau
                 if ($justCreated) {
                         $this->syncDetails($next);
+
+                        // Mở kỳ mới đã kéo theo mọi nội dung chưa quyết định, trong đó
+                        // thường có luôn nội dung vừa bấm chuyển
+                        $item->refresh();
+
+                        if ($item->moved_to_item_id) {
+                                return response()->json([
+                                        'success' => true,
+                                        'moved_to_label' => $next->label,
+                                        'moved_by' => $item->moved_by,
+                                        'message' => 'Đã mở kỳ ' . $next->label
+                                                . ' và chuyển các nội dung chưa quyết định sang kỳ đó.',
+                                ]);
+                        }
                 }
 
                 $detail = $item->detail;
@@ -699,20 +918,7 @@ class PublicationTrackingController extends Controller
                                 ->first();
 
                         if (!$target) {
-                                $target = PublicationTrackingDetail::create([
-                                        'period_id' => $next->id,
-                                        'category_type' => $detail->category_type,
-                                        'category_id' => $detail->category_id,
-                                        'code' => $detail->code,
-                                        'process_code' => $detail->process_code,
-                                        'product_name' => $detail->product_name,
-                                        'batch_size' => $detail->batch_size,
-                                        'dosage_name' => $detail->dosage_name,
-                                        'pharmacist_id' => $detail->pharmacist_id,
-                                        'pharmacist_name' => $detail->pharmacist_name,
-                                        'sort_order' => $detail->sort_order,
-                                        'updated_by' => $userName,
-                                ]);
+                                $target = $this->cloneDetailInto($detail, $next, $userName);
                         }
 
                         // Chuyển nhiều mã cùng 1 nội dung thì gom chung 1 công việc ở kỳ sau,
@@ -983,12 +1189,12 @@ class PublicationTrackingController extends Controller
         }
 
         /**
-         * Lưu quyết định (Có/Không + ngày hoàn thành dự kiến) và kết quả thực hiện
-         * (ngày hoàn thành + ghi chú) của 1 mã BTP/TP. Mỗi mã chỉ có 1 bộ giá trị,
-         * không phụ thuộc số nội dung theo dõi đang gắn cho mã đó.
+         * Lưu ý kiến DSPT, quyết định (Có/Không + ngày hoàn thành dự kiến) và kết quả
+         * thực hiện (ngày hoàn thành + ghi chú) của 1 mã BTP/TP. Mỗi mã chỉ có 1 bộ
+         * giá trị, không phụ thuộc số nội dung theo dõi đang gắn cho mã đó.
          *
          * Đây là lưu toàn bộ dòng chứ không phải sửa từng ô: client luôn gửi đủ
-         * 4 giá trị đang hiển thị, ô nào không gửi sẽ bị ghi thành rỗng.
+         * các giá trị đang hiển thị, ô nào không gửi sẽ bị ghi thành rỗng.
          */
         public function updateDetailDecision(Request $request)
         {
@@ -998,6 +1204,7 @@ class PublicationTrackingController extends Controller
                         'due_date' => 'nullable|date',
                         'completed_date' => 'nullable|date',
                         'comment' => 'nullable|string|max:2000',
+                        'pharmacist_opinion' => 'nullable|string|max:2000',
                 ]);
 
                 $detail = PublicationTrackingDetail::find($request->input('id'));
@@ -1022,10 +1229,12 @@ class PublicationTrackingController extends Controller
                 $newDueDate = $decision === true ? ($dueDate ?: null) : null;
                 $newCompletedDate = $request->input('completed_date') ?: null;
                 $newComment = $request->input('comment');
+                $newOpinion = $request->input('pharmacist_opinion');
 
-                // 2 cột phân quyền riêng nhưng client gửi chung 1 request: cột nào không
+                // Các cột phân quyền riêng nhưng client gửi chung 1 request: cột nào không
                 // có quyền thì giữ nguyên giá trị đang lưu thay vì nhận theo client.
-                // Quyết Định có quyền riêng, Kết Quả theo đúng luật của cột Nội Dung Theo Dõi.
+                // Quyết Định có quyền riêng; Ý Kiến DSPT và Kết Quả theo đúng luật của
+                // cột Nội Dung Theo Dõi (dược sĩ phụ trách của mã).
                 $canDecide = $this->canUpdateDecision();
                 $canSaveResult = $this->canManageDetails([$detail->id]);
 
@@ -1041,6 +1250,7 @@ class PublicationTrackingController extends Controller
                 if (!$canSaveResult) {
                         $newCompletedDate = optional($detail->completed_date)->format('Y-m-d');
                         $newComment = $detail->comment;
+                        $newOpinion = $detail->pharmacist_opinion;
                 }
 
                 if ($decision === true && blank($newDueDate)) {
@@ -1055,6 +1265,8 @@ class PublicationTrackingController extends Controller
                 $resultChanged = optional($detail->completed_date)->format('Y-m-d') !== $newCompletedDate
                         || (string) $detail->comment !== (string) $newComment;
 
+                $opinionChanged = (string) $detail->pharmacist_opinion !== (string) $newOpinion;
+
                 $user = session('user')['fullName'] ?? 'System';
                 $now = now();
 
@@ -1063,6 +1275,7 @@ class PublicationTrackingController extends Controller
                         'due_date' => $newDueDate,
                         'completed_date' => $newCompletedDate,
                         'comment' => $newComment,
+                        'pharmacist_opinion' => $newOpinion,
                         'updated_by' => $user,
                 ];
 
@@ -1076,6 +1289,11 @@ class PublicationTrackingController extends Controller
                         $data['result_at'] = $now;
                 }
 
+                if ($opinionChanged) {
+                        $data['opinion_by'] = $user;
+                        $data['opinion_at'] = $now;
+                }
+
                 $detail->update($data);
 
                 return response()->json([
@@ -1083,6 +1301,7 @@ class PublicationTrackingController extends Controller
                         // Trả về nhãn đã format sẵn để client thay tại chỗ, khỏi tải lại trang
                         'decision_meta' => $this->actorMeta($detail->decision_by, $detail->decision_at),
                         'result_meta' => $this->actorMeta($detail->result_by, $detail->result_at),
+                        'opinion_meta' => $this->actorMeta($detail->opinion_by, $detail->opinion_at),
                         'message' => 'Đã lưu.',
                 ]);
         }

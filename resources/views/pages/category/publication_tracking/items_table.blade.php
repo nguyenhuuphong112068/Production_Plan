@@ -28,6 +28,9 @@
             <th class="text-center align-middle" style="width: 120px;">{{ $codeLabel }}</th>
             <th class="text-center align-middle" style="width: 15%;">Tên Sản Phẩm</th>
             <th class="text-center align-middle" style="width: 95px;">Cỡ Lô</th>
+            @if ($showMarket)
+                <th class="text-center align-middle" style="width: 100px;">Thị Trường</th>
+            @endif
             <th class="text-center align-middle" style="width: 110px;">Dạng Bào Chế</th>
             <th class="text-center align-middle" style="width: 130px;">Dược Sĩ Phụ Trách</th>
             <th class="text-center align-middle" style="width: 20%;">Nội Dung Theo Dõi</th>
@@ -48,6 +51,10 @@
                 );
                 $resultMeta = trim(
                     $item->result_by . ($item->result_at ? ' · ' . $item->result_at->format('d/m/Y H:i') : ''),
+                    ' ·',
+                );
+                $opinionMeta = trim(
+                    $item->opinion_by . ($item->opinion_at ? ' · ' . $item->opinion_at->format('d/m/Y H:i') : ''),
                     ' ·',
                 );
 
@@ -72,6 +79,9 @@
                 </td>
                 <td class="align-middle pt-name-cell">{{ $item->product_name }}</td>
                 <td class="text-center align-middle">{{ $item->batch_size }}</td>
+                @if ($showMarket)
+                    <td class="text-center align-middle">{{ $item->market }}</td>
+                @endif
                 <td class="text-center align-middle">{{ $item->dosage_name }}</td>
                 <td class="align-middle">
                     @if ($item->pharmacist_name)
@@ -81,8 +91,10 @@
                     @endif
                 </td>
 
-                {{-- Nội dung theo dõi: mỗi công việc là 1 badge có thanh nút sửa / xoá / chấp nhận --}}
-                <td class="align-middle p-1">
+                {{-- Nội dung theo dõi: mỗi công việc là 1 badge có thanh nút sửa / xoá / chấp nhận.
+                     Ô này cũng mang class pt-detail để textarea "Ý kiến DSPT" bên dưới được lưu
+                     chung 1 request với 2 ô Quyết Định / Kết Quả của cùng mã. --}}
+                <td class="align-middle p-1 pt-detail" data-detail-id="{{ $item->id }}">
                     {{-- Thanh 3 nút và ghi chú "đã chấp nhận" do JS dựng cho các dòng đang hiển thị.
                          Bảng có tới cả nghìn mã, in sẵn markup nút cho mọi badge làm HTML phình lên
                          hàng MB chỉ vì thụt lề, trong khi DataTables mỗi lúc chỉ hiện 25 dòng. --}}
@@ -104,6 +116,15 @@
 
                     {{-- Luôn có: nút thêm nội dung (khi được sửa) và nút xem lịch sử chung của mã --}}
                     <div class="pt-add-slot text-center pt-1"></div>
+
+                    {{-- Ý kiến của dược sĩ phụ trách về các nội dung theo dõi của mã này --}}
+                    <div class="pt-opinion-box">
+                        <label class="pt-opinion-label mb-0">Ý kiến DSPT</label>
+                        <textarea class="form-control form-control-sm pt-opinion" rows="2"
+                            placeholder="Ý kiến của dược sĩ phụ trách..."
+                            {{ $canManage ? '' : 'readonly' }}>{{ $item->pharmacist_opinion }}</textarea>
+                        <div class="pt-meta pt-opinion-meta" title="Người ghi ý kiến gần nhất">{{ $opinionMeta }}</div>
+                    </div>
                 </td>
 
                 {{-- Quyết định: 1 ô cho cả mã, không phụ thuộc số nội dung theo dõi.

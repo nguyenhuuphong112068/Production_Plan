@@ -65,8 +65,8 @@
                     </div> 
                      
 
-                    {{-- Dược Sĩ Phụ Trách --}}
-                    @include('pages.category.pharmacist_select', ['selected' => old('pharmacist_id')])
+                    {{-- Không chọn Dược Sĩ Phụ Trách ở đây: mã TP dùng chung dược sĩ phụ trách
+                         của mã BTP (BMR) tương ứng, khai báo bên danh mục bán thành phẩm. --}}
 
                     {{--Cở lô--}}
                     <div class="row">

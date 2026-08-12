@@ -1304,6 +1304,35 @@ class SchedualController extends Controller
         ];
     }
 
+    /**
+     * Lấy đúng 1 dòng định mức đang hiệu lực cho 1 công đoạn tại 1 phòng.
+     *
+     * Bộ khóa (intermediate_code, finished_product_code, room_id, stage_code) + active = 1
+     * là duy nhất trong bảng quota, nên không cần ORDER BY để chọn dòng.
+     * Với công đoạn < 7 thì quota lưu finished_product_code = 'NA'.
+     *
+     * Trả về null nếu chưa khai báo định mức — bên gọi tự quyết định cách báo lỗi.
+     */
+    protected function findQuota($intermediate_code, $finished_product_code, $room_id, $stage_code)
+    {
+        return DB::table('quota')
+            ->select(
+                'id',
+                'room_id',
+                'campaign_index',
+                DB::raw('(TIME_TO_SEC(p_time)/60) as p_time_minutes'),
+                DB::raw('(TIME_TO_SEC(m_time)/60) as m_time_minutes'),
+                DB::raw('(TIME_TO_SEC(C1_time)/60) as C1_time_minutes'),
+                DB::raw('(TIME_TO_SEC(C2_time)/60) as C2_time_minutes'),
+            )
+            ->where('intermediate_code', $intermediate_code)
+            ->where('finished_product_code', (int) $stage_code === 7 ? $finished_product_code : 'NA')
+            ->where('room_id', $room_id)
+            ->where('stage_code', $stage_code)
+            ->where('active', 1)
+            ->first();
+    }
+
     // hàm lấy quota
     protected function getQuota($production)
     {
@@ -1865,28 +1894,34 @@ class SchedualController extends Controller
                 |--------------------------------------------------------------------------
                 */
                 if ($index === 0 && $product['stage_code'] !== 9) {
-                    if ($product['stage_code'] < 7) {
-                        $process_code = $product['intermediate_code'] . '_NA_' . $request->room_id;
-                    } elseif ($product['stage_code'] === 7) {
-                        $process_code = $product['intermediate_code'] . '_' . $product['finished_product_code'] . '_' . $request->room_id;
+
+                    // Khớp chính xác theo bán thành phẩm + thành phẩm + phòng + công đoạn.
+                    // Không dùng LIKE trên process_code: ký tự "_" là wildcard của SQL nên
+                    // phòng 1 khớp nhầm cả phòng 10/13/17..., lại thiếu điều kiện active
+                    // và stage_code nên có thể lấy trúng định mức đã bị vô hiệu hóa.
+                    $quota = $this->findQuota(
+                        $product['intermediate_code'],
+                        $product['finished_product_code'] ?? null,
+                        $request->room_id,
+                        $product['stage_code']
+                    );
+
+                    if (! $quota) {
+
+                        $room_code = DB::table('room')->where('id', $request->room_id)->value('code');
+
+                        throw new \Exception(
+                            'Chưa có định mức cho ' . ($product['name'] ?? $product['intermediate_code'])
+                                . ' - công đoạn ' . $product['stage_code']
+                                . ' tại phòng ' . ($room_code ?: $request->room_id)
+                                . '. Vui lòng khai báo định mức trước khi sắp lịch.'
+                        );
                     }
 
-                    $quota = DB::table('quota')
-                        ->select(
-                            'room_id',
-                            'campaign_index',
-                            DB::raw('(TIME_TO_SEC(p_time)/60) as p_time_minutes'),
-                            DB::raw('(TIME_TO_SEC(m_time)/60) as m_time_minutes'),
-                            DB::raw('(TIME_TO_SEC(C1_time)/60) as C1_time_minutes'),
-                            DB::raw('(TIME_TO_SEC(C2_time)/60) as C2_time_minutes'),
-                        )
-                        ->where('process_code', 'like', $process_code . '%')
-                        ->first();
-
-                    $p_time_minutes = $quota->p_time_minutes ?? 0;
-                    $m_time_minutes = $quota->m_time_minutes ?? 0;
-                    $C1_time_minutes = $quota->C1_time_minutes ?? 0;
-                    $C2_time_minutes = $quota->C2_time_minutes ?? 0;
+                    $p_time_minutes = $quota->p_time_minutes;
+                    $m_time_minutes = $quota->m_time_minutes;
+                    $C1_time_minutes = $quota->C1_time_minutes;
+                    $C2_time_minutes = $quota->C2_time_minutes;
                 } elseif ($index === 0 && $product['stage_code'] === 9) {
                     $p_time_minutes = 30;
                     $m_time_minutes = 60;
@@ -3530,29 +3565,21 @@ class SchedualController extends Controller
                     continue;
                 }
 
-                // 2. xác định process_code để tra cứu quota
-                if ($plan->stage_code < 7) {
+                // 2. Với các stage_code >= 8 (bảo trì hoặc khác), chỉ cập nhật title
+                if ($plan->stage_code > 7) {
 
-                    $process_code = $plan->intermediate_code . '_NA_' . $plan->resourceId;
-                } elseif ($plan->stage_code === 7) {
-
-                    $process_code = $plan->intermediate_code . '_' . $plan->finished_product_code . '_' . $plan->resourceId;
-                } else {
-
-                    // Với các stage_code >= 8 (bảo trì hoặc khác), chỉ cập nhật title
                     DB::table('stage_plan')->where('id', $id)->update(['title_clearning' => $clearning_type]);
 
                     continue;
                 }
 
-                // 3. Tra cứu quota
-                $quota = DB::table('quota')
-                    ->select(
-                        DB::raw('(TIME_TO_SEC(C1_time)/60) as C1_time_minutes'),
-                        DB::raw('(TIME_TO_SEC(C2_time)/60) as C2_time_minutes')
-                    )
-                    ->where('process_code', 'like', $process_code . '%')
-                    ->first();
+                // 3. Tra cứu quota (khớp chính xác, xem findQuota)
+                $quota = $this->findQuota(
+                    $plan->intermediate_code,
+                    $plan->finished_product_code,
+                    $plan->resourceId,
+                    $plan->stage_code
+                );
 
                 if ($quota) {
 

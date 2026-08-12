@@ -106,8 +106,23 @@
             vertical-align: middle;
         }
 
-        .pt-items-table textarea.pt-comment {
+        .pt-items-table textarea.pt-comment,
+        .pt-items-table textarea.pt-opinion {
             resize: vertical;
+        }
+
+        /* Ý kiến DSPT nằm cuối ô Nội Dung Theo Dõi, tách khỏi các badge bằng 1 vạch */
+        .pt-opinion-box {
+            margin-top: 6px;
+            padding-top: 5px;
+            border-top: 1px dashed #ced4da;
+        }
+
+        .pt-opinion-label {
+            font-size: 10.5px;
+            font-weight: 600;
+            color: #6c757d;
+            text-transform: uppercase;
         }
 
         /* Quyết định là 1 nút bật/tắt: xanh = có thực hiện, xám = không thực hiện */
@@ -189,14 +204,14 @@
                             <li class="nav-item">
                                 <a class="nav-link active font-weight-bold" id="tab-btp-tab" data-toggle="pill"
                                     href="#tab-btp" role="tab" aria-controls="tab-btp" aria-selected="true">
-                                    <i class="fas fa-flask text-primary"></i> Bán Thành Phẩm
+                                    <i class="fas fa-flask text-primary"></i> BMR
                                     <span class="badge badge-primary ml-1">{{ $intermediates->count() }}</span>
                                 </a>
                             </li>
                             <li class="nav-item">
                                 <a class="nav-link font-weight-bold" id="tab-tp-tab" data-toggle="pill" href="#tab-tp"
                                     role="tab" aria-controls="tab-tp" aria-selected="false">
-                                    <i class="fas fa-pills text-success"></i> Thành Phẩm
+                                    <i class="fas fa-pills text-success"></i> BPR
                                     <span class="badge badge-success ml-1">{{ $products->count() }}</span>
                                 </a>
                             </li>
@@ -211,6 +226,7 @@
                                     'tableId' => 'data_table_btp',
                                     'type' => 'BTP',
                                     'codeLabel' => 'Mã BTP',
+                                    'showMarket' => false,
                                     'locked' => $readOnly,
                                     'showPicker' => $showCreateTask,
                                     'manageAll' => $showCreateTask,
@@ -224,6 +240,7 @@
                                     'tableId' => 'data_table_tp',
                                     'type' => 'TP',
                                     'codeLabel' => 'Mã TP',
+                                    'showMarket' => true,
                                     'locked' => $readOnly,
                                     'showPicker' => $showCreateTask,
                                     'manageAll' => $showCreateTask,
@@ -267,9 +284,9 @@
                         </div>
                         <div class="col-md-3">
                             <select class="form-control form-control-sm" id="task_filter_type">
-                                <option value="">Tất cả (BTP + TP)</option>
-                                <option value="BTP">Chỉ Bán Thành Phẩm</option>
-                                <option value="TP">Chỉ Thành Phẩm</option>
+                                <option value="">Tất cả (BMR + BPR)</option>
+                                <option value="BTP">Chỉ BMR</option>
+                                <option value="TP">Chỉ BPR</option>
                             </select>
                         </div>
                         <div class="col-md-4 text-right">
@@ -648,12 +665,13 @@
 
                 let html = '';
                 shown.forEach(function(it) {
-                    const badge = it.type === 'BTP' ? 'badge-primary' : 'badge-success';
+                    const isBmr = it.type === 'BTP';
+                    const badge = isBmr ? 'badge-primary' : 'badge-success';
                     html += '<div class="custom-control custom-checkbox">' +
                         '<input type="checkbox" class="custom-control-input pt-pick" id="pick_' + it.id +
                         '" value="' + it.id + '"' + (picked.has(it.id) ? ' checked' : '') + '>' +
                         '<label class="custom-control-label" for="pick_' + it.id + '">' +
-                        '<span class="badge ' + badge + ' mr-1">' + it.type + '</span>' +
+                        '<span class="badge ' + badge + ' mr-1">' + (isBmr ? 'BMR' : 'BPR') + '</span>' +
                         '<strong>' + escapeHtml(it.code) + '</strong> &mdash; ' + escapeHtml(it.name) +
                         '</label></div>';
                 });
@@ -1136,11 +1154,12 @@
                 saveDetail($cell);
             });
 
-            $(document).on('focus', '.pt-comment', function() {
+            // Ghi chú kết quả và ý kiến DSPT đều chỉ lưu khi rời ô và có thay đổi
+            $(document).on('focus', '.pt-comment, .pt-opinion', function() {
                 $(this).data('original', $(this).val());
             });
 
-            $(document).on('blur', '.pt-comment', function() {
+            $(document).on('blur', '.pt-comment, .pt-opinion', function() {
                 if ($(this).val() === $(this).data('original')) {
                     return;
                 }
@@ -1148,9 +1167,10 @@
             });
 
             function saveDetail($cell) {
-                // Quyết định và Kết quả nằm ở 2 ô khác nhau nhưng cùng 1 mã BTP/TP
+                // Ý kiến DSPT, Quyết định và Kết quả nằm ở 3 ô khác nhau nhưng cùng 1 mã BTP/TP.
+                // DataTables giữ dòng của trang khác ngoài document nên phải tìm trong allRows().
                 const detailId = $cell.attr('data-detail-id');
-                const $all = $('.pt-detail[data-detail-id="' + detailId + '"]');
+                const $all = allRows().find('.pt-detail[data-detail-id="' + detailId + '"]');
 
                 const $btn = $all.find('.btn-decision');
                 const decision = $btn.length ? String($btn.attr('data-decision')) : '';
@@ -1161,7 +1181,8 @@
                     decision: decision,
                     due_date: $all.find('.pt-due-date').val() || '',
                     completed_date: $all.find('.pt-completed-date').val() || '',
-                    comment: $all.find('.pt-comment').val() || ''
+                    comment: $all.find('.pt-comment').val() || '',
+                    pharmacist_opinion: $all.find('.pt-opinion').val() || ''
                 };
 
                 $.ajax({
@@ -1170,12 +1191,13 @@
                     data: payload,
                     success: function(res) {
                         if (res.success) {
-                            $all.find('.pt-comment').each(function() {
+                            $all.find('.pt-comment, .pt-opinion').each(function() {
                                 $(this).data('original', $(this).val());
                             });
-                            // Server chỉ đóng dấu ô nào thực sự đổi nên cứ nhận cả 2 nhãn về
+                            // Server chỉ đóng dấu ô nào thực sự đổi nên cứ nhận cả 3 nhãn về
                             $all.find('.pt-decision-meta').text(res.decision_meta || '');
                             $all.find('.pt-result-meta').text(res.result_meta || '');
+                            $all.find('.pt-opinion-meta').text(res.opinion_meta || '');
                             flash($all);
                         } else {
                             Swal.fire('Không lưu được', res.message, 'warning');
