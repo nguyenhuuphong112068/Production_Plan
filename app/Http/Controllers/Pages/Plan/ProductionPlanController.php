@@ -3552,7 +3552,14 @@ class ProductionPlanController extends Controller
                                 "plan_master.level",
                                 "plan_master.batch",
                                 "plan_master.actual_batch",
-                                "plan_master.order_number",
+                                // Cột plan_master.order_number đã được tách thành order_number_R1 / R2.
+                                // Ghép lại thành một khoá order_number để file Excel đang gọi API này
+                                // không phải sửa. NULLIF bỏ ô rỗng (khỏi dính ", " thừa) và bỏ R2 khi
+                                // trùng R1 (rất nhiều lô chỉ có một số lệnh, ghi ở cả hai cột).
+                                DB::raw("CONCAT_WS(', ',
+                                        NULLIF(plan_master.order_number_R1, ''),
+                                        NULLIF(NULLIF(plan_master.order_number_R2, ''), plan_master.order_number_R1)
+                                ) AS order_number"),
                                 "plan_master.expected_date",
                                 "plan_master.responsed_date",
                                 // actual_KCS giữ nguyên để không làm gãy bên đang gọi API này.

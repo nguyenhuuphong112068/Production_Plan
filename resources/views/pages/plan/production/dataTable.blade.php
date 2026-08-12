@@ -894,6 +894,7 @@
                 <th>Ngày HH BB</th>
                 <th>PC trước</th>
                 <th>THT trước</th>
+                <th>ĐH trước</th>
                 <th>BP trước</th>
                 <th>ĐG trước</th>
                 <th>Ghi Chú</th>
