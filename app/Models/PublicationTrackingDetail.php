@@ -21,6 +21,7 @@ class PublicationTrackingDetail extends Model
         'batch_size',
         'dosage_name',
         'market',
+        'specification',
         'pharmacist_id',
         'pharmacist_name',
         'decision',

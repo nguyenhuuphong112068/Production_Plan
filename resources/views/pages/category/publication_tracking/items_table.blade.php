@@ -14,6 +14,38 @@
     </div>
 @endif
 
+{{-- Lọc theo kế hoạch tháng: chưa lập kế hoạch thì không có gì để lọc, ẩn luôn cho gọn --}}
+@if ($hasMonthlyPlan)
+    @php
+        $plannedCount = $items->filter(
+            fn($i) => isset($plannedBatches[$i->category_type . '-' . $i->category_id]),
+        )->count();
+    @endphp
+
+    <div class="d-flex align-items-center flex-wrap mb-2">
+        <label class="mb-0 mr-2" for="filter_planned_{{ $type }}">
+            <i class="fas fa-calendar-check text-danger"></i> Kế hoạch {{ $planLabel }}:
+        </label>
+        <select class="form-control form-control-sm w-auto mr-2 pt-filter-planned" id="filter_planned_{{ $type }}"
+            data-table="{{ $tableId }}">
+            <option value="">Tất cả mã ({{ $items->count() }})</option>
+            <option value="1">Có kế hoạch ({{ $plannedCount }})</option>
+            <option value="0">Chưa có kế hoạch ({{ $items->count() - $plannedCount }})</option>
+        </select>
+        <small class="text-muted">
+            Mã có nhãn <span class="badge badge-danger"><i class="fas fa-calendar-check"></i> KH</span>
+            sẽ được sản xuất trong {{ $planLabel }} &mdash; nên ưu tiên quyết định lên ấn bản.
+        </small>
+    </div>
+@else
+    <div class="mb-2">
+        <small class="text-muted font-italic">
+            <i class="fas fa-info-circle"></i>
+            Chưa có kế hoạch sản xuất {{ $planLabel }} cho phân xưởng này, chưa lọc được theo kế hoạch tháng.
+        </small>
+    </div>
+@endif
+
 {{-- Không bọc bảng trong khung cuộn riêng: để cả trang cuộn như các bảng Dữ Liệu Gốc,
      nhờ vậy bảng cao hết màn hình và thanh phân trang luôn nằm dưới bảng, không bị che. --}}
 <table id="{{ $tableId }}" class="table table-bordered table-striped w-100 pt-items-table">
@@ -29,7 +61,7 @@
             <th class="text-center align-middle" style="width: 15%;">Tên Sản Phẩm</th>
             <th class="text-center align-middle" style="width: 95px;">Cỡ Lô</th>
             @if ($showMarket)
-                <th class="text-center align-middle" style="width: 100px;">Thị Trường</th>
+                <th class="text-center align-middle" style="width: 130px;">Thị Trường / Qui Cách</th>
             @endif
             <th class="text-center align-middle" style="width: 110px;">Dạng Bào Chế</th>
             <th class="text-center align-middle" style="width: 130px;">Dược Sĩ Phụ Trách</th>
@@ -62,8 +94,16 @@
                 // chỉ thao tác được trên mã do chính mình phụ trách
                 $canManage =
                     $manageAll || ($manageOwn && $item->pharmacist_id && $item->pharmacist_id == $currentUserId);
+
+                // Mã không có trong danh sách nghĩa là MMS chưa có công thức cho mã đó
+                $bomRevision = $bomRevisions[trim($item->code)] ?? null;
+
+                // Kế hoạch tháng của mã; null = tháng này không có lô nào của mã đó
+                $planned = $plannedBatches[$item->category_type . '-' . $item->category_id] ?? null;
+                $plannedLots = collect($planned['lots'] ?? []);
             @endphp
-            <tr data-detail-id="{{ $item->id }}" data-can-manage="{{ $canManage ? 1 : 0 }}">
+            <tr data-detail-id="{{ $item->id }}" data-can-manage="{{ $canManage ? 1 : 0 }}"
+                data-planned="{{ $planned ? 1 : 0 }}">
                 @if ($showPicker)
                     <td class="text-center align-middle">
                         <input type="checkbox" class="pt-row-check" data-type="{{ $type }}"
@@ -76,11 +116,34 @@
                     @if ($item->process_code)
                         <small class="text-muted">{{ $item->process_code }}</small>
                     @endif
+                    {{-- Version công thức hiện hành trên MMS: mã chưa có công thức thì không có badge --}}
+                    @if ($bomRevision !== null)
+                        <div>
+                            <span class="badge badge-light border border-secondary"
+                                title="Version công thức hiện hành trên MMS">V{{ $bomRevision }}</span>
+                        </div>
+                    @endif
+
+                    {{-- Mã đã có trong kế hoạch tháng: dấu hiệu để ưu tiên ra quyết định --}}
+                    @if ($planned)
+                        <div>
+                            <span class="badge badge-danger pt-planned-badge"
+                                title="Kế hoạch {{ $planLabel }}: {{ $planned['count'] }} lô{{ $plannedLots->isNotEmpty() ? ' — số lô ' . $plannedLots->implode(', ') : '' }}">
+                                <i class="fas fa-calendar-check"></i> KH {{ $planned['count'] }} lô
+                            </span>
+                        </div>
+                    @endif
                 </td>
                 <td class="align-middle pt-name-cell">{{ $item->product_name }}</td>
                 <td class="text-center align-middle">{{ $item->batch_size }}</td>
                 @if ($showMarket)
-                    <td class="text-center align-middle">{{ $item->market }}</td>
+                    <td class="text-center align-middle">
+                        <div>{{ $item->market }}</div>
+                        {{-- Qui cách nằm chung ô với thị trường, mã cũ chưa đồng bộ thì bỏ trống --}}
+                        @if ($item->specification)
+                            <small class="text-muted">{{ $item->specification }}</small>
+                        @endif
+                    </td>
                 @endif
                 <td class="text-center align-middle">{{ $item->dosage_name }}</td>
                 <td class="align-middle">

@@ -25,7 +25,6 @@
                                 <th class="text-center" style="width: 60px;">STT</th>
                                 <th class="text-center" style="width: 170px;">Phân Xưởng</th>
                                 <th class="text-center">Kỳ Theo Dõi</th>
-                                <th class="text-center">Chu Kỳ</th>
                                 <th class="text-center">Số Mã BTP</th>
                                 <th class="text-center">Số Mã TP</th>
                                 <th class="text-center">Trạng Thái</th>
@@ -52,7 +51,6 @@
                                             <span class="badge badge-warning ml-1">Kỳ hiện tại</span>
                                         @endif
                                     </td>
-                                    <td class="text-center align-middle">{{ $period->range_label }}</td>
                                     <td class="text-center align-middle">{{ $btpCount }}</td>
                                     <td class="text-center align-middle">{{ $tpCount }}</td>
                                     <td class="text-center align-middle">

@@ -196,6 +196,16 @@ class PublicationTrackingController extends Controller
 
                 $departmentName = self::DEPARTMENTS[$period->deparment_code] ?? $period->deparment_code;
 
+                // Version công thức lấy trực tiếp từ MMS (bản Revno lớn nhất) chứ không
+                // snapshot vào kỳ: người theo dõi cần biết mã đang ở version nào ngay lúc
+                // xem, kể cả khi công thức vừa được nâng ấn bản sau lần đồng bộ gần nhất.
+                $bomRevisions = mms_bom_revisions(
+                        $details->flatten()->pluck('code')
+                );
+
+                // Số lô đã lên kế hoạch tháng của kỳ này, để biết mã nào sắp sản xuất
+                $plannedBatches = $this->plannedBatches($period);
+
                 session()->put(['title' => 'THEO DÕI LÊN ẤN BẢN - ' . $departmentName . ' - ' . $period->label]);
 
                 // Nhãn kỳ kế tiếp để nút "chuyển kỳ sau" nói rõ nội dung sẽ đi đâu
@@ -213,7 +223,97 @@ class PublicationTrackingController extends Controller
                         'canAddTask' => $this->canAddTask(),
                         'canDecide' => $this->canUpdateDecision(),
                         'nextPeriodLabel' => $nextLabel,
+                        'bomRevisions' => $bomRevisions,
+                        'plannedBatches' => $plannedBatches,
+                        'hasMonthlyPlan' => $this->monthlyPlanLists($period)->isNotEmpty(),
                 ]);
+        }
+
+        /**
+         * Các bảng kế hoạch sản xuất tháng ứng với kỳ theo dõi này.
+         *
+         * Kỳ theo dõi mang tên tháng lên ấn bản, đi sau chu kỳ thu thập 2 tháng
+         * (xem PublicationTrackingPeriod::labelForCycleStart), nên kỳ của chu kỳ
+         * 20/07 - 19/08 phải soi kế hoạch tháng 09 của chính phân xưởng đó.
+         *
+         * Một tháng có thể có nhiều bảng kế hoạch (lập nhiều lần), lấy hết.
+         * Kế hoạch chưa gửi vẫn tính: có tên trong bảng nháp cũng đã là dấu hiệu
+         * mã sắp được sản xuất, đủ để dược sĩ cân nhắc khi ra quyết định.
+         */
+        private function monthlyPlanLists(PublicationTrackingPeriod $period)
+        {
+                $target = $period->start_date->copy()->addMonthsNoOverflow(2);
+
+                return DB::table('plan_list')
+                        ->where('deparment_code', $period->deparment_code)
+                        ->where('type', 1) // 1 = kế hoạch sản xuất, 0 = bảo trì / hiệu chuẩn
+                        ->where('active', 1)
+                        ->where('year', $target->year)
+                        ->where('month', $target->month)
+                        ->pluck('id');
+        }
+
+        /**
+         * Số lô đã lên kế hoạch tháng, quy về từng mã trong kỳ theo dõi.
+         *
+         * Mỗi dòng plan_master là 1 lô nên số lô đếm theo số dòng; cột batch là
+         * SỐ HIỆU lô (varchar, ví dụ "010226") chứ không phải số lượng lô, chỉ
+         * dùng để liệt kê trong chú thích.
+         *
+         * Kế hoạch lập theo mã TP; mã BTP nhận số lô của mọi mã TP dùng chung
+         * bán thành phẩm đó, vì lên ấn bản BMR là lên cho cả nhóm TP ấy.
+         *
+         * @return array ['TP-12' => ['count' => 3, 'lots' => [...]], ...]
+         *               mã không có kế hoạch thì vắng mặt
+         */
+        private function plannedBatches(PublicationTrackingPeriod $period): array
+        {
+                $planListIds = $this->monthlyPlanLists($period);
+
+                if ($planListIds->isEmpty()) {
+                        return [];
+                }
+
+                $rows = DB::table('plan_master')
+                        ->select(
+                                'finished_product_category.id as tp_id',
+                                'intermediate_category.id as btp_id',
+                                'plan_master.batch'
+                        )
+                        ->join(
+                                'finished_product_category',
+                                'plan_master.product_caterogy_id',
+                                'finished_product_category.id'
+                        )
+                        ->leftJoin(
+                                'intermediate_category',
+                                'finished_product_category.intermediate_code',
+                                'intermediate_category.intermediate_code'
+                        )
+                        ->whereIn('plan_master.plan_list_id', $planListIds)
+                        ->where('plan_master.active', 1)
+                        ->where('plan_master.cancel', 0)
+                        ->get();
+
+                $planned = [];
+
+                foreach ($rows as $row) {
+                        $keys = ['TP-' . $row->tp_id];
+
+                        if ($row->btp_id) {
+                                $keys[] = 'BTP-' . $row->btp_id;
+                        }
+
+                        foreach ($keys as $key) {
+                                $planned[$key]['count'] = ($planned[$key]['count'] ?? 0) + 1;
+
+                                if (filled($row->batch)) {
+                                        $planned[$key]['lots'][] = $row->batch;
+                                }
+                        }
+                }
+
+                return $planned;
         }
 
         /** Đồng bộ lại danh sách mã hiệu lực của kỳ theo yêu cầu của người dùng */
@@ -269,6 +369,7 @@ class PublicationTrackingController extends Controller
                                 'batch_size' => $item['batch_size'],
                                 'dosage_name' => $item['dosage_name'],
                                 'market' => $item['market'],
+                                'specification' => $item['specification'],
                                 'pharmacist_id' => $item['pharmacist_id'],
                                 'pharmacist_name' => $item['pharmacist_name'],
                                 'sort_order' => $index,
@@ -365,6 +466,7 @@ class PublicationTrackingController extends Controller
                                 'batch_size' => $this->formatBatchSize($row->batch_size, $row->unit_batch_size),
                                 'dosage_name' => $row->dosage_name,
                                 'market' => null, // mã BTP không gắn thị trường
+                                'specification' => null, // qui cách chỉ có ở mã TP
                                 'pharmacist_id' => $row->pharmacist_id,
                                 'pharmacist_name' => $row->pharmacist_name,
                         ]);
@@ -388,12 +490,14 @@ class PublicationTrackingController extends Controller
                                 'fp_name.name as product_name',
                                 'dosage.name as dosage_name',
                                 'market.code as market',
+                                'specification.name as specification',
                                 'pharmacist.fullName as pharmacist_name'
                         )
                         ->leftJoin('product_name as fp_name', 'finished_product_category.product_name_id', 'fp_name.id')
                         ->leftJoin('intermediate_category', 'finished_product_category.intermediate_code', 'intermediate_category.intermediate_code')
                         ->leftJoin('dosage', 'intermediate_category.dosage_id', 'dosage.id')
                         ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
+                        ->leftJoin('specification', 'finished_product_category.specification_id', 'specification.id')
                         ->leftJoin('user_management as pharmacist', 'intermediate_category.pharmacist_id', 'pharmacist.id')
                         ->where('finished_product_category.deparment_code', $period->deparment_code)
                         ->where('finished_product_category.active', 1)
@@ -418,6 +522,7 @@ class PublicationTrackingController extends Controller
                                 'batch_size' => $this->formatBatchSize($row->batch_qty, $row->unit_batch_qty),
                                 'dosage_name' => $row->dosage_name,
                                 'market' => $row->market,
+                                'specification' => $row->specification,
                                 'pharmacist_id' => $row->pharmacist_id,
                                 'pharmacist_name' => $row->pharmacist_name,
                         ]);
@@ -834,6 +939,7 @@ class PublicationTrackingController extends Controller
                         'batch_size' => $detail->batch_size,
                         'dosage_name' => $detail->dosage_name,
                         'market' => $detail->market,
+                        'specification' => $detail->specification,
                         'pharmacist_id' => $detail->pharmacist_id,
                         'pharmacist_name' => $detail->pharmacist_name,
                         'sort_order' => $detail->sort_order,

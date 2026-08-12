@@ -185,11 +185,6 @@
                                     <i class="fas fa-sync-alt"></i> Đồng bộ mã hiệu lực
                                 </button>
                             @endunless
-                            <button type="button" class="btn {{ $locked ? 'btn-warning' : 'btn-success' }}"
-                                id="btnToggleStatus">
-                                <i class="fas {{ $locked ? 'fa-lock-open' : 'fa-lock' }}"></i>
-                                {{ $locked ? 'Mở lại kỳ' : 'Chốt kỳ' }}
-                            </button>
                         @endif
                     </div>
                 </div>
@@ -227,6 +222,10 @@
                                     'type' => 'BTP',
                                     'codeLabel' => 'Mã BTP',
                                     'showMarket' => false,
+                                    'bomRevisions' => $bomRevisions,
+                                    'plannedBatches' => $plannedBatches,
+                                    'hasMonthlyPlan' => $hasMonthlyPlan,
+                                    'planLabel' => $period->label,
                                     'locked' => $readOnly,
                                     'showPicker' => $showCreateTask,
                                     'manageAll' => $showCreateTask,
@@ -241,6 +240,10 @@
                                     'type' => 'TP',
                                     'codeLabel' => 'Mã TP',
                                     'showMarket' => true,
+                                    'bomRevisions' => $bomRevisions,
+                                    'plannedBatches' => $plannedBatches,
+                                    'hasMonthlyPlan' => $hasMonthlyPlan,
+                                    'planLabel' => $period->label,
                                     'locked' => $readOnly,
                                     'showPicker' => $showCreateTask,
                                     'manageAll' => $showCreateTask,
@@ -344,7 +347,6 @@
 
             const csrfToken = '{{ csrf_token() }}';
             const periodId = {{ $period->id }};
-            const locked = {{ $readOnly ? 'true' : 'false' }};
             const nextPeriodLabel = @json($nextPeriodLabel);
 
             // Được thêm / sửa / xoá / chuyển kỳ nội dung của mã này không: server đã xét
@@ -554,8 +556,8 @@
                     "paging": true,
                     "pageLength": 25,
                     "lengthMenu": [
-                        [25, 50, 100, 200],
-                        [25, 50, 100, 200]
+                        [25, 50, 100, 200, -1],
+                        [25, 50, 100, 200, 'Tất cả']
                     ],
                     "lengthChange": true,
                     "searching": true,
@@ -589,6 +591,31 @@
                 });
 
                 decorate(tables[type]);
+            });
+
+            // ----- Lọc theo kế hoạch tháng -----
+            // Lọc theo data-planned của dòng chứ không theo chữ trong ô: nhãn "KH" nằm
+            // cùng ô với mã, tìm theo text sẽ dính nhầm cả nội dung theo dõi của mã khác.
+            $.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
+                const $select = $('.pt-filter-planned[data-table="' + settings.nTable.id + '"]');
+
+                // Bảng khác trên trang không có bộ lọc này thì không đụng tới
+                if (!$select.length || $select.val() === '') {
+                    return true;
+                }
+
+                const row = settings.aoData[dataIndex].nTr;
+                return $(row).attr('data-planned') === $select.val();
+            });
+
+            $(document).on('change', '.pt-filter-planned', function() {
+                const selector = '#' + $(this).attr('data-table');
+
+                Object.keys(tables).forEach(function(type) {
+                    if (tables[type] === selector && dt[type]) {
+                        dt[type].draw();
+                    }
+                });
             });
 
             // DataTables trong tab ẩn cần tính lại bề rộng khi tab được mở
@@ -1063,7 +1090,8 @@
             $(document).on('click', '.btn-add-one', function() {
                 const $row = $(this).closest('tr');
                 const detailId = String($row.attr('data-detail-id'));
-                const code = $row.find('td.pt-code-cell').text().trim();
+                // Ô mã còn chứa mã quy trình và version công thức, chỉ lấy dòng đầu
+                const code = $row.find('td.pt-code-cell > div').first().text().trim();
                 const name = $row.find('td.pt-name-cell').text().trim();
 
                 Swal.fire({
@@ -1244,7 +1272,7 @@
                 return 'Không lưu được dữ liệu (HTTP ' + (xhr.status || 0) + ').';
             }
 
-            // ----- Đồng bộ / chốt kỳ -----
+            // ----- Đồng bộ mã hiệu lực -----
             $('#btnSync').on('click', function() {
                 const $btn = $(this).prop('disabled', true);
 
@@ -1270,42 +1298,6 @@
                 });
             });
 
-            $('#btnToggleStatus').on('click', function() {
-                Swal.fire({
-                    title: locked ? 'Mở lại kỳ theo dõi?' : 'Chốt kỳ theo dõi?',
-                    text: locked ?
-                        'Kỳ sẽ được mở để tiếp tục chỉnh sửa.' :
-                        'Sau khi chốt, nội dung của kỳ sẽ không chỉnh sửa được.',
-                    icon: 'question',
-                    showCancelButton: true,
-                    confirmButtonText: 'Đồng ý',
-                    cancelButtonText: 'Hủy'
-                }).then(function(result) {
-                    if (!result.isConfirmed) {
-                        return;
-                    }
-
-                    $.ajax({
-                        url: '{{ route('pages.category.publication_tracking.toggleStatus') }}',
-                        method: 'POST',
-                        data: {
-                            _token: csrfToken,
-                            period_id: periodId
-                        },
-                        success: function(res) {
-                            if (res.success) {
-                                location.reload();
-                            } else {
-                                Swal.fire('Lỗi', res.message, 'warning');
-                            }
-                        },
-                        error: function() {
-                            Swal.fire('Lỗi', 'Không cập nhật được trạng thái kỳ.',
-                                'error');
-                        }
-                    });
-                });
-            });
         });
     </script>
 @endsection
