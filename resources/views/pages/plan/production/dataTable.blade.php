@@ -898,6 +898,10 @@
                 <th>BP trước</th>
                 <th>ĐG trước</th>
                 <th>Ghi Chú</th>
+                <th>Hồ Sơ Lô</th>
+                <th>QA Phản Hồi</th>
+                <th>QA Phản Hồi Bởi</th>
+                <th>Ngày QA Phản Hồi</th>
                 <th>Người Tạo</th>
                 <th>Ngày Tạo</th>
             </tr>
@@ -947,6 +951,14 @@
                     <td>{{ $data->parkaging_before_date ? \Carbon\Carbon::parse($data->parkaging_before_date)->format('d/m/Y') : '' }}
                     </td>
                     <td>{{ $data->note ?? '' }}</td>
+                    {{-- 4 cột phản hồi QA: giữ đúng cách thể hiện của open_feedback_API
+                         (has_BMR_text / qa_feedback_text) để file Excel QA và bản xuất
+                         từ web đọc ra cùng một giá trị --}}
+                    <td>{{ $data->has_BMR ? 'Đã sẵn sàng' : 'Chưa sẵn sàng' }}</td>
+                    <td>{{ $data->qa_feedback ?? 'NA' }}</td>
+                    <td>{{ $data->qa_feedback_by ?? '' }}</td>
+                    <td>{{ $data->qa_feedback_date ? \Carbon\Carbon::parse($data->qa_feedback_date)->format('d/m/Y') : '' }}
+                    </td>
                     <td>{{ $data->prepared_by }}</td>
                     <td>{{ $data->created_at ? \Carbon\Carbon::parse($data->created_at)->format('d/m/Y') : '' }}</td>
                 </tr>

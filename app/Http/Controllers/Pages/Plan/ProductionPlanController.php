@@ -2424,7 +2424,7 @@ class ProductionPlanController extends Controller
 
                                         foreach ($order_list as $b) {
                                                 $orderno = trim($b->orderno);
-                                                
+
                                                 if (stripos($orderno, 'R1') !== false) {
                                                         $ordernoR1 = $orderno;
                                                         if (isset($b->cron)) $cronVal = $b->cron;
@@ -3509,172 +3509,172 @@ class ProductionPlanController extends Controller
                 ]);
         }
 
-        public function open_feedback_API(Request $request)
-        {
+        // public function open_feedback_API(Request $request)
+        // {
 
-                $deparment_code = $request->deparment_code ?? 'PXV1';
-                $month = $request->month ?? now()->month;
-                $year = $request->year ?? now()->year;
+        //         $deparment_code = $request->deparment_code ?? 'PXV1';
+        //         $month = $request->month ?? now()->month;
+        //         $year = $request->year ?? now()->year;
 
-                if ($year > 2035) {
-                        $plan_list_id = DB::table('plan_list')->where('deparment_code', $deparment_code)->pluck('id');
-                } else {
-                        $plan_list_id = DB::table('plan_list')->where('deparment_code', $deparment_code)->where('year', $year)->where('month', $month)->pluck('id');
-                }
+        //         if ($year > 2035) {
+        //                 $plan_list_id = DB::table('plan_list')->where('deparment_code', $deparment_code)->pluck('id');
+        //         } else {
+        //                 $plan_list_id = DB::table('plan_list')->where('deparment_code', $deparment_code)->where('year', $year)->where('month', $month)->pluck('id');
+        //         }
 
-                $maxStageFinished = DB::table('stage_plan')
-                        ->whereIn('stage_plan.plan_list_id', $plan_list_id)
-                        ->where('finished', 1)
-                        ->where('stage_code', '!=', 8)
-                        ->select(
-                                'plan_master_id',
-                                DB::raw('MAX(stage_code) as max_stage_code')
-                        )
-                        ->groupBy('plan_master_id');
+        //         $maxStageFinished = DB::table('stage_plan')
+        //                 ->whereIn('stage_plan.plan_list_id', $plan_list_id)
+        //                 ->where('finished', 1)
+        //                 ->where('stage_code', '!=', 8)
+        //                 ->select(
+        //                         'plan_master_id',
+        //                         DB::raw('MAX(stage_code) as max_stage_code')
+        //                 )
+        //                 ->groupBy('plan_master_id');
 
-                $maxPossibleStage = DB::table('stage_plan')
-                        ->whereIn('stage_plan.plan_list_id', $plan_list_id)
-                        ->where('active', 1)
-                        ->where('stage_code', '!=', 8)
-                        ->select(
-                                'plan_master_id',
-                                DB::raw('MAX(stage_code) as max_possible_stage_code')
-                        )
-                        ->groupBy('plan_master_id');
+        //         $maxPossibleStage = DB::table('stage_plan')
+        //                 ->whereIn('stage_plan.plan_list_id', $plan_list_id)
+        //                 ->where('active', 1)
+        //                 ->where('stage_code', '!=', 8)
+        //                 ->select(
+        //                         'plan_master_id',
+        //                         DB::raw('MAX(stage_code) as max_possible_stage_code')
+        //                 )
+        //                 ->groupBy('plan_master_id');
 
-                $query = DB::table('plan_master')
-                        ->join('plan_list as pl', 'plan_master.plan_list_id', '=', 'pl.id')
-                        ->select(
+        //         $query = DB::table('plan_master')
+        //                 ->join('plan_list as pl', 'plan_master.plan_list_id', '=', 'pl.id')
+        //                 ->select(
 
-                                "plan_master.id",
-                                "plan_master.plan_list_id",
-                                "plan_master.product_caterogy_id",
-                                "plan_master.level",
-                                "plan_master.batch",
-                                "plan_master.actual_batch",
-                                // Cột plan_master.order_number đã được tách thành order_number_R1 / R2.
-                                // Ghép lại thành một khoá order_number để file Excel đang gọi API này
-                                // không phải sửa. NULLIF bỏ ô rỗng (khỏi dính ", " thừa) và bỏ R2 khi
-                                // trùng R1 (rất nhiều lô chỉ có một số lệnh, ghi ở cả hai cột).
-                                DB::raw("CONCAT_WS(', ',
-                                        NULLIF(plan_master.order_number_R1, ''),
-                                        NULLIF(NULLIF(plan_master.order_number_R2, ''), plan_master.order_number_R1)
-                                ) AS order_number"),
-                                "plan_master.expected_date",
-                                "plan_master.responsed_date",
-                                // actual_KCS giữ nguyên để không làm gãy bên đang gọi API này.
-                                // Ngày KCS thực tế và ngày ra hồ sơ nay do chức năng "Theo dõi hồ sơ
-                                // KCS" quản lý: bên tiêu thụ nên chuyển sang dùng *_effective_date
-                                // (ưu tiên dữ liệu theo dõi, lùi về cột cũ khi lô chưa được theo dõi).
-                                "plan_master.actual_KCS",
-                                DB::raw('COALESCE(plan_master_KCS.kcs_date, plan_master.actual_KCS) AS kcs_effective_date'),
-                                DB::raw('COALESCE(plan_master_KCS.record_received_date, plan_master.actual_record_date) AS record_effective_date'),
-                                "plan_master.is_val",
-                                "plan_master.code_val",
-                                "plan_master.after_weigth_date",
-                                "plan_master.parkaging_before_date",
-                                "plan_master.after_parkaging_date",
-                                "plan_master.expired_packing_date",
-                                "plan_master.preperation_before_date",
-                                "plan_master.blending_before_date",
-                                "plan_master.coating_before_date",
-                                "plan_master.allow_weight_before_date",
-                                "plan_master.expired_material_date",
-                                "plan_master.material_source_id",
-                                "plan_master.only_parkaging",
-                                "plan_master.percent_parkaging",
-                                "plan_master.main_parkaging_id",
-                                "plan_master.number_parkaging",
-                                "plan_master.note",
-                                "plan_master.pro_feedback",
-                                "plan_master.qc_feedback",
-
-
-                                DB::raw("IF(plan_master.qa_feedback IS NOT NULL, plan_master.qa_feedback, 'NA') AS qa_feedback_text"),
-                                DB::raw("IF(plan_master.has_BMR = 0, 'Chưa sẵn sàng', 'Đã sẵn sàng') AS has_BMR_text"),
-
-                                DB::raw("IF(plan_master.en_feedback IS NOT NULL, plan_master.en_feedback, 'NA') AS en_feedback"),
-                                DB::raw("IF(plan_master.has_punch_die_mold = 0, 'Chưa sẵn sàng', 'Đã sẵn sàng') AS has_punch_die_mold"),
+        //                         "plan_master.id",
+        //                         "plan_master.plan_list_id",
+        //                         "plan_master.product_caterogy_id",
+        //                         "plan_master.level",
+        //                         "plan_master.batch",
+        //                         "plan_master.actual_batch",
+        //                         // Cột plan_master.order_number đã được tách thành order_number_R1 / R2.
+        //                         // Ghép lại thành một khoá order_number để file Excel đang gọi API này
+        //                         // không phải sửa. NULLIF bỏ ô rỗng (khỏi dính ", " thừa) và bỏ R2 khi
+        //                         // trùng R1 (rất nhiều lô chỉ có một số lệnh, ghi ở cả hai cột).
+        //                         DB::raw("CONCAT_WS(', ',
+        //                                 NULLIF(plan_master.order_number_R1, ''),
+        //                                 NULLIF(NULLIF(plan_master.order_number_R2, ''), plan_master.order_number_R1)
+        //                         ) AS order_number"),
+        //                         "plan_master.expected_date",
+        //                         "plan_master.responsed_date",
+        //                         // actual_KCS giữ nguyên để không làm gãy bên đang gọi API này.
+        //                         // Ngày KCS thực tế và ngày ra hồ sơ nay do chức năng "Theo dõi hồ sơ
+        //                         // KCS" quản lý: bên tiêu thụ nên chuyển sang dùng *_effective_date
+        //                         // (ưu tiên dữ liệu theo dõi, lùi về cột cũ khi lô chưa được theo dõi).
+        //                         "plan_master.actual_KCS",
+        //                         DB::raw('COALESCE(plan_master_KCS.kcs_date, plan_master.actual_KCS) AS kcs_effective_date'),
+        //                         DB::raw('COALESCE(plan_master_KCS.record_received_date, plan_master.actual_record_date) AS record_effective_date'),
+        //                         "plan_master.is_val",
+        //                         "plan_master.code_val",
+        //                         "plan_master.after_weigth_date",
+        //                         "plan_master.parkaging_before_date",
+        //                         "plan_master.after_parkaging_date",
+        //                         "plan_master.expired_packing_date",
+        //                         "plan_master.preperation_before_date",
+        //                         "plan_master.blending_before_date",
+        //                         "plan_master.coating_before_date",
+        //                         "plan_master.allow_weight_before_date",
+        //                         "plan_master.expired_material_date",
+        //                         "plan_master.material_source_id",
+        //                         "plan_master.only_parkaging",
+        //                         "plan_master.percent_parkaging",
+        //                         "plan_master.main_parkaging_id",
+        //                         "plan_master.number_parkaging",
+        //                         "plan_master.note",
+        //                         "plan_master.pro_feedback",
+        //                         "plan_master.qc_feedback",
 
 
-                                "plan_master.actual_CoA_date",
-                                "plan_master.actual_record_date",
+        //                         DB::raw("IF(plan_master.qa_feedback IS NOT NULL, plan_master.qa_feedback, 'NA') AS qa_feedback_text"),
+        //                         DB::raw("IF(plan_master.has_BMR = 0, 'Chưa sẵn sàng', 'Đã sẵn sàng') AS has_BMR_text"),
 
-                                "plan_master.qa_feedback_by",
-                                "plan_master.qa_feedback_date",
-                                "plan_master.qc_feedback_by",
-                                "plan_master.qc_feedback_date",
-                                "plan_master.pro_feedback_by",
-                                "plan_master.pro_feedback_date",
-                                "plan_master.en_feedback_by",
-                                "plan_master.en_feedback_date",
-                                "plan_master.kcs_record_by",
-                                "plan_master.kcs_record_date",
-                                "plan_master.accept_expectedDate_by",
-                                "plan_master.accept_expectedDate_date",
-                                "plan_master.deparment_code",
-                                "plan_master.active",
-                                "plan_master.cancel",
+        //                         DB::raw("IF(plan_master.en_feedback IS NOT NULL, plan_master.en_feedback, 'NA') AS en_feedback"),
+        //                         DB::raw("IF(plan_master.has_punch_die_mold = 0, 'Chưa sẵn sàng', 'Đã sẵn sàng') AS has_punch_die_mold"),
 
-                                'finished_product_category.intermediate_code',
-                                'finished_product_category.finished_product_code',
-                                'product_name.name',
-                                'market.code as market',
-                                'specification.name as specification',
-                                'finished_product_category.batch_qty',
-                                'finished_product_category.unit_batch_qty',
-                                'finished_product_category.deparment_code',
-                                'source_material.name as source_material_name',
-                                'stage_plan.end as end',
 
-                                DB::raw("
-                                CASE
-                                        WHEN plan_master.cancel = 1 THEN 'Hủy'
-                                        WHEN stage_plan.finished = 1 AND sp_max.max_stage_code = 1 THEN 'Đã Cân'
-                                        WHEN stage_plan.finished = 1 AND sp_max.max_stage_code = 3 THEN 'Đã Pha chế'
-                                        WHEN stage_plan.finished = 1 AND sp_max.max_stage_code = 4 THEN 'Đã THT'
-                                        WHEN stage_plan.finished = 1 AND sp_max.max_stage_code = 5 THEN 'Đã định hình'
-                                        WHEN stage_plan.finished = 1 AND sp_max.max_stage_code = 6 THEN 'Đã Bao phim'
-                                        WHEN stage_plan.finished = 1 AND sp_max.max_stage_code = 7 THEN 'Hoàn Tất ĐG'
-                                        ELSE 'Chưa làm'
-                                        END AS status
-                        ")
+        //                         "plan_master.actual_CoA_date",
+        //                         "plan_master.actual_record_date",
 
-                        )
-                        ->leftJoin('finished_product_category', 'plan_master.product_caterogy_id', 'finished_product_category.id')
-                        ->leftJoin('source_material', 'plan_master.material_source_id', 'source_material.id')
-                        ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
-                        ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
-                        ->leftJoin('specification', 'finished_product_category.specification_id', 'specification.id')
-                        ->leftJoin('plan_master_KCS', 'plan_master.id', '=', 'plan_master_KCS.plan_master_id')
-                        ->leftJoinSub($maxStageFinished, 'sp_max', function ($join) {
-                                $join->on('plan_master.id', '=', 'sp_max.plan_master_id');
-                        })
-                        ->leftJoinSub($maxPossibleStage, 'sp_possible', function ($join) {
-                                $join->on('plan_master.id', '=', 'sp_possible.plan_master_id');
-                        })
-                        ->leftJoin('stage_plan', function ($join) {
-                                $join->on('plan_master.id', '=', 'stage_plan.plan_master_id')
-                                        ->on('stage_plan.stage_code', '=', 'sp_max.max_stage_code');
-                        })
-                        ->whereIn('plan_master.plan_list_id', $plan_list_id)
-                        ->where('plan_master.active', 1)
-                        ->where('pl.type', 1);
+        //                         "plan_master.qa_feedback_by",
+        //                         "plan_master.qa_feedback_date",
+        //                         "plan_master.qc_feedback_by",
+        //                         "plan_master.qc_feedback_date",
+        //                         "plan_master.pro_feedback_by",
+        //                         "plan_master.pro_feedback_date",
+        //                         "plan_master.en_feedback_by",
+        //                         "plan_master.en_feedback_date",
+        //                         "plan_master.kcs_record_by",
+        //                         "plan_master.kcs_record_date",
+        //                         "plan_master.accept_expectedDate_by",
+        //                         "plan_master.accept_expectedDate_date",
+        //                         "plan_master.deparment_code",
+        //                         "plan_master.active",
+        //                         "plan_master.cancel",
 
-                if ($year > 2035) {
-                        $query->where('plan_master.cancel', 0)
-                                ->where(function ($q) {
-                                        $q->whereNull('sp_max.max_stage_code')
-                                                ->orWhereRaw('sp_max.max_stage_code < sp_possible.max_possible_stage_code');
-                                });
-                }
+        //                         'finished_product_category.intermediate_code',
+        //                         'finished_product_category.finished_product_code',
+        //                         'product_name.name',
+        //                         'market.code as market',
+        //                         'specification.name as specification',
+        //                         'finished_product_category.batch_qty',
+        //                         'finished_product_category.unit_batch_qty',
+        //                         'finished_product_category.deparment_code',
+        //                         'source_material.name as source_material_name',
+        //                         'stage_plan.end as end',
 
-                $datas = $query->orderBy('id', 'asc')->get();
+        //                         DB::raw("
+        //                         CASE
+        //                                 WHEN plan_master.cancel = 1 THEN 'Hủy'
+        //                                 WHEN stage_plan.finished = 1 AND sp_max.max_stage_code = 1 THEN 'Đã Cân'
+        //                                 WHEN stage_plan.finished = 1 AND sp_max.max_stage_code = 3 THEN 'Đã Pha chế'
+        //                                 WHEN stage_plan.finished = 1 AND sp_max.max_stage_code = 4 THEN 'Đã THT'
+        //                                 WHEN stage_plan.finished = 1 AND sp_max.max_stage_code = 5 THEN 'Đã định hình'
+        //                                 WHEN stage_plan.finished = 1 AND sp_max.max_stage_code = 6 THEN 'Đã Bao phim'
+        //                                 WHEN stage_plan.finished = 1 AND sp_max.max_stage_code = 7 THEN 'Hoàn Tất ĐG'
+        //                                 ELSE 'Chưa làm'
+        //                                 END AS status
+        //                 ")
 
-                return response()->json([
-                        'datas' => $datas
-                ]);
-        }
+        //                 )
+        //                 ->leftJoin('finished_product_category', 'plan_master.product_caterogy_id', 'finished_product_category.id')
+        //                 ->leftJoin('source_material', 'plan_master.material_source_id', 'source_material.id')
+        //                 ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
+        //                 ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
+        //                 ->leftJoin('specification', 'finished_product_category.specification_id', 'specification.id')
+        //                 ->leftJoin('plan_master_KCS', 'plan_master.id', '=', 'plan_master_KCS.plan_master_id')
+        //                 ->leftJoinSub($maxStageFinished, 'sp_max', function ($join) {
+        //                         $join->on('plan_master.id', '=', 'sp_max.plan_master_id');
+        //                 })
+        //                 ->leftJoinSub($maxPossibleStage, 'sp_possible', function ($join) {
+        //                         $join->on('plan_master.id', '=', 'sp_possible.plan_master_id');
+        //                 })
+        //                 ->leftJoin('stage_plan', function ($join) {
+        //                         $join->on('plan_master.id', '=', 'stage_plan.plan_master_id')
+        //                                 ->on('stage_plan.stage_code', '=', 'sp_max.max_stage_code');
+        //                 })
+        //                 ->whereIn('plan_master.plan_list_id', $plan_list_id)
+        //                 ->where('plan_master.active', 1)
+        //                 ->where('pl.type', 1);
+
+        //         if ($year > 2035) {
+        //                 $query->where('plan_master.cancel', 0)
+        //                         ->where(function ($q) {
+        //                                 $q->whereNull('sp_max.max_stage_code')
+        //                                         ->orWhereRaw('sp_max.max_stage_code < sp_possible.max_possible_stage_code');
+        //                         });
+        //         }
+
+        //         $datas = $query->orderBy('id', 'asc')->get();
+
+        //         return response()->json([
+        //                 'datas' => $datas
+        //         ]);
+        // }
 
         public function recipe_show_update(Request $request)
         {
@@ -4264,20 +4264,20 @@ class ProductionPlanController extends Controller
                         $query = DB::table('plan_master')
                                 ->join('finished_product_category', 'plan_master.product_caterogy_id', '=', 'finished_product_category.id')
                                 ->where('plan_master.created_at', '>=', now()->subMonths(3));
-                        
+
                         if ($deptCode) {
                                 $query->where('plan_master.deparment_code', $deptCode);
                         }
 
                         $unmappedPlans = $query->where(function ($query) {
-                                        $query->whereNotNull('plan_master.actual_batch')
-                                                ->where('plan_master.actual_batch', '<>', '')
-                                                ->orWhere(function ($q) {
-                                                        $q->whereNull('plan_master.actual_batch')
-                                                                ->whereNotNull('plan_master.batch')
-                                                                ->where('plan_master.batch', '<>', '');
-                                                });
-                                })
+                                $query->whereNotNull('plan_master.actual_batch')
+                                        ->where('plan_master.actual_batch', '<>', '')
+                                        ->orWhere(function ($q) {
+                                                $q->whereNull('plan_master.actual_batch')
+                                                        ->whereNotNull('plan_master.batch')
+                                                        ->where('plan_master.batch', '<>', '');
+                                        });
+                        })
                                 ->select(
                                         'plan_master.id',
                                         DB::raw('COALESCE(NULLIF(plan_master.actual_batch, ""), plan_master.batch) as batch_code'),
@@ -4308,7 +4308,7 @@ class ProductionPlanController extends Controller
 
                                 foreach ($unmappedPlans as $pm) {
                                         $key = trim($pm->batch_code) . '_' . trim($pm->intermediate_code);
-                                        
+
                                         $ordernoR1 = null;
                                         $ordernoR2 = null;
                                         $cronVal = null;
@@ -4316,7 +4316,7 @@ class ProductionPlanController extends Controller
 
                                         if (isset($mmsIndexed[$key])) {
                                                 $batches = $mmsIndexed[$key];
-                                                
+
                                                 $order_list = [];
                                                 foreach ($batches as $b) {
                                                         if (stripos(trim($b->orderno), 'R') !== false) {
@@ -4326,7 +4326,7 @@ class ProductionPlanController extends Controller
 
                                                 foreach ($order_list as $b) {
                                                         $orderno = trim($b->orderno);
-                                                        
+
                                                         if (stripos($orderno, 'R1') !== false) {
                                                                 $ordernoR1 = $orderno;
                                                                 if (isset($b->cron)) $cronVal = $b->cron;
@@ -4367,7 +4367,7 @@ class ProductionPlanController extends Controller
                                                         $updateFields['create_at_order_number'] = $cronVal;
                                                         $updateFields['create_by_order_number'] = $crbyVal;
                                                 }
-                                                
+
                                                 DB::table('plan_master')
                                                         ->where('id', $pm->id)
                                                         ->update($updateFields);
