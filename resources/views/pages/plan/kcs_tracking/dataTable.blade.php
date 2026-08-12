@@ -47,7 +47,7 @@
 {{-- <div class="alert alert-light border py-2 small">
     <i class="fas fa-info-circle text-info"></i>
     Dòng có dấu <i class="fas fa-circle text-muted"></i> là lô <b>chưa lưu theo dõi KCS</b>: các ô ngày đã được
-    điền sẵn từ kế hoạch (ngày ra hồ sơ, ngày ra phiếu CoA, ngày KCS) chỉ để tham khảo và
+    điền sẵn từ kế hoạch (ngày ra hồ sơ, ngày KCS) chỉ để tham khảo và
     <b>chưa được tính vào bảng tổng kết</b>. Hãy bổ sung <b>Ngày Đọc Xong HS</b> rồi lưu để lô được chấm kết quả.
     Mỗi ô sửa xong sẽ tự lưu cả dòng.
 </div> --}}
@@ -79,13 +79,18 @@
                 <th class="bg-warning" style="min-width: 140px;">Ngày Đọc Xong HS</th>
                 <th class="bg-warning" style="min-width: 120px;">SL Nhập Kho</th>
                 <th class="bg-warning" style="min-width: 120px;">Số Phiếu COATP</th>
-                <th class="bg-warning" style="min-width: 140px;">Ngày Nhận COATP</th>
+                <th class="bg-warning" style="min-width: 140px;"
+                    title="Ngày KCS nhận được COATP. Không phải &quot;Ngày ra phiếu TP&quot; của QC ở trang Phản Hồi Kế Hoạch Tháng.">
+                    Ngày Nhận COATP</th>
                 <th class="bg-warning" style="min-width: 100px;">DR/IR</th>
                 <th class="bg-warning" style="min-width: 140px;">Ngày AP DR/IR</th>
                 <th class="bg-warning" style="min-width: 100px;">OOS</th>
                 <th class="bg-warning" style="min-width: 140px;">Ngày AP OOS</th>
                 <th class="bg-warning" style="min-width: 140px;">Ngày AP DR/IR KCQ</th>
                 <th class="bg-warning" style="min-width: 140px;">Ngày AP OPV/PVR</th>
+                <th class="bg-warning" style="min-width: 150px;"
+                    title="Ngày lô được đưa vào hàng chờ KCS đúng thứ tự lô. Cũng là một mốc xét Ngày Đủ Điều Kiện.">
+                    Ngày Chờ KCS Theo Đúng Thứ Tự Lô</th>
                 <th class="bg-warning" style="min-width: 140px;">Ngày KCS</th>
                 <th class="bg-warning" style="min-width: 150px;">Ghi Chú</th>
 
@@ -197,6 +202,8 @@
                     <td><input type="date" class="form-control form-control-sm kcs-input"
                             name="opv_pvr_approval_date" value="{{ $value('opv_pvr_approval_date') }}"
                             {{ $canUpdate ? '' : 'disabled' }}></td>
+                    <td><input type="date" class="form-control form-control-sm kcs-input" name="kcs_queue_date"
+                            value="{{ $value('kcs_queue_date') }}" {{ $canUpdate ? '' : 'disabled' }}></td>
                     <td><input type="date" class="form-control form-control-sm kcs-input" name="kcs_date"
                             value="{{ $value('kcs_date') }}" {{ $canUpdate ? '' : 'disabled' }}></td>
                     <td><input type="text" class="form-control form-control-sm kcs-input" name="note"
@@ -222,7 +229,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="31" class="text-center text-muted py-4">
+                    <td colspan="32" class="text-center text-muted py-4">
                         Không có lô sản xuất nào trong khoảng đã chọn
                     </td>
                 </tr>

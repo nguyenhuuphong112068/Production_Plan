@@ -33,10 +33,14 @@ class KcsTrackingController extends Controller
      * bấm lưu. Cố ý không tự sinh dòng và tự chấm kết quả từ dữ liệu này, vì
      * plan_master không có "ngày đọc xong hồ sơ" - mốc thường quyết định ngày đủ
      * điều kiện - nên tự chấm sẽ cho tỉ lệ đúng hạn thấp hơn thực tế.
+     *
+     * Cố ý KHÔNG điền sẵn "Ngày nhận COATP" từ plan_master.actual_CoA_date: cột đó là
+     * "Ngày ra phiếu TP" do QC nhập ở trang Phản Hồi Kế Hoạch Tháng, khác với ngày KCS
+     * nhận được COATP. "Ngày nhận COATP" có cột dữ liệu riêng
+     * (plan_master_KCS.coatp_received_date) và chỉ nhận giá trị người dùng tự nhập ở đây.
      */
     public const PREFILL_FROM_PLAN_MASTER = [
         'record_received_date' => 'actual_record_date',
-        'coatp_received_date' => 'actual_CoA_date',
         'kcs_date' => 'actual_KCS',
     ];
 
@@ -101,6 +105,7 @@ class KcsTrackingController extends Controller
             'oos_approval_date' => 'nullable|date',
             'dr_ir_kcq_approval_date' => 'nullable|date',
             'opv_pvr_approval_date' => 'nullable|date',
+            'kcs_queue_date' => 'nullable|date',
             'note' => 'nullable|string',
         ]);
 

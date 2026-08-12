@@ -39,6 +39,7 @@ class PlanMasterKcs extends Model
         'oos_approval_date' => 'OOS',
         'dr_ir_kcq_approval_date' => 'DR/IR KCQ',
         'opv_pvr_approval_date' => 'OPV/PVR',
+        'kcs_queue_date' => 'Chờ KCS theo thứ tự lô',
     ];
 
     /**
@@ -58,6 +59,7 @@ class PlanMasterKcs extends Model
         'oos_approval_date' => 'Ngày Approval OOS',
         'dr_ir_kcq_approval_date' => 'Ngày Approval DR/IR KCQ',
         'opv_pvr_approval_date' => 'Ngày Approval OPV/PVR',
+        'kcs_queue_date' => 'Ngày chờ KCS theo đúng thứ tự lô',
         'kcs_date' => 'Ngày KCS',
         'note' => 'Ghi chú',
     ];
@@ -97,6 +99,7 @@ class PlanMasterKcs extends Model
         'oos_approval_date',
         'dr_ir_kcq_approval_date',
         'opv_pvr_approval_date',
+        'kcs_queue_date',
         'note',
         'eligible_date',
         'completion_days',
@@ -117,6 +120,7 @@ class PlanMasterKcs extends Model
         'oos_approval_date' => 'date',
         'dr_ir_kcq_approval_date' => 'date',
         'opv_pvr_approval_date' => 'date',
+        'kcs_queue_date' => 'date',
         'eligible_date' => 'date',
     ];
 
