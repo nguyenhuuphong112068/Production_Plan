@@ -2,7 +2,7 @@
 -- PMS Production Plan - Export CẤU TRÚC (KHÔNG có dữ liệu)
 -- Nguồn   : MariaDB 10.4 (local) - database `pms`
 -- Ngày    : 2026-08-08
--- Phạm vi : 11 bảng mới + 4 bảng cũ được ALTER
+-- Phạm vi : 11 bảng mới + 2 bảng cũ được ALTER
 --           (tương ứng các migration 2026_08_06_090000 -> 2026_08_08_140200)
 --
 -- CÁCH IMPORT trên Ubuntu:
@@ -226,19 +226,19 @@ CREATE TABLE IF NOT EXISTS `material_source_warning_room` (
 -- ---------------------------------------------------------------------
 -- PHẦN 2: ALTER các bảng đã có sẵn (thêm cột pharmacist_id)
 -- migration: 2026_08_06_110000_add_pharmacist_id_to_category_tables.php
+-- Chỉ còn 2 bảng bán thành phẩm - xem ghi chú ở cuối phần này.
 -- ---------------------------------------------------------------------
 
 ALTER TABLE `intermediate_category`
   ADD COLUMN `pharmacist_id` bigint(20) unsigned DEFAULT NULL AFTER `deparment_code`;
 
-ALTER TABLE `finished_product_category`
-  ADD COLUMN `pharmacist_id` bigint(20) unsigned DEFAULT NULL AFTER `deparment_code`;
-
 ALTER TABLE `intermediate_category_history`
   ADD COLUMN `pharmacist_id` bigint(20) unsigned DEFAULT NULL;
 
-ALTER TABLE `finished_product_category_history`
-  ADD COLUMN `pharmacist_id` bigint(20) unsigned DEFAULT NULL;
+-- Hai bảng thành phẩm KHÔNG cần cột này nữa: mã TP luôn liên kết đúng một mã BTP
+-- qua `intermediate_code` nên dược sĩ phụ trách lấy từ `intermediate_category`.
+-- (migration 2026_08_06_110000 có thêm cột cho 2 bảng TP, nhưng
+--  migration 2026_08_13_090000 đã xoá lại - ở đây bỏ hẳn cho gọn.)
 
 SET FOREIGN_KEY_CHECKS = 1;
 

@@ -4,6 +4,12 @@
         $production = session('user.production_code');
         $now = now()->format('Y-m-d H:i:s');
 
+        // Chặn submit_type lạ: nếu không hợp lệ thì dừng, tránh quét không có filter stage_code.
+        $maintenanceTypes = ['HC', 'TB', 'BT', 'TI'];
+        if ($submitType !== 'production' && !in_array($submitType, $maintenanceTypes)) {
+            return response()->json(['errors' => [], 'message' => "Loại submit không hợp lệ: {$submitType}"], 422);
+        }
+
         // 1. Tìm các sự kiện chưa submit, start >= now
         $unsubmittedRows = DB::table('stage_plan as sp')
             ->select('sp.plan_master_id')
@@ -16,9 +22,17 @@
             ->when($submitType === 'production', function ($query) {
                 $query->where('sp.stage_code', '!=', 8);
             })
-            ->when(in_array($submitType, ['HC', 'BT', 'TI']), function ($query) use ($submitType) {
+            ->when(in_array($submitType, $maintenanceTypes), function ($query) use ($submitType) {
                 $query->where('sp.stage_code', 8)
-                    ->where('sp.code', 'LIKE', '%_' . $submitType);
+                    ->where(function ($q) use ($submitType) {
+                        // Lịch bảo trì thiết bị có 2 dạng hậu tố: '_TB' và '_8'
+                        if (in_array($submitType, ['TB', 'BT'])) {
+                            $q->where('sp.code', 'LIKE', '%\_TB')
+                                ->orWhere('sp.code', 'LIKE', '%\_8');
+                        } else {
+                            $q->where('sp.code', 'LIKE', '%\_' . $submitType);
+                        }
+                    });
             })
             ->get();
 
@@ -95,7 +109,15 @@
             // Only check unsubmitted events in the future
             if ($plan->submit == 0 && $plan->start >= $now) {
                 if ($submitType === 'production' && $plan->stage_code == 8) continue;
-                if (in_array($submitType, ['HC', 'BT', 'TI']) && ($plan->stage_code != 8 || !str_ends_with($plan->code, '_' . $submitType))) continue;
+                if (in_array($submitType, $maintenanceTypes)) {
+                    if ($plan->stage_code != 8) continue;
+
+                    $matchType = in_array($submitType, ['TB', 'BT'])
+                        ? (str_ends_with($plan->code, '_TB') || str_ends_with($plan->code, '_8'))
+                        : str_ends_with($plan->code, '_' . $submitType);
+
+                    if (!$matchType) continue;
+                }
 
                 list($color_event, $textColor, $subtitle, $violation_colors, $mold_warning, $mold_code) = $this->colorEvent($plan, $plans, $i, $room_code);
                 

@@ -4121,7 +4121,17 @@ class SchedualController extends Controller
     {
 
         // 1️⃣ Lấy danh sách các dòng sẽ update
-        $submitType = $request->input('submit_type', 'production'); // production, HC, BT, TI
+        $submitType = $request->input('submit_type', 'production'); // production, HC, TB (BT), TI
+
+        // Chặn submit_type lạ: nếu không hợp lệ thì dừng, tránh chạy query không có filter
+        // stage_code (sẽ submit nhầm toàn bộ lịch sản xuất lẫn lịch bảo trì của loại khác).
+        $maintenanceTypes = ['HC', 'TB', 'BT', 'TI'];
+        if ($submitType !== 'production' && !in_array($submitType, $maintenanceTypes)) {
+            return response()->json([
+                'message' => "Loại submit không hợp lệ: {$submitType}",
+                'type' => 'error',
+            ], 422);
+        }
 
         $updatedRows = DB::table('stage_plan as sp')
             ->select(
@@ -4138,9 +4148,17 @@ class SchedualController extends Controller
             ->when($submitType === 'production', function ($query) {
                 $query->where('sp.stage_code', '!=', 8);
             })
-            ->when(in_array($submitType, ['HC', 'BT', 'TI']), function ($query) use ($submitType) {
+            ->when(in_array($submitType, $maintenanceTypes), function ($query) use ($submitType) {
                 $query->where('sp.stage_code', 8)
-                    ->where('sp.code', 'LIKE', '%_' . $submitType);
+                    ->where(function ($q) use ($submitType) {
+                        // Lịch bảo trì thiết bị có 2 dạng hậu tố: '_TB' và '_8'
+                        if (in_array($submitType, ['TB', 'BT'])) {
+                            $q->where('sp.code', 'LIKE', '%\_TB')
+                                ->orWhere('sp.code', 'LIKE', '%\_8');
+                        } else {
+                            $q->where('sp.code', 'LIKE', '%\_' . $submitType);
+                        }
+                    });
             })
             ->leftJoin('plan_master', 'sp.plan_master_id', '=', 'plan_master.id')
             ->leftJoin('finished_product_category', function ($join) {
