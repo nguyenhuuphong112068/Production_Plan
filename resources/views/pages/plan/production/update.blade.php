@@ -636,6 +636,11 @@
                     .val() || "";
                 let planMasterId = $('#updateModal').find('input[name="id"]').val() || "";
                 checkValidationTrackingUpdate(intermediateCode, planMasterId);
+
+                // Đối chiếu công thức với ma trận cảnh báo nguồn NL của mã BTP
+                mswPlanCheckMaterials($('#updateModal').find('#material_recipe_body'), {
+                    plan_master_id: planMasterId
+                });
             });
 
         });

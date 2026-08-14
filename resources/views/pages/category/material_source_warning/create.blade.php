@@ -29,7 +29,7 @@
                         <div class="col-lg-4 col-md-6">
                             <div class="form-group">
                                 <label class="msw-label" for="create_intermediate_code">
-                                    <i class="fas fa-cube mr-1"></i> Mã Bán Thành Phẩm
+                                    <i class="fas fa-cube mr-1"></i> Tên Sản Phẩm / Mã Bán Thành Phẩm
                                     <span class="text-danger">*</span>
                                 </label>
                                 <select class="form-control msw-select2" id="create_intermediate_code"
@@ -48,12 +48,29 @@
                             </div>
                         </div>
 
+                        {{-- CỠ LÔ: lấy theo mã BTP, chỉ hiển thị --}}
+                        <div class="col-lg-3 col-md-6">
+                            <div class="form-group">
+                                <label class="msw-label">
+                                    <i class="fas fa-boxes mr-1"></i> Cỡ Lô
+                                    <span class="text-muted text-lowercase font-weight-normal font-italic">
+                                        (theo mã BTP)
+                                    </span>
+                                </label>
+                                <div class="form-control msw-batch-box" id="create_batch_info">
+                                    <span class="text-muted">Chọn mã BTP</span>
+                                </div>
+                            </div>
+                        </div>
+
                         {{-- MÃ NL LẤY TỪ BOM ẤN BẢN MỚI NHẤT TRÊN MMS --}}
-                        <div class="col-lg-5 col-md-6">
+                        <div class="col-lg-5 col-md-12">
                             <div class="form-group">
                                 <label class="msw-label" for="create_material_code">
-                                    <i class="fas fa-vial mr-1"></i> Mã Nguyên Liệu
-                                    <span class="text-danger">*</span>
+                                    <i class="fas fa-vial mr-1"></i> Nguồn Nguyên Liệu (Mã NL)
+                                    <span class="text-muted text-lowercase font-weight-normal font-italic">
+                                        (để trống = mọi nguồn NL)
+                                    </span>
                                     <span class="badge msw-bom-revision d-none"></span>
                                 </label>
                                 <select class="form-control msw-select2" id="create_material_code" name="material_code"
@@ -70,29 +87,24 @@
                                 @enderror
                             </div>
                         </div>
+                    </div>
 
-                        {{-- THỊ TRƯỜNG --}}
-                        <div class="col-lg-3 col-md-6">
-                            <div class="form-group">
-                                <label class="msw-label" for="create_market_id">
-                                    <i class="fas fa-globe-asia mr-1"></i> Thị Trường
-                                    <span class="text-danger">*</span>
-                                </label>
-                                <select class="form-control msw-select2" id="create_market_id" name="market_id"
-                                    data-parent="#msw_create_modal">
-                                    <option value=""> --- Chọn Thị Trường --- </option>
-                                    @foreach ($markets as $market)
-                                        <option value="{{ $market->id }}"
-                                            {{ old('market_id') == $market->id ? 'selected' : '' }}>
-                                            {{ $market->code }} - {{ $market->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                @error('market_id', 'createErrors')
-                                    <div class="alert alert-danger mt-1 mb-0 py-1">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
+                    {{-- THỊ TRƯỜNG ĐƯỢC PHÉP: 1 dòng ma trận khai được nhiều thị trường --}}
+                    <div class="form-group mb-2">
+                        <label class="msw-label">
+                            <i class="fas fa-globe-asia mr-1"></i> Thị Trường Được Phép
+                            <span class="text-muted text-lowercase font-weight-normal font-italic">
+                                (để trống = không giới hạn thị trường; kênh/khách hàng chỉ nhập khi cần tách riêng, vd: Tender)
+                            </span>
+                        </label>
+                        @error('markets', 'createErrors')
+                            <div class="alert alert-danger py-1">{{ $message }}</div>
+                        @enderror
+                        <div id="create_market_rows"></div>
+                        <button type="button" class="btn btn-sm btn-outline-primary btn-msw-add-market"
+                            data-form="create">
+                            <i class="fas fa-plus"></i> Thêm thị trường
+                        </button>
                     </div>
                     </div>{{-- /.msw-key-section --}}
 
@@ -101,7 +113,7 @@
                         <label class="msw-label">
                             <i class="fas fa-industry mr-1"></i> Thiết Bị Được Phép Thực Hiện Theo Công Đoạn
                             <span class="text-muted text-lowercase font-weight-normal font-italic">
-                                (chỉ hiện thiết bị đã có định mức của mã BTP)
+                                (để trống = không giới hạn thiết bị)
                             </span>
                         </label>
                         @error('rooms', 'createErrors')
@@ -137,12 +149,15 @@
 @if ($errors->createErrors->any())
     <script>
         $(document).ready(function() {
+            mswFillMarketRows('create', @json(old('markets', [])));
+
             // Mã NL và ma trận thiết bị nạp bằng ajax nên phải nạp lại rồi mới chọn lại được
             mswLoadIntermediateData(
                 'create',
                 @json(old('intermediate_code')),
                 @json(old('material_code')),
-                @json(old('rooms', []))
+                @json(old('rooms', [])),
+                @json(old('room_reminders', []))
             );
 
             $('#msw_create_modal').modal('show');

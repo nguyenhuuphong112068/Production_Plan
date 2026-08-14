@@ -30,7 +30,7 @@
                         <div class="col-lg-4 col-md-6">
                             <div class="form-group">
                                 <label class="msw-label" for="update_intermediate_code">
-                                    <i class="fas fa-cube mr-1"></i> Mã Bán Thành Phẩm
+                                    <i class="fas fa-cube mr-1"></i> Tên Sản Phẩm / Mã Bán Thành Phẩm
                                     <span class="text-danger">*</span>
                                 </label>
                                 <select class="form-control msw-select2" id="update_intermediate_code"
@@ -48,12 +48,29 @@
                             </div>
                         </div>
 
+                        {{-- CỠ LÔ: lấy theo mã BTP, chỉ hiển thị --}}
+                        <div class="col-lg-3 col-md-6">
+                            <div class="form-group">
+                                <label class="msw-label">
+                                    <i class="fas fa-boxes mr-1"></i> Cỡ Lô
+                                    <span class="text-muted text-lowercase font-weight-normal font-italic">
+                                        (theo mã BTP)
+                                    </span>
+                                </label>
+                                <div class="form-control msw-batch-box" id="update_batch_info">
+                                    <span class="text-muted">Chọn mã BTP</span>
+                                </div>
+                            </div>
+                        </div>
+
                         {{-- MÃ NL LẤY TỪ BOM ẤN BẢN MỚI NHẤT TRÊN MMS --}}
-                        <div class="col-lg-5 col-md-6">
+                        <div class="col-lg-5 col-md-12">
                             <div class="form-group">
                                 <label class="msw-label" for="update_material_code">
-                                    <i class="fas fa-vial mr-1"></i> Mã Nguyên Liệu
-                                    <span class="text-danger">*</span>
+                                    <i class="fas fa-vial mr-1"></i> Nguồn Nguyên Liệu (Mã NL)
+                                    <span class="text-muted text-lowercase font-weight-normal font-italic">
+                                        (để trống = mọi nguồn NL)
+                                    </span>
                                     <span class="badge msw-bom-revision d-none"></span>
                                 </label>
                                 <select class="form-control msw-select2" id="update_material_code" name="material_code"
@@ -69,27 +86,24 @@
                             </div>
                         </div>
 
-                        {{-- THỊ TRƯỜNG --}}
-                        <div class="col-lg-3 col-md-6">
-                            <div class="form-group">
-                                <label class="msw-label" for="update_market_id">
-                                    <i class="fas fa-globe-asia mr-1"></i> Thị Trường
-                                    <span class="text-danger">*</span>
-                                </label>
-                                <select class="form-control msw-select2" id="update_market_id" name="market_id"
-                                    data-parent="#msw_update_modal">
-                                    <option value=""> --- Chọn Thị Trường --- </option>
-                                    @foreach ($markets as $market)
-                                        <option value="{{ $market->id }}">
-                                            {{ $market->code }} - {{ $market->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                @error('market_id', 'updateErrors')
-                                    <div class="alert alert-danger mt-1 mb-0 py-1">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
+                    </div>
+
+                    {{-- THỊ TRƯỜNG ĐƯỢC PHÉP: 1 dòng ma trận khai được nhiều thị trường --}}
+                    <div class="form-group mb-2">
+                        <label class="msw-label">
+                            <i class="fas fa-globe-asia mr-1"></i> Thị Trường Được Phép
+                            <span class="text-muted text-lowercase font-weight-normal font-italic">
+                                (để trống = không giới hạn thị trường; kênh/khách hàng chỉ nhập khi cần tách riêng, vd: Tender)
+                            </span>
+                        </label>
+                        @error('markets', 'updateErrors')
+                            <div class="alert alert-danger py-1">{{ $message }}</div>
+                        @enderror
+                        <div id="update_market_rows"></div>
+                        <button type="button" class="btn btn-sm btn-outline-primary btn-msw-add-market"
+                            data-form="update">
+                            <i class="fas fa-plus"></i> Thêm thị trường
+                        </button>
                     </div>
                     </div>{{-- /.msw-key-section --}}
 
@@ -98,7 +112,7 @@
                         <label class="msw-label">
                             <i class="fas fa-industry mr-1"></i> Thiết Bị Được Phép Thực Hiện Theo Công Đoạn
                             <span class="text-muted text-lowercase font-weight-normal font-italic">
-                                (chỉ hiện thiết bị đã có định mức của mã BTP)
+                                (để trống = không giới hạn thiết bị)
                             </span>
                         </label>
                         @error('rooms', 'updateErrors')
@@ -135,17 +149,19 @@
     <script>
         $(document).ready(function() {
             $('#update_intermediate_code').val(@json(old('intermediate_code')));
-            $('#update_market_id').val(@json(old('market_id')));
             $('#update_note').val(@json(old('note')));
             $('#update_material_name').val(@json(old('material_name')));
             $('#update_bom_revision').val(@json(old('bom_revision')));
+
+            mswFillMarketRows('update', @json(old('markets', [])));
 
             // Mã NL và ma trận thiết bị nạp bằng ajax nên chỉ chọn lại được sau khi nạp xong
             mswLoadIntermediateData(
                 'update',
                 @json(old('intermediate_code')),
                 @json(old('material_code')),
-                @json(old('rooms', []))
+                @json(old('rooms', [])),
+                @json(old('room_reminders', []))
             );
 
             $('#msw_update_modal').modal('show');

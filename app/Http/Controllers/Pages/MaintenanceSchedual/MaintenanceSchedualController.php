@@ -1144,6 +1144,7 @@ class MaintenanceSchedualController extends SchedualController
                         'title_clearning' => null,
                         'accept_quarantine' => 0,
                         'schedualed' => 0,
+                        'blister_mold_id' => null,
                         'schedualed_by' => session('user')['fullName'],
                         'schedualed_at' => now(),
                     ]);

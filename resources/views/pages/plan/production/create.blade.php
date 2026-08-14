@@ -614,6 +614,12 @@
                         });
 
                         checkValidationTracking(intermediate_caterogy_id);
+
+                        // Đối chiếu công thức với ma trận cảnh báo nguồn NL của mã BTP
+                        mswPlanCheckMaterials(material_table, {
+                            intermediate_code: intermediate_code,
+                            product_caterogy_id: product_caterogy_id
+                        });
                     }
                 },
                 error: function() {

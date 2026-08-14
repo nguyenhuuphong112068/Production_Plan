@@ -82,8 +82,14 @@
                     <i class="fas fa-search"></i> Tìm
                 </button>
                 @if ($searched)
-                    <a href="{{ route('pages.category.material_check.list') }}" class="btn btn-secondary">
+                    <a href="{{ route('pages.category.material_check.list') }}" class="btn btn-secondary mr-2">
                         <i class="fas fa-times"></i> Xóa
+                    </a>
+                @endif
+                @if ($datas->isNotEmpty())
+                    <a href="{{ route('pages.category.material_check.export', ['mat_id' => $mat_id]) }}"
+                        class="btn btn-success ml-auto">
+                        <i class="fas fa-file-excel"></i> Xuất Excel
                     </a>
                 @endif
             </form>

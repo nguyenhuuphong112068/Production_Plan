@@ -1,5 +1,3 @@
-
-
 <?php
 require_once(__DIR__ . '/generalRoute.php');
 require_once(__DIR__ . '/materDataRoute.php');
@@ -29,6 +27,3 @@ use App\Http\Controllers\UserTablePreferenceController;
 
 Route::post('/user-table-preferences/save', [UserTablePreferenceController::class, 'save']);
 Route::get('/user-table-preferences/load', [UserTablePreferenceController::class, 'load']);
-
-?>
-

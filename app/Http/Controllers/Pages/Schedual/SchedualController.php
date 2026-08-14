@@ -68,6 +68,125 @@ class SchedualController extends Controller
         return null;
     }
 
+    /**
+     * Chỉ chấp nhận khuôn do client gửi lên khi khuôn đó còn nằm trong định mức
+     * của sản phẩm và lắp được cho máy của phòng đích. Ngược lại trả về null
+     * để lịch không mang theo khuôn sai.
+     */
+    protected function sanitizeBlisterMoldId($moldId, $productCategoryId, $roomId)
+    {
+        if (empty($moldId) || empty($productCategoryId)) {
+            return null;
+        }
+
+        $mold = DB::table('finished_product_mold')
+            ->join('blister_mold', 'finished_product_mold.blister_mold_id', '=', 'blister_mold.id')
+            ->where('finished_product_mold.finished_product_category_id', $productCategoryId)
+            ->where('finished_product_mold.blister_mold_id', $moldId)
+            ->where('blister_mold.active', 1)
+            ->select('blister_mold.id', 'blister_mold.blister_type_code')
+            ->first();
+
+        // Khuôn không có trong định mức khuôn mẫu của sản phẩm
+        if (! $mold) {
+            return null;
+        }
+
+        $roomType = $roomId ? DB::table('room')->where('id', $roomId)->value('blister_type_code') : null;
+
+        if (! empty($roomType) && ! empty($mold->blister_type_code)) {
+            $decoded = json_decode($mold->blister_type_code, true);
+            $moldTypes = is_array($decoded) ? $decoded : [$mold->blister_type_code];
+
+            // Khuôn không lắp được cho máy của phòng
+            if (! in_array($roomType, $moldTypes)) {
+                return null;
+            }
+        }
+
+        return $mold->id;
+    }
+
+    /**
+     * Chọn khuôn ép vỉ cho một lịch đóng gói (công đoạn 7) khi sắp lịch thủ công.
+     * Ưu tiên giữ lại khuôn đang gán nếu vẫn hợp lệ và còn trống, ngược lại lấy
+     * khuôn đầu tiên còn trống trong khoảng sản xuất. Trả về null khi không còn
+     * khuôn nào rảnh để lịch hiển thị cảnh báo thiếu khuôn.
+     */
+    protected function pickBlisterMoldForPlan($productCategoryId, $roomId, $start, $end, $excludeStagePlanId = null, $currentMoldId = null)
+    {
+        if (empty($productCategoryId) || empty($start) || empty($end)) {
+            return null;
+        }
+
+        $molds = DB::table('finished_product_mold')
+            ->join('blister_mold', 'finished_product_mold.blister_mold_id', '=', 'blister_mold.id')
+            ->where('finished_product_mold.finished_product_category_id', $productCategoryId)
+            ->where('blister_mold.active', 1)
+            ->select('blister_mold.id', 'blister_mold.amount', 'blister_mold.blister_type_code')
+            ->get();
+
+        // SP chưa khai báo định mức khuôn → không gán khuôn
+        if ($molds->isEmpty()) {
+            return null;
+        }
+
+        $roomType = $roomId ? DB::table('room')->where('id', $roomId)->value('blister_type_code') : null;
+
+        // Chỉ giữ khuôn lắp được cho máy của phòng đích
+        $molds = $molds->filter(function ($mold) use ($roomType) {
+            if (empty($roomType) || empty($mold->blister_type_code)) {
+                return true;
+            }
+
+            $decoded = json_decode($mold->blister_type_code, true);
+            $moldTypes = is_array($decoded) ? $decoded : [$mold->blister_type_code];
+
+            return in_array($roomType, $moldTypes);
+        })->values();
+
+        // Xét khuôn đang gán trước để hạn chế đổi khuôn không cần thiết
+        $candidates = [];
+        foreach ($molds as $mold) {
+            if (! empty($currentMoldId) && (string) $mold->id === (string) $currentMoldId) {
+                array_unshift($candidates, $mold);
+            } else {
+                $candidates[] = $mold;
+            }
+        }
+
+        foreach ($candidates as $mold) {
+            $amount = (int) $mold->amount;
+
+            if ($amount <= 0) {
+                continue;
+            }
+
+            // Một khuôn chỉ dùng được cho tối đa `amount` phòng cùng lúc
+            $query = DB::table('stage_plan')
+                ->where('stage_code', 7)
+                ->where('blister_mold_id', $mold->id)
+                ->where('active', 1)
+                ->where('finished', 0)
+                ->whereNotNull('start')
+                ->whereNotNull('resourceId')
+                ->where('start', '<', $end)
+                ->where('end', '>', $start);
+
+            if (! empty($excludeStagePlanId)) {
+                $query->where('id', '!=', $excludeStagePlanId);
+            }
+
+            $concurrentRooms = $query->pluck('resourceId')->unique()->count();
+
+            if ($concurrentRooms < $amount) {
+                return $mold->id;
+            }
+        }
+
+        return null;
+    }
+
     protected $order_by = 1;
 
     protected $selectedDates = [];
@@ -495,6 +614,9 @@ class SchedualController extends Controller
             ->orderBy('sp.stage_code')
             ->get();
 
+        // 3️⃣ Ma trận cảnh báo nguồn NL: thiết bị được phép của từng lô, tải 1 lần cho cả vòng lặp
+        $sourceWarningRules = $this->materialSourceWarningRules($event_plans, $production);
+
         // 4️⃣ Gom nhóm theo plan_master_id
         $groupedPlans = $event_plans->groupBy('plan_master_id');
 
@@ -515,7 +637,7 @@ class SchedualController extends Controller
                 $violation_colors = [];
                 $mold_code = null;
 
-                [$color_event,  $textColor,  $subtitle, $violation_colors, $mold_warning, $mold_code, $v_pre_id, $v_pre_end, $v_suc_id, $v_suc_start] = $this->colorEvent($plan, $plans, $i, $room_code);
+                [$color_event,  $textColor,  $subtitle, $violation_colors, $mold_warning, $mold_code, $v_pre_id, $v_pre_end, $v_suc_id, $v_suc_start, $source_warning, $source_reminder] = $this->colorEvent($plan, $plans, $i, $room_code, $sourceWarningRules);
 
                 // 🎯 lịch chưa hoàn thành
                 if (($plan->start && ! $plan->actual_start && $plan->finished == 0)) {
@@ -557,6 +679,8 @@ class SchedualController extends Controller
                         'schedualed_by' => $plan->schedualed_by,
                         'title_clearning' => $plan->title_clearning,
                         'mold_warning' => $mold_warning,
+                        'source_warning' => $source_warning,
+                        'source_reminder' => $source_reminder,
                         'blister_mold_code' => $plan->blister_mold_code ?? $mold_code,
                     ]);
                 }
@@ -1015,13 +1139,121 @@ class SchedualController extends Controller
         return $productionEvents->concat($groupedMaintenance)->values();
     }
 
-    protected function colorEvent($plan, $plans, $i, $room_code)
+    /**
+     * Thiết bị được phép của từng lô theo ma trận "Cảnh Báo Nguồn NL".
+     *
+     * Chỉ những lô đang dùng mã NL có khai báo trong ma trận mới bị ràng buộc.
+     * Một lô có thể dùng nhiều mã NL bị ràng buộc -> thiết bị được phép của công đoạn
+     * là giao của các dòng ma trận đó.
+     *
+     * @return array [plan_master_id => [stage_code => ['rooms' => [mã thiết bị], 'materials' => [mã NL]]]]
+     */
+    protected function materialSourceWarningRules($event_plans, string $production): array
+    {
+        $intermediateByPlan = [];
+
+        foreach ($event_plans as $row) {
+            if ($row->plan_master_id && !empty($row->intermediate_code)) {
+                $intermediateByPlan[$row->plan_master_id] = trim($row->intermediate_code);
+            }
+        }
+
+        if (!$intermediateByPlan) {
+            return [];
+        }
+
+        $warnings = DB::table('material_source_warning')
+            ->select('id', 'intermediate_code', 'material_code', 'material_name')
+            ->where('deparment_code', $production)
+            ->whereIn('intermediate_code', array_values(array_unique($intermediateByPlan)))
+            ->where('active', 1)
+            ->get();
+
+        if ($warnings->isEmpty()) {
+            return [];
+        }
+
+        $roomsByWarning = [];
+
+        $remindersByWarning = [];
+
+        foreach (
+            DB::table('material_source_warning_room')
+                ->whereIn('warning_id', $warnings->pluck('id'))
+                ->get(['warning_id', 'stage_code', 'room_code', 'reminder']) as $room
+        ) {
+            $roomCode = trim($room->room_code);
+
+            $roomsByWarning[$room->warning_id][$room->stage_code][] = $roomCode;
+
+            if (trim((string) $room->reminder) !== '') {
+                $remindersByWarning[$room->warning_id][$room->stage_code][$roomCode] = trim($room->reminder);
+            }
+        }
+
+        // Mã NL thực tế được chọn cho lô (material_packaging_type = 0 là nguyên liệu)
+        $materialsByPlan = [];
+
+        foreach (
+            DB::table('plan_master_materials')
+                ->whereIn('plan_master_id', array_keys($intermediateByPlan))
+                ->where('material_packaging_type', 0)
+                ->where('active', 1)
+                ->get(['plan_master_id', 'material_packaging_code']) as $material
+        ) {
+            $materialsByPlan[$material->plan_master_id][] = trim($material->material_packaging_code);
+        }
+
+        $rules = [];
+
+        foreach ($intermediateByPlan as $planId => $intermediateCode) {
+            $planMaterials = $materialsByPlan[$planId] ?? [];
+
+            foreach ($warnings as $warning) {
+                if (trim($warning->intermediate_code) !== $intermediateCode) {
+                    continue;
+                }
+
+                $materialCode = trim((string) $warning->material_code);
+
+                // Không khai mã NL -> ràng buộc thiết bị cho mọi nguồn NL của mã BTP
+                if ($materialCode !== '' && !in_array($materialCode, $planMaterials, true)) {
+                    continue;
+                }
+
+                foreach ($roomsByWarning[$warning->id] ?? [] as $stageCode => $roomCodes) {
+                    $rules[$planId][$stageCode]['rooms'] = isset($rules[$planId][$stageCode]['rooms'])
+                        ? array_values(array_intersect($rules[$planId][$stageCode]['rooms'], $roomCodes))
+                        : $roomCodes;
+
+                    $rules[$planId][$stageCode]['materials'][] = $materialCode !== '' ? $materialCode : 'mọi nguồn NL';
+
+                    // Nhắc nhở của từng thiết bị - nhiều dòng ma trận cùng nhắc 1 thiết bị thì gộp lại
+                    foreach ($remindersByWarning[$warning->id][$stageCode] ?? [] as $roomCode => $reminder) {
+                        $current = $rules[$planId][$stageCode]['reminders'][$roomCode] ?? [];
+
+                        if (!in_array($reminder, $current, true)) {
+                            $current[] = $reminder;
+                        }
+
+                        $rules[$planId][$stageCode]['reminders'][$roomCode] = $current;
+                    }
+                }
+            }
+        }
+
+        return $rules;
+    }
+
+    protected function colorEvent($plan, $plans, $i, $room_code, array $sourceWarningRules = [])
     {
 
         $subtitles = [];
         $violation_colors = [];
         $mold_warning = null;
         $mold_code = null;
+        $source_warning = null;
+        $source_reminder = null;
 
         $textColor = '#fefefee2';
 
@@ -1030,7 +1262,7 @@ class SchedualController extends Controller
 
         /* 1️⃣ finished */
         if ($plan->finished == 1) {
-            return ['#002af9ff',  '#fefefee2',  '', [], null, $mold_code, null, null, null, null];
+            return ['#002af9ff',  '#fefefee2',  '', [], null, $mold_code, null, null, null, null, null, null];
         }
 
         /* 2️⃣ màu mặc định theo stage */
@@ -1112,6 +1344,39 @@ class SchedualController extends Controller
                     $violation_colors[] = '#e54a4aff';
                     $mold_warning = "❌ Thiếu Khuôn!";
                 }
+            }
+        }
+
+        // 🚨 Cảnh báo nguồn NL: lô dùng mã NL có trong ma trận thì chỉ được xếp lên
+        // thiết bị đã khai báo cho công đoạn đó
+        $sourceRule = $sourceWarningRules[$plan->plan_master_id][$plan->stage_code] ?? null;
+
+        if ($sourceRule && $plan->resourceId) {
+            $scheduled_room = $room_code[$plan->resourceId] ?? null;
+            $allowed_rooms = $sourceRule['rooms'] ?? [];
+
+            // Xếp đúng thiết bị đã khai -> hiện nhắc nhở của thiết bị đó (vd: "Khử ẩm")
+            if ($scheduled_room && in_array($scheduled_room, $allowed_rooms, true)) {
+                $reminders = $sourceRule['reminders'][$scheduled_room] ?? [];
+
+                if ($reminders) {
+                    $source_reminder = implode(' | ', $reminders);
+                }
+            }
+
+            if ($scheduled_room && !in_array($scheduled_room, $allowed_rooms, true)) {
+                $allowed_label = $allowed_rooms
+                    ? implode(', ', $allowed_rooms)
+                    : 'không thiết bị nào (các mã NL này không dùng chung được thiết bị)';
+
+                $subtitles[] = "❌ Sai thiết bị nguồn NL: {$scheduled_room} | Chỉ được: {$allowed_label}"
+                    . ' | Mã NL: ' . implode(', ', array_unique($sourceRule['materials'] ?? []));
+
+                $color_event = '#e67e22';
+                $textColor = '#ffffff';
+                $violation_colors[] = '#e67e22';
+
+                $source_warning = "❌ Sai thiết bị nguồn NL: {$scheduled_room} (chỉ được: {$allowed_label})";
             }
         }
 
@@ -1300,7 +1565,9 @@ class SchedualController extends Controller
             $plan->violation_predecessor_id ?? null,
             $plan->violation_predecessor_end ?? null,
             $plan->violation_successor_id ?? null,
-            $plan->violation_successor_start ?? null
+            $plan->violation_successor_start ?? null,
+            $source_warning,
+            $source_reminder
         ];
     }
 
@@ -1552,6 +1819,7 @@ class SchedualController extends Controller
                 'order_by',
                 'stage_code',
                 'production_group',
+                'blister_type_code',
                 DB::raw("
                                 CASE
                                 WHEN stage_code IN (3, 4) THEN 'Pha chế'
@@ -1605,6 +1873,7 @@ class SchedualController extends Controller
             $personnelSub->stage_code = $room->stage_code;
             $personnelSub->production_group = $room->production_group;
             $personnelSub->stage_name = $room->stage_name;
+            $personnelSub->blister_type_code = null;
             $personnelSub->sheet_1 = 0;
             $personnelSub->sheet_2 = 0;
             $personnelSub->sheet_3 = 0;
@@ -2036,24 +2305,44 @@ class SchedualController extends Controller
                         ]);
                 } else {
 
+                    $updateData = [
+                        'start' => $current_start,
+                        'end' => $end_man,
+                        'start_clearning' => $end_man,
+                        'end_clearning' => $end_clearning,
+                        'resourceId' => $request->room_id,
+                        'title' => $product['stage_code'] === 9
+                            ? ($product['title'] . '-' . $product['batch'])
+                            : ($product['name'] . '-' . $product['batch'] . '-' . $product['market']),
+                        'title_clearning' => $clearning_type,
+                        'schedualed' => 1,
+                        'schedualed_by' => session('user')['fullName'],
+                        'schedualed_at' => now(),
+                        'receive_packaging_date' => DB::raw("CASE WHEN received = 0 AND stage_code = 7 THEN '$receiveDateStr' ELSE receive_packaging_date END"),
+                        'receive_second_packaging_date' => DB::raw("CASE WHEN received_second_packaging = 0 AND stage_code = 7 THEN '$receiveDateStr' ELSE receive_second_packaging_date END"),
+                    ];
+
+                    // Công đoạn đóng gói: sắp lịch thủ công cũng phải sắp khuôn ép vỉ
+                    if ((int) $product['stage_code'] === 7) {
+
+                        $current_row = DB::table('stage_plan')
+                            ->where('id', $product['id'])
+                            ->select('product_caterogy_id', 'blister_mold_id')
+                            ->first();
+
+                        $updateData['blister_mold_id'] = $this->pickBlisterMoldForPlan(
+                            $current_row->product_caterogy_id ?? ($product['product_caterogy_id'] ?? null),
+                            $request->room_id,
+                            $current_start,
+                            $end_man,
+                            $product['id'],
+                            $current_row->blister_mold_id ?? null
+                        );
+                    }
+
                     DB::table('stage_plan')
                         ->where('id', $product['id'])
-                        ->update([
-                            'start' => $current_start,
-                            'end' => $end_man,
-                            'start_clearning' => $end_man,
-                            'end_clearning' => $end_clearning,
-                            'resourceId' => $request->room_id,
-                            'title' => $product['stage_code'] === 9
-                                ? ($product['title'] . '-' . $product['batch'])
-                                : ($product['name'] . '-' . $product['batch'] . '-' . $product['market']),
-                            'title_clearning' => $clearning_type,
-                            'schedualed' => 1,
-                            'schedualed_by' => session('user')['fullName'],
-                            'schedualed_at' => now(),
-                            'receive_packaging_date' => DB::raw("CASE WHEN received = 0 AND stage_code = 7 THEN '$receiveDateStr' ELSE receive_packaging_date END"),
-                            'receive_second_packaging_date' => DB::raw("CASE WHEN received_second_packaging = 0 AND stage_code = 7 THEN '$receiveDateStr' ELSE receive_second_packaging_date END"),
-                        ]);
+                        ->update($updateData);
                 }
 
                 /*
@@ -2728,7 +3017,11 @@ class SchedualController extends Controller
                         } else {
                             $updateData['resourceId'] = $change['resourceId'] ?? null;
                             if (array_key_exists('blister_mold_id', $change)) {
-                                $updateData['blister_mold_id'] = $change['blister_mold_id'];
+                                $updateData['blister_mold_id'] = $this->sanitizeBlisterMoldId(
+                                    $change['blister_mold_id'],
+                                    $original_event->product_caterogy_id ?? null,
+                                    $updateData['resourceId']
+                                );
                             }
                             if ($isMoveSelectedBatches && !$sharedResource) {
                                 $sharedResource = $updateData['resourceId'];
@@ -3034,6 +3327,7 @@ class SchedualController extends Controller
                             'accept_quarantine' => 0,
                             'schedualed' => 0,
                             'AHU_group' => 0,
+                            'blister_mold_id' => null,
                             'schedualed_by' => session('user')['fullName'],
                             'schedualed_at' => now(),
                             'submit' => 0,
@@ -3057,6 +3351,7 @@ class SchedualController extends Controller
                             'title_clearning' => null,
                             'accept_quarantine' => 0,
                             'schedualed' => 0,
+                            'blister_mold_id' => null,
                             'schedualed_by' => session('user')['fullName'],
                             'schedualed_at' => now(),
                             'submit' => 0,
@@ -3217,6 +3512,7 @@ class SchedualController extends Controller
                     'accept_quarantine' => 0,
                     'schedualed' => 0,
                     'AHU_group' => 0,
+                    'blister_mold_id' => null,
                     'schedualed_by' => session('user')['fullName'],
                     'schedualed_at' => now(),
                     'submit' => 0,
@@ -5696,6 +5992,7 @@ class SchedualController extends Controller
                         'start_clearning' => null,
                         'end_clearning' => null,
                         'resourceId' => null,
+                        'blister_mold_id' => null,
                         'schedualed' => 0,
                     ]);
             }
@@ -8685,6 +8982,74 @@ class SchedualController extends Controller
             ]);
         }
     }
+    // Lấy danh sách phòng đã định mức trực tiếp từ bảng quota (không dùng dữ liệu đã load sẵn ở frontend)
+    public function checkQuotaRoom(Request $request)
+    {
+        $products = $request->input('products', []);
+
+        if (empty($products)) {
+
+            return response()->json(['products' => []]);
+        }
+
+        $production = session('user.production_code');
+
+        $quota = DB::table('quota')
+            ->leftJoin('room', 'quota.room_id', '=', 'room.id')
+            ->where('quota.active', 1)
+            ->where('quota.deparment_code', $production)
+            ->select(
+                'quota.intermediate_code',
+                'quota.finished_product_code',
+                'quota.stage_code',
+                'quota.room_id',
+                'room.code'
+            )
+            ->get();
+
+        $quotaByIntermediate = $quota->groupBy(function ($q) {
+
+            return $q->intermediate_code . '_' . $q->stage_code;
+        });
+
+        $quotaByFinished = $quota->groupBy(function ($q) {
+
+            return $q->intermediate_code . '_' . $q->finished_product_code . '_' . $q->stage_code;
+        });
+
+        $result = [];
+
+        foreach ($products as $product) {
+
+            $stage_code = (int) ($product['stage_code'] ?? 0);
+
+            if ($stage_code <= 6) {
+
+                $key = ($product['intermediate_code'] ?? '') . '_' . $stage_code;
+
+                $matched = $quotaByIntermediate[$key] ?? collect();
+            } elseif ($stage_code == 7) {
+
+                $key = ($product['intermediate_code'] ?? '') . '_' . ($product['finished_product_code'] ?? '') . '_' . $stage_code;
+
+                $matched = $quotaByFinished[$key] ?? collect();
+            } else {
+
+                $matched = collect();
+            }
+
+            $permisson_room = collect($matched)->pluck('code', 'room_id')->unique();
+
+            $result[] = [
+                'id' => $product['id'] ?? null,
+                'permisson_room' => $permisson_room,
+                'permisson_room_filter' => $permisson_room->values()->implode(', '),
+            ];
+        }
+
+        return response()->json(['products' => $result]);
+    }
+
     public function checkMissingMoldQuotas(Request $request)
     {
         try {
@@ -8845,9 +9210,24 @@ class SchedualController extends Controller
             $stagePlanId = $request->input('stage_plan_id');
             $moldId = $request->input('blister_mold_id');
 
+            $plan = DB::table('stage_plan')->where('id', $stagePlanId)->first();
+
+            if (! $plan) {
+                return response()->json(['success' => false, 'message' => 'Không tìm thấy lịch'], 404);
+            }
+
+            $validMoldId = $this->sanitizeBlisterMoldId($moldId, $plan->product_caterogy_id, $plan->resourceId);
+
+            if ($moldId && ! $validMoldId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Khuôn không nằm trong định mức của sản phẩm hoặc không lắp được cho máy của phòng này'
+                ], 422);
+            }
+
             DB::table('stage_plan')
                 ->where('id', $stagePlanId)
-                ->update(['blister_mold_id' => $moldId ?: null]);
+                ->update(['blister_mold_id' => $validMoldId]);
 
             $plan_waiting = $this->getSumaryDataArray(session('user.production_code'));
             return response()->json([

@@ -15,6 +15,9 @@
 @endsection
 @section('model')
 
+  {{-- Hàm dùng chung cho cảnh báo nguồn NL ở 2 modal tạo lô / sửa lô --}}
+  @include('pages.plan.production.material_source_warning_script')
+
   @include('pages.plan.production.update')
   @include('pages.plan.production.create')
   @include('pages.plan.production.batch_splitting')

@@ -68,6 +68,7 @@ Route::prefix('/category')
                         ->controller(MaterialCheckController::class)
                         ->group(function () {
                                 Route::get('', 'index')->name('list');
+                                Route::get('export', 'export')->name('export');
                         });
 
 
@@ -77,6 +78,7 @@ Route::prefix('/category')
                         ->group(function () {
                                 Route::get('', 'index')->name('list');
                                 Route::get('intermediate_data', 'intermediateData')->name('intermediateData');
+                                Route::get('market_check', 'marketCheck')->name('marketCheck');
                                 Route::post('store', 'store')->name('store');
                                 Route::post('update', 'update')->name('update');
                                 Route::post('deActive', 'deActive')->name('deActive');

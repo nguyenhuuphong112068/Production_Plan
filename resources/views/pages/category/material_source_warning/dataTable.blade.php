@@ -102,6 +102,46 @@
         border-color: #80bdff;
     }
 
+    /* Ô hiển thị cỡ lô: dùng .form-control cho đều hàng nhưng nội dung là text tĩnh */
+    .msw-batch-box {
+        height: calc(2.25rem + 2px);
+        background: #f1f3f5;
+        line-height: calc(1.25rem);
+        overflow: hidden;
+        white-space: nowrap;
+    }
+
+    /* 1 dòng khai 1 thị trường được phép: mã thị trường + kênh/khách hàng */
+    .msw-market-row {
+        display: flex;
+        gap: .5rem;
+        align-items: flex-start;
+        margin-bottom: .5rem;
+    }
+
+    .msw-market-row .msw-market-select {
+        flex: 1 1 60%;
+        min-width: 0;
+    }
+
+    .msw-market-row .msw-market-channel {
+        flex: 1 1 40%;
+        min-width: 0;
+    }
+
+    .msw-market-badge {
+        display: inline-block;
+        margin: 1px 2px;
+        padding: 1px 7px;
+        border-radius: 8px;
+        background: #eaf7ee;
+        border: 1px solid #28a745;
+        color: #1c7430;
+        font-size: 11px;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
     .msw-stage-line {
         white-space: nowrap;
     }
@@ -127,6 +167,34 @@
         color: #0056b3;
         font-size: 11px;
         font-weight: 600;
+    }
+
+    /* Nhắc nhở khai riêng cho từng thiết bị */
+    .msw-room-line+.msw-room-line {
+        margin-top: 2px;
+    }
+
+    .msw-room-reminder-box {
+        padding: 2px 0 4px 24px;
+    }
+
+    .msw-room-reminder {
+        height: calc(1.5rem + 2px);
+        font-size: 11.5px;
+    }
+
+    /* Thiết bị có nhắc nhở: gộp chung 1 badge với mã thiết bị */
+    .msw-room-badge-reminder {
+        background: #fff4e5;
+        border-color: #fd7e14;
+        color: #a85400;
+    }
+
+    .msw-room-reminder-text {
+        margin-left: 4px;
+        padding-left: 5px;
+        border-left: 1px solid #fd7e14;
+        font-weight: 500;
     }
 
     .msw-status-pill {
@@ -183,9 +251,24 @@
             @endif
 
             <div class="alert alert-secondary py-2">
-                Mỗi dòng khai báo: 1 <b>mã BTP</b> khi sử dụng 1 <b>mã NL</b> (lấy từ công thức ấn bản mới nhất trên MMS)
-                thì chỉ được sản xuất cho <b>thị trường</b> tương ứng, trên các <b>thiết bị</b> đã liệt kê ở từng công đoạn.
+                Mỗi dòng khai báo: 1 <b>sản phẩm</b> (mã BTP - đã gắn sẵn cỡ lô) khi sử dụng 1 <b>nguồn nguyên liệu</b>
+                (mã NL theo công thức ấn bản mới nhất trên MMS) thì chỉ được sản xuất cho các <b>thị trường được phép</b>,
+                trên các <b>thiết bị</b> đã liệt kê ở từng công đoạn.
+                <br>
+                Mã NL, thị trường và thiết bị đều có thể bỏ trống: <b>phần nào bỏ trống thì không cảnh báo phần đó</b>
+                (bỏ trống mã NL = áp dụng cho mọi nguồn NL của mã BTP).
             </div>
+
+            @php
+                // Cột thiết bị dựng động theo công đoạn đang có khai báo -> phải tính lại
+                // chỉ số cột cho DataTables (các cột không cho sắp xếp).
+                $stageCount = count($stageColumns);
+                $marketColumn = 6 + $stageCount;
+                $noSortColumns = array_merge(
+                    range(6, 5 + $stageCount),
+                    [$marketColumn, $marketColumn + 4, $marketColumn + 5],
+                );
+            @endphp
 
             <table id="data_table_material_source_warning" class="table table-bordered table-striped">
 
@@ -194,10 +277,13 @@
                         <th style="width: 15px">STT</th>
                         <th>Mã BTP</th>
                         <th>Tên Sản Phẩm</th>
+                        <th>Cỡ Lô</th>
                         <th>Mã NL</th>
-                        <th>Tên Nguyên Liệu</th>
-                        <th>Thị Trường</th>
-                        <th>Thiết Bị Được Phép Theo Công Đoạn</th>
+                        <th>Nguồn Nguyên Liệu</th>
+                        @foreach ($stageColumns as $stageName)
+                            <th>{{ $stageName }}</th>
+                        @endforeach
+                        <th>Thị Trường Được Phép</th>
                         <th>Ghi Chú</th>
                         <th>Trạng Thái</th>
                         <th>Người Tạo/ Ngày Tạo</th>
@@ -210,35 +296,79 @@
                     @foreach ($datas as $data)
                         @php
                             $stages = $roomsByWarning[$data->id] ?? [];
+                            $rowMarkets = $marketsByWarning[$data->id] ?? [];
                             // Ma trận thiết bị dạng {mã công đoạn: [mã thiết bị,...]} để đổ lại vào modal cập nhật
                             $roomsJson = collect($stages)->map(fn($stage) => collect($stage['rooms'])->pluck('code'));
+                            // Nhắc nhở dạng {mã công đoạn: {mã thiết bị: nội dung}}
+                            $remindersJson = collect($stages)->map(
+                                fn($stage) => collect($stage['rooms'])
+                                    ->filter(fn($room) => ($room['reminder'] ?? '') !== '')
+                                    ->pluck('reminder', 'code'),
+                            );
+                            $marketsJson = collect($rowMarkets)->map(
+                                fn($market) => ['market_id' => $market['market_id'], 'channel' => $market['channel']],
+                            );
                         @endphp
 
                         <tr>
                             <td class="text-center align-middle">{{ $loop->iteration }}</td>
                             <td class="align-middle text-success">{{ $data->intermediate_code }}</td>
                             <td class="align-middle">{{ $data->product_name }}</td>
-                            <td class="align-middle">{{ $data->material_code }}</td>
-                            <td class="align-middle">{{ $data->material_name }}</td>
-                            <td class="align-middle">
-                                {{ $data->market_code }}
-                                @if ($data->market_name && $data->market_name !== $data->market_code)
-                                    <span class="text-muted">- {{ $data->market_name }}</span>
+                            <td class="align-middle text-right">
+                                @if ($data->batch_qty)
+                                    {{ number_format($data->batch_qty, 0, ',', '.') }}
+                                    <span class="text-muted">{{ $data->unit_batch_qty }}</span>
+                                @endif
+                                @if ($data->batch_size)
+                                    <br>
+                                    <span class="text-muted">
+                                        {{ rtrim(rtrim(number_format($data->batch_size, 2, ',', '.'), '0'), ',') }}
+                                        {{ $data->unit_batch_size }}
+                                    </span>
                                 @endif
                             </td>
                             <td class="align-middle">
-                                @forelse ($stages as $stage)
-                                    <div class="msw-stage-line">
-                                        <span class="msw-stage-name">{{ $stage['stage_name'] }}:</span>
-                                        @foreach ($stage['rooms'] as $room)
-                                            <span class="msw-room-badge"
-                                                title="{{ trim(($room['name'] ?? '') . ' ' . ($room['main_equiment_name'] ?? '')) }}">
+                                {{ $data->material_code ?: '' }}
+                                @unless ($data->material_code)
+                                    <span class="text-muted font-italic">Mọi nguồn NL</span>
+                                @endunless
+                            </td>
+                            <td class="align-middle">{{ $data->material_name }}</td>
+
+                            {{-- Mỗi công đoạn 1 cột thiết bị, đúng dạng ma trận đang dùng --}}
+                            @foreach ($stageColumns as $stageCode => $stageName)
+                                <td class="align-middle">
+                                    @forelse ($stages[$stageCode]['rooms'] ?? [] as $room)
+                                        @php
+                                            $reminder = $room['reminder'] ?? '';
+                                            $roomTitle = trim(
+                                                ($room['name'] ?? '') . ' ' . ($room['main_equiment_name'] ?? ''),
+                                            );
+                                        @endphp
+                                        <div>
+                                            <span class="msw-room-badge {{ $reminder !== '' ? 'msw-room-badge-reminder' : '' }}"
+                                                title="{{ $roomTitle }}{{ $reminder !== '' ? ' | Nhắc nhở khi xếp lịch: ' . $reminder : '' }}">
                                                 {{ $room['code'] }}
+                                                @if ($reminder !== '')
+                                                    <span class="msw-room-reminder-text">
+                                                        <i class="fas fa-bell"></i> {{ $reminder }}
+                                                    </span>
+                                                @endif
                                             </span>
-                                        @endforeach
-                                    </div>
+                                        </div>
+                                    @empty
+                                        <span class="text-muted">-</span>
+                                    @endforelse
+                                </td>
+                            @endforeach
+
+                            <td class="align-middle">
+                                @forelse ($rowMarkets as $market)
+                                    <span class="msw-market-badge" title="{{ $market['name'] }}">
+                                        {{ $market['code'] }}{{ $market['channel'] !== '' ? ' (' . $market['channel'] . ')' : '' }}
+                                    </span>
                                 @empty
-                                    <span class="text-muted">Chưa khai báo thiết bị</span>
+                                    <span class="text-muted font-italic">Không giới hạn</span>
                                 @endforelse
                             </td>
                             <td class="align-middle">{{ $data->note }}</td>
@@ -259,8 +389,10 @@
                                     data-material_code="{{ $data->material_code }}"
                                     data-material_name="{{ $data->material_name }}"
                                     data-bom_revision="{{ $data->bom_revision }}"
-                                    data-market_id="{{ $data->market_id }}" data-note="{{ $data->note }}"
-                                    data-rooms="{{ $roomsJson->toJson() }}" {{ $auth_update }}>
+                                    data-note="{{ $data->note }}"
+                                    data-markets="{{ $marketsJson->toJson() }}"
+                                    data-rooms="{{ $roomsJson->toJson() }}"
+                                    data-room_reminders="{{ $remindersJson->toJson() }}" {{ $auth_update }}>
                                     <i class="fas fa-edit"></i>
                                 </button>
                             </td>
@@ -331,6 +463,115 @@
 <script>
     const MSW_INTERMEDIATE_DATA_URL = "{{ route('pages.category.material_source_warning.intermediateData') }}";
 
+    // Danh mục thị trường dùng để dựng động các dòng "thị trường được phép" trong 2 modal
+    const MSW_MARKETS = @json($markets->map(fn($market) => ['id' => $market->id, 'code' => $market->code, 'name' => $market->name]));
+
+    /** Hiển thị cỡ lô của mã BTP đang chọn (chỉ để tham chiếu, không lưu vào ma trận) */
+    function mswFillBatchInfo(formId, batch) {
+        const $box = $('#' + formId + '_batch_info').empty();
+
+        if (!batch) {
+            $box.append($('<span class="text-muted">').text('Không có dữ liệu cỡ lô'));
+            return;
+        }
+
+        const qty = batch.batch_qty ?
+            Number(batch.batch_qty).toLocaleString('vi-VN') + ' ' + (batch.unit_batch_qty || '') :
+            '';
+        const size = batch.batch_size ?
+            Number(batch.batch_size).toLocaleString('vi-VN') + ' ' + (batch.unit_batch_size || '') :
+            '';
+
+        if (!qty && !size) {
+            $box.append($('<span class="text-muted">').text('Không có dữ liệu cỡ lô'));
+            return;
+        }
+
+        $box.append($('<b>').text(qty || size));
+
+        if (qty && size) {
+            $box.append($('<span class="text-muted">').text(' / ' + size));
+        }
+    }
+
+    /**
+     * Thêm 1 dòng thị trường được phép vào form.
+     * Tên field dạng markets[<số thứ tự>][market_id|channel] để gửi lên cùng 1 mảng.
+     */
+    function mswAddMarketRow(formId, marketId, channel) {
+        const $box = $('#' + formId + '_market_rows');
+        const index = $box.children('.msw-market-row').length;
+
+        const $row = $('<div class="msw-market-row">');
+
+        const $select = $('<select class="form-control msw-market-select">')
+            .attr('name', 'markets[' + index + '][market_id]')
+            .append('<option value=""> --- Chọn Thị Trường --- </option>');
+
+        MSW_MARKETS.forEach(function(market) {
+            $('<option>').val(market.id).text(market.code + ' - ' + market.name).appendTo($select);
+        });
+
+        if (marketId) {
+            $select.val(String(marketId));
+        }
+
+        const $channel = $('<input type="text" class="form-control msw-market-channel" maxlength="50">')
+            .attr('name', 'markets[' + index + '][channel]')
+            .attr('placeholder', 'Kênh/khách hàng (vd: Tender)')
+            .val(channel || '');
+
+        $row.append($select)
+            .append($channel)
+            .append(
+                $('<button type="button" class="btn btn-outline-danger btn-msw-remove-market" title="Xoá dòng">')
+                .append('<i class="fas fa-times"></i>')
+            )
+            .appendTo($box);
+
+        $select.select2({
+            width: '100%',
+            dropdownParent: $('#msw_' + formId + '_modal')
+        });
+    }
+
+    /** Đánh số lại name của các dòng thị trường sau khi xoá để mảng gửi lên không bị hụt chỉ số */
+    function mswReindexMarketRows(formId) {
+        $('#' + formId + '_market_rows').children('.msw-market-row').each(function(index) {
+            $(this).find('.msw-market-select').attr('name', 'markets[' + index + '][market_id]');
+            $(this).find('.msw-market-channel').attr('name', 'markets[' + index + '][channel]');
+        });
+    }
+
+    /**
+     * Dựng lại toàn bộ danh sách thị trường được phép của 1 form.
+     *
+     * @param {Array} markets [{market_id, channel}] - rỗng thì để sẵn 1 dòng trống
+     */
+    function mswFillMarketRows(formId, markets) {
+        const $box = $('#' + formId + '_market_rows');
+
+        // select2 phải huỷ trước khi xoá DOM, nếu không sẽ để lại phần tử rác
+        $box.find('.msw-market-select').each(function() {
+            if ($(this).data('select2')) {
+                $(this).select2('destroy');
+            }
+        });
+
+        $box.empty();
+
+        const rows = markets || [];
+
+        if (rows.length === 0) {
+            mswAddMarketRow(formId, '', '');
+            return;
+        }
+
+        rows.forEach(function(market) {
+            mswAddMarketRow(formId, market.market_id, market.channel);
+        });
+    }
+
     /** Đổ danh sách mã NL của công thức MMS vào ô chọn */
     function mswFillMaterials(formId, res, selectedCode) {
         const $select = $('#' + formId + '_material_code');
@@ -351,7 +592,8 @@
         $revision.removeClass('d-none').text('Ấn bản BOM: ' + res.revision);
         $('#' + formId + '_bom_revision').val(res.revision);
 
-        $select.append('<option value=""> --- Chọn Mã NL --- </option>');
+        // Bỏ trống = ma trận áp dụng cho mọi nguồn NL của mã BTP
+        $select.append('<option value=""> --- Mọi nguồn NL (không giới hạn) --- </option>');
 
         res.materials.forEach(function(item) {
             $('<option>')
@@ -380,20 +622,21 @@
     }
 
     /**
-     * Dựng ma trận thiết bị theo công đoạn.
-     * Chỉ gồm thiết bị đã có định mức (bảng quota) của mã BTP đang chọn.
+     * Dựng ma trận thiết bị theo công đoạn - gồm toàn bộ thiết bị của phân xưởng.
      *
-     * @param {Array}  stages        [{stage_code, stage_name, rooms:[{code,name,main_equiment_name}]}]
-     * @param {Object} selectedRooms {mã công đoạn: [mã thiết bị,...]} cần tick sẵn
+     * @param {Array}  stages          [{stage_code, stage_name, rooms:[{code,name,main_equiment_name}]}]
+     * @param {Object} selectedRooms   {mã công đoạn: [mã thiết bị,...]} cần tick sẵn
+     * @param {Object} selectedReminders {mã công đoạn: {mã thiết bị: nhắc nhở}} đã khai trước đó
      */
-    function mswFillRoomMatrix(formId, stages, selectedRooms) {
+    function mswFillRoomMatrix(formId, stages, selectedRooms, selectedReminders) {
         const $box = $('#' + formId + '_room_matrix').empty();
         const checked = selectedRooms || {};
+        const reminders = selectedReminders || {};
 
         if (!stages || stages.length === 0) {
             $box.append(
                 '<div class="alert alert-warning mb-0">' +
-                'Mã BTP này chưa có định mức thiết bị nào trong bảng định mức sản xuất.' +
+                'Phân xưởng chưa khai báo thiết bị nào trong danh mục thiết bị.' +
                 '</div>'
             );
             return;
@@ -423,6 +666,7 @@
 
             stage.rooms.forEach(function(room, index) {
                 const id = formId + '_room_' + stage.stage_code + '_' + index;
+                const isChecked = selected.indexOf(room.code) !== -1;
 
                 const $label = $('<label class="custom-control-label">').attr('for', id);
                 $label.append($('<b>').text(room.code)).append(document.createTextNode(' - ' + room.name));
@@ -430,6 +674,8 @@
                 if (room.main_equiment_name) {
                     $label.append($('<span class="text-muted">').text(' (' + room.main_equiment_name + ')'));
                 }
+
+                const $line = $('<div class="msw-room-line">').appendTo($body);
 
                 $('<div class="custom-control custom-checkbox">')
                     .append(
@@ -439,10 +685,22 @@
                         .attr('name', 'rooms[' + stage.stage_code + '][]')
                         .attr('data-stage', stage.stage_code)
                         .val(room.code)
-                        .prop('checked', selected.indexOf(room.code) !== -1)
+                        .prop('checked', isChecked)
                     )
                     .append($label)
-                    .appendTo($body);
+                    .appendTo($line);
+
+                // Nhắc nhở riêng của thiết bị - chỉ hiện khi thiết bị được chọn
+                $('<div class="msw-room-reminder-box">')
+                    .toggle(isChecked)
+                    .append(
+                        $('<input type="text" class="form-control form-control-sm msw-room-reminder">')
+                        .attr('name', 'room_reminders[' + stage.stage_code + '][' + room.code + ']')
+                        .attr('maxlength', 255)
+                        .attr('placeholder', 'Nhắc nhở khi xếp đúng thiết bị này (vd: Khử ẩm)')
+                        .val((reminders[stage.stage_code] || {})[room.code] || '')
+                    )
+                    .appendTo($line);
             });
         });
     }
@@ -454,8 +712,9 @@
      * @param {string} code          Mã BTP
      * @param {string} selectedCode  Mã NL cần chọn sẵn sau khi nạp xong (nếu có)
      * @param {Object} selectedRooms Thiết bị cần tick sẵn (nếu có)
+     * @param {Object} selectedReminders Nhắc nhở đã khai của từng thiết bị (nếu có)
      */
-    function mswLoadIntermediateData(formId, code, selectedCode, selectedRooms) {
+    function mswLoadIntermediateData(formId, code, selectedCode, selectedRooms, selectedReminders) {
         const $select = $('#' + formId + '_material_code');
         const $message = $('#msw_' + formId + '_modal').find('.msw-bom-message');
         const $revision = $('#msw_' + formId + '_modal').find('.msw-bom-revision');
@@ -469,6 +728,7 @@
             $('#' + formId + '_room_matrix').html(
                 '<div class="alert alert-secondary mb-0">Chọn mã BTP để hiện danh sách thiết bị đã định mức.</div>'
             );
+            $('#' + formId + '_batch_info').html('<span class="text-muted">Chọn mã BTP</span>');
             return;
         }
 
@@ -483,7 +743,8 @@
             },
             success: function(res) {
                 mswFillMaterials(formId, res, selectedCode);
-                mswFillRoomMatrix(formId, res.stages, selectedRooms);
+                mswFillRoomMatrix(formId, res.stages, selectedRooms, selectedReminders);
+                mswFillBatchInfo(formId, res.batch);
             },
             error: function() {
                 $select.empty().append('<option value=""> --- Không có dữ liệu --- </option>').trigger(
@@ -492,6 +753,7 @@
                 $('#' + formId + '_room_matrix').html(
                     '<div class="alert alert-danger mb-0">Không lấy được danh sách thiết bị đã định mức.</div>'
                 );
+                $('#' + formId + '_batch_info').html('<span class="text-danger">Không lấy được cỡ lô</span>');
             }
         });
     }
@@ -514,7 +776,7 @@
             ],
             columnDefs: [{
                 orderable: false,
-                targets: [6, 10, 11]
+                targets: @json($noSortColumns)
             }],
             language: {
                 search: "Tìm kiếm:",
@@ -557,8 +819,54 @@
                 '[data-stage="' + $(this).data('stage') + '"]');
             const checkAll = $boxes.filter(':checked').length !== $boxes.length;
 
-            $boxes.prop('checked', checkAll);
+            $boxes.prop('checked', checkAll).trigger('change');
             $(this).text(checkAll ? 'Bỏ chọn tất cả' : 'Chọn tất cả');
+        });
+
+        // Ô nhắc nhở chỉ hiện khi thiết bị được chọn; bỏ chọn thì xoá luôn nội dung đã nhập
+        $(document).on('change', '.msw-room', function() {
+            const $box = $(this).closest('.msw-room-line').find('.msw-room-reminder-box');
+
+            if (this.checked) {
+                $box.show();
+                return;
+            }
+
+            $box.hide().find('.msw-room-reminder').val('');
+        });
+
+        // Thêm / bớt dòng thị trường được phép (các dòng dựng động nên phải uỷ quyền sự kiện)
+        $(document).on('click', '.btn-msw-add-market', function() {
+            mswAddMarketRow($(this).data('form'), '', '');
+        });
+
+        $(document).on('click', '.btn-msw-remove-market', function() {
+            const $row = $(this).closest('.msw-market-row');
+            const $box = $row.parent();
+            const formId = $box.attr('id').replace('_market_rows', '');
+
+            $row.find('.msw-market-select').each(function() {
+                if ($(this).data('select2')) {
+                    $(this).select2('destroy');
+                }
+            });
+
+            $row.remove();
+
+            // Luôn chừa lại 1 dòng trống để người dùng khỏi phải bấm thêm
+            if ($box.children('.msw-market-row').length === 0) {
+                mswAddMarketRow(formId, '', '');
+                return;
+            }
+
+            mswReindexMarketRows(formId);
+        });
+
+        // Mở modal thêm mới: dựng sẵn 1 dòng thị trường trống
+        $('#msw_create_modal').on('show.bs.modal', function() {
+            if ($('#create_market_rows').children('.msw-market-row').length === 0) {
+                mswAddMarketRow('create', '', '');
+            }
         });
 
         // Mở modal cập nhật và đổ lại ma trận đã khai báo
@@ -571,13 +879,15 @@
             $('#update_bom_revision').val(button.data('bom_revision') || '');
 
             $('#update_intermediate_code').val(button.data('intermediate_code')).trigger('change.select2');
-            $('#update_market_id').val(String(button.data('market_id'))).trigger('change.select2');
+
+            mswFillMarketRows('update', button.data('markets') || []);
 
             mswLoadIntermediateData(
                 'update',
                 button.data('intermediate_code'),
                 button.data('material_code'),
-                button.data('rooms') || {}
+                button.data('rooms') || {},
+                button.data('room_reminders') || {}
             );
 
             $('#msw_update_modal').modal('show');

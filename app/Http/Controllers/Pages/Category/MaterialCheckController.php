@@ -6,6 +6,11 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class MaterialCheckController extends Controller
 {
@@ -39,6 +44,155 @@ class MaterialCheckController extends Controller
                         'error' => $error,
                         'searched' => $matId !== '',
                 ]);
+        }
+
+        /**
+         * Xuất kết quả tra cứu ra file Excel, dùng đúng truy vấn của trang danh sách
+         * nên file luôn khớp với những gì đang hiển thị (không phụ thuộc phân trang).
+         */
+        public function export(Request $request)
+        {
+                $matId = trim((string) $request->input('mat_id', ''));
+
+                // Không xuất được thì quay lại trang tra cứu, ở đó lỗi MMS đã có sẵn chỗ hiển thị
+                if ($matId === '') {
+                        return redirect()->route('pages.category.material_check.list');
+                }
+
+                try {
+                        $material = $this->getMaterial($matId);
+                        $datas = $this->getCurrentBoms($matId);
+                } catch (\Throwable) {
+                        return redirect()->route('pages.category.material_check.list', ['mat_id' => $matId]);
+                }
+
+                $spreadsheet = new Spreadsheet();
+                $sheet = $spreadsheet->getActiveSheet();
+                $sheet->setTitle('Kiem Tra NLBB');
+
+                $headers = [
+                        'STT',
+                        'Mã Nguyên Liệu',
+                        'Tên Nguyên Liệu/ Bao Bì',
+                        'Mã BTP',
+                        'Mã TP',
+                        'Tên Sản Phẩm',
+                        'Cỡ Lô',
+                        'Trạng Thái',
+                ];
+                $lastColumn = 'H';
+
+                // Tiêu đề + thông tin mã đang tra cứu
+                $sheet->setCellValue('A1', 'KIỂM TRA NL/BB');
+                $sheet->mergeCells("A1:{$lastColumn}1");
+                $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
+                $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+
+                $info = 'Mã NL/BB: ' . $matId;
+                if ($material) {
+                        $info .= ' - ' . trim((string) $material->MatNM);
+                }
+                $info .= '   |   Ngày xuất: ' . now()->format('d/m/Y H:i');
+
+                $sheet->setCellValue('A2', $info);
+                $sheet->mergeCells("A2:{$lastColumn}2");
+
+                $headerRow = 4;
+                $sheet->fromArray($headers, null, 'A' . $headerRow);
+                $sheet->getStyle("A{$headerRow}:{$lastColumn}{$headerRow}")->applyFromArray([
+                        'font' => ['bold' => true],
+                        'fill' => [
+                                'fillType' => Fill::FILL_SOLID,
+                                'startColor' => ['rgb' => 'D9E1F2'],
+                        ],
+                        'alignment' => [
+                                'horizontal' => Alignment::HORIZONTAL_CENTER,
+                                'vertical' => Alignment::VERTICAL_CENTER,
+                        ],
+                ]);
+
+                $row = $headerRow + 1;
+
+                foreach ($datas as $index => $data) {
+                        $sheet->fromArray([
+                                $index + 1,
+                                $data->MatID,
+                                trim((string) $data->MatNM),
+                                $this->codeLines($data->btp_items),
+                                $this->codeLines($data->tp_items),
+                                trim((string) $data->PrdName),
+                                trim($this->mmsNumber($data->BatchQty) . ' ' . $data->BatchqtyUOM),
+                                $data->BOMSTS,
+                        ], null, 'A' . $row);
+
+                        $row++;
+                }
+
+                $lastRow = max($row - 1, $headerRow);
+
+                $sheet->getStyle("A{$headerRow}:{$lastColumn}{$lastRow}")->applyFromArray([
+                        'borders' => [
+                                'allBorders' => ['borderStyle' => Border::BORDER_THIN],
+                        ],
+                ]);
+                $sheet->getStyle("A{$headerRow}:{$lastColumn}{$lastRow}")
+                        ->getAlignment()
+                        ->setVertical(Alignment::VERTICAL_TOP)
+                        ->setWrapText(true);
+
+                foreach (range('A', $lastColumn) as $column) {
+                        $sheet->getColumnDimension($column)->setAutoSize(true);
+                }
+
+                // Cột tên dài để auto size sẽ tràn màn hình
+                $sheet->getColumnDimension('C')->setAutoSize(false)->setWidth(40);
+                $sheet->getColumnDimension('F')->setAutoSize(false)->setWidth(35);
+
+                $sheet->freezePane('A' . ($headerRow + 1));
+
+                $fileName = 'Kiem_Tra_NLBB_' . $matId . '_' . now()->format('d-m-Y') . '.xlsx';
+
+                return response()->streamDownload(function () use ($spreadsheet) {
+                        // Dọn mọi output buffer trước khi ghi: chỉ một ký tự thừa lọt vào
+                        // đầu luồng là Excel báo file hỏng
+                        while (ob_get_level()) {
+                                ob_end_clean();
+                        }
+
+                        (new Xlsx($spreadsheet))->save('php://output');
+                }, $fileName, [
+                        'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                ]);
+        }
+
+        /** Gộp danh sách mã BTP/TP của một dòng thành nhiều dòng trong cùng một ô Excel */
+        private function codeLines(array $items): string
+        {
+                return collect($items)
+                        ->map(function ($item) {
+                                $line = $item['code'];
+
+                                if (!empty($item['market'])) {
+                                        $line .= ' - ' . $item['market'];
+                                }
+
+                                $line .= $item['revision'] !== null
+                                        ? ' (v' . $this->mmsNumber($item['revision']) . ')'
+                                        : ' (--)';
+
+                                return $line;
+                        })
+                        ->implode("\n");
+        }
+
+        /** Bỏ phần .0 thừa của kiểu real trên MMS (giống hàm dùng ở view danh sách) */
+        private function mmsNumber($value): string
+        {
+                if ($value === null || $value === '') {
+                        return '';
+                }
+
+                return rtrim(rtrim(number_format((float) $value, 4, '.', ''), '0'), '.');
         }
 
         /** Thông tin mã NL/BB trên MMS (để báo cho người dùng biết mã có tồn tại hay không) */

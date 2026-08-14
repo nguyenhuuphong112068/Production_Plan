@@ -164,6 +164,8 @@ const ScheduleTest = () => {
   const [events, setEvents] = useState([]);
   const [moldWarningIndex, setMoldWarningIndex] = useState(-1);
   const moldWarningEvents = useMemo(() => events.filter(e => e.mold_warning), [events]);
+  // Lịch bị xếp sai thiết bị theo ma trận "Cảnh Báo Nguồn NL"
+  const sourceWarningEvents = useMemo(() => events.filter(e => e.source_warning), [events]);
   const [resources, setResources] = useState([]);
 
   const [selectedStagesFilter, setSelectedStagesFilter] = useState(null);
@@ -941,7 +943,7 @@ const ScheduleTest = () => {
   };
 
   // Nhân Dữ liệu để tạo mới event
-  const handleEventReceive = (info) => {
+  const handleEventReceive = async (info) => {
 
     // chưa chọn row
     //if (!info?.event || !calendarRef?.current) return;
@@ -962,8 +964,40 @@ const ScheduleTest = () => {
       });
       return false
     }
+    // Lấy định mức phòng trực tiếp từ bảng quota (dữ liệu mới nhất, không dùng biến quota đã load sẵn)
+    let quotaRows = selectedRows;
+
+    try {
+      const { data } = await axios.post('/Schedual/checkQuotaRoom', {
+        products: selectedRows.map(row => ({
+          id: row.id,
+          stage_code: row.stage_code,
+          intermediate_code: row.intermediate_code,
+          finished_product_code: row.finished_product_code,
+        }))
+      });
+
+      const quotaMap = new Map((data?.products ?? []).map(p => [String(p.id), p]));
+
+      quotaRows = selectedRows.map(row => {
+        const fresh = quotaMap.get(String(row.id));
+
+        return fresh
+          ? { ...row, permisson_room: fresh.permisson_room, permisson_room_filter: fresh.permisson_room_filter }
+          : row;
+      });
+    } catch (error) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Không Kiểm Tra Được Định Mức Phòng',
+        timer: 1500,
+        showConfirmButton: false,
+      });
+      return false;
+    }
+
     // chưa định mức
-    if (selectedRows[0].permisson_room.length == 0 && selectedRows[0].stage_code !== 9) {
+    if (Object.keys(quotaRows[0].permisson_room || {}).length == 0 && quotaRows[0].stage_code !== 9) {
       Swal.fire({
         icon: 'warning',
         title: 'Sản Phẩm Chưa Được Định Mức',
@@ -974,7 +1008,7 @@ const ScheduleTest = () => {
     }
 
     // Phòng được chọn và định mực k giống
-    const hasPermission = selectedRows.some(row => {
+    const hasPermission = quotaRows.some(row => {
       if (!row.permisson_room) return false;
 
       if (Array.isArray(row.permisson_room)) {
@@ -1011,7 +1045,7 @@ const ScheduleTest = () => {
 
     const { activeStart, activeEnd, type: view_type, props: viewProps } = calendarRef.current?.getApi().view;
 
-    let finalSelectedRows = [...selectedRows];
+    let finalSelectedRows = [...quotaRows];
     if (finalSelectedRows.length === 1 && finalSelectedRows[0].main_parkaging_id && finalSelectedRows[0].stage_code === 7) {
       const mainId = finalSelectedRows[0].main_parkaging_id;
       const relatedRows = plan.filter(p => p.main_parkaging_id === mainId && p.stage_code === 7);
@@ -2273,18 +2307,38 @@ const ScheduleTest = () => {
         return Array.from(allowed);
     };
 
+    // Loại máy của phòng: resource lấy từ FullCalendar để field phụ nằm trong extendedProps,
+    // còn state `resources` (lấy thẳng từ API) thì field nằm ở cấp gốc.
+    const getRoomBlisterType = (roomId) => {
+        let room = allEvents.find(e => e.getResources && String(e.getResources()[0]?.id) === String(roomId))?.getResources()[0]
+            || resources.find(r => String(r.id) === String(roomId));
+        return room?.extendedProps?.blister_type_code ?? room?.blister_type_code ?? null;
+    };
+
+    // blister_type_code của khuôn có thể là số, chuỗi số hoặc chuỗi JSON dạng ["1","3"]
+    const moldFitsRoomType = (mold, rType) => {
+        if (!rType) return true;
+        let raw = mold?.blister_type_code;
+        if (raw === null || raw === undefined || raw === '') return true;
+        let types = [];
+        if (Array.isArray(raw)) {
+            types = raw;
+        } else if (typeof raw === 'string' && raw.trim().startsWith('[')) {
+            try { types = JSON.parse(raw); } catch (e) { types = [raw]; }
+        } else {
+            types = [raw];
+        }
+        return types.map(String).includes(String(rType));
+    };
+
     const getCompatibleMolds = (ev, roomId) => {
         let catId = ev.extendedProps?.product_caterogy_id;
         if (!catId) return [];
-        let room = allEvents.find(e => e.getResources && String(e.getResources()[0]?.id) === String(roomId))?.getResources()[0] || resources.find(r => String(r.id) === String(roomId));
-        let rType = room?.extendedProps?.blister_type_code || room?.blister_type_code;
-        
+        let rType = getRoomBlisterType(roomId);
+
         let moldIds = finishedProductMolds.filter(f => String(f.finished_product_category_id) === String(catId)).map(f => String(f.blister_mold_id));
         let compatible = blisterMolds.filter(m => moldIds.includes(String(m.id)));
-        if (rType) {
-            compatible = compatible.filter(m => m.blister_type_code === rType || (m.blister_type_code && m.blister_type_code.includes(rType)) || !m.blister_type_code);
-        }
-        return compatible;
+        return compatible.filter(m => moldFitsRoomType(m, rType));
     };
 
     const isMoldAvailable = (moldId, tempStart, tempEnd, evId, currentUpdates, updatedTimes) => {
@@ -3117,13 +3171,8 @@ const ScheduleTest = () => {
           if (Number(conf.event._def.extendedProps.stage_code) === 7) {
               let catId = conf.event._def.extendedProps.product_caterogy_id;
               if (catId) {
-                  let rType = resources.find(r => String(r.id) === String(conf.resId))?.blister_type_code;
-                  let mIds = finishedProductMolds.filter(f => String(f.finished_product_category_id) === String(catId)).map(f => String(f.blister_mold_id));
-                  let compatible = blisterMolds.filter(m => mIds.includes(String(m.id)));
-                  if (rType) {
-                      compatible = compatible.filter(m => m.blister_type_code === rType || (m.blister_type_code && m.blister_type_code.includes(rType)) || !m.blister_type_code);
-                  }
-                  
+                  let compatible = getCompatibleMolds(conf.event, conf.resId);
+
                   let concurrentCount = (mId) => {
                        let c = 0;
                        for (let e of calendarApi.getEvents()) {
@@ -3135,16 +3184,22 @@ const ScheduleTest = () => {
                        return c;
                   };
 
+                  // Khuôn đang gán chỉ được giữ lại khi còn nằm trong định mức của SP,
+                  // lắp được cho máy của phòng đích và chưa quá số lượng khuôn.
+                  let keep = false;
                   if (moldId) {
-                       let mold = blisterMolds.find(m => String(m.id) === String(moldId));
-                       if (mold && concurrentCount(moldId) >= (Number(mold.amount) || 0)) {
-                           for (let m of compatible) {
-                               if (concurrentCount(m.id) < (Number(m.amount) || 0)) {
-                                   moldId = m.id;
-                                   break;
-                               }
-                           }
-                       }
+                      let current = compatible.find(m => String(m.id) === String(moldId));
+                      keep = !!current && concurrentCount(moldId) < (Number(current.amount) || 0);
+                  }
+
+                  if (!keep) {
+                      moldId = null;
+                      for (let m of compatible) {
+                          if (concurrentCount(m.id) < (Number(m.amount) || 0)) {
+                              moldId = m.id;
+                              break;
+                          }
+                      }
                   }
               }
           }
@@ -6288,10 +6343,31 @@ const ScheduleTest = () => {
 
     if (!props.is_clearning && props.mold_warning) {
       html += `
-                <div 
+                <div
                   class="absolute top-[-10px] left-[2px] px-1 rounded shadow-sm bg-red-600 text-white z-[20]"
                   style="font-size: 10px; line-height: 1;"
                 ><b>${props.mold_warning}</b></div>`;
+    }
+
+    // Cảnh báo xếp sai thiết bị theo ma trận "Cảnh Báo Nguồn NL".
+    // Khung sự kiện có overflow:hidden nên badge phải nằm trong khung mới thấy được.
+    if (!props.is_clearning && props.source_warning) {
+      html += `
+                <div
+                  class="absolute bottom-[2px] left-[2px] px-1 rounded shadow-sm bg-orange-600 text-white z-[20]"
+                  style="font-size: 10px; line-height: 1; max-width: 60%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"
+                  title="${props.source_warning}"
+                ><b>${props.source_warning}</b></div>`;
+    }
+
+    // Nhắc nhở khai kèm thiết bị trong ma trận, vd: "Khử ẩm" - badge trên bên phải sự kiện
+    if (!props.is_clearning && props.source_reminder) {
+      html += `
+                <div
+                  class="absolute px-1 rounded shadow-sm bg-amber-400 text-black border border-amber-600 z-[20]"
+                  style="top: ${showRenderBadge ? 18 : 2}px; right: 2px; font-size: 10px; line-height: 1.2; max-width: 70%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"
+                  title="Nhắc nhở: ${props.source_reminder}"
+                ><b>🔔 ${props.source_reminder}</b></div>`;
     }
 
 
@@ -6751,6 +6827,26 @@ const ScheduleTest = () => {
             >
               <i className="pi pi-exclamation-triangle"></i>
               <span className="font-bold text-sm">{moldWarningEvents.length} Lịch trùng khuôn</span>
+            </div>
+          )}
+          {sourceWarningEvents.length > 0 && (
+            <div
+              className="flex align-items-center gap-2 bg-orange-100 text-orange-800 px-3 py-1 border-round-2xl shadow-1 border-1 border-orange-300 cursor-pointer hover:bg-orange-200 transition-colors"
+              onClick={() => Swal.fire({
+                icon: 'warning',
+                title: 'Cảnh Báo Nguồn NL - Sai Thiết Bị',
+                html: '<div style="text-align:left;max-height:50vh;overflow:auto">' +
+                  sourceWarningEvents.map(e =>
+                    `<div style="margin-bottom:8px"><b>${e.title || ''}</b><br>` +
+                    `<span style="color:#c2410c">${e.source_warning}</span></div>`
+                  ).join('') + '</div>',
+                width: 700,
+                confirmButtonText: 'Đã hiểu'
+              })}
+              title="Click để xem danh sách lịch xếp sai thiết bị theo cảnh báo nguồn NL"
+            >
+              <i className="pi pi-exclamation-triangle"></i>
+              <span className="font-bold text-sm">{sourceWarningEvents.length} Lịch sai thiết bị nguồn NL</span>
             </div>
           )}
         </div>
@@ -7471,6 +7567,8 @@ const ScheduleTest = () => {
             {hoverDetailData.props.campaign_code && <div><strong className="text-blue-700">Mã Chiến dịch:</strong> <span className="text-red-600 font-bold">{hoverDetailData.props.campaign_code}</span></div>}
             {hoverDetailData.props.blister_mold_code && <div><strong className="text-blue-700">Khuôn:</strong> {hoverDetailData.props.blister_mold_code}</div>}
             {hoverDetailData.props.mold_warning && <div className="text-red-600 font-bold mt-1">⚠️ {hoverDetailData.props.mold_warning}</div>}
+            {hoverDetailData.props.source_warning && <div className="text-orange-600 font-bold mt-1">⚠️ {hoverDetailData.props.source_warning}</div>}
+            {hoverDetailData.props.source_reminder && <div className="text-amber-700 font-bold mt-1">🔔 Nhắc nhở: {hoverDetailData.props.source_reminder}</div>}
             {hoverDetailData.props.subtitle && <div className="text-amber-600 font-semibold mt-1 whitespace-pre-line">{hoverDetailData.props.subtitle}</div>}
           </div>
         </div>
