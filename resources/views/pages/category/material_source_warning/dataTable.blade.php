@@ -250,24 +250,25 @@
                 </button>
             @endif
 
-            <div class="alert alert-secondary py-2">
+            {{-- <div class="alert alert-secondary py-2">
                 Mỗi dòng khai báo: 1 <b>sản phẩm</b> (mã BTP - đã gắn sẵn cỡ lô) khi sử dụng 1 <b>nguồn nguyên liệu</b>
                 (mã NL theo công thức ấn bản mới nhất trên MMS) thì chỉ được sản xuất cho các <b>thị trường được phép</b>,
                 trên các <b>thiết bị</b> đã liệt kê ở từng công đoạn.
                 <br>
                 Mã NL, thị trường và thiết bị đều có thể bỏ trống: <b>phần nào bỏ trống thì không cảnh báo phần đó</b>
                 (bỏ trống mã NL = áp dụng cho mọi nguồn NL của mã BTP).
-            </div>
+            </div> --}}
 
             @php
                 // Cột thiết bị dựng động theo công đoạn đang có khai báo -> phải tính lại
                 // chỉ số cột cho DataTables (các cột không cho sắp xếp).
                 $stageCount = count($stageColumns);
                 $marketColumn = 6 + $stageCount;
-                $noSortColumns = array_merge(
-                    range(6, 5 + $stageCount),
-                    [$marketColumn, $marketColumn + 4, $marketColumn + 5],
-                );
+                $noSortColumns = array_merge(range(6, 5 + $stageCount), [
+                    $marketColumn,
+                    $marketColumn + 4,
+                    $marketColumn + 5,
+                ]);
             @endphp
 
             <table id="data_table_material_source_warning" class="table table-bordered table-striped">
@@ -346,7 +347,8 @@
                                             );
                                         @endphp
                                         <div>
-                                            <span class="msw-room-badge {{ $reminder !== '' ? 'msw-room-badge-reminder' : '' }}"
+                                            <span
+                                                class="msw-room-badge {{ $reminder !== '' ? 'msw-room-badge-reminder' : '' }}"
                                                 title="{{ $roomTitle }}{{ $reminder !== '' ? ' | Nhắc nhở khi xếp lịch: ' . $reminder : '' }}">
                                                 {{ $room['code'] }}
                                                 @if ($reminder !== '')
@@ -384,12 +386,12 @@
                             </td>
 
                             <td class="text-center align-middle">
-                                <button type="button" class="btn btn-warning btn-msw-edit" data-id="{{ $data->id }}"
+                                <button type="button" class="btn btn-warning btn-msw-edit"
+                                    data-id="{{ $data->id }}"
                                     data-intermediate_code="{{ $data->intermediate_code }}"
                                     data-material_code="{{ $data->material_code }}"
                                     data-material_name="{{ $data->material_name }}"
-                                    data-bom_revision="{{ $data->bom_revision }}"
-                                    data-note="{{ $data->note }}"
+                                    data-bom_revision="{{ $data->bom_revision }}" data-note="{{ $data->note }}"
                                     data-markets="{{ $marketsJson->toJson() }}"
                                     data-rooms="{{ $roomsJson->toJson() }}"
                                     data-room_reminders="{{ $remindersJson->toJson() }}" {{ $auth_update }}>
@@ -651,7 +653,8 @@
             const $inner = $('<div class="card card-outline card-primary mb-0">').appendTo($card);
 
             $('<div class="card-header py-2">')
-                .append($('<h3 class="card-title" style="font-size:14px;font-weight:600">').text(stage.stage_name))
+                .append($('<h3 class="card-title" style="font-size:14px;font-weight:600">').text(stage
+                    .stage_name))
                 .append(
                     $('<div class="card-tools">').append(
                         $('<button type="button" class="btn btn-xs btn-outline-primary btn-toggle-stage">')
@@ -662,17 +665,20 @@
                 )
                 .appendTo($inner);
 
-            const $body = $('<div class="card-body py-2" style="max-height:260px;overflow-y:auto">').appendTo($inner);
+            const $body = $('<div class="card-body py-2" style="max-height:260px;overflow-y:auto">').appendTo(
+                $inner);
 
             stage.rooms.forEach(function(room, index) {
                 const id = formId + '_room_' + stage.stage_code + '_' + index;
                 const isChecked = selected.indexOf(room.code) !== -1;
 
                 const $label = $('<label class="custom-control-label">').attr('for', id);
-                $label.append($('<b>').text(room.code)).append(document.createTextNode(' - ' + room.name));
+                $label.append($('<b>').text(room.code)).append(document.createTextNode(' - ' + room
+                    .name));
 
                 if (room.main_equiment_name) {
-                    $label.append($('<span class="text-muted">').text(' (' + room.main_equiment_name + ')'));
+                    $label.append($('<span class="text-muted">').text(' (' + room.main_equiment_name +
+                        ')'));
                 }
 
                 const $line = $('<div class="msw-room-line">').appendTo($body);
@@ -733,7 +739,8 @@
         }
 
         $select.append('<option value=""> Đang lấy công thức từ MMS... </option>').trigger('change.select2');
-        $('#' + formId + '_room_matrix').html('<div class="alert alert-secondary mb-0">Đang tải thiết bị đã định mức...</div>');
+        $('#' + formId + '_room_matrix').html(
+            '<div class="alert alert-secondary mb-0">Đang tải thiết bị đã định mức...</div>');
 
         $.ajax({
             url: MSW_INTERMEDIATE_DATA_URL,
@@ -753,7 +760,8 @@
                 $('#' + formId + '_room_matrix').html(
                     '<div class="alert alert-danger mb-0">Không lấy được danh sách thiết bị đã định mức.</div>'
                 );
-                $('#' + formId + '_batch_info').html('<span class="text-danger">Không lấy được cỡ lô</span>');
+                $('#' + formId + '_batch_info').html(
+                    '<span class="text-danger">Không lấy được cỡ lô</span>');
             }
         });
     }
@@ -878,7 +886,8 @@
             $('#update_material_name').val(button.data('material_name') || '');
             $('#update_bom_revision').val(button.data('bom_revision') || '');
 
-            $('#update_intermediate_code').val(button.data('intermediate_code')).trigger('change.select2');
+            $('#update_intermediate_code').val(button.data('intermediate_code')).trigger(
+                'change.select2');
 
             mswFillMarketRows('update', button.data('markets') || []);
 
