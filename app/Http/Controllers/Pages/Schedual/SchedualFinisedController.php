@@ -17,12 +17,6 @@ class SchedualFinisedController extends Controller
 
                 $stage_code = $request->stage_code ?? 1;
 
-                $stage_code_room =  $stage_code;
-
-                if ($stage_code == 2) {
-                        $stage_code_room = 1;
-                }
-
                 $production = session('user')['production_code'];
 
                 // 🔹 1. Lấy dữ liệu mới nhất cho mỗi stage_plan_id
@@ -141,9 +135,17 @@ class SchedualFinisedController extends Controller
                 //dd ($stages);
 
                 $stageCode = $request->input('stage_code', optional($stages->first())->stage_code);
+                // 🔹 Cân NL Khác (stage 2): xưởng nào có phòng riêng stage 2 thì hiện thêm,
+                // xưởng không có thì vẫn dùng phòng cân của stage 1
                 $room_stages = DB::table('room')
-                        ->where('stage_code', $stage_code_room)
+                        ->when(
+                                $stage_code == 2,
+                                fn($q) => $q->whereIn('stage_code', [1, 2]),
+                                fn($q) => $q->where('stage_code', $stage_code)
+                        )
                         ->where('deparment_code', $production)
+                        ->where('active', 1)
+                        ->orderBy('order_by')
                         ->get();
 
 

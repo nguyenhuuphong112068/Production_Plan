@@ -15,6 +15,7 @@ use App\Http\Controllers\Pages\Schedual\SchedualViewController;
 use App\Http\Controllers\Pages\MaintenanceSchedual\MaintenanceSchedualController;
 use App\Http\Controllers\Pages\Schedual\ShedualYieldController;
 use App\Http\Controllers\Pages\Schedual\YieldPolicyController;
+use App\Http\Controllers\Pages\Schedual\WipCoverageController;
 use App\Http\Middleware\CheckLogin;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Pages\Schedual\AutoSchedualController;
@@ -178,6 +179,17 @@ Route::prefix('/Schedual')
                                 Route::post('store',  'store')->name('store');
                                 Route::post('daily',  'storeDaily')->name('daily');
                                 Route::post('check',  'checkYieldPolicy')->name('check');
+                                Route::post('wip_threshold', 'storeWipThreshold')->name('wip_threshold');
+                        });
+
+                Route::prefix('/wip_coverage')
+                        ->controller(WipCoverageController::class)
+                        ->name('wip_coverage.')
+                        ->group(function () {
+                                Route::get('',        'index')->name('index');
+                                Route::post('view',   'view')->name('view');
+                                Route::post('detail', 'detail')->name('detail');
+                                Route::post('history', 'history')->name('history');
                         });
 
                 Route::prefix('/audit')

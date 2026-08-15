@@ -13,12 +13,14 @@ import ScheduleTest from "./Pages/FullCalender.jsx";
 import AssignmentCalender from './Pages/AssignmentCalender.jsx';
 import MaintenanceCalender from "./Pages/MaintenanceCalender .jsx";
 import AssignmentChart from "./Pages/AssignmentChart.jsx";
+import WipCoverage from "./Pages/WipCoverage.jsx";
 
 
 createRoot(document.getElementById("root")).render(
   <BrowserRouter>
     <Routes>
       <Route path="/Schedual" element={<ScheduleTest />} />
+      <Route path="/Schedual/wip_coverage" element={<WipCoverage />} />
       <Route path="/assignment" element={<AssignmentCalender />} />
       <Route path="/maintenance-calendar" element={<MaintenanceCalender />} />
       <Route path="/assignemnt/production/chart" element={<AssignmentChart />} />

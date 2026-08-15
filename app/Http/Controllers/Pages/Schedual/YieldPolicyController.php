@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Pages\Schedual;
 
 use App\Http\Controllers\Controller;
+use App\Services\WipCoverageService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -62,6 +63,8 @@ class YieldPolicyController extends Controller
             'totalWorkingDays'=> $totalWorkingDays,
             'totalOffDays'    => $totalOffDays,
             'productionName'  => session('user')['production_name'] ?? $productionCode,
+            'wipThresholds'   => $this->wipThresholdsForView($productionCode),
+            'wipGroupNames'   => WipCoverageService::GROUP_NAMES,
         ]);
     }
 
@@ -240,6 +243,88 @@ class YieldPolicyController extends Controller
             'min_submit_pct' => $minPct,
             'message'        => 'Sản lượng lý thuyết đáp ứng chính sách.',
         ]);
+    }
+
+    /**
+     * Lưu ngưỡng cảnh báo tồn bán thành phẩm của phân xưởng
+     */
+    public function storeWipThreshold(Request $request)
+    {
+        if (! user_has_permission(session('user')['userId'], 'set_yield_policy', 'boolean')) {
+            return response()->json(['success' => false, 'message' => 'Bạn không có quyền cài đặt chính sách sản lượng.'], 403);
+        }
+
+        $request->validate([
+            'stage_group_code' => 'required|string|in:' . implode(',', WipCoverageService::SOURCE_GROUPS),
+            'critical_days'    => 'nullable|numeric|min:0|max:999',
+            'warn_days'        => 'nullable|numeric|min:0|max:999',
+            'horizon_days'     => 'nullable|integer|min:1|max:180',
+        ]);
+
+        $critical = $request->critical_days === null || $request->critical_days === '' ? null : (float) $request->critical_days;
+        $warn     = $request->warn_days === null || $request->warn_days === '' ? null : (float) $request->warn_days;
+
+        // Ngưỡng nguy cấp phải thấp hơn ngưỡng cảnh báo, nếu không màu sẽ vô nghĩa
+        if ($critical !== null && $warn !== null && $critical > $warn) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ngưỡng nguy cấp phải nhỏ hơn hoặc bằng ngưỡng cảnh báo.',
+            ], 422);
+        }
+
+        $productionCode = session('user')['production_code'];
+        $user           = session('user')['fullName'] ?? session('user')['userName'] ?? 'System';
+
+        DB::table('wip_coverage_thresholds')->updateOrInsert(
+            [
+                'production_code'  => $productionCode,
+                'stage_group_code' => $request->stage_group_code,
+            ],
+            [
+                'critical_days' => $critical,
+                'warn_days'     => $warn,
+                'horizon_days'  => (int) ($request->horizon_days ?: WipCoverageService::DEFAULT_HORIZON_DAYS),
+                'is_active'     => 1,
+                'updated_by'    => $user,
+                'created_by'    => $user,
+                'updated_at'    => now(),
+                'created_at'    => now(),
+            ]
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Đã lưu ngưỡng cảnh báo tồn ' . (WipCoverageService::GROUP_NAMES[$request->stage_group_code] ?? ''),
+        ]);
+    }
+
+    /**
+     * Chỉ hiện các nhóm công đoạn mà phân xưởng thực sự có, kèm giá trị mặc định
+     */
+    private function wipThresholdsForView(string $productionCode): array
+    {
+        $existingGroups = DB::table('stage_plan')
+            ->where('deparment_code', $productionCode)
+            ->where('active', 1)
+            ->distinct()
+            ->pluck('stage_code')
+            ->map(fn($code) => (int) $code)
+            ->all();
+
+        $thresholds = WipCoverageService::thresholdsFor($productionCode);
+
+        $result = [];
+        foreach (WipCoverageService::SOURCE_GROUPS as $groupCode) {
+            $stages = WipCoverageService::STAGE_GROUPS[$groupCode];
+
+            if (empty(array_intersect($stages, $existingGroups))) {
+                continue;
+            }
+
+            $result[$groupCode] = $thresholds[$groupCode];
+        }
+
+        return $result;
     }
 
     /**

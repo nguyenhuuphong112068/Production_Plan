@@ -796,6 +796,7 @@ const ScheduleTest = () => {
     // No handleViewChange call needed anymore for this toggle
   };
 
+
   const toggleHistoryHover = () => {
     const newState = !showHistoryHover;
     setShowHistoryHover(newState);
@@ -7290,6 +7291,7 @@ const ScheduleTest = () => {
             click: (...args) => fcLatest.current.toggleTheoryEvents(...args),
             hint: 'Hiển thị lịch lý thuyết đôi với các lịch đã hoàn thành'
           },
+
 
           autoSchedualer: {
             text: '🤖',

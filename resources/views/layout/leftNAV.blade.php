@@ -569,6 +569,7 @@
                             </a>
                         </li>
 
+
                         <li class="nav-item">
                             <a href="{{ route('pages.Schedual.clearning_validation.index') }}" class="nav-link">
                                 <i class="far fa-circle nav-icon"></i>
@@ -789,6 +790,15 @@
                                     <p> Tồn BTP Lý Thyết </p>
                                 </a>
                             </li> --}}
+
+                            @if (user_has_permission(session('user')['userId'], 'layout_wip_coverage', 'boolean'))
+                                <li class="nav-item">
+                                    <a href="{{ route('pages.Schedual.wip_coverage.index') }}" class="nav-link">
+                                        <i class="far fa-circle nav-icon"></i>
+                                        <p> Tồn Kho Lý Thuyết </p>
+                                    </a>
+                                </li>
+                            @endif
 
                             <li class="nav-item">
                                 <a href="{{ route('pages.quarantine.actual.index_actual') }}" class="nav-link">

@@ -159,7 +159,12 @@ class KcsTrackingController extends Controller
             ->orderBy('id', 'desc')
             ->get();
 
-        $html = view('pages.plan.kcs_tracking.history', compact('histories'))->render();
+        // Vết cũ lưu userName (mã nhân viên); tra ngược về họ tên để cột "Người Sửa" luôn đọc được
+        $names = DB::table('user_management')
+            ->whereIn('userName', $histories->pluck('changed_by')->filter()->unique())
+            ->pluck('fullName', 'userName');
+
+        $html = view('pages.plan.kcs_tracking.history', compact('histories', 'names'))->render();
 
         return response()->json(['html' => $html]);
     }
@@ -196,7 +201,7 @@ class KcsTrackingController extends Controller
     {
         $after = $this->inputSnapshot($record);
         $now = Carbon::now();
-        $changedBy = session('user')['userName'] ?? 'System';
+        $changedBy = session('user')['fullName'] ?? (session('user')['userName'] ?? 'System');
         $rows = [];
 
         foreach ($after as $field => $newValue) {

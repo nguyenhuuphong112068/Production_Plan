@@ -9,7 +9,7 @@
             <tr>
                 <th class="text-center" style="width: 60px;">STT</th>
                 <th style="width: 150px;">Thời Điểm</th>
-                <th style="width: 110px;">Người Sửa</th>
+                <th style="width: 170px;">Người Sửa</th>
                 <th style="width: 100px;">Hành Động</th>
                 <th>Nội Dung</th>
                 <th style="width: 160px;">Giá Trị Cũ</th>
@@ -21,7 +21,7 @@
                 <tr>
                     <td class="text-center">{{ $index + 1 }}</td>
                     <td>{{ optional($history->created_at)->format('d/m/Y H:i') }}</td>
-                    <td>{{ $history->changed_by }}</td>
+                    <td>{{ $names[$history->changed_by] ?? $history->changed_by }}</td>
                     <td>
                         <span class="badge {{ $history->action === 'create' ? 'badge-success' : 'badge-primary' }}">
                             {{ $history->action_label }}
