@@ -108,18 +108,23 @@ class LoginController extends Controller
         $depId = $depMapping[$departmentCode] ?? null;
         if (!$depId) return;
 
-        $month = now()->month;
-        $year = now()->year;
-        $url = "http://s-webdev:5070/api/shifts/by-department?month={$month}&year={$year}&department={$depId}";
-        //dd($url);
         try {
-            $ctx = stream_context_create(['http' => ['timeout' => 5]]); // Timeout 5s
-            $data = @file_get_contents($url, false, $ctx);
+            $shiftApi = app(\App\Services\ShiftApiService::class);
 
-            if (!$data) return;
+            // Chỉ cần danh sách nhân sự của bộ phận nên hỏi đúng ngày hôm nay.
+            $today = now()->format('Y-m-d');
+            $index = $shiftApi->shiftIndex($today, $today, $depId, false);
+            if ($index === null) return;
 
-            $employeesFromApi = json_decode($data) ?: [];
-            if (!is_array($employeesFromApi)) return;
+            $employeesFromApi = [];
+            foreach ($index as $empCode => $person) {
+                if (empty($person['in_roster'])) continue;
+                $employeesFromApi[] = (object) [
+                    'employeeId' => (string) $empCode,
+                    'employeeName' => $person['name'],
+                    'is_warehouse' => false,
+                ];
+            }
 
             // Danh sách mã nhân sự kho (dept 17) được phép hiển thị tại Trung Tâm Cân
             $warehouseAllowedCodes = ['21049', '21048', '21077', '21064', '21080', '21090', '21120', '21122', '21130', '21143', '21148', '21152'];
@@ -129,24 +134,17 @@ class LoginController extends Controller
             $api17Ok = false;
 
             if ($departmentCode === 'PXV1') {
-                $url17 = "http://s-webdev:5070/api/shifts/by-department?month={$month}&year={$year}&department=17";
-                try {
-                    $ctx17 = stream_context_create(['http' => ['timeout' => 5]]);
-                    $data17 = @file_get_contents($url17, false, $ctx17);
-                    if ($data17) {
-                        $employees17 = json_decode($data17);
-                        if (is_array($employees17)) {
-                            $api17Ok = true;
-                            foreach ($employees17 as $emp17) {
-                                $emp17->is_warehouse = true;
-                                if (isset($emp17->employeeName)) {
-                                    $emp17->employeeName = trim($emp17->employeeName) . ' - WH';
-                                }
-                                $employeesFromApi[] = $emp17;
-                            }
-                        }
+                $index17 = $shiftApi->shiftIndex($today, $today, 17, false);
+                if ($index17 !== null) {
+                    $api17Ok = true;
+                    foreach ($index17 as $empCode => $person) {
+                        if (empty($person['in_roster'])) continue;
+                        $employeesFromApi[] = (object) [
+                            'employeeId' => (string) $empCode,
+                            'employeeName' => trim($person['name']) . ' - WH',
+                            'is_warehouse' => true,
+                        ];
                     }
-                } catch (\Exception $ex17) {
                 }
             }
 

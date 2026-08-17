@@ -44,6 +44,36 @@
     </div>
 @endunless
 
+@unless ($mmsAvailable)
+    <div class="alert alert-secondary py-2 small">
+        <i class="fas fa-plug"></i> Chưa kết nối được <b>MMS</b>: các ô <b>Ngày KCS</b> và
+        <b>Số Phiếu COATP</b> không được điền sẵn, vui lòng nhập tay.
+    </div>
+@endunless
+
+@if ($mmsSuggestions->isNotEmpty())
+    <div class="alert alert-success py-2 small mb-2">
+        <i class="fas fa-lock"></i>
+        <b>Ngày KCS</b> và <b>Số Phiếu COATP</b> lấy thẳng từ MMS (bước QA Approval) nên
+        <b>không nhập tay</b> - đó là các ô nền xanh. Mỗi lần mở trang hệ thống tự đối chiếu lại với MMS.
+        Hiện có <b>{{ $mmsSuggestions->count() }} lô</b> tra được dữ liệu.
+        @if ($mmsSynced)
+            <b class="text-danger">Vừa cập nhật {{ $mmsSynced }} lô theo dữ liệu mới của MMS.</b>
+        @endif
+        Riêng <b>Ngày Nhận COATP</b> vẫn do người dùng tự nhập.
+    </div>
+@endif
+
+@if ($mmsCodeMismatch->isNotEmpty())
+    <div class="alert alert-warning py-2 small mb-2">
+        <i class="fas fa-exclamation-triangle"></i>
+        <b>{{ $mmsCodeMismatch->count() }} lô lệch mã thành phẩm giữa PMS và MMS.</b>
+        Cùng số lệnh và cùng số lô nhưng hai hệ thống ghi mã TP khác nhau, nên <b>Ngày KCS</b> và
+        <b>Số Phiếu COATP</b> không tự điền được - vui lòng nhập tay và kiểm tra lại mã TP.
+        Mã MMS đang dùng hiện ở nhãn <span class="badge badge-warning">MMS: ...</span> cột <b>Mã TP</b>.
+    </div>
+@endif
+
 {{-- <div class="alert alert-light border py-2 small">
     <i class="fas fa-info-circle text-info"></i>
     Dòng có dấu <i class="fas fa-circle text-muted"></i> là lô <b>chưa lưu theo dõi KCS</b>: các ô ngày đã được
@@ -77,7 +107,6 @@
                 <th class="bg-warning" style="min-width: 140px;">Ngày Nhận Hồ Sơ</th>
                 <th class="bg-warning" style="min-width: 110px;">Người Đọc</th>
                 <th class="bg-warning" style="min-width: 140px;">Ngày Đọc Xong HS</th>
-                <th class="bg-warning" style="min-width: 120px;">SL Nhập Kho</th>
                 <th class="bg-warning" style="min-width: 120px;">Số Phiếu COATP</th>
                 <th class="bg-warning" style="min-width: 140px;"
                     title="Ngày KCS nhận được COATP. Không phải &quot;Ngày ra phiếu TP&quot; của QC ở trang Phản Hồi Kế Hoạch Tháng.">
@@ -108,9 +137,20 @@
                     $record = $records->get($data->id);
                     $bom = $bomVersions->get($data->id);
                     $prefill = \App\Http\Controllers\Pages\Plan\KcsTrackingController::PREFILL_FROM_PLAN_MASTER;
+                    $mms = $mmsSuggestions->get($data->id);
+                    $codeMismatch = $mmsCodeMismatch->get($data->id);
 
-                    // Đã có dòng theo dõi thì lấy đúng dữ liệu đã lưu; chưa có thì gợi ý
-                    // các mốc sẵn có trên kế hoạch để người dùng khỏi gõ lại rồi tự bấm lưu.
+                    // Ngày KCS và Số phiếu COATP do MMS quyết định, không nhập tay. Ô hiện
+                    // giá trị của MMS; lô chưa có trên MMS thì hiện giá trị cũ đã lưu (nếu có).
+                    //
+                    // Hai ô này cố ý KHÔNG mang class kcs-input để JS không gom vào payload:
+                    // server tự lấy lại từ MMS khi lưu, không nhận giá trị từ trình duyệt.
+                    $mmsValue = function ($field) use ($mms, $record) {
+                        return $mms[$field] ?? ($record?->getRawOriginal($field) ?? '');
+                    };
+
+                    // Các ô người dùng nhập: đã có dòng theo dõi thì lấy đúng dữ liệu đã lưu,
+                    // chưa có thì gợi ý mốc sẵn có trên kế hoạch để khỏi gõ lại rồi tự bấm lưu.
                     $value = function ($field) use ($record, $data, $prefill) {
                         if ($record) {
                             return $record->getRawOriginal($field) ?? '';
@@ -157,6 +197,11 @@
                                 v{{ $bom->tp_version }}
                             </span>
                         @endif
+                        @if ($codeMismatch)
+                            <i class="fas fa-exclamation-triangle text-warning"
+                                title="Lệch mã thành phẩm giữa PMS và MMS. Cùng số lệnh {{ $data->order_number_R1 ?: $data->order_number_R2 }} và số lô {{ $data->actual_batch ?: $data->batch }}, nhưng MMS ghi mã {{ $codeMismatch }}. Vì vậy Ngày KCS và Số Phiếu COATP không tự điền được - vui lòng nhập tay và kiểm tra lại mã TP."></i>
+                            <span class="badge badge-warning">MMS: {{ $codeMismatch }}</span>
+                        @endif
                     </td>
                     <td class="align-middle">{{ $data->market }}</td>
                     <td class="align-middle">{{ $data->specification }}</td>
@@ -178,12 +223,9 @@
                     </td>
                     <td><input type="date" class="form-control form-control-sm kcs-input" name="record_done_date"
                             value="{{ $value('record_done_date') }}" {{ $canUpdate ? '' : 'disabled' }}></td>
-                    <td><input type="number" min="0"
-                            class="form-control form-control-sm kcs-input text-right" name="stock_in_qty"
-                            value="{{ $value('stock_in_qty') }}" {{ $canUpdate ? '' : 'disabled' }}>
-                    </td>
-                    <td><input type="text" class="form-control form-control-sm kcs-input" name="coatp_number"
-                            value="{{ $value('coatp_number') }}" {{ $canUpdate ? '' : 'disabled' }}></td>
+                    <td><input type="text" class="form-control form-control-sm kcs-locked" name="coatp_number"
+                            value="{{ $mmsValue('coatp_number') }}" disabled
+                            title="Số phiếu COATP lấy từ MMS (fgqc.coano), không nhập tay."></td>
                     <td><input type="date" class="form-control form-control-sm kcs-input"
                             name="coatp_received_date" value="{{ $value('coatp_received_date') }}"
                             {{ $canUpdate ? '' : 'disabled' }}></td>
@@ -204,8 +246,9 @@
                             {{ $canUpdate ? '' : 'disabled' }}></td>
                     <td><input type="date" class="form-control form-control-sm kcs-input" name="kcs_queue_date"
                             value="{{ $value('kcs_queue_date') }}" {{ $canUpdate ? '' : 'disabled' }}></td>
-                    <td><input type="date" class="form-control form-control-sm kcs-input" name="kcs_date"
-                            value="{{ $value('kcs_date') }}" {{ $canUpdate ? '' : 'disabled' }}></td>
+                    <td><input type="date" class="form-control form-control-sm kcs-locked" name="kcs_date"
+                            value="{{ $mmsValue('kcs_date') }}" disabled
+                            title="Ngày KCS lấy từ MMS (bước QA Approval), không nhập tay."></td>
                     <td><input type="text" class="form-control form-control-sm kcs-input" name="note"
                             value="{{ $value('note') }}" {{ $canUpdate ? '' : 'disabled' }}></td>
 
@@ -229,7 +272,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="32" class="text-center text-muted py-4">
+                    <td colspan="31" class="text-center text-muted py-4">
                         Không có lô sản xuất nào trong khoảng đã chọn
                     </td>
                 </tr>
@@ -323,6 +366,15 @@
 
     #kcs_tracking_table .kcs-saving {
         background-color: #fff3cd;
+    }
+
+    /* Ô khoá vì lấy từ MMS: tô khác hẳn ô bị khoá do thiếu quyền (xám mặc định của
+       Bootstrap) để người dùng thấy ngay đây là dữ liệu hệ thống gốc, không phải bị chặn. */
+    #kcs_tracking_table .kcs-locked:disabled {
+        background-color: #d4edda;
+        color: #155724;
+        font-weight: 600;
+        cursor: not-allowed;
     }
 </style>
 

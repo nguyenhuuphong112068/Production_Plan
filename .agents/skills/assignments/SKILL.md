@@ -67,9 +67,41 @@ Kỹ năng này tài liệu hóa quy trình quản lý nhân sự và phân côn
 3. **Xác nhận:** Sử dụng biểu tượng con mắt ở thanh bên để kiểm tra tay nghề nhân viên trước khi kéo họ vào ca làm việc.
 4. **Xử lý Lỗi:** Chú ý đến các cảnh báo màu đỏ "Không được phép" hoặc "Nghỉ phép" để ngăn chặn việc nhập dữ liệu sai.
 
-### 6. Ánh xạ Dữ liệu API Bên ngoài (S-WebDev)
-- **Endpoint:** `http://s-webdev:5070/api/shifts/by-department`
-- **Mục đích:** Đồng bộ lịch trực (shifts) của nhân sự từ hệ thống quản lý nhân sự tập trung.
+### 6. Ánh xạ Dữ liệu API Bên ngoài (eO2 PMS)
+- **Mục đích:** Đồng bộ lịch trực (shifts), nghỉ phép và tăng ca của nhân sự từ hệ thống quản lý nhân sự tập trung.
+- **Endpoint:** endpoint cũ `http://s-webdev:5070/api/shifts/by-department?month=&year=` **đã ngừng sử dụng**, thay bằng 3 endpoint con nhận khoảng ngày thật (`fromdate`/`todate` dạng `Y-m-d`):
+
+| Endpoint | Nội dung | Hình dạng `days` |
+| --- | --- | --- |
+| `{base}/range` | Mã ca trực + cờ ngày lễ | object khoá `"DD/MM/YYYY"` → `{shift, is_holiday}` |
+| `{base}/leave` | Đơn nghỉ phép | mảng `{day, leave, status}` |
+| `{base}/overtime` | Giờ tăng ca | mảng `{day, overtime, status}` |
+
+- **Base URL:** `https://eo2pms.stellapharm.int/api/shifts` (cấu hình tại `config/shiftapi.php`, biến `SHIFT_API_BASE_URL`).
+- **TLS:** chứng thư do CA nội bộ cấp nên PHP không xác thực được → `verify_tls` mặc định `false`. Bật lại bằng `SHIFT_API_VERIFY_TLS=true` sau khi cài CA nội bộ vào máy chủ.
+- **Nơi triển khai duy nhất:** `App\Services\ShiftApiService`. **Không gọi thẳng 3 endpoint này ở controller** — mọi màn hình phải đi qua service để dùng chung cache và cùng một quy tắc hợp nhất.
+
+#### Quy tắc hợp nhất 3 nguồn
+- `range` là xương sống, cho mã ca (`C1`/`C2`/`C3`/`C4`/`HC`/`P`…).
+- `leave` ghi đè mã ca thành `P` khi đơn được tính là nghỉ:
+    - **Được tính:** `Approved`, và mọi trạng thái chờ duyệt.
+    - **Không tính:** `Rejected`, `Cancelled`.
+    - Chuỗi chờ duyệt **không cố định** (`Waiting TLE Approval/Chờ tổ trưởng duyệt`, `Waiting DH Approval/Chờ trưởng phòng duyệt`, `Waiting BOD Approval/Chờ BGD duyệt`) nên phải khớp theo từ khoá (`chứa "Waiting"` **và** `chứa "Approval"`), tuyệt đối không so bằng chuỗi `"Waiting Approval"`.
+    - *Lưu ý:* `range` đã tự trả `P` cho đơn **đã duyệt**; phần `leave` thực sự bổ sung là đơn **chờ duyệt** (những ngày này `range` vẫn trả ca gốc như `C1`/`C3`). Phép chờ duyệt được đối xử y hệt phép đã duyệt: gạch tên trong sidebar, chặn kéo-thả và chặn auto-assign.
+- `overtime` **không xét `status`** (theo yêu cầu nghiệp vụ) — cứ `overtime > 0` là tính.
+- `regular_working_Hours` (giờ e-office) **không có** trong bộ 3 endpoint mới nên được **suy ra** trong service, tính SAU khi đã phủ nghỉ phép lên mã ca:
+
+| Trạng thái ngày | `regular_working_Hours` |
+| --- | --- |
+| Không có ca (`shift = null`) | `0` |
+| Nghỉ phép (`shift = P`) | `8 - số giờ nghỉ` (dữ liệu nguồn hiện chỉ có nghỉ trọn ngày 8h → ra `0`) |
+| Còn lại | `8` |
+
+  Số 8 lấy từ `shiftapi.standard_working_hours`. Dashboard vẫn ép về 0 cho các ngày nằm trong bảng `off_days`.
+
+#### Quy tắc Ngày (đã đơn giản hoá)
+- API mới trả theo **ngày lịch thật**, nên toàn bộ trò ghép 2 tháng đã bị gỡ bỏ. `days.dayN` mà service trả về cho giao diện chính là **ngày N của đúng tháng được hỏi**.
+- ⚠️ **Đính chính quy tắc cũ:** tài liệu trước đây mô tả "với `month = N` thì `day21..day31` thuộc tháng `N-1`, muốn lấy ngày 21-31 của tháng `M` phải gọi `month = M + 1`". Quy tắc này **sai**. Đối chiếu trực tiếp API cũ với API mới (bộ phận 6, tháng 7 và tháng 8/2026) cho thấy `day1..day31` của payload `month = N` **đều thuộc chính tháng `N`** (khớp 100% cả `shift` lẫn `is_holiday`; giả thuyết lệch tháng chỉ khớp ~19-26%). Hệ quả: code cũ đã đọc ngày 21-31 từ payload của **tháng sau**, tức hiển thị sai lịch trực ở 1/3 cuối mỗi tháng. Việc chuyển sang API mới đồng thời sửa luôn lỗi này.
 - **Bảng ánh xạ mã Bộ phận (Department Mapping):**
     - `EN` (Kỹ Thuật): **3**
     - `PXTN` (Phân xưởng Thuốc Nước): **6**
@@ -79,17 +111,16 @@ Kỹ năng này tài liệu hóa quy trình quản lý nhân sự và phân côn
     - `PXDN` (Phân xưởng Dùng Ngoài): **34**
     - `PXV2` (Phân xưởng Viên 2): **32**
     - *Ghi chú:* Các mã ID này được sử dụng làm tham số `department` trong URL API để lấy đúng dữ liệu ca trực của từng đơn vị.
-- **Quy tắc Ghép nối Dữ liệu Thời gian (Date Mapping Rule):**
-    - Khoảng thời gian chấm công/đi ca của hệ thống bắt đầu từ ngày 21 tháng trước đến ngày 20 tháng hiện tại.
-    - **Cách API trả dữ liệu (chiều đọc):** Với một URL `month = N`, payload chứa `day1`..`day31` KHÔNG cùng thuộc tháng `N`:
-        - `day1` -> `day20` = ngày 01/N -> 20/N (đúng tháng `N`).
-        - `day21` -> `day31` = ngày 21/(N-1) -> 31/(N-1) (thuộc tháng **TRƯỚC** đó).
-    - **Cách ghép cho một tháng lịch `M` (chiều dựng):** Do quy tắc trên, muốn có đủ 31 ngày thực tế của tháng `M` phải gọi 2 URL:
-        - **Ngày 01 -> 20 của tháng `M`:** Lấy `day1`..`day20` từ API `month = M`.
-        - **Ngày 21 -> 31 của tháng `M`:** Lấy `day21`..`day31` từ API `month = M + 1` (vì trong payload đó, `day21`..`day31` chính là tháng `M`). Hệ thống tự động chuyển sang `month = 1`, `year + 1` nếu `M = 12`.
-        - *Ví dụ tháng 7/2026:* `month=7` cho ngày 01-20/07, và `month=8` cho ngày 21-31/07.
-    - **Cảnh báo:** Không được đọc thẳng `day21`..`day31` từ API `month = M` rồi coi đó là ngày 21-31 của tháng `M` — đó thực chất là tháng `M - 1`.
-    - **Nơi triển khai:** `ProductionAssignmentController::getPersonnelShifts()`, `MaintenanceAssignmentController::getPersonnelShifts()`, `PersonnelController::getMergedMonthlyShifts()`.
+
+#### Hiệu năng & Cache
+- **Đặc tính máy chủ nguồn (đo thực tế):** mỗi request tốn **cố định ~9.5s** bất kể cửa sổ ngày lớn hay nhỏ (2 ngày cũng như 30 ngày). Vì vậy phải giảm SỐ LƯỢNG request và cho chúng chạy song song, chứ thu hẹp khoảng ngày không giúp gì.
+- `ShiftApiService`:
+    - gom **toàn bộ** request còn thiếu (mọi tháng × mọi bộ phận × 3 endpoint) vào **một mẻ `curl_multi` duy nhất** — thời gian ≈ request chậm nhất thay vì cộng dồn. Đo thực tế: 1 tháng ~9.9s (thay vì ~28s nếu gọi lần lượt); 2 tháng PXTN 11.6s so với 19.3s khi gọi tuần tự (**nhanh hơn 40%**),
+    - lấy và cache **trọn từng tháng lịch** làm đơn vị chung để mọi màn hình dùng lại được một bản cache (cache nóng ~0.003s),
+    - nén gzip + base64 trước khi ghi cache (bảng tra một tháng vượt `max_allowed_packet` 1MB của MySQL nếu ghi thẳng),
+    - giữ **bản sao lưu 24h** để giao diện vẫn chạy khi API lỗi/timeout.
+- ⚠️ **Rate limit (HTTP 429):** máy chủ nguồn chặn khi bị dồn quá nhiều request nặng liên tục (đã tái hiện được với PXV1). Khi bị 429, service rơi về bản sao lưu 24h → giao diện vẫn chạy nhưng **hiển thị dữ liệu cũ**, và ghi log riêng `Shift API bi chan do rate limit (429)`. Vì vậy `shiftapi.max_concurrency` mặc định để **3** (vừa đúng bộ 3 endpoint của một tháng). Thấy log 429 nhiều thì giảm xuống, đừng tăng lên.
+- `shiftIndex()` / `monthlyByDayKey()` trả **`null`** khi API hỏng hẳn (không còn bản sao lưu), khác với **`[]`** nghĩa là bộ phận rỗng — nơi gọi phải phân biệt hai trường hợp này.
 
 ### 7.1 Tự động Phân công Nhân sự Sản Xuất (Auto Assign)
 - **Chỉ định theo ca:** Nhân sự được tự động lấy từ danh sách lịch trực (sidebar) và gom vào các nhóm (pool) tương ứng với từng ca làm việc (C1, C2, HC...). Những nhân sự đang nghỉ phép (P) sẽ bị loại bỏ.

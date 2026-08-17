@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use App\Services\ShiftApiService;
 
 class DashBoardController extends Controller
 {
@@ -33,87 +34,30 @@ class DashBoardController extends Controller
     }
 
     /**
-     * Gọi API lịch trực cho một tháng payload. Với PXV1 (dep 15) gộp thêm Kho (dep 17).
-     * Trả về mảng đã decode, mảng rỗng nếu API lỗi.
-     */
-    private function fetchShiftApi($month, $year, $departmentId)
-    {
-        $ctx = stream_context_create(['http' => ['timeout' => 3]]);
-        $base = "http://s-webdev:5070/api/shifts/by-department?month={$month}&year={$year}&department=";
-
-        $personnelData = [];
-        try {
-            $data = @file_get_contents($base . $departmentId, false, $ctx);
-            if ($data) {
-                $personnelData = json_decode($data, true) ?: [];
-            }
-        } catch (\Exception $e) {
-        }
-        if (!is_array($personnelData)) {
-            $personnelData = [];
-        }
-
-        if ($departmentId == 15) {
-            try {
-                $data17 = @file_get_contents($base . '17', false, $ctx);
-                if ($data17) {
-                    $personnelData17 = json_decode($data17, true) ?: [];
-                    if (is_array($personnelData17)) {
-                        $personnelData = array_merge($personnelData, $personnelData17);
-                    }
-                }
-            } catch (\Exception $ex) {
-            }
-        }
-
-        return $personnelData;
-    }
-
-    /**
-     * Xây bảng tra cứu ca trực theo NGÀY LỊCH THỰC TẾ.
+     * Bảng tra cứu ca trực theo NGÀY LỊCH THỰC TẾ.
      *
-     * API trả về day1..day31 nhưng không cùng một tháng: với URL month = N thì
-     * day1..day20 thuộc tháng N, còn day21..day31 thuộc tháng N-1. Do đó mỗi ngày
-     * thực tế phải lấy từ đúng payload tương ứng (xem skill assignments §6):
-     *   - ngày 01-20 của tháng M -> URL month = M
-     *   - ngày 21-31 của tháng M -> URL month = M + 1
-     * Mỗi tháng payload chỉ gọi API một lần dù khoảng thời gian bắc qua nhiều tháng.
+     * API mới (`range`/`leave`/`overtime`) đã trả theo ngày lịch thật nên quy tắc
+     * lệch tháng "day21..day31 thuộc tháng trước" của API `by-department` cũ đã
+     * bị bỏ. Với PXV1 (dep 15) gộp thêm Kho (dep 17).
      *
      * @return array [employeeCode => ['Y-m-d' => dayData]]
      */
-    private function buildShiftIndex(Carbon $startDate, $daysInPeriod, $departmentId)
+    private function buildShiftIndex(Carbon $startDate, $daysInPeriod, $departmentId, ShiftApiService $shiftApi)
     {
+        $from = $startDate->copy()->startOfDay();
+        $to = $from->copy()->addDays(max(0, $daysInPeriod - 1));
+
+        $shiftIndex = $shiftApi->shiftIndex($from, $to, (int) $departmentId, (int) $departmentId === 15) ?? [];
+
         $index = [];
-        $apiCache = [];
-
-        for ($d = 0; $d < $daysInPeriod; $d++) {
-            $currentDay = $startDate->copy()->addDays($d);
-
-            $apiMonth = $currentDay->day <= 20 ? $currentDay->month : $currentDay->month + 1;
-            $apiYear = $currentDay->year;
-            if ($apiMonth > 12) {
-                $apiMonth = 1;
-                $apiYear++;
-            }
-
-            $cacheKey = "{$apiYear}-{$apiMonth}";
-            if (!isset($apiCache[$cacheKey])) {
-                $apiCache[$cacheKey] = $this->fetchShiftApi($apiMonth, $apiYear, $departmentId);
-            }
-
-            $dayKey = 'day' . $currentDay->day;
-            $dateKey = $currentDay->format('Y-m-d');
-            foreach ($apiCache[$cacheKey] as $person) {
-                $code = $person['employeeId'] ?? $person['code'] ?? null;
-                if (!$code) continue;
-                $index[$code][$dateKey] = $person['days'][$dayKey] ?? null;
-            }
+        foreach ($shiftIndex as $code => $person) {
+            $index[(string) $code] = $person['days'];
         }
 
         return $index;
     }
 
-    public function getData(Request $request)
+    public function getData(Request $request, ShiftApiService $shiftApi)
     {
         $production_code = $request->production_code ?? session('user')['production_code'] ?? 'PXV1';
         $type = $request->type ?? 'day'; // day, week, month
@@ -151,8 +95,8 @@ class DashBoardController extends Controller
         }
 
         $personnelList = $personnelQuery
-            ->select('e.id', 'e.code', 'e.name', 'e.on_maternity_leave', DB::raw('GROUP_CONCAT(DISTINCT ea.group_id SEPARATOR ",") as group_ids'))
-            ->groupBy('e.id', 'e.code', 'e.name', 'e.on_maternity_leave')
+            ->select('e.id', 'e.code', 'e.name', 'e.on_maternity_leave', 'e.on_long_leave', DB::raw('GROUP_CONCAT(DISTINCT ea.group_id SEPARATOR ",") as group_ids'))
+            ->groupBy('e.id', 'e.code', 'e.name', 'e.on_maternity_leave', 'e.on_long_leave')
             ->get();
 
         $isENorQA = in_array($production_code, ['EN', 'QA']);
@@ -229,6 +173,9 @@ class DashBoardController extends Controller
         $employeeDailyHours = [];
         $employeeDailyLeave = [];
         $roomHoursMap = []; // [room_name => total_hours]
+        // [personnel_id][chỉ số ngày][room_name] => số giờ, dùng để quy giờ tăng
+        // ca của một người trong ngày về đúng (các) phòng người đó đã làm.
+        $empDayRoomHours = [];
         $empCodeToId = [];
         foreach ($employeeIds as $id) {
             $employeeDailyHours[$id] = array_fill(0, $daysInPeriod, 0);
@@ -284,6 +231,11 @@ class DashBoardController extends Controller
                 $roomHoursMap[$roomName] = 0;
             }
             $roomHoursMap[$roomName] += $hours;
+
+            if (!isset($empDayRoomHours[$assignment->personnel_id][$d][$roomName])) {
+                $empDayRoomHours[$assignment->personnel_id][$d][$roomName] = 0;
+            }
+            $empDayRoomHours[$assignment->personnel_id][$d][$roomName] += $hours;
         }
 
         // --- Fetch Shifts to determine Leave (P) AND collect overtime ---
@@ -321,7 +273,7 @@ class DashBoardController extends Controller
         }
 
         if ($departmentId) {
-            $shiftIndex = $this->buildShiftIndex($startDate, $daysInPeriod, $departmentId);
+            $shiftIndex = $this->buildShiftIndex($startDate, $daysInPeriod, $departmentId, $shiftApi);
 
             foreach ($shiftIndex as $code => $daysByDate) {
                 $totalOT = 0;
@@ -333,16 +285,12 @@ class DashBoardController extends Controller
                     $dayStr = $currentDay->format('Y-m-d');
                     $dayData = $daysByDate[$dayStr] ?? null;
 
-                    // Hỗ trợ cả cấu trúc API cũ (string) và mới (object)
-                    if (is_array($dayData)) {
-                        $shiftCode = strtoupper(trim($dayData['shift'] ?? ''));
-                        $ot = floatval($dayData['overtime'] ?? 0);
-                        $eoffice = floatval($dayData['regular_working_Hours'] ?? 0);
-                    } else {
-                        $shiftCode = strtoupper(trim($dayData ?? ''));
-                        $ot = 0;
-                        $eoffice = 0; // Cũ không có giờ làm việc e-office
-                    }
+                    // ShiftApiService luôn trả về mảng đã chuẩn hoá cho mỗi ngày.
+                    // Giờ làm việc e-office (`regular_working_Hours`) không có
+                    // trong bộ 3 endpoint mới nên tạm để 0.
+                    $shiftCode = strtoupper(trim((string) ($dayData['shift'] ?? '')));
+                    $ot = floatval($dayData['overtime'] ?? 0);
+                    $eoffice = floatval($dayData['regular_working_Hours'] ?? 0);
 
                     // Reset regular working hours nếu rơi vào ngày nghỉ (off-date)
                     if (isset($offDatesMap[$dayStr])) {
@@ -384,6 +332,7 @@ class DashBoardController extends Controller
         $stats_laps = [
             'on_leave' => 0,
             'maternity_leave' => 0,
+            'long_leave' => 0,
             'unassigned' => 0,
             'under_8h' => 0,
             'exact_8h' => 0,
@@ -394,6 +343,7 @@ class DashBoardController extends Controller
         $stats_people = [
             'on_leave' => 0,
             'maternity_leave' => 0,
+            'long_leave' => 0,
             'unassigned' => 0,
             'under_8h' => 0,
             'exact_8h' => 0,
@@ -403,6 +353,7 @@ class DashBoardController extends Controller
 
         $details = [];
         $groupOvertimeMap = []; // [group_name => total_ot]
+        $roomOvertimeMap = []; // [room_name => ['ot_hours' => float, 'people' => [code => true]]]
 
         $stats_daily = [];
         for ($d = 0; $d < $daysInPeriod; $d++) {
@@ -410,6 +361,7 @@ class DashBoardController extends Controller
                 'date' => $startDate->copy()->addDays($d)->format('d/m/Y'),
                 'on_leave' => 0,
                 'maternity_leave' => 0,
+                'long_leave' => 0,
                 'unassigned' => 0,
                 'under_8h' => 0,
                 'exact_8h' => 0,
@@ -426,7 +378,30 @@ class DashBoardController extends Controller
 
             if (isset($employeeDailyOT[$empCode])) {
                 for ($d = 0; $d < $daysInPeriod; $d++) {
-                    $stats_daily[$d]['total_ot_hours'] += $employeeDailyOT[$empCode][$d];
+                    $otOfDay = $employeeDailyOT[$empCode][$d];
+                    $stats_daily[$d]['total_ot_hours'] += $otOfDay;
+
+                    if ($otOfDay <= 0) {
+                        continue;
+                    }
+
+                    // Quy giờ tăng ca của ngày về phòng người này đã làm hôm đó.
+                    // Làm nhiều phòng thì chia theo tỉ lệ số giờ ở từng phòng;
+                    // không có phân công nào thì gom vào "Chưa phân công".
+                    $roomsOfDay = $empDayRoomHours[$empId][$d] ?? [];
+                    $roomTotal = array_sum($roomsOfDay);
+                    if ($roomTotal <= 0) {
+                        $roomsOfDay = ['Chưa phân công' => 1];
+                        $roomTotal = 1;
+                    }
+
+                    foreach ($roomsOfDay as $rName => $rHours) {
+                        if (!isset($roomOvertimeMap[$rName])) {
+                            $roomOvertimeMap[$rName] = ['ot_hours' => 0, 'people' => []];
+                        }
+                        $roomOvertimeMap[$rName]['ot_hours'] += $otOfDay * ($rHours / $roomTotal);
+                        $roomOvertimeMap[$rName]['people'][$empCode] = true;
+                    }
                 }
             }
 
@@ -437,6 +412,7 @@ class DashBoardController extends Controller
             $leaveDays = 0;
 
             $isMaternity = !empty($employees[$empId]->on_maternity_leave);
+            $isLongLeave = !empty($employees[$empId]->on_long_leave);
 
             for ($d = 0; $d < $daysInPeriod; $d++) {
                 $h = $dailyHours[$d];
@@ -444,6 +420,9 @@ class DashBoardController extends Controller
                     if ($isMaternity) {
                         $stats_laps['maternity_leave']++;
                         $stats_daily[$d]['maternity_leave']++;
+                    } elseif ($isLongLeave) {
+                        $stats_laps['long_leave']++;
+                        $stats_daily[$d]['long_leave']++;
                     } elseif (!empty($employeeDailyLeave[$empId][$d])) {
                         $stats_laps['on_leave']++;
                         $stats_daily[$d]['on_leave']++;
@@ -470,6 +449,8 @@ class DashBoardController extends Controller
             // People Classification (Dành cho các ô Inner theo yêu cầu)
             if ($isMaternity) {
                 $stats_people['maternity_leave']++;
+            } elseif ($isLongLeave) {
+                $stats_people['long_leave']++;
             } elseif ($totalHours == 0) {
                 if ($leaveDays > 0) {
                     $stats_people['on_leave']++;
@@ -486,6 +467,8 @@ class DashBoardController extends Controller
 
             if ($isMaternity) {
                 $status = 'Thai sản';
+            } elseif ($isLongLeave) {
+                $status = 'Phép dài hạn';
             } elseif ($daysInPeriod == 1) {
                 if ($totalHours == 0) {
                     $status = $leaveDays > 0 ? 'Nghỉ phép (P)' : 'Chưa phân công';
@@ -552,12 +535,19 @@ class DashBoardController extends Controller
         ));
         usort($overtimeByGroup, fn($a, $b) => $b['ot_hours'] <=> $a['ot_hours']);
 
-        // Format overtime by room (from assignment data)
-        arsort($roomHoursMap);
+        // Tăng ca theo phòng: giờ TC lấy từ API (đã quy về phòng ở trên),
+        // total_hours là tổng giờ phân công của phòng để đối chiếu.
+        $roomNames = array_unique(array_merge(array_keys($roomHoursMap), array_keys($roomOvertimeMap)));
         $overtimeByRoom = [];
-        foreach ($roomHoursMap as $rName => $rHours) {
-            $overtimeByRoom[] = ['name' => $rName, 'total_hours' => round($rHours, 2)];
+        foreach ($roomNames as $rName) {
+            $overtimeByRoom[] = [
+                'name' => $rName,
+                'ot_hours' => round($roomOvertimeMap[$rName]['ot_hours'] ?? 0, 2),
+                'ot_people_count' => count($roomOvertimeMap[$rName]['people'] ?? []),
+                'total_hours' => round($roomHoursMap[$rName] ?? 0, 2),
+            ];
         }
+        usort($overtimeByRoom, fn($a, $b) => [$b['ot_hours'], $b['total_hours']] <=> [$a['ot_hours'], $a['total_hours']]);
 
         // 4. Lấy danh sách tất cả các tổ khả dụng trong phân xưởng này
         $availableGroupsArray = [];

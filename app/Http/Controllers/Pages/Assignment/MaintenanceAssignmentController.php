@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Support\WorkingDay;
 use Illuminate\Support\Facades\Validator;
+use App\Services\ShiftApiService;
 
 class MaintenanceAssignmentController extends Controller
 {
@@ -397,99 +398,49 @@ class MaintenanceAssignmentController extends Controller
         ]);
     }
 
-    public function getPersonnelShifts(Request $request)
+    /**
+     * Lịch trực của một bộ phận theo tháng, phục vụ sidebar trang Lịch công tác BT.
+     * Xem ProductionAssignmentController::getPersonnelShifts() cho cùng hợp đồng dữ liệu.
+     */
+    public function getPersonnelShifts(Request $request, ShiftApiService $shiftApi)
     {
         $month = $request->month;
         $year = $request->year;
-        $departmentId = $request->department;
-
-        $url = "http://s-webdev:5070/api/shifts/by-department?month={$month}&year={$year}&department={$departmentId}";
+        $departmentId = (int) $request->department;
 
         try {
-            $data = file_get_contents($url);
-            $personnelData = json_decode($data, true) ?: [];
+            $personnelData = $shiftApi->monthlyByDayKey($month, $year, $departmentId, $departmentId === 15);
+            if ($personnelData === null) {
+                return response()->json(['error' => 'Không thể tải dữ liệu từ máy chủ API.'], 500);
+            }
 
-            if (is_array($personnelData)) {
-                // Filter out resigned employees
-                $resignedCodes = DB::table('employees')->where('resign', 1)->pluck('code')->toArray();
-                $resignedCodesSet = array_flip($resignedCodes);
-                $filteredPersonnelData = [];
-                foreach ($personnelData as $person) {
-                    $code = $person['employeeId'] ?? $person['code'] ?? null;
-                    if ($code && isset($resignedCodesSet[$code])) {
-                        continue;
-                    }
-                    $filteredPersonnelData[] = $person;
+            // Filter out resigned employees
+            $resignedCodes = DB::table('employees')->where('resign', 1)->pluck('code')->toArray();
+            $resignedCodesSet = array_flip($resignedCodes);
+            $filteredPersonnelData = [];
+            foreach ($personnelData as $person) {
+                $code = $person['employeeId'] ?? $person['code'] ?? null;
+                if ($code && isset($resignedCodesSet[$code])) {
+                    continue;
                 }
-                $personnelData = $filteredPersonnelData;
-                // Lấy dữ liệu đi ca của tháng tiếp theo (month + 1) để điền cho day21 - day31
-                $nextMonth = intval($month) + 1;
-                $nextYear = intval($year);
-                if ($nextMonth > 12) {
-                    $nextMonth = 1;
-                    $nextYear += 1;
-                }
+                $filteredPersonnelData[] = $person;
+            }
+            $personnelData = $filteredPersonnelData;
 
-                $urlNext = "http://s-webdev:5070/api/shifts/by-department?month={$nextMonth}&year={$nextYear}&department={$departmentId}";
-                $personnelDataNext = [];
-                try {
-                    $ctx = stream_context_create(['http' => ['timeout' => 5]]);
-                    $dataNext = @file_get_contents($urlNext, false, $ctx);
-                    if ($dataNext) {
-                        $personnelDataNext = json_decode($dataNext, true) ?: [];
-                    }
-                } catch (\Exception $exNext) {
-                    // Bỏ qua lỗi lấy dữ liệu tháng tiếp theo nếu chưa có lịch
-                }
+            // Lấy thông tin hasAssignment từ bảng employees local
+            $localEmployees = DB::table('employees')->select('code', 'hasAssignment')->get()->keyBy('code');
 
-                // Index nhân sự tháng tiếp theo theo employeeId / code
-                $nextMonthEmployees = [];
-                foreach ($personnelDataNext as $person) {
-                    $code = $person['employeeId'] ?? $person['code'] ?? null;
-                    if ($code) {
-                        $nextMonthEmployees[$code] = $person;
-                    }
-                }
+            foreach ($personnelData as &$person) {
+                $code = $person['employeeId'] ?? $person['code'] ?? null;
 
-                // Lấy thông tin hasAssignment từ bảng employees local
-                $localEmployees = DB::table('employees')->select('code', 'hasAssignment')->get()->keyBy('code');
-
-                foreach ($personnelData as &$person) {
-                    $code = $person['employeeId'] ?? $person['code'] ?? null;
-
-                    // Ghép logic: day1-day20 từ tháng $month, day21-day31 từ tháng $month+1
-                    $originalDays = $person['days'] ?? [];
-                    $newDays = [];
-
-                    for ($i = 1; $i <= 20; $i++) {
-                        $dayKey = 'day' . $i;
-                        $newDays[$dayKey] = $originalDays[$dayKey] ?? null;
-                    }
-
-                    if ($code && isset($nextMonthEmployees[$code])) {
-                        $nextPersonDays = $nextMonthEmployees[$code]['days'] ?? [];
-                        for ($i = 21; $i <= 31; $i++) {
-                            $dayKey = 'day' . $i;
-                            $newDays[$dayKey] = $nextPersonDays[$dayKey] ?? null;
-                        }
-                    } else {
-                        // Fallback: nếu không lấy được tháng tiếp theo thì giữ nguyên dữ liệu gốc
-                        for ($i = 21; $i <= 31; $i++) {
-                            $dayKey = 'day' . $i;
-                            $newDays[$dayKey] = $originalDays[$dayKey] ?? null;
-                        }
-                    }
-
-                    $person['days'] = $newDays;
-
-                    // Gán hasAssignment
-                    if ($code && isset($localEmployees[$code])) {
-                        $person['hasAssignment'] = $localEmployees[$code]->hasAssignment;
-                    } else {
-                        $person['hasAssignment'] = 1; // Mặc định là 1 (có sắp lịch)
-                    }
+                // Gán hasAssignment
+                if ($code && isset($localEmployees[$code])) {
+                    $person['hasAssignment'] = $localEmployees[$code]->hasAssignment;
+                } else {
+                    $person['hasAssignment'] = 1; // Mặc định là 1 (có sắp lịch)
                 }
             }
+            unset($person);
 
             return response()->json($personnelData);
         } catch (\Exception $e) {
@@ -671,7 +622,7 @@ class MaintenanceAssignmentController extends Controller
         }
     }
 
-    public function cloneCustomTask(Request $request)
+    public function cloneCustomTask(Request $request, ShiftApiService $shiftApi)
     {
         $room_id = $request->room_id;
         $work_location = null;
@@ -714,7 +665,7 @@ class MaintenanceAssignmentController extends Controller
             if (!empty($allPersonnelIds)) {
                 $employeeMap = DB::table('employees')
                     ->whereIn('id', $allPersonnelIds)
-                    ->select('id', 'code', 'name', 'on_maternity_leave')
+                    ->select('id', 'code', 'name', 'on_maternity_leave', 'on_long_leave')
                     ->get()
                     ->keyBy('id')
                     ->toArray();
@@ -745,40 +696,15 @@ class MaintenanceAssignmentController extends Controller
             ];
 
             foreach ($target_dates as $targetDate) {
-                // Pre-load shifts for the target month/year cycle
-                $carbonDate = Carbon::parse($targetDate);
-                $day = $carbonDate->day;
-                $sheetMonth = $carbonDate->month;
-                $sheetYear = $carbonDate->year;
-                
-                if ($day >= 21) {
-                    $sheetMonth += 1;
-                    if ($sheetMonth > 12) {
-                        $sheetMonth = 1;
-                        $sheetYear += 1;
-                    }
-                }
-                
-                $cacheKey = "{$sheetMonth}_{$sheetYear}";
-                if (!isset($shiftsCache[$cacheKey])) {
-                    $shiftsCache[$cacheKey] = [];
-                    $url = "http://s-webdev:5070/api/shifts/by-department?month={$sheetMonth}&year={$sheetYear}&department={$department}";
-                    try {
-                        $ctx = stream_context_create(['http' => ['timeout' => 5]]);
-                        $apiData = @file_get_contents($url, false, $ctx);
-                        if ($apiData) {
-                            $decoded = json_decode($apiData, true);
-                            if (is_array($decoded)) {
-                                foreach ($decoded as $person) {
-                                    $code = $person['employeeId'] ?? $person['code'] ?? null;
-                                    if ($code) {
-                                        $shiftsCache[$cacheKey][$code] = $person;
-                                    }
-                                }
-                            }
-                        }
-                    } catch (\Exception $e) {
-                        \Log::error("Failed to fetch shifts in cloneCustomTask (Maintenance) for {$cacheKey}: " . $e->getMessage());
+                // API mới tra theo ngày lịch thật nên không còn phải suy ra
+                // "tháng payload" như quy tắc ngày 21 của API by-department cũ.
+                $dateKey = Carbon::parse($targetDate)->format('Y-m-d');
+
+                if (!isset($shiftsCache[$dateKey])) {
+                    $dayIndex = $shiftApi->shiftIndex($dateKey, $dateKey, $department, $department === 15) ?? [];
+                    $shiftsCache[$dateKey] = [];
+                    foreach ($dayIndex as $code => $person) {
+                        $shiftsCache[$dateKey][(string) $code] = $person['days'][$dateKey]['shift'] ?? null;
                     }
                 }
 
@@ -818,23 +744,18 @@ class MaintenanceAssignmentController extends Controller
                             $skippedList[] = "{$empName} ({$formattedDate})";
                             continue; // Skip!
                         }
-                        
-                        // Check shift
-                        $personData = $shiftsCache[$cacheKey][$empCode] ?? null;
-                        $isLeave = false;
-                        if ($personData) {
-                            $dayKey = "day{$day}";
-                            $dayData = $personData['days'][$dayKey] ?? null;
-                            if (is_array($dayData) || is_object($dayData)) {
-                                $dayData = $dayData['shift'] ?? 'HC';
-                            }
-                            $shiftCode = strtoupper($dayData ?: 'HC');
-                            if ($shiftCode === 'P') {
-                                $isLeave = true;
-                            }
+
+                        // Check long-term leave
+                        if ($emp->on_long_leave == 1) {
+                            $formattedDate = Carbon::parse($targetDate)->format('d/m/Y');
+                            $skippedList[] = "{$empName} ({$formattedDate})";
+                            continue; // Skip!
                         }
-                        
-                        if ($isLeave) {
+
+                        // Check shift: 'P' gồm cả phép đã duyệt lẫn phép chờ duyệt
+                        $shiftCode = strtoupper((string) ($shiftsCache[$dateKey][(string) $empCode] ?? '')) ?: 'HC';
+
+                        if ($shiftCode === 'P') {
                             $formattedDate = Carbon::parse($targetDate)->format('d/m/Y');
                             $skippedList[] = "{$empName} ({$formattedDate})";
                             continue; // Skip!

@@ -26,6 +26,7 @@ Route::prefix('/quota')
 
                 Route::get('deActive/{id}', 'deActive')->name('deActive');
                 Route::post('toggleMaternityLeave', 'toggleMaternityLeave')->name('toggleMaternityLeave');
+                Route::post('toggleLongLeave', 'toggleLongLeave')->name('toggleLongLeave');
             });
 
         Route::prefix('/production')

@@ -50,8 +50,6 @@ class PlanMasterKcs extends Model
         'record_received_date' => 'Ngày nhận hồ sơ',
         'reader' => 'Người đọc',
         'record_done_date' => 'Ngày đọc xong hồ sơ',
-        'stock_in_qty' => 'Số lượng nhập kho',
-        'coatp_number' => 'Số phiếu COATP',
         'coatp_received_date' => 'Ngày nhận COATP',
         'dr_ir' => 'DR/IR',
         'dr_ir_approval_date' => 'Ngày Approval DR/IR',
@@ -60,8 +58,22 @@ class PlanMasterKcs extends Model
         'dr_ir_kcq_approval_date' => 'Ngày Approval DR/IR KCQ',
         'opv_pvr_approval_date' => 'Ngày Approval OPV/PVR',
         'kcs_queue_date' => 'Ngày chờ KCS theo đúng thứ tự lô',
-        'kcs_date' => 'Ngày KCS',
         'note' => 'Ghi chú',
+    ];
+
+    /**
+     * Các cột do hệ thống đồng bộ từ MMS, người dùng không nhập tay.
+     *
+     * MMS là nơi KCS thao tác duyệt lô nên đó mới là dữ liệu gốc; nhập tay lại ở đây chỉ
+     * sinh ra sai lệch (đã gặp lô ghi 14/08 trong khi MMS duyệt 13/08, và số phiếu COATP
+     * gõ nhầm 26802655 thay vì 26082655).
+     *
+     * Cố ý KHÔNG đưa 'coatp_received_date' vào đây: ngày KCS *nhận được* COATP là mốc nội
+     * bộ của phòng, MMS không có, nên vẫn để người dùng tự nhập.
+     */
+    public const MMS_LABELS = [
+        'coatp_number' => 'Số phiếu COATP (đồng bộ từ MMS)',
+        'kcs_date' => 'Ngày KCS (đồng bộ từ MMS)',
     ];
 
     /** Tên các cột người dùng được nhập (INPUT_LABELS là nguồn duy nhất) */
@@ -70,18 +82,37 @@ class PlanMasterKcs extends Model
         return array_keys(self::INPUT_LABELS);
     }
 
+    /** Tên các cột lấy từ MMS */
+    public static function mmsFields(): array
+    {
+        return array_keys(self::MMS_LABELS);
+    }
+
+    /**
+     * Mọi cột dữ liệu gốc của một dòng theo dõi: người dùng nhập + hệ thống đồng bộ.
+     * Đây mới là đầu vào đầy đủ của derive() và của việc ghi vết lịch sử.
+     */
+    public static function trackedFields(): array
+    {
+        return array_merge(self::inputFields(), self::mmsFields());
+    }
+
     /**
      * Các cột đã bỏ khỏi lưới nhập nhưng vẫn còn trong lịch sử chỉnh sửa cũ,
      * giữ nhãn để vết lịch sử không hiện ra tên cột thô.
      */
     private const LEGACY_LABELS = [
         'edition' => 'Ấn bản (đã bỏ)',
+        'stock_in_qty' => 'Số lượng nhập kho (đã bỏ)',
     ];
 
-    /** Nhãn tiếng Việt của một cột nhập, dùng khi hiển thị lịch sử chỉnh sửa */
+    /** Nhãn tiếng Việt của một cột, dùng khi hiển thị lịch sử chỉnh sửa */
     public static function inputLabel(string $field): string
     {
-        return self::INPUT_LABELS[$field] ?? self::LEGACY_LABELS[$field] ?? $field;
+        return self::INPUT_LABELS[$field]
+            ?? self::MMS_LABELS[$field]
+            ?? self::LEGACY_LABELS[$field]
+            ?? $field;
     }
 
     protected $fillable = [
@@ -89,7 +120,6 @@ class PlanMasterKcs extends Model
         'record_received_date',
         'reader',
         'record_done_date',
-        'stock_in_qty',
         'kcs_date',
         'coatp_number',
         'coatp_received_date',

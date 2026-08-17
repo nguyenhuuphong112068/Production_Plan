@@ -71,6 +71,7 @@ class PlanMasterKcsHistory extends Model
             }
         }
 
+        // Cột đã bỏ khỏi lưới nhập nhưng vết cũ vẫn còn, giữ định dạng để đọc được
         if ($field === 'stock_in_qty') {
             return number_format((float) $value, 0, ',', '.');
         }

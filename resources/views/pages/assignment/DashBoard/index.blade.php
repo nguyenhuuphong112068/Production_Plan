@@ -108,6 +108,18 @@
                             </div>
                         </div>
                         <div class="col-lg col-md-4 col-6 mb-3">
+                            <div class="small-box h-100 mb-0"
+                                onclick="showDailyStats('long_leave', 'Nghỉ phép dài hạn', '', '#6f42c1')"
+                                style="background-color: #6f42c1; color: #fff; cursor:pointer;"
+                                title="Click để xem chi tiết theo ngày">
+                                <div class="inner">
+                                    <h3 id="kpi_long_leave">0</h3>
+                                    <p id="kpi_long_leave_label">Nghỉ phép dài hạn</p>
+                                </div>
+                                <div class="icon"><i class="fas fa-calendar-times"></i></div>
+                            </div>
+                        </div>
+                        <div class="col-lg col-md-4 col-6 mb-3">
                             <div class="small-box bg-secondary h-100 mb-0"
                                 onclick="showDailyStats('on_leave', 'Nghỉ phép (P)', 'bg-secondary')"
                                 style="cursor:pointer;" title="Click để xem chi tiết theo ngày">
@@ -246,6 +258,38 @@
                                                 </tr>
                                             </thead>
                                             <tbody id="otGroupTableBody">
+                                                <tr>
+                                                    <td colspan="4" class="text-center text-muted py-3">Chưa có dữ liệu
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <!-- Thống kê OT theo Phòng -->
+                        <div class="col-md-12 mb-3" id="otRoomRow">
+                            <div class="card card-outline h-100 shadow-sm" style="border-color: #f5576c;">
+                                <div class="card-header"
+                                    style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color:#fff;">
+                                    <h3 class="card-title"><i class="fas fa-door-open mr-2"></i>Tăng Ca Theo Phòng</h3>
+                                </div>
+                                <div class="card-body p-0">
+                                    <div style="max-height: 280px; overflow-y: auto;">
+                                        <table class="table table-sm table-striped mb-0">
+                                            <thead class="bg-light" style="position:sticky;top:0;z-index:1;">
+                                                <tr>
+                                                    <th>Phòng</th>
+                                                    <th class="text-right text-danger font-weight-bold">Tổng TC (h)</th>
+                                                    <th class="text-right">Số nhân sự TC</th>
+                                                    <th class="text-right">Tổng giờ phân công</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="otRoomTableBody">
                                                 <tr>
                                                     <td colspan="4" class="text-center text-muted py-3">Chưa có dữ liệu
                                                     </td>
@@ -465,6 +509,7 @@
             // Luôn hiển thị Số Người ở h3 (to)
             document.getElementById('kpi_total').innerText = data.total_personnel;
             document.getElementById('kpi_maternity').innerText = data.stats_people.maternity_leave || 0;
+            document.getElementById('kpi_long_leave').innerText = data.stats_people.long_leave || 0;
             document.getElementById('kpi_on_leave').innerText = data.stats_people.on_leave;
             document.getElementById('kpi_unassigned').innerText = data.stats_people.unassigned;
             document.getElementById('kpi_under8').innerText = data.stats_people.under_8h;
@@ -481,6 +526,8 @@
                 document.getElementById('kpi_total_label').innerText = 'Tổng nhân sự (' + totalLaps + ' lượt)';
                 document.getElementById('kpi_maternity_label').innerText = 'Nghỉ thai sản - ' + (data.stats_laps
                     .maternity_leave || 0) + ' lượt';
+                document.getElementById('kpi_long_leave_label').innerText = 'Nghỉ phép dài hạn - ' + (data.stats_laps
+                    .long_leave || 0) + ' lượt';
                 document.getElementById('kpi_on_leave_label').innerText = 'Nghỉ phép (P) - ' + data.stats_laps.on_leave +
                     ' lượt';
                 document.getElementById('kpi_unassigned_label').innerText = 'Chưa xếp lịch - ' + data.stats_laps
@@ -498,6 +545,7 @@
             } else {
                 document.getElementById('kpi_total_label').innerText = 'Tổng nhân sự';
                 document.getElementById('kpi_maternity_label').innerText = 'Nghỉ thai sản';
+                document.getElementById('kpi_long_leave_label').innerText = 'Nghỉ phép dài hạn';
                 document.getElementById('kpi_on_leave_label').innerText = 'Nghỉ phép (P)';
                 document.getElementById('kpi_unassigned_label').innerText = 'Chưa xếp lịch (0h)';
                 document.getElementById('kpi_under8_label').innerText = '< 8h / ngày';
@@ -556,6 +604,47 @@
                 `;
             } else {
                 otGroupBody.innerHTML =
+                    '<tr><td colspan="4" class="text-center text-muted py-3"><i class="fas fa-info-circle mr-1"></i>Không có dữ liệu tăng ca từ API lịch trực</td></tr>';
+            }
+
+            // Render OT by Room table
+            const otRoomBody = document.getElementById('otRoomTableBody');
+            const rooms = (data.overtime_by_room || []).filter(r => r.ot_hours > 0);
+            if (rooms.length > 0) {
+                let roomOTHours = 0;
+                let roomAssignedHours = 0;
+                otRoomBody.innerHTML = '';
+
+                rooms.forEach(r => {
+                    roomOTHours += r.ot_hours;
+                    roomAssignedHours += r.total_hours;
+
+                    const otBar = r.ot_hours > 0 ?
+                        `<div class="progress progress-xs mt-1" style="height:4px;"><div class="progress-bar bg-danger" style="width:${Math.min(100, r.ot_hours * 2)}%"></div></div>` :
+                        '';
+                    otRoomBody.innerHTML += `
+                    <tr>
+                        <td>${r.name}</td>
+                        <td class="text-right">
+                            <strong class="text-danger">${r.ot_hours}h</strong>
+                            ${otBar}
+                        </td>
+                        <td class="text-right text-muted">${r.ot_people_count}</td>
+                        <td class="text-right text-muted">${r.total_hours}h</td>
+                    </tr>
+                `;
+                });
+
+                otRoomBody.innerHTML += `
+                    <tr style="background-color: #f8f9fa;">
+                        <td><strong>Tổng cộng</strong></td>
+                        <td class="text-right"><strong class="text-danger" style="font-size:1.1em;">${Math.round(roomOTHours * 100) / 100}h</strong></td>
+                        <td></td>
+                        <td class="text-right text-dark"><strong>${Math.round(roomAssignedHours * 100) / 100}h</strong></td>
+                    </tr>
+                `;
+            } else {
+                otRoomBody.innerHTML =
                     '<tr><td colspan="4" class="text-center text-muted py-3"><i class="fas fa-info-circle mr-1"></i>Không có dữ liệu tăng ca từ API lịch trực</td></tr>';
             }
 
@@ -642,6 +731,10 @@
                 else if (item.status === '> 8h') badgeClass = 'badge-primary';
                 else if (item.status === 'Thai sản') badgeClass = 'badge-danger';
 
+                const badgeStyle = item.status === 'Phép dài hạn' ?
+                    ' style="font-size:0.9rem; color:#fff; background-color:#6f42c1;"' :
+                    ' style="font-size:0.9rem;"';
+
                 const ot = item.overtime_hours || 0;
                 const otCell = ot > 0 ?
                     `<td><span class="badge" style="background:#f5576c;color:#fff;font-size:0.85rem;">${ot}h</span></td>` :
@@ -661,15 +754,20 @@
                 }
 
                 const statusCell = statType === 'day' ?
-                    `<td><span class="badge ${badgeClass}" style="font-size:0.9rem;">${item.status}</span></td>` :
+                    `<td><span class="badge ${badgeClass}"${badgeStyle}>${item.status}</span></td>` :
                     '';
 
                 const eoffice = item.eoffice_hours || 0;
                 const eofficeTotal = Math.round((eoffice + ot) * 100) / 100;
 
-                const nameHtml = item.status === 'Thai sản' ?
-                    `${item.name} <span class="badge badge-danger text-white ml-1" style="font-size:0.6rem; padding:1px 3px;" title="Nghỉ thai sản dài hạn"><i class="fas fa-baby"></i> Thai sản</span>` :
-                    item.name;
+                let nameHtml = item.name;
+                if (item.status === 'Thai sản') {
+                    nameHtml =
+                        `${item.name} <span class="badge badge-danger text-white ml-1" style="font-size:0.6rem; padding:1px 3px;" title="Nghỉ thai sản dài hạn"><i class="fas fa-baby"></i> Thai sản</span>`;
+                } else if (item.status === 'Phép dài hạn') {
+                    nameHtml =
+                        `${item.name} <span class="badge text-white ml-1" style="font-size:0.6rem; padding:1px 3px; background-color:#6f42c1;" title="Nghỉ phép dài hạn"><i class="fas fa-calendar-times"></i> Phép dài hạn</span>`;
+                }
 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `

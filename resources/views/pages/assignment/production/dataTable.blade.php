@@ -1583,6 +1583,7 @@
             
             // 1. Check Leave (Nghỉ phép)
             let isOnLeave = false;
+            let isOnLongLeave = false;
             const personCode = employeeIdToCode[pid];
             if (personCode && currentSidebarData) {
                 const personData = sidebarDataMap[personCode.toString()];
@@ -1592,6 +1593,9 @@
                         dayKey]?.shift ?? personData.days[dayKey]).toString().toUpperCase() : 'HC';
                     if (personShift === 'P' || personData.on_maternity_leave == 1) {
                         isOnLeave = true;
+                    }
+                    if (personData.on_long_leave == 1) {
+                        isOnLongLeave = true;
                     }
                 }
             }
@@ -1611,7 +1615,16 @@
                     headerRow.append(leaveBadge);
                 }
             }
-            
+
+            if (isOnLongLeave) {
+                const longLeaveBadge = $('<span class="badge custom-warning-badge blink-animation ml-1 cursor-pointer" title="Nhân sự đang nghỉ phép dài hạn!" style="font-size:0.7rem; color:#fff; background-color:#6f42c1;"><i class="fas fa-calendar-times mr-1"></i>Nghỉ phép dài hạn</span>');
+                if (headerRow.find('.btn-remove-person').length > 0) {
+                    longLeaveBadge.insertBefore(headerRow.find('.btn-remove-person'));
+                } else {
+                    headerRow.append(longLeaveBadge);
+                }
+            }
+
             if (isOvertimeExceeded) {
                 const otExceededBadge = $(`<span class="badge badge-warning custom-warning-badge blink-animation ml-1 cursor-pointer" title="Tăng ca quá nhiều (TC: ${overtime.toFixed(1)}h >= 8h)!" style="font-size:0.7rem; color: #fff; background-color: #fd7e14;"><i class="fas fa-exclamation-triangle mr-1"></i>TC >= 8h (${overtime.toFixed(1)}h)</span>`);
                 if (headerRow.find('.btn-remove-person').length > 0) {
@@ -4117,6 +4130,7 @@
                             personCode.toString())) return;
                     if (shiftCode === 'P') return; // Nghỉ phép
                     if (person.on_maternity_leave == 1) return; // Nghỉ thai sản
+                    if (person.on_long_leave == 1) return; // Nghỉ phép dài hạn
                     if (person.hasAssignment == 0) return; // Chặn tự động sắp
                     if (allManuallyAssignedIds.has(personId.toString()))
                         return; // Loại trừ nếu đã được sắp thủ công
@@ -5076,7 +5090,8 @@
                     hasAssignment: person.hasAssignment !== undefined ? person.hasAssignment : 1,
                     overtime: overtime,
                     regularHours: regularHours,
-                    on_maternity_leave: person.on_maternity_leave || 0
+                    on_maternity_leave: person.on_maternity_leave || 0,
+                    on_long_leave: person.on_long_leave || 0
                 };
 
                 if (shifts.hasOwnProperty(shiftCode)) {
@@ -5117,7 +5132,7 @@
                     `;
                     const isLeave = key === 'P';
                     shifts[key].forEach(p => {
-                        const cantDrag = isLeave || p.on_maternity_leave == 1;
+                        const cantDrag = isLeave || p.on_maternity_leave == 1 || p.on_long_leave == 1;
                         const otBadge = p.overtime > 0 ?
                             `<span class="badge badge-warning text-white ml-1" style="font-size:0.6rem; padding:1px 3px;" title="Làm thêm ${p.overtime}h">TC:${p.overtime}h</span>` :
                             '';
@@ -5126,6 +5141,9 @@
                             '';
                         const maternityBadge = p.on_maternity_leave ?
                             `<span class="badge badge-danger text-white ml-1" style="font-size:0.6rem; padding:1px 3px;" title="Nghỉ thai sản dài hạn"><i class="fas fa-baby"></i> Thai sản</span>` :
+                            '';
+                        const longLeaveBadge = p.on_long_leave ?
+                            `<span class="badge text-white ml-1" style="font-size:0.6rem; padding:1px 3px; background-color:#6f42c1;" title="Nghỉ phép dài hạn"><i class="fas fa-calendar-times"></i> Phép dài hạn</span>` :
                             '';
                         html += `
                             <div class="list-group-item py-1 pl-5 small draggable-person ${cantDrag ? 'person-on-leave text-muted' : ''}" 
@@ -5136,10 +5154,10 @@
                                  data-shift-key="${key}"
                                  ${cantDrag ? 'style="cursor: not-allowed; background-color: #f8f9fa;"' : ''}>
                                 <div class="custom-control custom-checkbox d-inline-block mr-1" style="vertical-align: middle;">
-                                    <input type="checkbox" class="custom-control-input btn-toggle-has-assign" id="ha_${p.code}" ${p.hasAssignment ? 'checked' : ''} data-code="${p.code}" ${p.on_maternity_leave ? 'disabled' : ''}>
+                                    <input type="checkbox" class="custom-control-input btn-toggle-has-assign" id="ha_${p.code}" ${p.hasAssignment ? 'checked' : ''} data-code="${p.code}" ${p.on_maternity_leave || p.on_long_leave ? 'disabled' : ''}>
                                     <label class="custom-control-label" for="ha_${p.code}" title="Cho phép tự động sắp"></label>
                                 </div>
-                                <span class="${cantDrag ? 'text-decoration-line-through' : 'text-dark'} ${!p.hasAssignment ? 'text-muted' : ''}">${p.name}</span>${otBadge}${lowHoursBadge}${maternityBadge}
+                                <span class="${cantDrag ? 'text-decoration-line-through' : 'text-dark'} ${!p.hasAssignment ? 'text-muted' : ''}">${p.name}</span>${otBadge}${lowHoursBadge}${maternityBadge}${longLeaveBadge}
                                 <span class="text-muted float-right">
                                     ${p.code}
                                     <i class="fas fa-eye text-info btn-view-skills ml-1 cursor-pointer" title="Xem bậc kỹ năng"></i>

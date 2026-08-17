@@ -35,6 +35,22 @@
         font-weight: 600;
     }
 
+    /* Professional Long Leave Switch */
+    .long-leave-switch.custom-switch .custom-control-input:checked~.custom-control-label::before {
+        background-color: #6f42c1;
+        border-color: #6f42c1;
+    }
+
+    .long-leave-switch .custom-control-label {
+        font-weight: 500;
+        transition: color 0.2s ease-in-out;
+    }
+
+    .long-leave-switch .custom-control-input:checked~.custom-control-label {
+        color: #6f42c1 !important;
+        font-weight: 600;
+    }
+
     /* Style Phân nhóm Tổ - Phòng */
     .group-segment {
         border-bottom: 2px solid #dee2e6 !important;
@@ -543,6 +559,22 @@
                                     @if($data->maternity_leave_updated_by)
                                         <div class="small text-muted mt-1" style="font-size: 0.75rem;">
                                             <i class="fas fa-user-edit mr-1"></i>{{ $data->maternity_leave_updated_by }} | {{ \Carbon\Carbon::parse($data->maternity_leave_updated_at)->format('d/m/y') }}
+                                        </div>
+                                    @endif
+                                </div>
+                                <div class="custom-control custom-switch long-leave-switch mt-2 mx-4">
+                                    <input type="checkbox" class="custom-control-input toggle-long-leave"
+                                        id="long_leave_{{ $data->id }}" data-id="{{ $data->id }}"
+                                        {{ $data->on_long_leave ? 'checked' : '' }} {{ $disabled }}>
+                                    <label class="custom-control-label small text-muted"
+                                        for="long_leave_{{ $data->id }}" style="cursor:pointer;"
+                                        title="Đánh dấu nếu nhân sự này đang nghỉ phép dài hạn">
+                                        <i class="fas fa-calendar-times mr-1" style="font-size: 0.9em; opacity: 0.8;"></i>Đang
+                                        nghỉ phép dài hạn
+                                    </label>
+                                    @if($data->long_leave_updated_by)
+                                        <div class="small text-muted mt-1" style="font-size: 0.75rem;">
+                                            <i class="fas fa-user-edit mr-1"></i>{{ $data->long_leave_updated_by }} | {{ \Carbon\Carbon::parse($data->long_leave_updated_at)->format('d/m/y') }}
                                         </div>
                                     @endif
                                 </div>
@@ -1879,6 +1911,40 @@
 
             $.ajax({
                 url: "{{ route('pages.quota.personnel.toggleMaternityLeave') }}",
+                type: 'POST',
+                data: {
+                    _token: '{{ csrf_token() }}',
+                    id: employeeId,
+                    status: status
+                },
+                success: function(res) {
+                    if (res.success) {
+                        Swal.mixin({
+                            toast: true,
+                            position: 'top-end',
+                            showConfirmButton: false,
+                            timer: 2000
+                        }).fire({
+                            icon: 'success',
+                            title: res.message
+                        });
+                    }
+                },
+                error: function() {
+                    $checkbox.prop('checked', !status);
+                    Swal.fire('Lỗi', 'Không thể cập nhật trạng thái!', 'error');
+                }
+            });
+        });
+
+        $(document).on('change', '.toggle-long-leave', function() {
+            if (!canEdit) return;
+            const $checkbox = $(this);
+            const employeeId = $checkbox.data('id');
+            const status = $checkbox.is(':checked') ? 1 : 0;
+
+            $.ajax({
+                url: "{{ route('pages.quota.personnel.toggleLongLeave') }}",
                 type: 'POST',
                 data: {
                     _token: '{{ csrf_token() }}',

@@ -4,13 +4,13 @@ namespace App\Http\Controllers\Pages\Quota;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use App\Services\ShiftApiService;
 
 class PersonnelController extends Controller
 {
-    public function portal()
+    public function portal(ShiftApiService $shiftApi)
     {
         $departments = [
             ['code' => 'PXV1', 'name' => 'Phân Xưởng Viên 1', 'icon' => 'fas fa-pills'],
@@ -24,20 +24,10 @@ class PersonnelController extends Controller
 
         session()->put(['title' => 'QUẢN LÝ NHÂN SỰ']);
 
+        // API mới tra theo ngày lịch thật: chỉ cần chính ngày hôm nay, không còn
+        // phải suy ra "tháng payload" theo quy tắc ngày 21 của API cũ.
         $today = now();
-        $day = $today->day;
-        if ($day <= 20) {
-            $queryMonth = $today->month;
-            $queryYear = $today->year;
-        } else {
-            $queryMonth = $today->month + 1;
-            $queryYear = $today->year;
-            if ($queryMonth > 12) {
-                $queryMonth = 1;
-                $queryYear++;
-            }
-        }
-        $dayKey = 'day' . $day;
+        $dateKey = $today->format('Y-m-d');
 
         $depMapping = [
             'EN' => 3,
@@ -70,24 +60,21 @@ class PersonnelController extends Controller
                 continue;
             }
 
-            // Cache trong 5 phút bằng file để tránh lỗi max_allowed_packet với data lớn
-            $cacheKey = "portal_shifts_{$code}_{$queryYear}_{$queryMonth}";
+            // ShiftApiService tự cache (nén gzip) nên không cần cache riêng ở đây.
+            $shiftIndex = $shiftApi->shiftIndex($dateKey, $dateKey, $depId, $depId === 15) ?? [];
 
-            $personnelData = Cache::store('file')->remember($cacheKey, 300, function () use ($queryMonth, $queryYear, $depId) {
-                $url = "http://s-webdev:5070/api/shifts/by-department?month={$queryMonth}&year={$queryYear}&department={$depId}";
-                try {
-                    $ctx = stream_context_create(['http' => ['timeout' => 5]]); // 5s timeout
-                    $data = @file_get_contents($url, false, $ctx);
-                    if ($data) {
-                        return json_decode($data, true) ?: [];
-                    }
-                } catch (\Exception $e) {
-                    // Bỏ qua lỗi
+            $personnelData = [];
+            foreach ($shiftIndex as $empCode => $person) {
+                if (empty($person['in_roster'])) {
+                    continue;
                 }
-                return [];
-            });
+                $personnelData[] = [
+                    'employeeId' => (string) $empCode,
+                    'shift' => $person['days'][$dateKey]['shift'] ?? null,
+                ];
+            }
 
-            if (is_array($personnelData) && count($personnelData) > 0) {
+            if (count($personnelData) > 0) {
                 // Lọc theo danh sách nhân sự active ở local DB
                 $activeEmployeeCodes = DB::table('employees as e')
                     ->whereExists(function ($q) use ($code) {
@@ -116,12 +103,7 @@ class PersonnelController extends Controller
 
                 $shiftCounts[$code]['total'] = count($personnelData);
                 foreach ($personnelData as $person) {
-                    $dayData = $person['days'][$dayKey] ?? null;
-                    if (is_array($dayData)) {
-                        $shift = strtoupper(trim($dayData['shift'] ?? ''));
-                    } else {
-                        $shift = strtoupper(trim($dayData ?? ''));
-                    }
+                    $shift = strtoupper(trim((string) ($person['shift'] ?? '')));
                     if ($shift === '') {
                         $shift = 'HC';
                     }
@@ -266,7 +248,7 @@ class PersonnelController extends Controller
         ]);
     }
 
-    public function sync(Request $request)
+    public function sync(Request $request, ShiftApiService $shiftApi)
     {
         $departmentCode = $request->department ?? session('user')['production_code'];
 
@@ -286,34 +268,21 @@ class PersonnelController extends Controller
             return redirect()->back()->with('error', "Bộ phận {$departmentCode} không hỗ trợ đồng bộ tự động.");
         }
 
-        $month = now()->month;
-        $year = now()->year;
-
-        $url = "http://s-webdev:5070/api/shifts/by-department?month={$month}&year={$year}&department={$depId}";
-
         try {
-            $data = file_get_contents($url);
-            $employees = json_decode($data) ?: [];
+            // Chỉ cần danh sách nhân sự của bộ phận nên hỏi đúng ngày hôm nay.
+            $today = now()->format('Y-m-d');
+            $shiftIndex = $shiftApi->shiftIndex($today, $today, $depId, $departmentCode === 'PXV1') ?? [];
 
-            if ($departmentCode === 'PXV1') {
-                $url17 = "http://s-webdev:5070/api/shifts/by-department?month={$month}&year={$year}&department=17";
-                try {
-                    $ctx = stream_context_create(['http' => ['timeout' => 5]]);
-                    $data17 = @file_get_contents($url17, false, $ctx);
-                    if ($data17) {
-                        $employees17 = json_decode($data17);
-                        if (is_array($employees17)) {
-                            foreach ($employees17 as $emp17) {
-                                $emp17->is_warehouse = true;
-                                if (isset($emp17->employeeName)) {
-                                    $emp17->employeeName = trim($emp17->employeeName) . ' - WH';
-                                }
-                                $employees[] = $emp17;
-                            }
-                        }
-                    }
-                } catch (\Exception $ex17) {
+            $employees = [];
+            foreach ($shiftIndex as $empCode => $person) {
+                if (empty($person['in_roster'])) {
+                    continue;
                 }
+                $employees[] = (object) [
+                    'employeeId' => (string) $empCode,
+                    'employeeName' => $person['name'],
+                    'is_warehouse' => !empty($person['is_warehouse']),
+                ];
             }
 
             if (empty($employees)) {
@@ -458,6 +427,21 @@ class PersonnelController extends Controller
         ]);
 
         return response()->json(['success' => true, 'message' => 'Cập nhật trạng thái thai sản thành công!']);
+    }
+
+    public function toggleLongLeave(Request $request)
+    {
+        $employeeId = $request->id;
+        $status = $request->status;
+
+        DB::table('employees')->where('id', $employeeId)->update([
+            'on_long_leave' => $status,
+            'long_leave_updated_by' => session('user')['fullName'] ?? (session('user')['username'] ?? 'Unknown'),
+            'long_leave_updated_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'Cập nhật trạng thái nghỉ phép dài hạn thành công!']);
     }
 
     public function updatePermissions(Request $request)
@@ -940,7 +924,7 @@ class PersonnelController extends Controller
         }
     }
 
-    public function getStats(Request $request, $depId)
+    public function getStats(Request $request, $depId, ShiftApiService $shiftApi)
     {
         $range = $request->input('range', 'day');
         $groupId = $request->input('group_id');
@@ -981,19 +965,13 @@ class PersonnelController extends Controller
         if ($range === 'day') {
             $dateStr = $request->input('date', now()->format('Y-m-d'));
             $date = \Carbon\Carbon::parse($dateStr);
+            // days[$day] giờ là ngày $day của chính tháng đó (API mới), không
+            // còn phải lùi sang payload tháng sau cho các ngày từ 21 trở đi.
             $year = $date->year;
             $month = $date->month;
             $day = $date->day;
 
-            if ($day >= 21) {
-                $month += 1;
-                if ($month > 12) {
-                    $month = 1;
-                    $year += 1;
-                }
-            }
-
-            $merged = $this->getFilteredMergedShifts($year, $month, $depId, $activeEmployeeCodes);
+            $merged = $this->getFilteredMergedShifts($year, $month, $depId, $activeEmployeeCodes, $shiftApi);
 
             $stats = [
                 'hc' => 0,
@@ -1033,15 +1011,7 @@ class PersonnelController extends Controller
                 $dMonth = $date->month;
                 $dDay = $date->day;
 
-                if ($dDay >= 21) {
-                    $dMonth += 1;
-                    if ($dMonth > 12) {
-                        $dMonth = 1;
-                        $dYear += 1;
-                    }
-                }
-
-                $merged = $this->getFilteredMergedShifts($dYear, $dMonth, $depId, $activeEmployeeCodes);
+                $merged = $this->getFilteredMergedShifts($dYear, $dMonth, $depId, $activeEmployeeCodes, $shiftApi);
 
                 $stats = [
                     'date' => $date->format('d/m/Y'),
@@ -1078,7 +1048,7 @@ class PersonnelController extends Controller
             $daysInMonth = \Carbon\Carbon::create($year, $month, 1)->daysInMonth;
 
             $data = [];
-            $merged = $this->getFilteredMergedShifts($year, $month, $depId, $activeEmployeeCodes);
+            $merged = $this->getFilteredMergedShifts($year, $month, $depId, $activeEmployeeCodes, $shiftApi);
 
             for ($dDay = 1; $dDay <= $daysInMonth; $dDay++) {
                 $stats = [
@@ -1112,9 +1082,9 @@ class PersonnelController extends Controller
         }
     }
 
-    private function getFilteredMergedShifts($year, $month, $depId, $activeEmployeeCodes)
+    private function getFilteredMergedShifts($year, $month, $depId, $activeEmployeeCodes, ShiftApiService $shiftApi)
     {
-        $merged = $this->getMergedMonthlyShifts($year, $month, $depId);
+        $merged = $this->getMergedMonthlyShifts($year, $month, $depId, $shiftApi);
         if (!empty($activeEmployeeCodes)) {
             $activeCodesSet = array_flip($activeEmployeeCodes);
             $mergedFiltered = [];
@@ -1128,135 +1098,43 @@ class PersonnelController extends Controller
         return $merged;
     }
 
-    private function getMergedMonthlyShifts($year, $month, $depId)
+    /**
+     * Ca truc cua ca thang theo NGAY LICH THAT.
+     *
+     * API moi tra theo khoang ngay that nen khong con phai ghep 2 payload
+     * (thang M cho ngay 1-20 va thang M+1 cho ngay 21-31) nhu API by-department cu.
+     *
+     * @return array [[code, name, days => [1..N => ma ca hoac null]]]
+     */
+    private function getMergedMonthlyShifts($year, $month, $depId, ShiftApiService $shiftApi)
     {
-        $cacheKey = "merged_shifts_{$depId}_{$year}_{$month}";
-        return Cache::store('file')->remember($cacheKey, 300, function () use ($year, $month, $depId) {
-            $url1 = "http://s-webdev:5070/api/shifts/by-department?month={$month}&year={$year}&department={$depId}";
-            $data1 = [];
-            try {
-                $ctx = stream_context_create(['http' => ['timeout' => 5]]);
-                $res = @file_get_contents($url1, false, $ctx);
-                if ($res) {
-                    $data1 = json_decode($res, true) ?: [];
-                }
-            } catch (\Exception $e) {
+        $year = (int) $year;
+        $month = (int) $month;
+        $start = \Carbon\Carbon::create($year, $month, 1)->startOfDay();
+        $daysInMonth = (int) $start->daysInMonth;
+
+        $index = $shiftApi->shiftIndex($start, $start->copy()->endOfMonth(), $depId, $depId == 15) ?? [];
+
+        $merged = [];
+        foreach ($index as $code => $person) {
+            if (empty($person["in_roster"])) {
+                continue;
             }
 
-            if ($depId == 15) {
-                try {
-                    $url1_17 = "http://s-webdev:5070/api/shifts/by-department?month={$month}&year={$year}&department=17";
-                    $ctx = stream_context_create(['http' => ['timeout' => 5]]);
-                    $res17 = @file_get_contents($url1_17, false, $ctx);
-                    if ($res17) {
-                        $data1_17 = json_decode($res17, true) ?: [];
-                        if (is_array($data1_17)) {
-                            foreach ($data1_17 as &$p17) {
-                                if (isset($p17['employeeName'])) {
-                                    $p17['employeeName'] = trim($p17['employeeName']) . ' - WH';
-                                }
-                            }
-                            $data1 = array_merge($data1, $data1_17);
-                        }
-                    }
-                } catch (\Exception $e) {
-                }
+            $days = [];
+            for ($d = 1; $d <= $daysInMonth; $d++) {
+                $dateKey = sprintf("%04d-%02d-%02d", $year, $month, $d);
+                $shift = $person["days"][$dateKey]["shift"] ?? null;
+                $days[$d] = $shift === null ? null : strtoupper(trim($shift));
             }
 
-            $nextMonth = $month + 1;
-            $nextYear = $year;
-            if ($nextMonth > 12) {
-                $nextMonth = 1;
-                $nextYear++;
-            }
-            $url2 = "http://s-webdev:5070/api/shifts/by-department?month={$nextMonth}&year={$nextYear}&department={$depId}";
-            $data2 = [];
-            try {
-                $ctx = stream_context_create(['http' => ['timeout' => 5]]);
-                $res = @file_get_contents($url2, false, $ctx);
-                if ($res) {
-                    $data2 = json_decode($res, true) ?: [];
-                }
-            } catch (\Exception $e) {
-            }
+            $merged[] = [
+                "code" => (string) $code,
+                "name" => $person["name"],
+                "days" => $days,
+            ];
+        }
 
-            if ($depId == 15) {
-                try {
-                    $url2_17 = "http://s-webdev:5070/api/shifts/by-department?month={$nextMonth}&year={$nextYear}&department=17";
-                    $ctx = stream_context_create(['http' => ['timeout' => 5]]);
-                    $res2_17 = @file_get_contents($url2_17, false, $ctx);
-                    if ($res2_17) {
-                        $data2_17 = json_decode($res2_17, true) ?: [];
-                        if (is_array($data2_17)) {
-                            foreach ($data2_17 as &$p17) {
-                                if (isset($p17['employeeName'])) {
-                                    $p17['employeeName'] = trim($p17['employeeName']) . ' - WH';
-                                }
-                            }
-                            $data2 = array_merge($data2, $data2_17);
-                        }
-                    }
-                } catch (\Exception $e) {
-                }
-            }
-
-            $empShifts = [];
-            foreach ($data1 as $person) {
-                $code = $person['employeeId'] ?? $person['code'] ?? null;
-                if ($code) {
-                    $empShifts[$code] = [
-                        'name' => $person['employeeName'] ?? '',
-                        'days' => $person['days'] ?? []
-                    ];
-                }
-            }
-
-            $empShiftsNext = [];
-            foreach ($data2 as $person) {
-                $code = $person['employeeId'] ?? $person['code'] ?? null;
-                if ($code) {
-                    $empShiftsNext[$code] = [
-                        'name' => $person['employeeName'] ?? '',
-                        'days' => $person['days'] ?? []
-                    ];
-                }
-            }
-
-            $allCodes = array_unique(array_merge(array_keys($empShifts), array_keys($empShiftsNext)));
-
-            $merged = [];
-            foreach ($allCodes as $code) {
-                $days = [];
-                $name = $empShifts[$code]['name'] ?? ($empShiftsNext[$code]['name'] ?? '');
-
-                for ($d = 1; $d <= 20; $d++) {
-                    $dayKey = 'day' . $d;
-                    $dayData = $empShifts[$code]['days'][$dayKey] ?? null;
-                    // Trích xuất chỉ mã ca để tiết kiệm bộ nhớ cache
-                    if (is_array($dayData)) {
-                        $days[$d] = strtoupper(trim($dayData['shift'] ?? ''));
-                    } else {
-                        $days[$d] = $dayData ? strtoupper(trim($dayData)) : null;
-                    }
-                }
-                for ($d = 21; $d <= 31; $d++) {
-                    $dayKey = 'day' . $d;
-                    $dayData = $empShiftsNext[$code]['days'][$dayKey] ?? null;
-                    if (is_array($dayData)) {
-                        $days[$d] = strtoupper(trim($dayData['shift'] ?? ''));
-                    } else {
-                        $days[$d] = $dayData ? strtoupper(trim($dayData)) : null;
-                    }
-                }
-
-                $merged[] = [
-                    'code' => $code,
-                    'name' => $name,
-                    'days' => $days
-                ];
-            }
-
-            return $merged;
-        });
+        return $merged;
     }
 }

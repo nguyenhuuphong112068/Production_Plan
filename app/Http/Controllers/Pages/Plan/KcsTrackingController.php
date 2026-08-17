@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\PlanMasterKcs;
 use App\Models\PlanMasterKcsHistory;
 use App\Support\MmsBom;
+use App\Support\MmsFgQc;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -38,10 +39,13 @@ class KcsTrackingController extends Controller
      * "Ngày ra phiếu TP" do QC nhập ở trang Phản Hồi Kế Hoạch Tháng, khác với ngày KCS
      * nhận được COATP. "Ngày nhận COATP" có cột dữ liệu riêng
      * (plan_master_KCS.coatp_received_date) và chỉ nhận giá trị người dùng tự nhập ở đây.
+     *
+     * Cũng không còn điền sẵn "Ngày KCS" từ plan_master.actual_KCS: cột đó nay do MMS
+     * quyết định (xem PlanMasterKcs::MMS_LABELS và syncFromMms()), không nhập tay nữa nên
+     * không cần gợi ý gõ.
      */
     public const PREFILL_FROM_PLAN_MASTER = [
         'record_received_date' => 'actual_record_date',
-        'kcs_date' => 'actual_KCS',
     ];
 
     public function index(Request $request)
@@ -56,11 +60,15 @@ class KcsTrackingController extends Controller
 
         $datas = $this->batches($department, $fromMonth, $toMonth, $keyword);
 
+        $bomVersions = $this->captureBomVersions($datas);
+        $mms = $this->mmsSuggestions($datas, $fromMonth);
+
+        // Đồng bộ trước khi đọc $records để lưới hiển thị đúng dữ liệu vừa cập nhật
+        $synced = $this->syncFromMms($mms['suggestions']);
+
         $records = PlanMasterKcs::whereIn('plan_master_id', $datas->pluck('id'))
             ->get()
             ->keyBy('plan_master_id');
-
-        $bomVersions = $this->captureBomVersions($datas);
 
         session()->put(['title' => 'THEO DÕI HỒ SƠ KCS']);
 
@@ -68,6 +76,10 @@ class KcsTrackingController extends Controller
             'datas' => $datas,
             'records' => $records,
             'bomVersions' => $bomVersions,
+            'mmsSuggestions' => $mms['suggestions'],
+            'mmsCodeMismatch' => $mms['code_mismatch'],
+            'mmsAvailable' => $mms['available'],
+            'mmsSynced' => $synced,
             'summary' => $this->buildSummary($department, $summaryYear),
             'summaryYear' => $summaryYear,
             'summaryYears' => $this->summaryYears(),
@@ -95,9 +107,6 @@ class KcsTrackingController extends Controller
             'record_received_date' => 'nullable|date',
             'reader' => 'nullable|string|max:100',
             'record_done_date' => 'nullable|date',
-            'stock_in_qty' => 'nullable|integer|min:0',
-            'kcs_date' => 'nullable|date',
-            'coatp_number' => 'nullable|string|max:50',
             'coatp_received_date' => 'nullable|date',
             'dr_ir' => 'nullable|string|max:100',
             'dr_ir_approval_date' => 'nullable|date',
@@ -115,7 +124,7 @@ class KcsTrackingController extends Controller
                 $isNew = !$record->exists;
 
                 // Chụp giá trị cũ trước khi ghép thay đổi để so ra đúng những ô thật sự đổi
-                $before = $this->inputSnapshot($record);
+                $before = $this->snapshot($record);
 
                 foreach (PlanMasterKcs::inputFields() as $field) {
                     if ($request->has($field)) {
@@ -124,7 +133,10 @@ class KcsTrackingController extends Controller
                     }
                 }
 
-                $record->fill(PlanMasterKcs::derive($this->inputSnapshot($record)));
+                // Ngày KCS / Số phiếu COATP luôn lấy thẳng từ MMS, kể cả khi tạo dòng mới
+                $this->applyMmsFields($record);
+
+                $record->fill(PlanMasterKcs::derive($this->snapshot($record)));
                 $record->updated_by = session('user')['userName'] ?? 'System';
                 $record->save();
 
@@ -170,15 +182,16 @@ class KcsTrackingController extends Controller
     }
 
     /**
-     * Giá trị hiện tại của các cột nhập, đã chuẩn hoá về chuỗi để so sánh và ghi vết.
+     * Giá trị hiện tại của mọi cột dữ liệu gốc (người dùng nhập + đồng bộ từ MMS),
+     * đã chuẩn hoá về chuỗi để so sánh và ghi vết.
      *
      * @return array<string, string|null>
      */
-    private function inputSnapshot(PlanMasterKcs $record): array
+    private function snapshot(PlanMasterKcs $record): array
     {
         $snapshot = [];
 
-        foreach (PlanMasterKcs::inputFields() as $field) {
+        foreach (PlanMasterKcs::trackedFields() as $field) {
             $value = $record->{$field};
 
             if ($value instanceof Carbon) {
@@ -196,12 +209,14 @@ class KcsTrackingController extends Controller
      * "create"; các lần sau là "update". Không có ô nào đổi thì không ghi gì.
      *
      * @param  array<string, string|null>  $before
+     * @param  string|null  $changedBy  người sửa; để trống thì lấy người đang đăng nhập
+     *                                  (đợt đồng bộ tự động truyền vào "MMS")
      */
-    private function recordHistory(PlanMasterKcs $record, array $before, bool $isNew): void
+    private function recordHistory(PlanMasterKcs $record, array $before, bool $isNew, ?string $changedBy = null): void
     {
-        $after = $this->inputSnapshot($record);
+        $after = $this->snapshot($record);
         $now = Carbon::now();
-        $changedBy = session('user')['fullName'] ?? (session('user')['userName'] ?? 'System');
+        $changedBy ??= session('user')['fullName'] ?? (session('user')['userName'] ?? 'System');
         $rows = [];
 
         foreach ($after as $field => $newValue) {
@@ -300,6 +315,181 @@ class KcsTrackingController extends Controller
             ->whereIn('plan_master_id', $datas->pluck('id'))
             ->get()
             ->keyBy('plan_master_id');
+    }
+
+    /**
+     * Cập nhật Ngày KCS / Số phiếu COATP từ MMS xuống các dòng theo dõi ĐÃ CÓ.
+     *
+     * Chạy mỗi lần mở trang, chỉ ghi những dòng thật sự lệch nên lần mở sau gần như
+     * không đụng vào database. Mọi thay đổi đều được ghi vết với người sửa là "MMS".
+     *
+     * Cố ý KHÔNG tạo dòng mới cho lô chưa theo dõi: dòng chỉ có Ngày KCS mà thiếu Ngày
+     * Đọc Xong Hồ Sơ thì không chấm được kết quả, nhưng vẫn bị bảng Tổng Kết Tỉ Lệ đếm
+     * vào tổng - tự sinh hơn 2.500 dòng như vậy sẽ kéo tỉ lệ đúng hạn xuống gần 0%.
+     * Lô chưa theo dõi vẫn thấy ngày của MMS trên lưới, và ngày đó được ghi xuống ngay
+     * khi người dùng nhập mốc đầu tiên (xem applyMmsFields()).
+     *
+     * Không có lệnh nào ghi ngược lên MMS.
+     *
+     * @param  \Illuminate\Support\Collection  $suggestions  dữ liệu MMS theo plan_master_id
+     * @return int  số dòng đã cập nhật
+     */
+    private function syncFromMms($suggestions): int
+    {
+        if ($suggestions->isEmpty()) {
+            return 0;
+        }
+
+        $records = PlanMasterKcs::whereIn('plan_master_id', $suggestions->keys())->get();
+        $updated = 0;
+
+        foreach ($records as $record) {
+            $mms = $suggestions->get($record->plan_master_id);
+
+            if (!$mms) {
+                continue;
+            }
+
+            $before = $this->snapshot($record);
+            $changed = false;
+
+            foreach (PlanMasterKcs::mmsFields() as $field) {
+                $value = $mms[$field] ?? null;
+
+                // MMS để trống thì giữ nguyên giá trị cũ, không xoá trắng dữ liệu đang có
+                if ($value === null || $value === '' || ($before[$field] ?? null) === $value) {
+                    continue;
+                }
+
+                $record->{$field} = $value;
+                $changed = true;
+            }
+
+            if (!$changed) {
+                continue;
+            }
+
+            $record->fill(PlanMasterKcs::derive($this->snapshot($record)));
+            $record->updated_by = 'MMS';
+            $record->save();
+
+            $this->recordHistory($record, $before, false, 'MMS');
+            $updated++;
+        }
+
+        return $updated;
+    }
+
+    /**
+     * Ghi Ngày KCS / Số phiếu COATP của MMS vào một dòng đang được lưu.
+     *
+     * Hai cột này không nhận giá trị từ request: ô trên lưới đã khoá, nhưng chặn ở đây
+     * mới thật sự đảm bảo dữ liệu luôn bằng MMS kể cả khi request bị sửa.
+     *
+     * Tra lẻ từng lô (~8ms) thay vì dùng lại bảng tra hàng loạt của trang danh sách, vì
+     * lưới tự lưu theo từng ô nên mỗi lần lưu chỉ đụng đúng một lô.
+     */
+    private function applyMmsFields(PlanMasterKcs $record): void
+    {
+        $lot = DB::table('plan_master as pm')
+            ->leftJoin('finished_product_category as fpc', 'pm.product_caterogy_id', '=', 'fpc.id')
+            ->where('pm.id', $record->plan_master_id)
+            ->select('pm.batch', 'pm.actual_batch', 'fpc.finished_product_code')
+            ->first();
+
+        if (!$lot) {
+            return;
+        }
+
+        try {
+            $approval = MmsFgQc::approvalFor(
+                $lot->finished_product_code,
+                $lot->actual_batch ?: $lot->batch
+            );
+        } catch (\Throwable) {
+            // MMS trục trặc thì vẫn cho lưu các mốc người dùng nhập, giữ nguyên giá trị cũ
+            return;
+        }
+
+        if (!$approval) {
+            return;
+        }
+
+        foreach (PlanMasterKcs::mmsFields() as $field) {
+            if (($approval[$field] ?? '') !== '') {
+                $record->{$field} = $approval[$field];
+            }
+        }
+    }
+
+    /**
+     * Ngày KCS / số phiếu COATP lấy từ MMS cho các lô đang hiển thị, kèm danh sách lô
+     * bị lệch mã TP giữa hai hệ thống.
+     *
+     * Chỉ đọc MMS rồi trả về cho lưới và cho syncFromMms(); không ghi gì ở đây.
+     *
+     * Lô nào lệch mã TP giữa hai hệ thống thì cố ý bỏ trống thay vì đoán, chỉ cảnh báo ở
+     * cột Mã TP để người dùng biết vì sao ô không tự điền.
+     *
+     * Cố ý KHÔNG coi "số lô có trên MMS dưới mã khác" là lệch mã: số lô đánh theo ngày nên
+     * gần như lô nào cũng bị nhiều mã dùng chung, quy tắc đó cho 84/362 lô cảnh báo mà hầu
+     * hết là nhiễu. Chỉ báo khi số lệnh khớp mà mã TP khác - lúc đó mới thật sự là hai hệ
+     * thống ghi khác nhau về cùng một lô.
+     *
+     * @return array{suggestions: \Illuminate\Support\Collection, code_mismatch: \Illuminate\Support\Collection, available: bool}
+     */
+    private function mmsSuggestions($datas, string $fromMonth): array
+    {
+        if ($datas->isEmpty()) {
+            return ['suggestions' => collect(), 'code_mismatch' => collect(), 'available' => true];
+        }
+
+        try {
+            // Lùi 3 tháng so với tháng kế hoạch đầu tiên: lô có thể được KCS sớm hơn
+            // tháng kế hoạch của nó, nhất là lô sản xuất vượt tiến độ.
+            $since = ($fromMonth ? Carbon::parse($fromMonth . '-01') : Carbon::now())->subMonths(3);
+
+            $lookup = MmsFgQc::approvalsSince($since);
+        } catch (\Throwable) {
+            // MMS không kết nối được thì trang vẫn dùng bình thường, chỉ mất phần gợi ý
+            return ['suggestions' => collect(), 'code_mismatch' => collect(), 'available' => false];
+        }
+
+        $suggestions = [];
+        $mismatch = [];
+
+        foreach ($datas as $data) {
+            $batch = trim((string) ($data->actual_batch ?: $data->batch));
+            $code = trim((string) $data->finished_product_code);
+
+            // Thiếu một trong hai thì không đủ khoá để tra, cũng không phải lệch mã
+            if ($batch === '' || $code === '') {
+                continue;
+            }
+
+            $hit = $lookup['approvals'][$code . '|' . $batch] ?? null;
+
+            if ($hit) {
+                $suggestions[$data->id] = $hit;
+                continue;
+            }
+
+            $order = MmsFgQc::normalizeOrderNumber($data->order_number_R1)
+                ?? MmsFgQc::normalizeOrderNumber($data->order_number_R2);
+
+            $onMms = $order ? ($lookup['orders'][$order] ?? null) : null;
+
+            // Cùng số lệnh, cùng số lô, khác mã TP: hai hệ thống đang ghi khác nhau
+            if ($onMms && $onMms['batch'] === $batch && $onMms['code'] !== $code) {
+                $mismatch[$data->id] = $onMms['code'];
+            }
+        }
+
+        return [
+            'suggestions' => collect($suggestions),
+            'code_mismatch' => collect($mismatch),
+            'available' => true,
+        ];
     }
 
     /** Danh sách lô sản xuất cần theo dõi hồ sơ KCS trong khoảng tháng kế hoạch */

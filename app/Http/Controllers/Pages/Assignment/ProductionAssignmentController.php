@@ -9,7 +9,7 @@ use Carbon\Carbon;
 use App\Http\Controllers\Pages\Report\DailyReportController;
 use App\Support\WorkingDay;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Cache;
+use App\Services\ShiftApiService;
 
 class ProductionAssignmentController extends Controller
 {
@@ -605,213 +605,59 @@ class ProductionAssignmentController extends Controller
     }
 
     /**
-     * Lấy dữ liệu đi ca của một phòng ban từ API, có cache ngắn hạn (mặc định 2 phút)
-     * để tránh gọi lại API chậm mỗi lần load trang. Trả về mảng đã decode, hoặc null nếu API lỗi.
-     * Lưu ý: chỉ cache khi gọi API thành công, không cache lỗi.
+     * Lịch trực của một bộ phận theo tháng, phục vụ sidebar trang Lịch công tác.
+     *
+     * Dữ liệu lấy từ 3 endpoint của eO2 PMS (ca / phép / tăng ca) và được hợp
+     * nhất trong ShiftApiService. `days.dayN` giờ là NGÀY N CỦA CHÍNH THÁNG được
+     * hỏi — không còn phải ghép 2 tháng như API `by-department` cũ.
      */
-    private function fetchShiftData($month, $year, $department, $ttlSeconds = 120)
-    {
-        $cacheKey = "shifts_api:{$month}:{$year}:{$department}";
-        $backupKey = "shifts_api_backup:{$month}:{$year}:{$department}";
-
-        $cached = $this->readShiftCache($cacheKey);
-        if (is_array($cached)) {
-            return $cached;
-        }
-
-        $url = "http://s-webdev:5070/api/shifts/by-department?month={$month}&year={$year}&department={$department}";
-        try {
-            // API đi ca trả về ~1.3MB và khi "nguội" có thể mất tới ~15s → timeout 10s cũ hay bị hụt.
-            $ctx = stream_context_create(['http' => ['timeout' => 30]]);
-            $data = @file_get_contents($url, false, $ctx);
-            if ($data !== false) {
-                $decoded = json_decode($data, true);
-                if (is_array($decoded)) {
-                    $this->writeShiftCache($cacheKey, $data, $ttlSeconds);
-                    // Bản sao lưu dài hạn để dùng khi API lỗi (429/timeout)
-                    $this->writeShiftCache($backupKey, $data, 86400);
-                    return $decoded;
-                }
-                Log::warning('Shift API tra ve du lieu khong hop le', ['url' => $url]);
-            } else {
-                $err = error_get_last();
-                Log::warning('Shift API khong goi duoc', ['url' => $url, 'error' => $err['message'] ?? null]);
-            }
-        } catch (\Exception $e) {
-            Log::warning('Shift API loi: ' . $e->getMessage(), ['url' => $url]);
-        }
-
-        // API lỗi và cache đã hết hạn: dùng bản sao lưu gần nhất để sidebar vẫn hoạt động
-        $backup = $this->readShiftCache($backupKey);
-        if (is_array($backup)) {
-            return $backup;
-        }
-
-        return null;
-    }
-
-    /**
-     * Ghi cache dữ liệu đi ca.
-     * Payload JSON thô ~1.3MB, nếu cache thẳng mảng PHP đã serialize thì query INSERT vượt
-     * `max_allowed_packet` của MySQL (mặc định 1MB) → Cache::put ném exception.
-     * Vì vậy nén gzip + base64 (còn khoảng ~100KB) trước khi ghi.
-     * Lỗi ghi cache không được phép làm hỏng request: chỉ ghi log và bỏ qua.
-     */
-    private function writeShiftCache($key, $rawJson, $ttlSeconds)
-    {
-        try {
-            Cache::put($key, 'gz:' . base64_encode(gzcompress($rawJson, 6)), $ttlSeconds);
-        } catch (\Throwable $e) {
-            Log::warning('Khong ghi duoc cache đi ca: ' . $e->getMessage(), ['key' => $key]);
-        }
-    }
-
-    /**
-     * Đọc cache dữ liệu đi ca, hỗ trợ cả bản ghi cũ (mảng PHP chưa nén).
-     */
-    private function readShiftCache($key)
-    {
-        try {
-            $cached = Cache::get($key);
-        } catch (\Throwable $e) {
-            Log::warning('Khong doc duoc cache đi ca: ' . $e->getMessage(), ['key' => $key]);
-            return null;
-        }
-
-        if (is_array($cached)) {
-            return $cached; // định dạng cũ
-        }
-
-        if (is_string($cached) && str_starts_with($cached, 'gz:')) {
-            $json = @gzuncompress(base64_decode(substr($cached, 3)));
-            if ($json !== false) {
-                $decoded = json_decode($json, true);
-                if (is_array($decoded)) {
-                    return $decoded;
-                }
-            }
-        }
-
-        return null;
-    }
-
-    public function getPersonnelShifts(Request $request)
+    public function getPersonnelShifts(Request $request, ShiftApiService $shiftApi)
     {
         $month = $request->month;
         $year = $request->year;
-        $departmentId = $request->department;
+        $departmentId = (int) $request->department;
 
         try {
-            // Dữ liệu tháng hiện tại (có cache 2 phút, tự gọi API khi cache trống)
-            $personnelData = $this->fetchShiftData($month, $year, $departmentId);
+            // PXV1 (15) có một số nhân sự Kho (17) làm tại Trung Tâm Cân.
+            $personnelData = $shiftApi->monthlyByDayKey($month, $year, $departmentId, $departmentId === 15);
             if ($personnelData === null) {
                 return response()->json(['error' => 'Không thể tải dữ liệu từ máy chủ API.'], 500);
             }
 
-            if ($departmentId == 15) {
-                $personnelData17 = $this->fetchShiftData($month, $year, 17);
-                if (is_array($personnelData17)) {
-                    foreach ($personnelData17 as &$p17) {
-                        if (isset($p17['employeeName'])) {
-                            $p17['employeeName'] = trim($p17['employeeName']) . ' - WH';
-                        }
-                    }
-                    unset($p17);
-                    $personnelData = array_merge($personnelData, $personnelData17);
+            // Loại nhân sự đã nghỉ việc
+            $resignedCodes = DB::table('employees')->where('resign', 1)->pluck('code')->toArray();
+            $resignedCodesSet = array_flip($resignedCodes);
+            $filteredPersonnelData = [];
+            foreach ($personnelData as $person) {
+                $code = $person['employeeId'] ?? $person['code'] ?? null;
+                if ($code && isset($resignedCodesSet[$code])) {
+                    continue;
+                }
+                $filteredPersonnelData[] = $person;
+            }
+            $personnelData = $filteredPersonnelData;
+
+            // Bổ sung cờ quản lý ở DB local
+            $localEmployees = DB::table('employees')->select('code', 'hasAssignment', 'on_maternity_leave', 'on_long_leave')->get()->keyBy('code');
+
+            foreach ($personnelData as &$person) {
+                $code = $person['employeeId'] ?? $person['code'] ?? null;
+
+                if ($code && isset($localEmployees[$code])) {
+                    $person['hasAssignment'] = $localEmployees[$code]->hasAssignment;
+                    $person['on_maternity_leave'] = $localEmployees[$code]->on_maternity_leave;
+                    $person['on_long_leave'] = $localEmployees[$code]->on_long_leave;
+                } else {
+                    $person['hasAssignment'] = 1; // Mặc định là 1 (có sắp lịch)
+                    $person['on_maternity_leave'] = 0;
+                    $person['on_long_leave'] = 0;
                 }
             }
-
-            if (is_array($personnelData)) {
-                // Filter out resigned employees
-                $resignedCodes = DB::table('employees')->where('resign', 1)->pluck('code')->toArray();
-                $resignedCodesSet = array_flip($resignedCodes);
-                $filteredPersonnelData = [];
-                foreach ($personnelData as $person) {
-                    $code = $person['employeeId'] ?? $person['code'] ?? null;
-                    if ($code && isset($resignedCodesSet[$code])) {
-                        continue;
-                    }
-                    $filteredPersonnelData[] = $person;
-                }
-                $personnelData = $filteredPersonnelData;
-
-                // Lấy dữ liệu đi ca của tháng tiếp theo (month + 1) để điền cho day21 - day31
-                $nextMonth = intval($month) + 1;
-                $nextYear = intval($year);
-                if ($nextMonth > 12) {
-                    $nextMonth = 1;
-                    $nextYear += 1;
-                }
-
-                // Dữ liệu tháng tiếp theo (có cache 2 phút). Bỏ qua nếu chưa có lịch.
-                $personnelDataNext = $this->fetchShiftData($nextMonth, $nextYear, $departmentId) ?: [];
-
-                if ($departmentId == 15) {
-                    $personnelDataNext17 = $this->fetchShiftData($nextMonth, $nextYear, 17);
-                    if (is_array($personnelDataNext17)) {
-                        foreach ($personnelDataNext17 as &$p17) {
-                            if (isset($p17['employeeName'])) {
-                                $p17['employeeName'] = trim($p17['employeeName']) . ' - WH';
-                            }
-                        }
-                        unset($p17);
-                        $personnelDataNext = array_merge($personnelDataNext, $personnelDataNext17);
-                    }
-                }
-
-                // Index nhân sự tháng tiếp theo theo employeeId / code
-                $nextMonthEmployees = [];
-                foreach ($personnelDataNext as $person) {
-                    $code = $person['employeeId'] ?? $person['code'] ?? null;
-                    if ($code) {
-                        $nextMonthEmployees[$code] = $person;
-                    }
-                }
-
-                // Lấy thông tin hasAssignment từ bảng employees local
-                $localEmployees = DB::table('employees')->select('code', 'hasAssignment', 'on_maternity_leave')->get()->keyBy('code');
-
-                foreach ($personnelData as &$person) {
-                    $code = $person['employeeId'] ?? $person['code'] ?? null;
-
-                    // Ghép logic: day1-day20 từ tháng $month, day21-day31 từ tháng $month+1
-                    $originalDays = $person['days'] ?? [];
-                    $newDays = [];
-
-                    for ($i = 1; $i <= 20; $i++) {
-                        $dayKey = 'day' . $i;
-                        $newDays[$dayKey] = $originalDays[$dayKey] ?? null;
-                    }
-
-                    if ($code && isset($nextMonthEmployees[$code])) {
-                        $nextPersonDays = $nextMonthEmployees[$code]['days'] ?? [];
-                        for ($i = 21; $i <= 31; $i++) {
-                            $dayKey = 'day' . $i;
-                            $newDays[$dayKey] = $nextPersonDays[$dayKey] ?? null;
-                        }
-                    } else {
-                        // Fallback: nếu không lấy được tháng tiếp theo thì giữ nguyên dữ liệu gốc
-                        for ($i = 21; $i <= 31; $i++) {
-                            $dayKey = 'day' . $i;
-                            $newDays[$dayKey] = $originalDays[$dayKey] ?? null;
-                        }
-                    }
-
-                    $person['days'] = $newDays;
-
-                    // Gán hasAssignment
-                    if ($code && isset($localEmployees[$code])) {
-                        $person['hasAssignment'] = $localEmployees[$code]->hasAssignment;
-                        $person['on_maternity_leave'] = $localEmployees[$code]->on_maternity_leave;
-                    } else {
-                        $person['hasAssignment'] = 1; // Mặc định là 1 (có sắp lịch)
-                        $person['on_maternity_leave'] = 0;
-                    }
-                }
-            }
+            unset($person);
 
             return response()->json($personnelData);
         } catch (\Exception $e) {
+            Log::warning('getPersonnelShifts loi: ' . $e->getMessage());
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
@@ -1053,7 +899,7 @@ class ProductionAssignmentController extends Controller
         }
     }
 
-    public function cloneCustomTask(Request $request)
+    public function cloneCustomTask(Request $request, ShiftApiService $shiftApi)
     {
         $room_id = $request->room_id;
         $work_location = null;
@@ -1094,7 +940,7 @@ class ProductionAssignmentController extends Controller
             if (!empty($allPersonnelIds)) {
                 $employeeMap = DB::table('employees')
                     ->whereIn('id', $allPersonnelIds)
-                    ->select('id', 'code', 'name', 'on_maternity_leave')
+                    ->select('id', 'code', 'name', 'on_maternity_leave', 'on_long_leave')
                     ->get()
                     ->keyBy('id')
                     ->toArray();
@@ -1124,32 +970,15 @@ class ProductionAssignmentController extends Controller
             ];
 
             foreach ($target_dates as $targetDate) {
-                // Pre-load shifts for the target month/year cycle
-                $carbonDate = Carbon::parse($targetDate);
-                $day = $carbonDate->day;
-                $sheetMonth = $carbonDate->month;
-                $sheetYear = $carbonDate->year;
+                // API mới tra theo ngày lịch thật nên không còn phải suy ra
+                // "tháng payload" như quy tắc ngày 21 của API by-department cũ.
+                $dateKey = Carbon::parse($targetDate)->format('Y-m-d');
 
-                if ($day >= 21) {
-                    $sheetMonth += 1;
-                    if ($sheetMonth > 12) {
-                        $sheetMonth = 1;
-                        $sheetYear += 1;
-                    }
-                }
-
-                $cacheKey = "{$sheetMonth}_{$sheetYear}";
-                if (!isset($shiftsCache[$cacheKey])) {
-                    $shiftsCache[$cacheKey] = [];
-                    // Dùng cache chung 2 phút (tránh gọi lại API chậm / lỗi 429)
-                    $decoded = $this->fetchShiftData($sheetMonth, $sheetYear, $department);
-                    if (is_array($decoded)) {
-                        foreach ($decoded as $person) {
-                            $code = $person['employeeId'] ?? $person['code'] ?? null;
-                            if ($code) {
-                                $shiftsCache[$cacheKey][$code] = $person;
-                            }
-                        }
+                if (!isset($shiftsCache[$dateKey])) {
+                    $dayIndex = $shiftApi->shiftIndex($dateKey, $dateKey, $department, $department === 15) ?? [];
+                    $shiftsCache[$dateKey] = [];
+                    foreach ($dayIndex as $code => $person) {
+                        $shiftsCache[$dateKey][(string) $code] = $person['days'][$dateKey]['shift'] ?? null;
                     }
                 }
 
@@ -1219,22 +1048,17 @@ class ProductionAssignmentController extends Controller
                             continue; // Skip!
                         }
 
-                        // Check shift
-                        $personData = $shiftsCache[$cacheKey][$empCode] ?? null;
-                        $isLeave = false;
-                        if ($personData) {
-                            $dayKey = "day{$day}";
-                            $dayData = $personData['days'][$dayKey] ?? null;
-                            if (is_array($dayData) || is_object($dayData)) {
-                                $dayData = $dayData['shift'] ?? 'HC';
-                            }
-                            $shiftCode = strtoupper($dayData ?: 'HC');
-                            if ($shiftCode === 'P') {
-                                $isLeave = true;
-                            }
+                        // Check long-term leave
+                        if ($emp->on_long_leave == 1) {
+                            $formattedDate = Carbon::parse($targetDate)->format('d/m/Y');
+                            $skippedList[] = "{$empName} ({$formattedDate})";
+                            continue; // Skip!
                         }
 
-                        if ($isLeave) {
+                        // Check shift: 'P' gồm cả phép đã duyệt lẫn phép chờ duyệt
+                        $shiftCode = strtoupper((string) ($shiftsCache[$dateKey][(string) $empCode] ?? '')) ?: 'HC';
+
+                        if ($shiftCode === 'P') {
                             $formattedDate = Carbon::parse($targetDate)->format('d/m/Y');
                             $skippedList[] = "{$empName} ({$formattedDate})";
                             continue; // Skip!
