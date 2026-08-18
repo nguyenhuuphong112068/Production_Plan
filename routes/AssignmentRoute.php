@@ -59,6 +59,7 @@ Route::prefix('/assignemnt/dashboard')
     ->group(function () {
         Route::get('', 'index')->name('index');
         Route::get('data', 'getData')->name('data');
+        Route::post('warm-cache', 'warmCache')->name('warm_cache');
     });
 
 Route::prefix('/assignemnt/overtime-policy')

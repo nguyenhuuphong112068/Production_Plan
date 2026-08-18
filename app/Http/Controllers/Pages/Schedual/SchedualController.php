@@ -2120,6 +2120,9 @@ class SchedualController extends Controller
 
         $start_date = null;
 
+        // Số phút đã phải dời thêm để nhóm lô không bắt đầu trước công đoạn trước (báo về frontend)
+        $manualShiftMinutes = 0;
+
         DB::beginTransaction();
 
         try {
@@ -2154,120 +2157,112 @@ class SchedualController extends Controller
                 }
             }
 
-            // 🔥 kiểm tra ngay từ đầu nếu current_start nằm trong offdate
-            foreach ($products as $index => $product) {
+            /*
+            |--------------------------------------------------------------------------
+            | lấy quota (một lần theo lô đầu, dùng chung cho cả nhóm)
+            |--------------------------------------------------------------------------
+            */
+            $firstProduct = $products->first();
+            $quota = null;
 
-                /*
-                |--------------------------------------------------------------------------
-                | lấy quota
-                |--------------------------------------------------------------------------
-                */
-                if ($index === 0 && $product['stage_code'] !== 9) {
+            if ($firstProduct['stage_code'] === 9) {
 
-                    // Khớp chính xác theo bán thành phẩm + thành phẩm + phòng + công đoạn.
-                    // Không dùng LIKE trên process_code: ký tự "_" là wildcard của SQL nên
-                    // phòng 1 khớp nhầm cả phòng 10/13/17..., lại thiếu điều kiện active
-                    // và stage_code nên có thể lấy trúng định mức đã bị vô hiệu hóa.
-                    $quota = $this->findQuota(
-                        $product['intermediate_code'],
-                        $product['finished_product_code'] ?? null,
-                        $request->room_id,
-                        $product['stage_code']
+                $p_time_minutes = 30;
+                $m_time_minutes = 60;
+                $C1_time_minutes = 30;
+                $C2_time_minutes = 60;
+            } else {
+
+                // Khớp chính xác theo bán thành phẩm + thành phẩm + phòng + công đoạn.
+                // Không dùng LIKE trên process_code: ký tự "_" là wildcard của SQL nên
+                // phòng 1 khớp nhầm cả phòng 10/13/17..., lại thiếu điều kiện active
+                // và stage_code nên có thể lấy trúng định mức đã bị vô hiệu hóa.
+                $quota = $this->findQuota(
+                    $firstProduct['intermediate_code'],
+                    $firstProduct['finished_product_code'] ?? null,
+                    $request->room_id,
+                    $firstProduct['stage_code']
+                );
+
+                if (! $quota) {
+
+                    $room_code = DB::table('room')->where('id', $request->room_id)->value('code');
+
+                    throw new \Exception(
+                        'Chưa có định mức cho ' . ($firstProduct['name'] ?? $firstProduct['intermediate_code'])
+                            . ' - công đoạn ' . $firstProduct['stage_code']
+                            . ' tại phòng ' . ($room_code ?: $request->room_id)
+                            . '. Vui lòng khai báo định mức trước khi sắp lịch.'
                     );
-
-                    if (! $quota) {
-
-                        $room_code = DB::table('room')->where('id', $request->room_id)->value('code');
-
-                        throw new \Exception(
-                            'Chưa có định mức cho ' . ($product['name'] ?? $product['intermediate_code'])
-                                . ' - công đoạn ' . $product['stage_code']
-                                . ' tại phòng ' . ($room_code ?: $request->room_id)
-                                . '. Vui lòng khai báo định mức trước khi sắp lịch.'
-                        );
-                    }
-
-                    $p_time_minutes = $quota->p_time_minutes;
-                    $m_time_minutes = $quota->m_time_minutes;
-                    $C1_time_minutes = $quota->C1_time_minutes;
-                    $C2_time_minutes = $quota->C2_time_minutes;
-                } elseif ($index === 0 && $product['stage_code'] === 9) {
-                    $p_time_minutes = 30;
-                    $m_time_minutes = 60;
-                    $C1_time_minutes = 30;
-                    $C2_time_minutes = 60;
                 }
 
-                // 🔥 Điều chỉnh quota cho công đoạn 7 và only_parkaging
-                $p_time_adj = (float) $p_time_minutes;
-                $m_time_adj = (float) $m_time_minutes;
+                $p_time_minutes = $quota->p_time_minutes;
+                $m_time_minutes = $quota->m_time_minutes;
+                $C1_time_minutes = $quota->C1_time_minutes;
+                $C2_time_minutes = $quota->C2_time_minutes;
+            }
 
-                if ($product['stage_code'] == 7) {
-                    $pm = DB::table('plan_master')
-                        ->where('id', $product['plan_master_id'])
-                        ->select('only_parkaging', 'percent_parkaging')
-                        ->first();
+            $quotaTimes = [
+                'p' => $p_time_minutes,
+                'm' => $m_time_minutes,
+                'C1' => $C1_time_minutes,
+                'C2' => $C2_time_minutes,
+                'campaign_index' => $quota->campaign_index ?? 1,
+            ];
 
-                    if ($pm) {
-                        $ratio = (float) ($pm->percent_parkaging ?? 1);
-                        $p_time_adj *= $ratio;
-                        $m_time_adj *= $ratio;
-                    }
-                }
+            /*
+            |--------------------------------------------------------------------------
+            | tính thời gian sản xuất + vệ sinh, có chặn ràng buộc công đoạn trước
+            |--------------------------------------------------------------------------
+            | Xếp thử từ điểm thả; lô nào bắt đầu trước khi công đoạn trước kết thúc thì
+            | dời CẢ nhóm trễ thêm đúng khoảng thiếu lớn nhất rồi xếp lại. Phải lặp vì
+            | giờ làm việc / ngày nghỉ khiến khoảng cách giữa các lô không tuyến tính.
+            */
+            $predReady = $this->predecessorReadyTimes($products);
 
-                /*
-                |--------------------------------------------------------------------------
-                | tính thời gian sản xuất + vệ sinh
-                |--------------------------------------------------------------------------
-                */
-                if ($product['stage_code'] <= 2) {
+            $batchTimes = $this->manualBatchTimes($products, $request->room_id, $current_start, $quotaTimes);
 
-                    $end_man = $current_start->copy()->addMinutes($p_time_adj + $m_time_adj * $quota->campaign_index);
+            for ($attempt = 0; $attempt < 5; $attempt++) {
 
-                    $end_clearning = $end_man->copy()->addMinutes((float) $C2_time_minutes);
-                    $clearning_type = 'VS-II';
-                    $firstBatachStart = $current_start;
-                } else {
+                $shiftMinutes = 0;
 
-                    if ($products->count() === 1) {
-                        $current_start = $this->skipOffTime($current_start, $this->offDate, $request->room_id);
+                foreach ($batchTimes as $i => $row) {
 
-                        $end_man = $this->addWorkingMinutes($current_start->copy(), $p_time_adj + $m_time_adj, $request->room_id, $this->work_sunday);
+                    if (isset($predReady[$i]) && $row['start']->lt($predReady[$i])) {
 
-                        $start_clearning = $end_man->copy();
-                        $end_clearning = $this->addWorkingMinutes($start_clearning->copy(), (float) $C2_time_minutes, $request->room_id, $this->work_sunday);
-                        $clearning_type = 'VS-II';
+                        $gap = (int) ceil(($predReady[$i]->getTimestamp() - $row['start']->getTimestamp()) / 60);
 
-                        $start_date = $end_man;
-                        $firstBatachStart = $current_start;
-                        $lastBatachEnd = $end_clearning;
-                    } else {
-
-                        if ($index === 0) {
-
-                            $end_man = $this->addWorkingMinutes($current_start->copy(), $p_time_adj + $m_time_adj, $request->room_id, $this->work_sunday);
-                            $start_clearning = $end_man->copy();
-                            $end_clearning = $this->addWorkingMinutes($start_clearning->copy(), (float) $C1_time_minutes, $request->room_id, $this->work_sunday);
-
-                            $start_date = $end_man;
-                            $clearning_type = 'VS-I';
-                            $firstBatachStart = $current_start;
-                        } elseif ($index === $products->count() - 1) {
-
-                            $end_man = $this->addWorkingMinutes($current_start->copy(), $m_time_adj, $request->room_id, $this->work_sunday);
-                            $start_clearning = $end_man->copy();
-                            $end_clearning = $this->addWorkingMinutes($start_clearning->copy(), (float) $C2_time_minutes, $request->room_id, $this->work_sunday);
-                            $clearning_type = 'VS-II';
-                            $lastBatachEnd = $end_clearning;
-                        } else {
-
-                            $end_man = $this->addWorkingMinutes($current_start->copy(), $m_time_adj, $request->room_id, $this->work_sunday);
-                            $start_clearning = $end_man->copy();
-                            $end_clearning = $this->addWorkingMinutes($start_clearning->copy(), (float) $C1_time_minutes, $request->room_id, $this->work_sunday);
-                            $clearning_type = 'VS-I';
+                        if ($gap > $shiftMinutes) {
+                            $shiftMinutes = $gap;
                         }
                     }
                 }
+
+                if ($shiftMinutes <= 0) {
+                    break;
+                }
+
+                $current_start = $current_start->copy()->addMinutes($shiftMinutes);
+                $manualShiftMinutes += $shiftMinutes;
+
+                $batchTimes = $this->manualBatchTimes($products, $request->room_id, $current_start, $quotaTimes);
+            }
+
+            $firstBatachStart = $batchTimes[0]['start'] ?? null;
+            $lastBatachEnd = $batchTimes ? $batchTimes[count($batchTimes) - 1]['end_clearning'] : null;
+
+            // start_date chỉ dùng để đổ tiếp sang công đoạn sau, công đoạn cân không có
+            if ($firstProduct['stage_code'] > 2) {
+                $start_date = $batchTimes[0]['end'] ?? null;
+            }
+
+            foreach ($products as $index => $product) {
+
+                $current_start = $batchTimes[$index]['start'];
+                $end_man = $batchTimes[$index]['end'];
+                $start_clearning = $batchTimes[$index]['start_clearning'];
+                $end_clearning = $batchTimes[$index]['end_clearning'];
+                $clearning_type = $batchTimes[$index]['clearning_type'];
 
                 /*
                 |--------------------------------------------------------------------------
@@ -2403,18 +2398,7 @@ class SchedualController extends Controller
                     ->whereNotIn('stage_code', [8, 9])
                     ->update(['submit' => 0]);
 
-                /*
-                |--------------------------------------------------------------------------
-                | tính current_start cho sản phẩm tiếp theo
-                |--------------------------------------------------------------------------
-                */
-                if ($product['stage_code'] > 2) {
-
-                    $current_start = $end_clearning;
-                }
-
-                // 🔥 SAU KHI TĂNG current_start → KIỂM TRA NGÀY OFF
-                $current_start = $this->skipOffTime($current_start, $this->offDate, $request->room_id);
+                // Thời gian của lô kế tiếp đã được tính sẵn trong manualBatchTimes()
             }
 
             // // set lại mã chiến dịch
@@ -2553,7 +2537,139 @@ class SchedualController extends Controller
             'events' => $events,
             'plan' => $plan_waiting,
             'sumBatchByStage' => $sumBatchByStage,
+            'manual_shift_minutes' => $manualShiftMinutes,
         ]);
+    }
+
+    /**
+     * Mốc sẵn sàng của công đoạn trước cho từng lô, theo đúng thứ tự lô truyền vào.
+     *
+     * Bỏ qua công đoạn cân (1, 2) và lô có công đoạn trước chưa được xếp lịch - hai
+     * trường hợp này không tạo ràng buộc nên không có mặt trong mảng trả về.
+     *
+     * @return array<int, Carbon>
+     */
+    private function predecessorReadyTimes($products): array
+    {
+        $ids = collect($products)->pluck('id')->filter()->all();
+
+        if (empty($ids)) {
+            return [];
+        }
+
+        $ends = DB::table('stage_plan as sp')
+            ->join('stage_plan as prev', 'prev.code', '=', 'sp.predecessor_code')
+            ->whereIn('sp.id', $ids)
+            ->whereNotIn('prev.stage_code', [1, 2])
+            ->whereNotNull('prev.end')
+            ->select('sp.id as sp_id', 'prev.end as prev_end')
+            ->get()
+            ->pluck('prev_end', 'sp_id');
+
+        $readyTimes = [];
+
+        foreach ($products as $index => $product) {
+
+            $end = $ends[$product['id']] ?? null;
+
+            if ($end) {
+                $readyTimes[$index] = Carbon::parse($end);
+            }
+        }
+
+        return $readyTimes;
+    }
+
+    /**
+     * Thời gian của tất cả các lô khi sắp lịch thủ công liên tục từ $startTime.
+     *
+     * Tách khỏi store() để có thể xếp thử → kiểm tra ràng buộc công đoạn trước → dời cả
+     * nhóm rồi mới ghi DB, bảo đảm lịch đã kiểm tra và lịch lưu luôn khớp nhau.
+     *
+     * @param  array{p: mixed, m: mixed, C1: mixed, C2: mixed, campaign_index: mixed}  $quotaTimes
+     * @return array<int, array{start: Carbon, end: Carbon, start_clearning: Carbon, end_clearning: Carbon, clearning_type: string}>
+     */
+    private function manualBatchTimes($products, $roomId, Carbon $startTime, array $quotaTimes): array
+    {
+        $batchTimes = [];
+
+        $count = $products->count();
+
+        $current_start = $startTime->copy();
+
+        foreach ($products as $index => $product) {
+
+            // 🔥 Điều chỉnh quota cho công đoạn 7 và only_parkaging
+            $p_time_adj = (float) $quotaTimes['p'];
+            $m_time_adj = (float) $quotaTimes['m'];
+
+            if ($product['stage_code'] == 7) {
+                $pm = DB::table('plan_master')
+                    ->where('id', $product['plan_master_id'])
+                    ->select('only_parkaging', 'percent_parkaging')
+                    ->first();
+
+                if ($pm) {
+                    $ratio = (float) ($pm->percent_parkaging ?? 1);
+                    $p_time_adj *= $ratio;
+                    $m_time_adj *= $ratio;
+                }
+            }
+
+            if ($product['stage_code'] <= 2) {
+
+                $end_man = $current_start->copy()->addMinutes($p_time_adj + $m_time_adj * $quotaTimes['campaign_index']);
+                $start_clearning = $end_man->copy();
+                $end_clearning = $end_man->copy()->addMinutes((float) $quotaTimes['C2']);
+                $clearning_type = 'VS-II';
+            } else {
+
+                if ($count === 1) {
+                    $current_start = $this->skipOffTime($current_start, $this->offDate, $roomId);
+
+                    $end_man = $this->addWorkingMinutes($current_start->copy(), $p_time_adj + $m_time_adj, $roomId, $this->work_sunday);
+
+                    $start_clearning = $end_man->copy();
+                    $end_clearning = $this->addWorkingMinutes($start_clearning->copy(), (float) $quotaTimes['C2'], $roomId, $this->work_sunday);
+                    $clearning_type = 'VS-II';
+                } elseif ($index === 0) {
+
+                    $end_man = $this->addWorkingMinutes($current_start->copy(), $p_time_adj + $m_time_adj, $roomId, $this->work_sunday);
+                    $start_clearning = $end_man->copy();
+                    $end_clearning = $this->addWorkingMinutes($start_clearning->copy(), (float) $quotaTimes['C1'], $roomId, $this->work_sunday);
+                    $clearning_type = 'VS-I';
+                } elseif ($index === $count - 1) {
+
+                    $end_man = $this->addWorkingMinutes($current_start->copy(), $m_time_adj, $roomId, $this->work_sunday);
+                    $start_clearning = $end_man->copy();
+                    $end_clearning = $this->addWorkingMinutes($start_clearning->copy(), (float) $quotaTimes['C2'], $roomId, $this->work_sunday);
+                    $clearning_type = 'VS-II';
+                } else {
+
+                    $end_man = $this->addWorkingMinutes($current_start->copy(), $m_time_adj, $roomId, $this->work_sunday);
+                    $start_clearning = $end_man->copy();
+                    $end_clearning = $this->addWorkingMinutes($start_clearning->copy(), (float) $quotaTimes['C1'], $roomId, $this->work_sunday);
+                    $clearning_type = 'VS-I';
+                }
+            }
+
+            $batchTimes[] = [
+                'start' => $current_start->copy(),
+                'end' => $end_man,
+                'start_clearning' => $start_clearning,
+                'end_clearning' => $end_clearning,
+                'clearning_type' => $clearning_type,
+            ];
+
+            // Lô kế tiếp bắt đầu ngay sau vệ sinh, rồi nhảy qua ngày nghỉ / phòng bận
+            if ($product['stage_code'] > 2) {
+                $current_start = $end_clearning->copy();
+            }
+
+            $current_start = $this->skipOffTime($current_start, $this->offDate, $roomId);
+        }
+
+        return $batchTimes;
     }
 
     public function toggleNotSchedule(Request $request)

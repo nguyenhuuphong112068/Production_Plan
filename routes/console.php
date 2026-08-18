@@ -33,5 +33,14 @@ Schedule::command('employees:sync-roster')->dailyAt('12:30')->withoutOverlapping
 // tiếp ít người xem nên tách sang một lượt riêng lúc 21:00, ngoài giờ làm việc.
 //
 // withoutOverlapping: một lượt có nghỉ giãn nhịp nên kéo dài vài phút.
-Schedule::command('shifts:warm-cache')->hourly()->between('5:00', '20:00')->withoutOverlapping();
-Schedule::command('shifts:warm-cache --months=2')->dailyAt('21:00')->withoutOverlapping();
+// Ba mốc bám theo nhịp làm việc: trước ca sáng, đầu giờ chiều, và cuối giờ
+// chiều. Khoảng cách lớn nhất giữa hai lượt là 8 giờ (16:00 -> 00:00), nên
+// `shiftapi.cache_ttl` phải dài hơn con số đó, nếu không cache sẽ nguội giữa
+// chừng và người dùng lại phải chờ API.
+Schedule::command('shifts:warm-cache')->dailyAt('05:55')->withoutOverlapping();
+Schedule::command('shifts:warm-cache')->dailyAt('12:00')->withoutOverlapping();
+Schedule::command('shifts:warm-cache')->dailyAt('16:00')->withoutOverlapping();
+
+// Nửa đêm nạp thêm tháng kế tiếp. Lượt này nặng gấp đôi (14 lượt con thay vì 7)
+// nên đặt vào lúc không ai dùng và eO2 rảnh nhất.
+Schedule::command('shifts:warm-cache --months=2')->dailyAt('00:00')->withoutOverlapping();

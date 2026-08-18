@@ -71,6 +71,17 @@
                                     </div>
                                 </div>
                             </div>
+                            <div class="row">
+                                <div class="col-12 d-flex align-items-center">
+                                    <button type="button" class="btn btn-outline-primary btn-sm" id="btn-warm-cache">
+                                        <i class="fas fa-sync-alt mr-1"></i>Đồng bộ lịch trực
+                                    </button>
+                                    <small class="text-muted ml-3">
+                                        Lấy lại lịch trực của phân xưởng đang chọn từ eO2 PMS. Chỉ dùng khi thấy số
+                                        liệu chưa đúng — bình thường hệ thống tự nạp lúc 00:00, 05:55, 12:00 và 16:00.
+                                    </small>
+                                </div>
+                            </div>
                         </form>
                     </div>
                 </div>
@@ -445,6 +456,75 @@
         document.getElementById('group_id').addEventListener('change', loadData);
         document.getElementById('type').addEventListener('change', loadData);
         document.getElementById('date').addEventListener('change', loadData);
+
+        // Nút Đồng bộ lịch trực: bỏ cache trên server rồi hỏi lại eO2 PMS.
+        //
+        // Cache nằm ở SERVER và dùng chung cho toàn hệ thống, nên một người bấm
+        // là mọi người cùng thấy số liệu mới. Đổi lại mỗi lượt là 3-6 request
+        // nặng, mất ~10-40s tuỳ phân xưởng (PXV1 lâu nhất vì gộp thêm Kho), nên
+        // nút bị khoá trong lúc chạy và backend còn khoá thêm 60s mỗi tháng.
+        document.getElementById('btn-warm-cache').addEventListener('click', function() {
+            const btn = this;
+            if (btn.disabled) return;
+
+            const productionCode = document.getElementById('production_code').value;
+            const date = document.getElementById('date').value;
+
+            btn.disabled = true;
+            const original = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-sync-alt fa-spin mr-1"></i>Đang đồng bộ...';
+
+            Swal.fire({
+                title: 'Đang lấy dữ liệu mới từ eO2 PMS',
+                html: 'Phân xưởng <b>' + productionCode + '</b> — có thể mất tới 40 giây.',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+
+            fetch(`{{ route('pages.assignment.dashboard.warm_cache') }}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({
+                        production_code: productionCode,
+                        date: date
+                    })
+                })
+                .then(res => res.json().then(body => ({
+                    ok: res.ok,
+                    body
+                })))
+                .then(({
+                    ok,
+                    body
+                }) => {
+                    if (!ok) {
+                        // 429 = vừa có người đồng bộ, 503 = eO2 chặn hoặc không trả.
+                        Swal.fire('Chưa đồng bộ được', body.error || 'Lỗi không xác định', 'warning');
+                        return;
+                    }
+
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Đã đồng bộ ' + body.department + ' tháng ' + body.month,
+                        text: body.employees + ' nhân sự',
+                        timer: 2500,
+                        showConfirmButton: false
+                    });
+
+                    // Nạp lại Dashboard để thấy ngay số liệu vừa lấy về.
+                    loadData();
+                })
+                .catch(() => {
+                    Swal.fire('Lỗi', 'Không gọi được máy chủ. Vui lòng thử lại.', 'error');
+                })
+                .finally(() => {
+                    btn.disabled = false;
+                    btn.innerHTML = original;
+                });
+        });
 
         // Search detail table
         document.getElementById('searchDetail').addEventListener('input', function() {

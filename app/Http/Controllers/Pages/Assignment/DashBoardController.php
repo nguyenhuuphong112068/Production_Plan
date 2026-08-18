@@ -4,12 +4,35 @@ namespace App\Http\Controllers\Pages\Assignment;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Services\ShiftApiService;
 
 class DashBoardController extends Controller
 {
+    /**
+     * Ánh xạ mã phân xưởng -> mã bộ phận của eO2 PMS.
+     *
+     * Dùng chung cho `getData` (đọc) và `warmCache` (nạp sẵn) để hai bên không
+     * bao giờ hỏi hai bộ phận khác nhau: lệch nhau thì nút Đồng bộ sẽ nạp cache
+     * cho một bộ phận mà trang không hề đọc tới, bấm xong vẫn thấy số cũ.
+     *
+     * LƯU Ý: bảng này KHÁC `EmployeeRosterSync::DEPARTMENTS` ở mã QA (18 so với
+     * 9). Khác biệt có sẵn từ trước, chưa rõ bên nào đúng, nên ở đây giữ nguyên
+     * đúng bảng mà Dashboard vốn dùng thay vì tự ý đổi.
+     */
+    public const DEPARTMENT_MAP = [
+        'EN' => 3,
+        'PXTN' => 6,
+        'PXV1' => 15,
+        'WH' => 17,
+        'PXVH' => 30,
+        'PXDN' => 34,
+        'PXV2' => 32,
+        'QA' => 18,
+    ];
+
     public function index(Request $request)
     {
         // View for Dashboard
@@ -31,6 +54,70 @@ class DashBoardController extends Controller
         $groups = [];
 
         return view('pages.assignment.DashBoard.index', compact('departments', 'groups'));
+    }
+
+    /**
+     * Nút "Đồng bộ lịch trực" trên Dashboard: nạp lại tháng đang xem của phân
+     * xưởng đang chọn, bỏ qua cache nóng.
+     *
+     * Chỉ một phân xưởng, không phải cả 7, vì mỗi phân xưởng đã tốn 3-6 request
+     * nặng (~10-40s). Muốn nạp đủ cả 7 thì để `shifts:warm-cache` chạy nền lo -
+     * command đó có giãn nhịp và biết lùi lại khi eO2 trả 429, còn một HTTP
+     * request thì không đủ thời gian.
+     */
+    public function warmCache(Request $request, ShiftApiService $shiftApi)
+    {
+        $code = (string) $request->input('production_code');
+        $depId = self::DEPARTMENT_MAP[$code] ?? null;
+
+        if (!$depId) {
+            return response()->json([
+                'error' => "Phân xưởng '{$code}' không có mã bộ phận tương ứng.",
+            ], 422);
+        }
+
+        // Bám theo ô ngày trên Dashboard: người dùng đang xem tháng nào thì nạp
+        // lại đúng tháng đó, không phải lúc nào cũng là tháng hiện tại.
+        $date = $request->filled('date') ? Carbon::parse($request->input('date')) : Carbon::now();
+        $month = (int) $date->month;
+        $year = (int) $date->year;
+        $mergeWarehouse = $depId === 15;
+
+        // Cùng khoá 60s với nút Đồng bộ ở sidebar Lịch công tác. Cache nằm trên
+        // server và dùng chung, nên một người bấm là mọi người cùng có số mới;
+        // đổi lại phải chặn bấm dồn, nếu không eO2 sẽ trả HTTP 429.
+        $lockKey = "shiftapi:refresh:{$year}:{$month}:{$depId}";
+        if (!Cache::add($lockKey, 1, 60)) {
+            return response()->json([
+                'error' => 'Phân xưởng này vừa được đồng bộ. Vui lòng chờ khoảng 1 phút rồi thử lại.',
+            ], 429);
+        }
+
+        // PXV1 gộp thêm Kho nên tới 6 request; mặc định 30s của PHP không đủ.
+        @set_time_limit(180);
+
+        $shiftApi->forgetMonth($month, $year, $depId, $mergeWarehouse);
+        $data = $shiftApi->monthlyByDayKey($month, $year, $depId, $mergeWarehouse);
+
+        // `monthlyByDayKey` vẫn trả về mảng khi phải rơi về bản sao lưu 24h, nên
+        // chỉ nhìn giá trị trả về sẽ báo thành công nhầm. Hỏi cache nóng mới
+        // biết lượt này có thật sự lấy được số liệu mới hay không.
+        if (!$shiftApi->hasFreshMonth($month, $year, $depId, $mergeWarehouse)) {
+            $wait = $shiftApi->rateLimitedFor();
+
+            return response()->json([
+                'error' => $wait
+                    ? "Máy chủ eO2 đang chặn do quá tải (429). Thử lại sau khoảng {$wait}s."
+                    : 'Máy chủ eO2 không trả dữ liệu. Xem storage/logs/laravel.log để biết chi tiết.',
+            ], 503);
+        }
+
+        return response()->json([
+            'success' => true,
+            'department' => $code,
+            'month' => sprintf('%02d/%d', $month, $year),
+            'employees' => count($data ?? []),
+        ]);
     }
 
     /**
@@ -239,18 +326,7 @@ class DashBoardController extends Controller
         }
 
         // --- Fetch Shifts to determine Leave (P) AND collect overtime ---
-        $deptMapping = [
-            'EN' => 3,
-            'PXTN' => 6,
-            'PXV1' => 15,
-            'WH' => 17,
-            'PXVH' => 30,
-            'PXDN' => 34,
-            'PXV2' => 32,
-            'QA' => 18,
-        ];
-
-        $departmentId = $deptMapping[$production_code] ?? null;
+        $departmentId = self::DEPARTMENT_MAP[$production_code] ?? null;
 
         // Lấy danh sách ngày nghỉ (off-dates)
         $offDates = DB::table('off_days')

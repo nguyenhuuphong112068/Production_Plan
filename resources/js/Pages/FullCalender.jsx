@@ -1082,6 +1082,17 @@ const ScheduleTest = () => {
 
 
           setSelectedRows([]);
+
+          // Backend đã dời nhóm lô để không lô nào bắt đầu trước khi công đoạn trước kết thúc
+          if (data.manual_shift_minutes > 0) {
+            const h = Math.floor(data.manual_shift_minutes / 60);
+            const m = data.manual_shift_minutes % 60;
+            Swal.fire({
+              icon: 'info',
+              title: 'Đã dời lịch',
+              text: `Vị trí thả nằm trước thời điểm kết thúc của công đoạn trước. Lịch đã được dời trễ thêm ${h} giờ ${m} phút để không vi phạm.`
+            });
+          }
         })
         .catch(err => {
           // Lỗi tạo lịch

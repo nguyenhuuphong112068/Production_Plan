@@ -65,15 +65,19 @@ return [
     | lần/ngày). Hệ quả: gần như mọi lần vào trang đều là cache miss -> 6 request
     | nặng tới eO2 -> trang chờ ~20s và thường xuyên dính HTTP 429.
     |
-    | Đặt 2 giờ, dài hơn nhịp chạy của `shifts:warm-cache` (mỗi giờ), nên cache
-    | luôn được nạp lại trước khi kịp hết hạn và người dùng gần như không bao giờ
-    | phải chờ API. Cần số liệu mới ngay thì bấm nút Đồng bộ ở sidebar Lịch công
-    | tác - nút đó xoá khoá này rồi gọi lại API.
+    | Đặt 12 giờ. Con số này bám theo lịch `shifts:warm-cache` (00:00, 05:55,
+    | 12:00, 16:00): khoảng trống dài nhất giữa hai lượt là 8 giờ, cộng thêm biên
+    | 4 giờ để một lượt nạp lỗi cũng chưa làm cache nguội. Đặt ngắn hơn 8 giờ thì
+    | cache chết giữa chừng và người dùng lại phải chờ API ~20s.
+    |
+    | Độ tươi của số liệu do 4 lượt nạp/ngày quyết định, KHÔNG phải do TTL này.
+    | Cần mới ngay thì bấm nút Đồng bộ ở sidebar Lịch công tác - nút đó xoá khoá
+    | này rồi gọi lại API.
     |
     | Lưu ý: KHÔNG tốn thêm dung lượng. Cùng nội dung này vốn đã được ghi song
     | song vào khoá backup với TTL 24h.
     */
-    'cache_ttl' => env('SHIFT_API_CACHE_TTL', 7200),
+    'cache_ttl' => env('SHIFT_API_CACHE_TTL', 43200),
 
     // Bản sao lưu dùng khi API lỗi/timeout để giao diện vẫn hoạt động.
     'backup_ttl' => env('SHIFT_API_BACKUP_TTL', 86400),
