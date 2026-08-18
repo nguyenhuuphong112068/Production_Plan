@@ -158,6 +158,108 @@ class ShiftApiService
     }
 
     /**
+     * Danh sách nhân sự (chỉ mã + tên) của một hoặc nhiều bộ phận.
+     *
+     * Dùng cho các luồng CHỈ cần biết "bộ phận này có những ai" — đồng bộ nhân
+     * sự lúc đăng nhập, nút Sync ở trang Quản lý nhân sự. Khác `shiftIndex` ở
+     * ba điểm quan trọng cho tốc độ:
+     *   - chỉ gọi endpoint `range`, bỏ hẳn `leave` + `overtime` (1 request thay vì 3),
+     *   - hỏi đúng MỘT ngày thay vì trọn tháng,
+     *   - gộp mọi bộ phận vào một mẻ song song duy nhất,
+     *   - cache riêng với TTL dài (danh sách nhân sự rất ít đổi).
+     *
+     * @param  array $departments  danh sách mã bộ phận
+     * @return array [department => [employeeCode => employeeName]]
+     *               Bộ phận nào lỗi thì KHÔNG có mặt trong kết quả (khác với
+     *               có mặt nhưng rỗng), để nơi gọi không vô hiệu hoá nhầm nhân sự.
+     */
+    public function roster(array $departments, $date = null, ?int $timeout = null): array
+    {
+        $day = $date ? Carbon::parse($date)->startOfDay() : Carbon::now()->startOfDay();
+        $dayKey = $day->format('Y-m-d');
+        $ttl = (int) config('shiftapi.roster_cache_ttl', 21600);
+
+        $result = [];
+        $urls = [];
+        $backupKeys = [];
+
+        foreach (array_unique(array_map('intval', $departments)) as $dept) {
+            $cacheKey = "shiftapi:roster:{$dayKey}:{$dept}";
+            $backupKeys[$dept] = "shiftapi:roster_backup:{$dept}";
+
+            $cached = $this->cacheGet($cacheKey);
+            if (is_array($cached)) {
+                $result[$dept] = $cached;
+                continue;
+            }
+            $urls[$dept] = $this->url('range', $day, $day, $dept);
+        }
+
+        if (empty($urls)) {
+            return $result;
+        }
+
+        $responses = $this->fetchAll($urls, $timeout);
+
+        foreach ($urls as $dept => $url) {
+            $payload = $responses[$dept] ?? null;
+
+            if (!is_array($payload)) {
+                // API lỗi: dùng bản sao lưu nếu có, còn không thì BỎ HẲN bộ phận
+                // này khỏi kết quả để nơi gọi biết là "không lấy được".
+                $backup = $this->cacheGet($backupKeys[$dept]);
+                if (is_array($backup)) {
+                    $result[$dept] = $backup;
+                }
+                continue;
+            }
+
+            $roster = [];
+            foreach ($payload as $person) {
+                $code = $this->codeOf($person);
+                if ($code) {
+                    $roster[$code] = trim((string) ($person['employeeName'] ?? ''));
+                }
+            }
+
+            $this->cachePut("shiftapi:roster:{$dayKey}:{$dept}", $roster, $ttl);
+            $this->cachePut($backupKeys[$dept], $roster, (int) config('shiftapi.backup_ttl', 86400));
+            $result[$dept] = $roster;
+        }
+
+        return $result;
+    }
+
+    /**
+     * Danh sách nhân sự lấy từ CACHE, tuyệt đối không gọi HTTP.
+     *
+     * Dành cho những luồng không được phép chờ — cụ thể là đăng nhập. Máy chủ
+     * nguồn mất ~9.5s đến ~88s cho mỗi request tuỳ bộ phận, nên bất kỳ lời gọi
+     * API nào trong luồng đăng nhập cũng là không chấp nhận được.
+     *
+     * Chấp nhận cả bản sao lưu (24h) vì danh sách nhân sự thay đổi rất chậm.
+     *
+     * @return array [department => [employeeCode => employeeName]]
+     */
+    public function cachedRoster(array $departments, $date = null): array
+    {
+        $dayKey = ($date ? Carbon::parse($date) : Carbon::now())->format('Y-m-d');
+
+        $result = [];
+        foreach (array_unique(array_map('intval', $departments)) as $dept) {
+            $roster = $this->cacheGet("shiftapi:roster:{$dayKey}:{$dept}");
+            if (!is_array($roster)) {
+                $roster = $this->cacheGet("shiftapi:roster_backup:{$dept}");
+            }
+            if (is_array($roster)) {
+                $result[$dept] = $roster;
+            }
+        }
+
+        return $result;
+    }
+
+    /**
      * Đơn nghỉ phép có được tính là nghỉ hay không.
      *
      * Đã duyệt (Approved) và mọi trạng thái chờ duyệt đều tính; Rejected và
@@ -499,16 +601,18 @@ class ShiftApiService
      * hạn chấp nhận được; song song thì chỉ tốn bằng endpoint chậm nhất.
      *
      * @param array<string,string> $urls [key => url]
+     * @param int|null $timeoutOverride timeout riêng (giây) cho luồng không được
+     *        phép chờ lâu, ví dụ đồng bộ nhân sự lúc đăng nhập.
      * @return array<string,array|null> [key => payload đã decode, hoặc null nếu lỗi]
      */
-    private function fetchAll(array $urls): array
+    private function fetchAll(array $urls, ?int $timeoutOverride = null): array
     {
         $result = array_fill_keys(array_keys($urls), null);
         if (empty($urls)) {
             return $result;
         }
 
-        $timeout = (int) config('shiftapi.timeout', 90);
+        $timeout = $timeoutOverride ?: (int) config('shiftapi.timeout', 90);
         $verify = (bool) config('shiftapi.verify_tls', false);
 
         $multi = curl_multi_init();

@@ -26,6 +26,7 @@ Khi người dùng sửa đổi lịch của 1 lô thuộc một "chiến dịch
 * Backend lấy toàn bộ lô thuộc campaign đó, sắp xếp theo thời gian (`start`).
 * Lô được sửa sẽ nhận thời gian mới.
 * Các lô tiếp theo sẽ tự động lùi/tiến nối tiếp liên tục (back-to-back) ngay sau lô trước đó, cộng dồn với thời lượng sản xuất và thời gian vệ sinh (nếu có). Tránh tình trạng các lô trong chiến dịch bị dồn cục vào cùng một thời điểm.
+* **Chặn vi phạm công đoạn trước** (`update()` trong `SchedualController.php`): trước khi ghi DB, backend xếp thử back-to-back từ điểm thả và so từng lô với `pred.end`. Nếu có lô vi phạm, **cả chiến dịch** được dời trễ đúng bằng khoảng thiếu lớn nhất (các lô cách đều nhau nên chỉ cần 1 lượt tính). Số phút đã dời trả về frontend qua trường `campaign_shift_minutes` để hiển thị thông báo cho người dùng.
 
 ## 4. Bảo Trì (BT), Hiệu Chuẩn (HC), Tiện Ích (TI)
 * Mã công đoạn (`stage_code`) cho toàn bộ nhóm này là `8`.
@@ -289,22 +290,21 @@ Campaign là nhóm nhiều lô (batch) của cùng sản phẩm chạy liên t�
 
 #### Bước 1: Xác Định `earliestStart`
 
-Tương tự `sheduleNotCampaing()`, nhưng thêm logic đặc biệt cho **pipeline balancing** giữa campaign hiện tại và campaign công đoạn trước:
+Ràng buộc công đoạn trước được áp **theo từng lô**, và phụ thuộc nhịp lô (slot) của **từng phòng** nên phải tính riêng cho mỗi phòng trong vòng chọn phòng:
 
 ```
-Nếu campaign trước tồn tại:
-│
-├── Lấy avg cycle time (m_time) của cả 2 stage (prev và current)
-│
-├── [Nếu currCycle >= prevCycle]
-│   └── candidate = pred.end + waite_time  (chờ đủ)
-│
-└── [Nếu currCycle < prevCycle] (công đoạn sau nhanh hơn)
-    └── candidate = pre_campaign_last_batch.end - (count-1) × currCycle
-        → Đẩy lùi để các lô "đuổi kịp" nhau, tránh pipeline starvation
+predReadyList[N] = pred_end[N] + waite_time      (bỏ qua predecessor ở stage 1, 2)
+baseEarliestStart = MAX(now, start_date, after_weigth_date, after_parkaging_date, ...)
+
+Với mỗi phòng ứng viên:
+    slot_room = m_time(phòng) × ratio + C1_time(phòng)
+    earliestStart(phòng) = campaignEarliestStart(baseEarliestStart, predReadyList, slot_room)
+                         = MAX( baseEarliestStart, MAX_N( predReadyList[N] − N × slot_room ) )
 ```
 
-> **Pipeline Balancing**: Nếu công đoạn sau xử lý nhanh hơn công đoạn trước, hệ thống tự tính offset để batch cuối của cả 2 campaign kết thúc gần nhau.
+> **Vì sao trừ `N × slot`**: lô thứ N bắt đầu tại `T + N × slot`, nên để lô N không sớm hơn công đoạn trước thì `T >= predReady[N] − N × slot`.
+
+> ⚠️ Trước 18/08/2026 công thức này dùng `avg_slot_time` = trung bình `m_time` của **mọi phòng** trong quota. Khi phòng được chọn chạy nhanh hơn mức trung bình, mỗi lô lệch sớm dần và các lô cuối chiến dịch bắt đầu trước khi công đoạn trước kết thúc (sự cố Paracetamol EG 1g, lệch tới 108 giờ). Nay dùng nhịp của chính phòng đang xét.
 
 #### Bước 2: Chọn Phòng
 
@@ -319,13 +319,29 @@ totalMinutes = p_time + (count × m_time) + (count - 1) × C1_time + C2_time
 
 > Nếu `totalTimeCampaign` (từ campaign trước) > `totalMinutes` → dùng `totalTimeCampaign` để đảm bảo phòng được book đủ lâu.
 
-#### Bước 4: Tìm Slot & Lưu Từng Batch
+#### Bước 4: Xếp Thử → Kiểm Tra Từng Lô → Dời Cả Chiến Dịch
+
+`buildCampaignBatchTimes()` tính trước thời gian của **tất cả** các lô, sau đó đối chiếu từng lô với `predReadyList`:
 
 ```
-foreach campaignTasks:
-│
-├── Kiểm tra pred.end → đẩy bestStart nếu predecessor chưa xong
-├── skipOffTime(bestStart) → nhảy qua ngày nghỉ
+batchPlan = buildCampaignBatchTimes(tasks, bestRoom, bestStart, stageCode)
+
+Lặp tối đa 5 lần:
+├── shift = MAX_N( predReadyList[N] − batchPlan[N].start )   (chỉ tính lô vi phạm)
+├── Nếu shift <= 0 → thoát (lịch hợp lệ)
+├── bestStart = findEarliestSlot2(bestRoom, bestStart + shift, ...)
+│   └── Không tìm được slot mới / không tiến triển → giữ nguyên, thoát (chống lặp vô hạn)
+└── batchPlan = buildCampaignBatchTimes(..., bestStart, ...)
+```
+
+> **Dời cả chiến dịch, không chèn khoảng trống** giữa các lô — campaign phải chạy liên tục, chỉ xen vệ sinh cấp 1.
+
+> Lưới an toàn này bắt các trường hợp nhịp thực tế ngắn hơn `slot_room`, ví dụ campaign ĐG có `percent_parkaging` khác nhau giữa các lô (`slot_room` tính theo tỉ lệ của lô đầu).
+
+Sau khi chốt được `batchPlan`, mỗi lô được lưu theo đúng thời gian đã kiểm tra:
+
+```
+foreach batchPlan:
 │
 ├── [Batch đầu tiên (counter == 1)]
 │   ├── duration = p_time + m_time (chuẩn bị + sản xuất)
@@ -342,10 +358,10 @@ foreach campaignTasks:
 │   ├── cleaning = C1 (vệ sinh cấp 1)
 │   └── first_in_campaign = 0
 │
-├── saveSchedule(first_in_campaign, task.id, bestRoom, bestStart, bestEnd, ...)
-│
-└── bestStart = bestEndCleaning  → batch kế tiếp bắt đầu ngay sau vệ sinh
+└── saveSchedule(first_in_campaign, task.id, bestRoom, start, end, start_clearning, end_clearning, ...)
 ```
+
+> Toàn bộ phép tính thời lượng ở trên nằm trong `buildCampaignBatchTimes()`, dùng chung cho cả lần xếp thử và lần lưu — bảo đảm lịch đã kiểm tra và lịch lưu luôn khớp tuyệt đối.
 
 #### Bước 5: Đệ Quy Campaign Kế Tiếp
 

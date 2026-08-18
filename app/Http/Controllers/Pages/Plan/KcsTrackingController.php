@@ -56,19 +56,58 @@ class KcsTrackingController extends Controller
         $fromMonth = $request->query('from_month') ?: Carbon::now()->format('Y-m');
         $toMonth = $request->query('to_month') ?: Carbon::now()->format('Y-m');
         $keyword = trim((string) $request->query('keyword', ''));
+        // Tháng KCS dạng 'YYYY-MM', lọc theo ngày KCS thật của lô chứ không theo tháng kế hoạch
+        $kcsMonth = trim((string) $request->query('kcs_month', ''));
+        // Kết quả chấm: chỉ nhận đúng hai giá trị hợp lệ để không lọc nhầm bằng chuỗi tự chế
+        $result = $request->query('result', '');
+        $result = in_array($result, [PlanMasterKcs::RESULT_MET, PlanMasterKcs::RESULT_NOT_MET], true)
+            ? $result
+            : '';
         $summaryYear = (int) ($request->query('summary_year') ?: Carbon::now()->year);
 
-        $datas = $this->batches($department, $fromMonth, $toMonth, $keyword);
+        // Tháng KCS và tháng kế hoạch là hai trục thời gian khác nhau: lô kế hoạch tháng 6
+        // vẫn có thể được KCS trong tháng 8. Giữ cả hai bộ lọc cùng lúc sẽ cắt mất phần lớn
+        // lô của tháng KCS đang xem (VD PXV1 tháng 8/2026: 199 lô còn 33), khiến lưới không
+        // bao giờ khớp với tab Tổng Kết Tỉ Lệ. Nên khi đã chọn Tháng KCS thì bỏ qua khoảng
+        // tháng kế hoạch, chỉ giữ một cửa sổ đủ rộng để câu truy vấn không quét cả bảng.
+        //
+        // Đo trên 3.214 lô: độ lệch giữa tháng kế hoạch và tháng KCS nằm trong khoảng
+        // -1 đến +6 tháng, nên lùi 12 / tiến 2 là dư an toàn.
+        $planFrom = $fromMonth;
+        $planTo = $toMonth;
+
+        if ($kcsMonth !== '') {
+            $anchor = Carbon::parse($kcsMonth . '-01');
+            $planFrom = $anchor->copy()->subMonths(12)->format('Y-m');
+            $planTo = $anchor->copy()->addMonths(2)->format('Y-m');
+        }
+
+        $datas = $this->batches($department, $planFrom, $planTo, $keyword);
 
         $bomVersions = $this->captureBomVersions($datas);
-        $mms = $this->mmsSuggestions($datas, $fromMonth);
+        $mms = $this->mmsSuggestions($datas, $planFrom, $kcsMonth);
 
         // Đồng bộ trước khi đọc $records để lưới hiển thị đúng dữ liệu vừa cập nhật
-        $synced = $this->syncFromMms($mms['suggestions']);
+        $this->syncFromMms($mms['suggestions']);
 
         $records = PlanMasterKcs::whereIn('plan_master_id', $datas->pluck('id'))
             ->get()
             ->keyBy('plan_master_id');
+
+        $kcsDates = $this->effectiveKcsDates($datas, $mms['suggestions'], $records);
+
+        if ($kcsMonth !== '') {
+            $datas = $datas->filter(
+                fn($data) => str_starts_with((string) ($kcsDates[$data->id] ?? ''), $kcsMonth)
+            )->values();
+        }
+
+        // Lô chưa có dòng theo dõi thì chưa có kết quả nên tự khắc bị loại khỏi cả hai lựa chọn
+        if ($result !== '') {
+            $datas = $datas->filter(
+                fn($data) => $records->get($data->id)?->result === $result
+            )->values();
+        }
 
         session()->put(['title' => 'THEO DÕI HỒ SƠ KCS']);
 
@@ -76,10 +115,10 @@ class KcsTrackingController extends Controller
             'datas' => $datas,
             'records' => $records,
             'bomVersions' => $bomVersions,
+            'kcsDates' => $kcsDates,
             'mmsSuggestions' => $mms['suggestions'],
             'mmsCodeMismatch' => $mms['code_mismatch'],
             'mmsAvailable' => $mms['available'],
-            'mmsSynced' => $synced,
             'summary' => $this->buildSummary($department, $summaryYear),
             'summaryYear' => $summaryYear,
             'summaryYears' => $this->summaryYears(),
@@ -88,6 +127,8 @@ class KcsTrackingController extends Controller
             'fromMonth' => $fromMonth,
             'toMonth' => $toMonth,
             'keyword' => $keyword,
+            'kcsMonth' => $kcsMonth,
+            'result' => $result,
             'canUpdate' => user_has_permission(session('user')['userId'], 'kcs_tracking_update', 'boolean'),
         ]);
     }
@@ -318,6 +359,32 @@ class KcsTrackingController extends Controller
     }
 
     /**
+     * Ngày KCS đang có hiệu lực của từng lô, dạng [plan_master_id => 'Y-m-d'].
+     *
+     * Ưu tiên MMS rồi mới đến giá trị đã lưu: lô chưa có dòng theo dõi vẫn thấy được ngày
+     * của MMS, nên cột Tháng KCS và bộ lọc theo tháng KCS mới khớp với ô Ngày KCS trên lưới.
+     * Nếu chỉ đọc plan_master_KCS.kcs_month thì hơn 2.500 lô có ngày trên MMS nhưng chưa
+     * theo dõi sẽ bị bỏ sót, khiến bộ lọc trông như hỏng.
+     *
+     * @return array<int, string>
+     */
+    private function effectiveKcsDates($datas, $suggestions, $records): array
+    {
+        $dates = [];
+
+        foreach ($datas as $data) {
+            $date = $suggestions->get($data->id)['kcs_date']
+                ?? $records->get($data->id)?->getRawOriginal('kcs_date');
+
+            if ($date) {
+                $dates[$data->id] = substr((string) $date, 0, 10);
+            }
+        }
+
+        return $dates;
+    }
+
+    /**
      * Cập nhật Ngày KCS / Số phiếu COATP từ MMS xuống các dòng theo dõi ĐÃ CÓ.
      *
      * Chạy mỗi lần mở trang, chỉ ghi những dòng thật sự lệch nên lần mở sau gần như
@@ -438,7 +505,7 @@ class KcsTrackingController extends Controller
      *
      * @return array{suggestions: \Illuminate\Support\Collection, code_mismatch: \Illuminate\Support\Collection, available: bool}
      */
-    private function mmsSuggestions($datas, string $fromMonth): array
+    private function mmsSuggestions($datas, string $fromMonth, string $kcsMonth = ''): array
     {
         if ($datas->isEmpty()) {
             return ['suggestions' => collect(), 'code_mismatch' => collect(), 'available' => true];
@@ -448,6 +515,13 @@ class KcsTrackingController extends Controller
             // Lùi 3 tháng so với tháng kế hoạch đầu tiên: lô có thể được KCS sớm hơn
             // tháng kế hoạch của nó, nhất là lô sản xuất vượt tiến độ.
             $since = ($fromMonth ? Carbon::parse($fromMonth . '-01') : Carbon::now())->subMonths(3);
+
+            // Người dùng lọc một tháng KCS nằm trước khoảng trên thì phải nới cửa sổ ra,
+            // nếu không những lô cần tìm lại không có trong bảng tra.
+            if ($kcsMonth !== '') {
+                $wanted = Carbon::parse($kcsMonth . '-01')->subMonth();
+                $since = $wanted->lt($since) ? $wanted : $since;
+            }
 
             $lookup = MmsFgQc::approvalsSince($since);
         } catch (\Throwable) {
@@ -561,13 +635,29 @@ class KcsTrackingController extends Controller
     /**
      * Tổng kết tỉ lệ lô KCS đúng hạn theo từng tháng và trung bình theo quý.
      *
+     * CHỈ đếm lô đã chấm được kết quả. Lô đã có Ngày KCS nhưng chưa nhập đủ mốc để ra Ngày
+     * Đủ Điều Kiện thì chưa đánh giá được nên không xuất hiện ở đây - nhờ vậy Đúng Hạn + Trễ
+     * luôn bằng Tổng. Trước đây đếm cả lô chưa chấm rồi lấy late = total - on_time, khiến 28
+     * lô chưa chấm của tháng 8/2026 bị tính thành trễ hạn và tỉ lệ tụt từ 76% xuống 52%.
+     *
+     * Dùng đúng bộ lọc nền của lưới (active, cancel, pl.type) để hai tab so sánh được với nhau.
+     *
+     * Vẫn đếm trên plan_master_KCS chứ không theo ngày KCS của MMS: bảng này đo hồ sơ đã được
+     * theo dõi và chấm, nên số lô ít hơn số lô có Ngày KCS trên lưới.
+     *
      * @return array{months: array<int, array>, quarters: array<int, array>, total: array}
      */
     private function buildSummary(string $department, int $year): array
     {
         $rows = PlanMasterKcs::query()
             ->join('plan_master', 'plan_master_KCS.plan_master_id', '=', 'plan_master.id')
+            ->join('plan_list as pl', 'plan_master.plan_list_id', '=', 'pl.id')
             ->where('plan_master_KCS.kcs_year', $year)
+            ->whereNotNull('plan_master_KCS.result')
+            ->where('plan_master_KCS.result', '<>', '')
+            ->where('plan_master.active', 1)
+            ->where('plan_master.cancel', 0)
+            ->where('pl.type', 1)
             ->when($department, fn($q) => $q->where('plan_master.deparment_code', $department))
             ->groupBy('plan_master_KCS.kcs_month')
             ->select(
@@ -588,6 +678,7 @@ class KcsTrackingController extends Controller
                 'month' => $month,
                 'total' => $total,
                 'on_time' => $onTime,
+                // Mọi lô ở đây đều đã chấm được nên phần còn lại đúng là lô trễ
                 'late' => $total - $onTime,
                 'rate' => $total > 0 ? (int) round($onTime / $total * 100) : null,
             ];
@@ -603,6 +694,7 @@ class KcsTrackingController extends Controller
                 'quarter' => $quarter,
                 'total' => array_sum(array_column($inQuarter, 'total')),
                 'on_time' => array_sum(array_column($inQuarter, 'on_time')),
+                'late' => array_sum(array_column($inQuarter, 'late')),
                 // Trung bình các tỉ lệ tháng, đúng như công thức AVERAGE của file gốc
                 'rate' => count($rates) > 0 ? (int) round(array_sum($rates) / count($rates)) : null,
             ];

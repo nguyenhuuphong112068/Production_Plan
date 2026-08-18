@@ -65,6 +65,30 @@ return [
     'backup_ttl' => env('SHIFT_API_BACKUP_TTL', 86400),
 
     /*
+    | Cache riêng cho danh sách nhân sự (`roster()`): dữ liệu này rất ít thay đổi
+    | nên giữ lâu hơn nhiều so với lịch trực. Mặc định 6 giờ.
+    */
+    'roster_cache_ttl' => env('SHIFT_API_ROSTER_CACHE_TTL', 21600),
+
+    /*
+    | Timeout cho thao tác đồng bộ nhân sự THỦ CÔNG (nút Sync ở trang Quản lý
+    | nhân sự) và cho command `employees:sync-roster`.
+    |
+    | Phải rộng: đo thực tế bộ phận 15 (PXV1) mất ~88s cho một ngày duy nhất,
+    | nên timeout mặc định 90s là quá sát.
+    */
+    'manual_sync_timeout' => env('SHIFT_API_MANUAL_SYNC_TIMEOUT', 180),
+
+    /*
+    | Số giờ tối thiểu giữa 2 lần đồng bộ nhân sự.
+    |
+    | Đồng bộ chính do command `employees:sync-roster` chạy nền đảm nhiệm. Luồng
+    | đăng nhập chỉ ghi lại từ cache và đóng vai trò lưới an toàn khi mốc này hết
+    | hạn (phòng trường hợp scheduler không chạy). Đặt 0 để bỏ chặn tần suất.
+    */
+    'login_sync_interval_hours' => env('SHIFT_API_LOGIN_SYNC_INTERVAL_HOURS', 12),
+
+    /*
     | Trạng thái đơn nghỉ phép được TÍNH là nghỉ.
     | Giá trị thực tế từ API gồm: Approved, Rejected, Cancelled và các biến thể
     | chờ duyệt như "Waiting TLE Approval/Chờ tổ trưởng duyệt",

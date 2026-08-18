@@ -119,6 +119,23 @@ Kỹ năng này tài liệu hóa quy trình quản lý nhân sự và phân côn
     - lấy và cache **trọn từng tháng lịch** làm đơn vị chung để mọi màn hình dùng lại được một bản cache (cache nóng ~0.003s),
     - nén gzip + base64 trước khi ghi cache (bảng tra một tháng vượt `max_allowed_packet` 1MB của MySQL nếu ghi thẳng),
     - giữ **bản sao lưu 24h** để giao diện vẫn chạy khi API lỗi/timeout.
+- ⚠️ **Tốc độ máy chủ nguồn rất chênh lệch giữa các bộ phận** (đo cho cửa sổ 1 ngày):
+
+| Bộ phận | Thời gian 1 request |
+| --- | --- |
+| PXTN (6) | ~9.5s |
+| Kho (17) | ~11s |
+| **PXV1 (15)** | **~88s** |
+
+  Đây là chậm phía máy chủ nguồn, không phải do khối lượng dữ liệu (payload chỉ 74KB). Hệ quả trực tiếp: **không được gọi API lịch trực trong luồng đăng nhập.**
+
+#### Đồng bộ danh sách nhân sự (KHÔNG chạy trong luồng đăng nhập)
+- `App\Services\EmployeeRosterSync` là nơi duy nhất ghi nhân sự xuống `employees` / `employee_assignments`, với hai lối vào:
+    - `refresh()` — gọi API rồi đồng bộ. Được phép chờ lâu. Dùng bởi command chạy nền và nút Sync thủ công.
+    - `syncFromCache()` — **tuyệt đối không gọi HTTP**, chỉ ghi lại từ cache đã có. Dùng bởi `LoginController`.
+- Command: `php artisan employees:sync-roster [--department=PXV1] [--timeout=180]`, đã đặt lịch chạy **05:00 và 12:30** hằng ngày trong `routes/console.php`. Chạy **lần lượt** từng bộ phận, không song song, để tránh rate limit.
+- ⚠️ **Việc đồng bộ nhân sự phụ thuộc vào scheduler.** Nếu `php artisan schedule:run` không được đặt lịch chạy mỗi phút trên máy chủ thì command không bao giờ chạy. Khi cache danh sách nhân sự rỗng, hệ thống ghi log cảnh báo `Cache danh sach nhan su rong - hay kiem tra scheduler...`. Lưới an toàn: sau `login_sync_interval_hours` (12h), lần đăng nhập kế tiếp sẽ tự ghi lại từ cache; và nút **Sync** thủ công ở trang Quản lý nhân sự luôn dùng được.
+- **Không bao giờ** đưa lời gọi `shiftIndex()` / `roster()` vào `LoginController` — đó chính là nguyên nhân làm đăng nhập chậm trước đây (mỗi lần đăng nhập tốn 8s và PXV1 thì không bao giờ đồng bộ nổi).
 - ⚠️ **Rate limit (HTTP 429):** máy chủ nguồn chặn khi bị dồn quá nhiều request nặng liên tục (đã tái hiện được với PXV1). Khi bị 429, service rơi về bản sao lưu 24h → giao diện vẫn chạy nhưng **hiển thị dữ liệu cũ**, và ghi log riêng `Shift API bi chan do rate limit (429)`. Vì vậy `shiftapi.max_concurrency` mặc định để **3** (vừa đúng bộ 3 endpoint của một tháng). Thấy log 429 nhiều thì giảm xuống, đừng tăng lên.
 - `shiftIndex()` / `monthlyByDayKey()` trả **`null`** khi API hỏng hẳn (không còn bản sao lưu), khác với **`[]`** nghĩa là bộ phận rỗng — nơi gọi phải phân biệt hai trường hợp này.
 

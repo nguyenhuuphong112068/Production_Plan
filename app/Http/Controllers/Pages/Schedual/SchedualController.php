@@ -2874,6 +2874,8 @@ class SchedualController extends Controller
             $sharedStart = null;
             $sharedResource = null;
             $isMoveSelectedBatches = $request->input('move_selected_batches', false);
+            // Số phút đã phải dời thêm để chiến dịch không bắt đầu trước công đoạn trước (báo về frontend)
+            $campaignShiftMinutes = 0;
 
             foreach ($changes as $change) {
                 $idParts = explode('-', $change['id']);
@@ -2959,10 +2961,16 @@ class SchedualController extends Controller
                             }
                         }
 
+                        $campaignEvents = $campaignEvents->values();
+
                         $currentStart = Carbon::parse($change['start']);
                         $idsArray = []; // Cập nhật danh sách ID để ghi log history ở phía dưới
                         $newMTime = $request->input('newMTime');
                         $pTime = $request->input('pTime', 0);
+
+                        // Tính trước thời lượng từng lô (giữ nguyên logic cũ) để có thể kiểm tra
+                        // ràng buộc công đoạn trước rồi mới ghi DB.
+                        $campaignDurations = [];
 
                         foreach ($campaignEvents as $ev) {
                             if ($newMTime > 0) {
@@ -2985,6 +2993,56 @@ class SchedualController extends Controller
                                 $duration = Carbon::parse($ev->start)->diffInSeconds(Carbon::parse($ev->end));
                             }
 
+                            $campaignDurations[] = [
+                                'duration' => $duration,
+                                'clean' => ($ev->start_clearning && $ev->end_clearning)
+                                    ? Carbon::parse($ev->start_clearning)->diffInSeconds(Carbon::parse($ev->end_clearning))
+                                    : null,
+                            ];
+                        }
+
+                        // 🔹 Chặn lô bắt đầu trước khi công đoạn trước kết thúc.
+                        // Xếp thử back-to-back từ điểm thả; nếu có lô vi phạm thì dời CẢ chiến dịch
+                        // đúng bằng khoảng thiếu lớn nhất (các lô cách đều nhau nên chỉ cần 1 lượt).
+                        $shiftSeconds = 0;
+                        $cursor = $currentStart->copy();
+
+                        foreach ($campaignEvents as $i => $ev) {
+
+                            $pred = $ev->predecessor_code
+                                ? DB::table('stage_plan')->where('code', $ev->predecessor_code)->first()
+                                : null;
+
+                            if ($pred && !in_array($pred->stage_code, [1, 2]) && !empty($pred->end)) {
+
+                                $predEnd = Carbon::parse($pred->end);
+
+                                if ($cursor->lt($predEnd)) {
+
+                                    $gap = $predEnd->getTimestamp() - $cursor->getTimestamp();
+
+                                    if ($gap > $shiftSeconds) {
+                                        $shiftSeconds = $gap;
+                                    }
+                                }
+                            }
+
+                            $cursor = $cursor->copy()->addSeconds($campaignDurations[$i]['duration']);
+
+                            if ($campaignDurations[$i]['clean'] !== null) {
+                                $cursor = $cursor->copy()->addSeconds($campaignDurations[$i]['clean']);
+                            }
+                        }
+
+                        if ($shiftSeconds > 0) {
+                            $currentStart = $currentStart->copy()->addSeconds($shiftSeconds);
+                            $campaignShiftMinutes = max($campaignShiftMinutes, (int) ceil($shiftSeconds / 60));
+                        }
+
+                        foreach ($campaignEvents as $i => $ev) {
+
+                            $duration = $campaignDurations[$i]['duration'];
+
                             $newStart = $currentStart->copy();
                             $newEnd = $newStart->copy()->addSeconds($duration);
 
@@ -2993,10 +3051,9 @@ class SchedualController extends Controller
                             $evUpdateData['end'] = $newEnd;
                             $evUpdateData['resourceId'] = $change['resourceId'];
 
-                            if ($ev->start_clearning && $ev->end_clearning) {
-                                $cleanDuration = Carbon::parse($ev->start_clearning)->diffInSeconds(Carbon::parse($ev->end_clearning));
+                            if ($campaignDurations[$i]['clean'] !== null) {
                                 $evUpdateData['start_clearning'] = $newEnd;
-                                $evUpdateData['end_clearning'] = $newEnd->copy()->addSeconds($cleanDuration);
+                                $evUpdateData['end_clearning'] = $newEnd->copy()->addSeconds($campaignDurations[$i]['clean']);
                                 $currentStart = $evUpdateData['end_clearning']->copy();
                             } else {
                                 $currentStart = $newEnd->copy();
@@ -3228,7 +3285,11 @@ class SchedualController extends Controller
         // Nếu startDate = null → đây là batch trung gian (không phải batch cuối)
         // → bỏ qua việc load lại events (rất nặng) để tránh timeout
         if (!$request->startDate || !$request->endDate) {
-            return response()->json(['status' => 'ok', 'batch' => 'intermediate']);
+            return response()->json([
+                'status' => 'ok',
+                'batch' => 'intermediate',
+                'campaign_shift_minutes' => $campaignShiftMinutes,
+            ]);
         }
 
         $events = $this->getEvents($production, $request->startDate, $request->endDate, true, $this->theory);
@@ -3239,6 +3300,7 @@ class SchedualController extends Controller
             'events' => $events,
             'resources' => $resources,
             'sumBatchByStage' => $sumBatchByStage,
+            'campaign_shift_minutes' => $campaignShiftMinutes,
         ]);
     }
 
@@ -7610,6 +7672,9 @@ class SchedualController extends Controller
             $campaignTasks = $finalCampaignTasks;
         }
 
+        // Chuẩn hoá về key liên tục 0..n-1 để đối chiếu lô ↔ công đoạn trước theo đúng vị trí
+        $campaignTasks = collect($campaignTasks)->values();
+
         $firstTask = $campaignTasks->first();
 
         $now = Carbon::now();
@@ -7655,45 +7720,28 @@ class SchedualController extends Controller
         // $pre_campaign_first_batch_end = [];
         $pre_campaign_codes = [];
 
-        $avg_m_time = DB::table('quota')
-            ->selectRaw('AVG(TIME_TO_SEC(m_time)/60) as avg_m_time_minutes')
-            ->when($firstTask->stage_code <= 6, function ($query) use ($firstTask) {
-                return $query->where('intermediate_code', $firstTask->intermediate_code);
-            }, function ($query) use ($firstTask) {
-                return $query->where('finished_product_code', $firstTask->finished_product_code);
-            })
-            ->where('active', 1)
-            ->where('stage_code', $stageCode)
-            ->value('avg_m_time_minutes') ?? 15;
+        // Mốc sẵn sàng của công đoạn trước cho TỪNG lô, theo đúng thứ tự lô trong campaign.
+        // predReadyList[N] = pred_end[N] + waite_time → lô thứ N không được bắt đầu trước mốc này.
+        $predReadyList = [];
 
-        $avg_C1_time = DB::table('quota')
-            ->selectRaw('AVG(TIME_TO_SEC(C1_time)/60) as avg_C1_time_minutes')
-            ->when($firstTask->stage_code <= 6, function ($query) use ($firstTask) {
-                return $query->where('intermediate_code', $firstTask->intermediate_code);
-            }, function ($query) use ($firstTask) {
-                return $query->where('finished_product_code', $firstTask->finished_product_code);
-            })
-            ->where('active', 1)
-            ->where('stage_code', $stageCode)
-            ->value('avg_C1_time_minutes') ?? 0;
-
-        // avg_slot_time = thời gian trung bình mỗi lô chiếm (m_time + C1_time)
-        $avg_slot_time = $avg_m_time + $avg_C1_time;
-
-        $batch_index = 0;
         foreach ($campaignTasks as $campaignTask) {
+
+            $predReady = null;
+
             $pred = DB::table('stage_plan')->where('code', $campaignTask->predecessor_code)->first();
-            if ($pred && !in_array($pred->stage_code, [1, 2])) {
-                // Công thức đúng: pred_end[N] - N * slot_per_batch
-                // Ý nghĩa: nếu campaign bắt đầu tại T, lô N bắt đầu tại T + N*slot_time
-                // Để lô N >= pred_end[N]: T >= pred_end[N] - N*slot_time
-                $candidates[] = Carbon::parse($pred->end)->addMinutes($waite_time)->subMinutes($batch_index * $avg_slot_time);
+
+            if ($pred && !in_array($pred->stage_code, [1, 2]) && !empty($pred->end)) {
+
+                $predReady = Carbon::parse($pred->end)->addMinutes($waite_time);
             }
-            $batch_index++;
+
+            $predReadyList[] = $predReady;
         }
 
-        // Lấy max → đây là thời điểm sớm nhất hợp lệ để bắt đầu campaign
-        $earliestStart = collect($candidates)->max();
+        // earliestStart khi CHƯA tính ràng buộc công đoạn trước (phần dùng chung cho mọi phòng).
+        // Ràng buộc công đoạn trước phụ thuộc nhịp lô của từng phòng nên phải tính riêng cho mỗi phòng
+        // trong vòng chọn phòng bên dưới (trước đây dùng trung bình m_time của mọi phòng nên bị sai lệch).
+        $baseEarliestStart = collect($candidates)->max();
 
         // phòng phù hợp (quota)
         if ($firstTask->required_room_code != null || $Line != null) {
@@ -7885,6 +7933,8 @@ class SchedualController extends Controller
         $bestRoom = null;
         $bestStart = null;
         $bestMoldId = null;
+        $bestTotalMunites = 0;
+        $bestCompatibleMolds = null;
 
         // tim phòng tối ưu
         $campaign_ratio = 1;
@@ -7937,9 +7987,15 @@ class SchedualController extends Controller
             }
             // Nếu SP chưa khai báo khuôn: $compatibleMolds = null → sắp lịch bình thường
 
+            // Nhịp mỗi lô của CHÍNH phòng này (m_time + C1_time), không dùng trung bình các phòng nữa.
+            // Lô thứ N bắt đầu tại T + N*slot → để lô N không sớm hơn công đoạn trước: T >= predReady[N] - N*slot
+            $slot_room = $m_adj + (float) $room->C1_time_minutes;
+
+            $roomEarliestStart = $this->campaignEarliestStart($baseEarliestStart, $predReadyList, $slot_room);
+
             $candidate = $this->findEarliestSlot2(
                 $room->room_id,
-                $earliestStart,
+                $roomEarliestStart,
                 $totalMunites,
                 0,
                 $firstTask->tank,
@@ -7957,6 +8013,8 @@ class SchedualController extends Controller
                 $bestRoom = $room;
                 $bestStart = $candidateStart;
                 $bestMoldId = $candidateMoldId;
+                $bestTotalMunites = $totalMunites;
+                $bestCompatibleMolds = $compatibleMolds;
             }
         }
 
@@ -7964,92 +8022,89 @@ class SchedualController extends Controller
             return;
         }
 
-        // Lưu từng batch
-        $counter = 1;
+        // Xếp thử toàn bộ lô của campaign rồi ĐỐI CHIẾU TỪNG LÔ với công đoạn trước.
+        // Nếu còn lô bắt đầu sớm hơn thời điểm công đoạn trước kết thúc → dời CẢ chiến dịch,
+        // không chèn khoảng trống giữa các lô (campaign phải chạy liên tục, chỉ vệ sinh cấp 1 xen giữa).
+        $batchPlan = $this->buildCampaignBatchTimes($campaignTasks, $bestRoom, $bestStart, $stageCode);
+
+        for ($attempt = 0; $attempt < 5; $attempt++) {
+
+            $shiftMinutes = 0;
+
+            foreach ($batchPlan as $index => $row) {
+
+                $predReady = $predReadyList[$index] ?? null;
+
+                if ($predReady && $row['start']->lt($predReady)) {
+
+                    $gap = (int) ceil(($predReady->getTimestamp() - $row['start']->getTimestamp()) / 60);
+
+                    if ($gap > $shiftMinutes) {
+                        $shiftMinutes = $gap;
+                    }
+                }
+            }
+
+            if ($shiftMinutes <= 0) {
+                break;
+            }
+
+            // Dời cả chiến dịch rồi tìm lại slot trống của chính phòng đã chọn
+            $candidate = $this->findEarliestSlot2(
+                $bestRoom->room_id,
+                $bestStart->copy()->addMinutes($shiftMinutes),
+                $bestTotalMunites,
+                0,
+                $firstTask->tank,
+                $firstTask->keep_dry,
+                'stage_plan',
+                2,
+                60,
+                $bestCompatibleMolds
+            );
+
+            $candidateStart = is_array($candidate) ? $candidate['start'] : $candidate;
+
+            // Không tìm được slot mới hoặc không tiến triển → giữ phương án hiện tại, tránh lặp vô hạn
+            if ($candidateStart === null || !$candidateStart->gt($bestStart)) {
+                break;
+            }
+
+            $bestStart = $candidateStart;
+
+            if (is_array($candidate)) {
+                $bestMoldId = $candidate['mold_id'];
+            }
+
+            $batchPlan = $this->buildCampaignBatchTimes($campaignTasks, $bestRoom, $bestStart, $stageCode);
+        }
 
         // Lưu Sự Kiện
         $firstBatachStart = null;
         $lastBatachEnd = null;
 
-        foreach ($campaignTasks as $task) {
-
-            $bestStart = $this->skipOffTime($bestStart, $this->offDate, $bestRoom->room_id);
-
-            // Tỉ lệ theo từng batch
-            $task_ratio = 1;
-            if ($stageCode == 7) {
-                $tpm = DB::table('plan_master')->where('id', $task->plan_master_id)->select('only_parkaging', 'percent_parkaging')->first();
-                if ($tpm) {
-                    $task_ratio = (float) ($tpm->percent_parkaging ?? 1);
-                }
-            }
-
-            $p_task_adj = (float) $bestRoom->p_time_minutes * $task_ratio;
-            $m_task_adj = (float) $bestRoom->m_time_minutes * $task_ratio;
-
-            if ($counter == 1) {
-                $duration = $p_task_adj + $m_task_adj;
-                if ($duration < 15) {
-                    $duration = 15;
-                }
-
-                $bestEnd = $this->addWorkingMinutes($bestStart->copy(), $duration, $bestRoom->room_id, $this->work_sunday);
-
-                $start_clearning = $bestEnd->copy();
-
-                if ($campaignTasks->count() == 1) {
-                    $bestEndCleaning = $this->addWorkingMinutes($start_clearning->copy(), (float) $bestRoom->C2_time_minutes, $bestRoom->room_id, $this->work_sunday);
-                    $clearningType = 2;
-                    $lastBatachEnd = $bestEndCleaning->copy();
-                } else {
-                    $bestEndCleaning = $this->addWorkingMinutes($start_clearning->copy(), (float) $bestRoom->C1_time_minutes, $bestRoom->room_id, $this->work_sunday);
-                    $clearningType = 1;
-                }
-
-                $firstBatachStart = $bestStart->copy();
-                $first_in_campaign = 1;
-            } elseif ($counter == $campaignTasks->count()) {
-                $duration = $m_task_adj;
-                if ($duration < 15) {
-                    $duration = 15;
-                }
-
-                $bestEnd = $this->addWorkingMinutes($bestStart->copy(), $duration, $bestRoom->room_id, $this->work_sunday);
-                $start_clearning = $bestEnd->copy();
-                $bestEndCleaning = $this->addWorkingMinutes($start_clearning->copy(), (float) $bestRoom->C2_time_minutes, $bestRoom->room_id, $this->work_sunday);
-
-                $clearningType = 2;
-                $lastBatachEnd = $bestEndCleaning->copy();
-                $first_in_campaign = 0;
-            } else {
-                $duration = $m_task_adj;
-                if ($duration < 15) {
-                    $duration = 15;
-                }
-
-                $bestEnd = $this->addWorkingMinutes($bestStart->copy(), $duration, $bestRoom->room_id, $this->work_sunday);
-                $start_clearning = $bestEnd->copy();
-                $bestEndCleaning = $this->addWorkingMinutes($start_clearning->copy(), (float) $bestRoom->C1_time_minutes, $bestRoom->room_id, $this->work_sunday);
-
-                $clearningType = 1;
-                $first_in_campaign = 0;
-            }
+        foreach ($batchPlan as $row) {
 
             $this->saveSchedule(
-                $first_in_campaign,
-                $task->id,
+                $row['first_in_campaign'],
+                $row['task']->id,
                 $bestRoom->room_id,
-                $bestStart,
-                $bestEnd,
-                $start_clearning,
-                $bestEndCleaning,
-                $clearningType,
+                $row['start'],
+                $row['end'],
+                $row['start_clearning'],
+                $row['end_clearning'],
+                $row['cleaningType'],
                 1,
                 $bestMoldId
             );
 
-            $counter++;
-            $bestStart = $bestEndCleaning->copy();
+            if ($firstBatachStart === null) {
+                $firstBatachStart = $row['start']->copy();
+            }
+
+            if ($row['cleaningType'] == 2) {
+                $lastBatachEnd = $row['end_clearning']->copy();
+            }
         }
 
         if ($firstBatachStart && $lastBatachEnd) {
@@ -8143,6 +8198,119 @@ class SchedualController extends Controller
                 );
             }
         }
+    }
+
+    /**
+     * Thời điểm sớm nhất một campaign được phép bắt đầu, ứng với nhịp lô (slot) của MỘT phòng cụ thể.
+     *
+     * Lô thứ N bắt đầu tại T + N*slot → để lô N không sớm hơn công đoạn trước: T >= predReady[N] - N*slot.
+     * Lấy MAX trên toàn bộ lô để không lô nào bị vi phạm.
+     *
+     * @param  array  $predReadyList  Mốc sẵn sàng (pred_end + waite_time) của từng lô, null nếu chưa có
+     */
+    protected function campaignEarliestStart(Carbon $baseEarliestStart, array $predReadyList, float $slotMinutes): Carbon
+    {
+        $earliest = $baseEarliestStart->copy();
+
+        if ($slotMinutes < 1) {
+            $slotMinutes = 1;
+        }
+
+        foreach ($predReadyList as $index => $predReady) {
+
+            if (! $predReady) {
+                continue;
+            }
+
+            $required = $predReady->copy()->subMinutes((int) round($index * $slotMinutes));
+
+            if ($required->gt($earliest)) {
+                $earliest = $required;
+            }
+        }
+
+        return $earliest;
+    }
+
+    /**
+     * Tính trước thời gian của TẤT CẢ các lô trong campaign khi bắt đầu tại $campaignStart.
+     *
+     * Tách riêng để có thể xếp thử → kiểm tra ràng buộc công đoạn trước → dời cả chiến dịch
+     * rồi mới ghi DB, đảm bảo lịch kiểm tra và lịch lưu luôn khớp nhau tuyệt đối.
+     *
+     * @return array Danh sách [task, start, end, start_clearning, end_clearning, cleaningType, first_in_campaign]
+     */
+    protected function buildCampaignBatchTimes($campaignTasks, $bestRoom, Carbon $campaignStart, int $stageCode): array
+    {
+        $batchPlan = [];
+
+        $counter = 1;
+
+        $total = $campaignTasks->count();
+
+        $cursor = $campaignStart->copy();
+
+        foreach ($campaignTasks as $task) {
+
+            $cursor = $this->skipOffTime($cursor, $this->offDate, $bestRoom->room_id);
+
+            // Tỉ lệ theo từng batch
+            $task_ratio = 1;
+            if ($stageCode == 7) {
+                $tpm = DB::table('plan_master')->where('id', $task->plan_master_id)->select('only_parkaging', 'percent_parkaging')->first();
+                if ($tpm) {
+                    $task_ratio = (float) ($tpm->percent_parkaging ?? 1);
+                }
+            }
+
+            $p_task_adj = (float) $bestRoom->p_time_minutes * $task_ratio;
+            $m_task_adj = (float) $bestRoom->m_time_minutes * $task_ratio;
+
+            if ($counter == 1) {
+                // Lô đầu: chuẩn bị + sản xuất. Nếu campaign chỉ có 1 lô thì vệ sinh cấp 2 luôn.
+                $duration = $p_task_adj + $m_task_adj;
+                $cleaningMinutes = ($total == 1) ? (float) $bestRoom->C2_time_minutes : (float) $bestRoom->C1_time_minutes;
+                $cleaningType = ($total == 1) ? 2 : 1;
+                $first_in_campaign = 1;
+            } elseif ($counter == $total) {
+                // Lô cuối: chỉ sản xuất, vệ sinh cấp 2
+                $duration = $m_task_adj;
+                $cleaningMinutes = (float) $bestRoom->C2_time_minutes;
+                $cleaningType = 2;
+                $first_in_campaign = 0;
+            } else {
+                // Lô giữa: chỉ sản xuất, vệ sinh cấp 1
+                $duration = $m_task_adj;
+                $cleaningMinutes = (float) $bestRoom->C1_time_minutes;
+                $cleaningType = 1;
+                $first_in_campaign = 0;
+            }
+
+            if ($duration < 15) {
+                $duration = 15;
+            }
+
+            $start = $cursor->copy();
+            $end = $this->addWorkingMinutes($start->copy(), $duration, $bestRoom->room_id, $this->work_sunday);
+            $start_clearning = $end->copy();
+            $end_clearning = $this->addWorkingMinutes($start_clearning->copy(), $cleaningMinutes, $bestRoom->room_id, $this->work_sunday);
+
+            $batchPlan[] = [
+                'task' => $task,
+                'start' => $start,
+                'end' => $end,
+                'start_clearning' => $start_clearning,
+                'end_clearning' => $end_clearning,
+                'cleaningType' => $cleaningType,
+                'first_in_campaign' => $first_in_campaign,
+            ];
+
+            $cursor = $end_clearning->copy();
+
+            $counter++;
+        }
+
+        return $batchPlan;
     }
 
     // protected function scheduleweight($tasks, int $waite_time = 0, $mode = false, ?Carbon $start_date = null)

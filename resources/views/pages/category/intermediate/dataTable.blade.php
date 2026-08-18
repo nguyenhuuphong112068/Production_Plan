@@ -26,6 +26,34 @@
         font-size: 10px;
         line-height: 1;
     }
+
+    /* Ấn bản hiện hành của công thức, dạng badge dưới mã BTP */
+    .recipe-revision {
+        display: inline-block;
+        margin-top: 3px;
+        padding: 2px 7px;
+        border: 1px solid #a3cfbb;
+        border-radius: 10px;
+        background-color: #d4edda;
+        color: #155724;
+        font-size: 10px;
+        font-weight: 700;
+        line-height: 1.4;
+        white-space: nowrap;
+    }
+
+    .recipe-revision-hypothesis {
+        border-color: #e0a800;
+        background-color: #fff3cd;
+        color: #856404;
+    }
+
+    /* Mã đã vô hiệu: badge ấn bản đỏ theo màu của mã, đặt sau .recipe-revision-hypothesis để ghi đè */
+    .recipe-revision-inactive {
+        border-color: #f5c6cb;
+        background-color: #f8d7da;
+        color: #721c24;
+    }
 </style>
 <div class="content-wrapper">
     <!-- /.card-header -->
@@ -132,6 +160,13 @@
                             $data->quarantine_time_unit == 1
                                 ? ($quarantine_time_unit = 'ngày')
                                 : ($quarantine_time_unit = 'giờ');
+
+                            $mmsRevision = $mmsRevisions[trim($data->intermediate_code)] ?? null;
+                            $hasMmsRecipe = $mmsRevision !== null;
+                            $hypothesisBomCount = $hypothesisBomCounts[$data->id] ?? 0;
+                            // MMS đã có công thức chính thức thì công thức giả định bị ẩn hoàn toàn:
+                            // chỉ mã chưa có trên MMS mới đọc và tạo công thức từ bom_item.
+                            $useHypothesisRecipe = !$hasMmsRecipe;
                         @endphp
 
                         <tr class = "{{ $data->IsHypothesis ? 'highlight-row' : '' }}">
@@ -140,11 +175,22 @@
                                     <div> {{ $data->id }} </div>
                                 @endif
                             </td>
-                            @if ($data->active)
-                                <td class="text-success"> {{ $data->intermediate_code }}</td>
-                            @else
-                                <td class="text-danger"> {{ $data->intermediate_code }}</td>
-                            @endif
+                            <td class="{{ $data->active ? 'text-success' : 'text-danger' }}">
+                                <div>{{ $data->intermediate_code }}</div>
+                                {{-- Ấn bản hiện hành của công thức (lấy từ MMS), hiển thị ngay dưới mã BTP --}}
+                                @if ($hasMmsRecipe)
+                                    <span class="recipe-revision {{ $data->active ? '' : 'recipe-revision-inactive' }}"
+                                        title="Công thức MMS - ấn bản hiện hành">
+                                        Ver. {{ $mmsRevision }}
+                                    </span>
+                                @elseif ($hypothesisBomCount > 0)
+                                    <span
+                                        class="recipe-revision {{ $data->active ? 'recipe-revision-hypothesis' : 'recipe-revision-inactive' }}"
+                                        title="Công thức giả định">
+                                        Ver. GĐ
+                                    </span>
+                                @endif
+                            </td>
 
                             <td>{{ $data->product_name }}</td>
                             <td>
@@ -347,15 +393,6 @@
                                 </form>
 
                             </td>
-
-                            @php
-                                $mmsRevision = $mmsRevisions[trim($data->intermediate_code)] ?? null;
-                                $hasMmsRecipe = $mmsRevision !== null;
-                                $hypothesisBomCount = $hypothesisBomCounts[$data->id] ?? 0;
-                                // MMS đã có công thức chính thức thì công thức giả định bị ẩn hoàn toàn:
-                                // chỉ mã chưa có trên MMS mới đọc và tạo công thức từ bom_item.
-                                $useHypothesisRecipe = !$hasMmsRecipe;
-                            @endphp
 
                             <td class="text-center align-middle">
                                 <button type="button"

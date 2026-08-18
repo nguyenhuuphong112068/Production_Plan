@@ -269,20 +269,34 @@ class PersonnelController extends Controller
         }
 
         try {
-            // Chỉ cần danh sách nhân sự của bộ phận nên hỏi đúng ngày hôm nay.
-            $today = now()->format('Y-m-d');
-            $shiftIndex = $shiftApi->shiftIndex($today, $today, $depId, $departmentCode === 'PXV1') ?? [];
+            // Chỉ cần mã + tên nhân sự -> `roster()` chỉ gọi endpoint `range`
+            // (1 request/bộ phận thay vì 3) và gộp cả Kho vào một mẻ song song.
+            $warehouseId = 17;
+            $needWarehouse = $departmentCode === 'PXV1';
+            // Timeout rộng: đây là thao tác thủ công, người dùng chủ động bấm và
+            // chờ. Bộ phận 15 (PXV1) mất tới ~88s nên timeout mặc định 90s quá sát.
+            $rosters = $shiftApi->roster(
+                $needWarehouse ? [$depId, $warehouseId] : [$depId],
+                now(),
+                (int) config('shiftapi.manual_sync_timeout', 180)
+            );
 
             $employees = [];
-            foreach ($shiftIndex as $empCode => $person) {
-                if (empty($person['in_roster'])) {
-                    continue;
-                }
+            foreach ($rosters[$depId] ?? [] as $empCode => $empName) {
                 $employees[] = (object) [
                     'employeeId' => (string) $empCode,
-                    'employeeName' => $person['name'],
-                    'is_warehouse' => !empty($person['is_warehouse']),
+                    'employeeName' => $empName,
+                    'is_warehouse' => false,
                 ];
+            }
+            if ($needWarehouse) {
+                foreach ($rosters[$warehouseId] ?? [] as $empCode => $empName) {
+                    $employees[] = (object) [
+                        'employeeId' => (string) $empCode,
+                        'employeeName' => trim($empName) . ' - WH',
+                        'is_warehouse' => true,
+                    ];
+                }
             }
 
             if (empty($employees)) {

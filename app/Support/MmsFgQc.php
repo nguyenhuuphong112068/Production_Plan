@@ -84,7 +84,7 @@ class MmsFgQc
             if (!isset($approvals[$lookup]) || $date < $approvals[$lookup]['kcs_date']) {
                 $approvals[$lookup] = [
                     'kcs_date' => $date,
-                    'coatp_number' => self::coatpNumber($row->coano),
+                    'coatp_number' => trim((string) $row->coano),
                 ];
             }
 
@@ -159,18 +159,7 @@ class MmsFgQc
 
         return $row === null ? null : [
             'kcs_date' => substr((string) $row->cron, 0, 10),
-            'coatp_number' => self::coatpNumber($row->coano),
+            'coatp_number' => trim((string) $row->coano),
         ];
-    }
-
-    /**
-     * Số phiếu COATP theo cách người dùng vẫn ghi trên hồ sơ: MMS lưu "TP26082685"
-     * còn hồ sơ chỉ ghi phần số "26082685".
-     */
-    private static function coatpNumber($coano): string
-    {
-        $coano = trim((string) $coano);
-
-        return preg_match('/^TP(\d.*)$/i', $coano, $matches) ? $matches[1] : $coano;
     }
 }

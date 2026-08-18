@@ -89,205 +89,26 @@ class LoginController extends Controller
         return redirect()->route('pages.general.home');
     }
 
+    /**
+     * Dong bo nhan su luc dang nhap - CHI doc cache, TUYET DOI khong goi API.
+     *
+     * May chu nguon mat ~9.5s (PXTN) den ~88s (PXV1) cho MOI request, nen moi
+     * loi goi API o day deu lam nguoi dung cho. Phan goi API da duoc chuyen sang
+     * command `employees:sync-roster` chay nen; o day chi ghi xuong DB tu cache
+     * ma command do da nap san.
+     */
     private function syncEmployees($departmentCode)
     {
-
-
-        $depMapping = [
-            'EN' => 3,
-            'QA' => 9,
-            'PXTN' => 6,
-            'PXV1' => 15,
-            'PXVH' => 30,
-            'PXDN' => 34,
-            'PXV2' => 32
-        ];
-
-
-
-        $depId = $depMapping[$departmentCode] ?? null;
-        if (!$depId) return;
-
         try {
-            $shiftApi = app(\App\Services\ShiftApiService::class);
-
-            // Chỉ cần danh sách nhân sự của bộ phận nên hỏi đúng ngày hôm nay.
-            $today = now()->format('Y-m-d');
-            $index = $shiftApi->shiftIndex($today, $today, $depId, false);
-            if ($index === null) return;
-
-            $employeesFromApi = [];
-            foreach ($index as $empCode => $person) {
-                if (empty($person['in_roster'])) continue;
-                $employeesFromApi[] = (object) [
-                    'employeeId' => (string) $empCode,
-                    'employeeName' => $person['name'],
-                    'is_warehouse' => false,
-                ];
-            }
-
-            // Danh sách mã nhân sự kho (dept 17) được phép hiển thị tại Trung Tâm Cân
-            $warehouseAllowedCodes = ['21049', '21048', '21077', '21064', '21080', '21090', '21120', '21122', '21130', '21143', '21148', '21152'];
-
-            // Cờ đánh dấu API kho (dept 17) có lấy được dữ liệu hay không.
-            // Dùng để tránh vô hiệu hóa nhầm nhân sự kho khi API kho lỗi tạm thời (timeout/429).
-            $api17Ok = false;
-
-            if ($departmentCode === 'PXV1') {
-                $index17 = $shiftApi->shiftIndex($today, $today, 17, false);
-                if ($index17 !== null) {
-                    $api17Ok = true;
-                    foreach ($index17 as $empCode => $person) {
-                        if (empty($person['in_roster'])) continue;
-                        $employeesFromApi[] = (object) [
-                            'employeeId' => (string) $empCode,
-                            'employeeName' => trim($person['name']) . ' - WH',
-                            'is_warehouse' => true,
-                        ];
-                    }
-                }
-            }
-
-            if (empty($employeesFromApi)) return;
-
-            $apiEmployeeCodes = array_map(function ($emp) {
-                return $emp->employeeId;
-            }, $employeesFromApi);
-
-            // Nếu API kho lỗi, coi các mã kho hợp lệ như vẫn còn trong API để không bị vô hiệu hóa nhầm
-            if ($departmentCode === 'PXV1' && !$api17Ok) {
-                $apiEmployeeCodes = array_merge($apiEmployeeCodes, $warehouseAllowedCodes);
-            }
-
-            DB::transaction(function () use ($employeesFromApi, $apiEmployeeCodes, $departmentCode, $warehouseAllowedCodes) {
-                // 1. Vô hiệu hóa các phân công (assignments) không còn trong API cho bộ phận này
-                // Bỏ qua bộ phận QA vì có một số nhân sự được quản lý thủ công (không có trong API)
-
-                if ($departmentCode != 'QA') {
-
-                    $activeAssignments = DB::table('employee_assignments as ea')
-                        ->join('employees as e', 'ea.employees_id', '=', 'e.id')
-                        ->where('ea.production_code', $departmentCode)
-                        ->where('ea.active', 1)
-                        ->select('ea.id', 'e.id as employee_id', 'e.code')
-                        ->get();
-
-                    foreach ($activeAssignments as $assignment) {
-                        if (!in_array($assignment->code, $apiEmployeeCodes)) {
-                            // Vô hiệu hóa assignment
-                            DB::table('employee_assignments')
-                                ->where('id', $assignment->id)
-                                ->update(['active' => 0, 'updated_at' => now()]);
-
-                            // Sau khi vô hiệu hóa assignment này, kiểm tra xem nhân viên còn assignment active nào khác không
-                            $otherActiveAssignmentsCount = DB::table('employee_assignments')
-                                ->where('employees_id', $assignment->employee_id)
-                                ->where('active', 1)
-                                ->count();
-
-                            // Nếu không còn assignment nào active, vô hiệu hóa luôn nhân viên (soft delete)
-                            if ($otherActiveAssignmentsCount == 0) {
-                                DB::table('employees')
-                                    ->where('id', $assignment->employee_id)
-                                    ->update(['active' => 0, 'updated_at' => now()]);
-                            }
-                        }
-                    }
-                }
-
-                // 2. Cập nhật hoặc thêm mới nhân sự từ API
-                foreach ($employeesFromApi as $emp) {
-                    if (empty($emp->employeeId)) continue;
-
-                    // Đảm bảo nhân sự tồn tại trong bảng employees
-                    $employee = DB::table('employees')->where('code', $emp->employeeId)->first();
-                    
-                    // Rule: "các nhân sự có employees.resign không tiến hành cập nhật lại"
-                    if ($employee && $employee->resign == 1) {
-                        continue;
-                    }
-
-                    $isWarehouse = !empty($emp->is_warehouse);
-                    $isAllowedWarehouse = $isWarehouse && in_array((string)$emp->employeeId, $warehouseAllowedCodes);
-
-                    $resignVal = $isWarehouse ? ($isAllowedWarehouse ? 0 : 1) : 0;
-                    $activeVal = $isWarehouse ? ($isAllowedWarehouse ? 1 : 0) : 1;
-                    $groupIdVal = $isWarehouse ? ($isAllowedWarehouse ? 1 : 0) : 0;
-
-                    $employeeId = null;
-
-                    if (!$employee) {
-                        $employeeId = DB::table('employees')->insertGetId([
-                            'code' => $emp->employeeId,
-                            'name' => $emp->employeeName ?? 'N/A',
-                            'active' => $activeVal,
-                            'resign' => $resignVal,
-                            'created_at' => now(),
-                            'updated_at' => now()
-                        ]);
-                    } else {
-                        $employeeId = $employee->id;
-                        // Cập nhật lại tên và đảm bảo active status được đồng bộ đúng
-                        DB::table('employees')->where('id', $employeeId)->update([
-                            'name' => $emp->employeeName ?? $employee->name,
-                            'active' => $activeVal,
-                            'resign' => $resignVal,
-                            'updated_at' => now()
-                        ]);
-                    }
-
-                    // Đồng bộ vào bảng phân vùng sản xuất (employee_assignments)
-                    $hasAssignment = DB::table('employee_assignments')
-                        ->where('employees_id', $employeeId)
-                        ->where('production_code', $departmentCode)
-                        ->exists();
-
-                    if (!$hasAssignment) {
-                        // Nếu chưa từng có phân công tại bộ phận này, tạo mới bản ghi chính (is_main = 1)
-                        DB::table('employee_assignments')->insert([
-                            'employees_id' => $employeeId,
-                            'production_code' => $departmentCode,
-                            'is_main' => 1,
-                            'group_id' => $groupIdVal,
-                            'room_id' => 0,
-                            'active' => $activeVal,
-                            'created_by' => 'System Sync',
-                            'created_at' => now(),
-                            'updated_at' => now()
-                        ]);
-                    } else {
-                        // Nếu đã từng có dữ liệu tại đây (có thể là nhiều dòng bao gồm cả phân tổ/phòng), 
-                        // chỉ cập nhật lại TẤT CẢ các dòng liên quan nếu trạng thái active của nhân viên thực sự thay đổi
-                        if ($departmentCode != 'QA') {
-                            $updateData = [
-                                'updated_at' => now()
-                            ];
-                            
-                            $statusChanged = ($employee && $employee->active != $activeVal);
-                            if ($statusChanged) {
-                                $updateData['active'] = $activeVal;
-                            }
-                            
-                            if ($isWarehouse) {
-                                $updateData['group_id'] = $groupIdVal;
-                            }
-                            
-                            // Nếu không có thay đổi active hoặc group_id thì không cần update toàn bộ bảng
-                            if ($statusChanged || $isWarehouse) {
-                                DB::table('employee_assignments')
-                                    ->where('employees_id', $employeeId)
-                                    ->where('production_code', $departmentCode)
-                                    ->update($updateData);
-                            }
-                        }
-                    }
-                }
-            });
-        } catch (\Exception $e) {
-            // Log lỗi nếu cần, nhưng không làm gián đoạn quá trình đăng nhập
+            app(\App\Services\EmployeeRosterSync::class)->syncFromCache($departmentCode);
+        } catch (\Throwable $e) {
+            // Khong duoc lam gian doan qua trinh dang nhap
+            \Illuminate\Support\Facades\Log::warning(
+                "Dong bo nhan su luc dang nhap that bai: " . $e->getMessage(),
+                ["department" => $departmentCode]
+            );
         }
     }
-
     public function logout(Request $request)
     {
         AuditTrialController::log('Log Out', 'NA', 0, 'NA', 'Đăng Xuất');

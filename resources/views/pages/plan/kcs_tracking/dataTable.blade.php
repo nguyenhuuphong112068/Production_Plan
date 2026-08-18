@@ -15,25 +15,70 @@
         </select>
     </div>
     <div class="col-md-2">
-        <label class="mb-1">Từ tháng kế hoạch</label>
-        <input type="month" class="form-control form-control-sm" name="from_month" value="{{ $fromMonth }}">
+        <label class="mb-1 {{ $kcsMonth !== '' ? 'text-muted' : '' }}">
+            Từ tháng kế hoạch
+            @if ($kcsMonth !== '')
+                <i class="fas fa-ban" title="Không áp dụng khi đang lọc theo Tháng KCS"></i>
+            @endif
+        </label>
+        <input type="month" class="form-control form-control-sm" name="from_month" value="{{ $fromMonth }}"
+            {{ $kcsMonth !== '' ? 'style=opacity:.5' : '' }}>
     </div>
     <div class="col-md-2">
-        <label class="mb-1">Đến tháng kế hoạch</label>
-        <input type="month" class="form-control form-control-sm" name="to_month" value="{{ $toMonth }}">
+        <label class="mb-1 {{ $kcsMonth !== '' ? 'text-muted' : '' }}">
+            Đến tháng kế hoạch
+            @if ($kcsMonth !== '')
+                <i class="fas fa-ban" title="Không áp dụng khi đang lọc theo Tháng KCS"></i>
+            @endif
+        </label>
+        <input type="month" class="form-control form-control-sm" name="to_month" value="{{ $toMonth }}"
+            {{ $kcsMonth !== '' ? 'style=opacity:.5' : '' }}>
     </div>
-    <div class="col-md-3">
+    <div class="col-md-2">
+        <label class="mb-1" title="Lọc theo tháng của Ngày KCS thật (từ MMS), không phải tháng kế hoạch.">
+            <i class="fas fa-clipboard-check text-success"></i> Tháng KCS
+        </label>
+        <input type="month" class="form-control form-control-sm" name="kcs_month" value="{{ $kcsMonth }}">
+    </div>
+    <div class="col-md-2">
+        <label class="mb-1" title="Chỉ lô đã có dòng theo dõi và đã chấm được kết quả mới hiện ra.">
+            <i class="fas fa-check-circle text-success"></i> Kết Quả
+        </label>
+        <select class="form-control form-control-sm" name="result">
+            <option value="">Tất cả</option>
+            <option value="{{ \App\Models\PlanMasterKcs::RESULT_MET }}"
+                {{ $result === \App\Models\PlanMasterKcs::RESULT_MET ? 'selected' : '' }}>Đáp Ứng</option>
+            <option value="{{ \App\Models\PlanMasterKcs::RESULT_NOT_MET }}"
+                {{ $result === \App\Models\PlanMasterKcs::RESULT_NOT_MET ? 'selected' : '' }}>Trễ Hạn</option>
+        </select>
+    </div>
+    <div class="col-md-2">
         <label class="mb-1">Tìm kiếm</label>
         <input type="text" class="form-control form-control-sm" name="keyword" value="{{ $keyword }}"
-            placeholder="Mã / tên sản phẩm / số lô...">
+            placeholder="Mã / tên SP / số lô...">
     </div>
-    <div class="col-md-3">
+    <div class="col-12 mt-2">
         <input type="hidden" name="summary_year" value="{{ $summaryYear }}">
         <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-search"></i> Lọc</button>
         <a href="{{ route('pages.plan.kcs_tracking.list') }}" class="btn btn-sm btn-secondary">
             <i class="fas fa-redo"></i> Mặc định
         </a>
-        <span class="ml-2 text-muted">{{ $datas->count() }} lô</span>
+        <span class="ml-2 text-muted small">{{ $datas->count() }} lô</span>
+        @if ($kcsMonth !== '')
+            <span class="badge badge-success">KCS {{ \Carbon\Carbon::parse($kcsMonth . '-01')->format('m/Y') }}</span>
+        @endif
+        @if ($result !== '')
+            <span class="badge {{ $result === \App\Models\PlanMasterKcs::RESULT_MET ? 'badge-success' : 'badge-danger' }}">
+                {{ $result === \App\Models\PlanMasterKcs::RESULT_MET ? 'Đáp Ứng' : 'Trễ Hạn' }}
+            </span>
+        @endif
+        @if ($kcsMonth !== '')
+            <span class="text-muted small ml-2">
+                <i class="fas fa-info-circle"></i>
+                Đang lọc theo <b>Tháng KCS</b> nên <b>khoảng tháng kế hoạch không áp dụng</b> - lô kế hoạch
+                tháng trước vẫn hiện nếu được KCS trong tháng này, nhờ vậy số lô khớp với tab Tổng Kết Tỉ Lệ.
+            </span>
+        @endif
     </div>
 </form>
 
@@ -51,28 +96,8 @@
     </div>
 @endunless
 
-@if ($mmsSuggestions->isNotEmpty())
-    <div class="alert alert-success py-2 small mb-2">
-        <i class="fas fa-lock"></i>
-        <b>Ngày KCS</b> và <b>Số Phiếu COATP</b> lấy thẳng từ MMS (bước QA Approval) nên
-        <b>không nhập tay</b> - đó là các ô nền xanh. Mỗi lần mở trang hệ thống tự đối chiếu lại với MMS.
-        Hiện có <b>{{ $mmsSuggestions->count() }} lô</b> tra được dữ liệu.
-        @if ($mmsSynced)
-            <b class="text-danger">Vừa cập nhật {{ $mmsSynced }} lô theo dữ liệu mới của MMS.</b>
-        @endif
-        Riêng <b>Ngày Nhận COATP</b> vẫn do người dùng tự nhập.
-    </div>
-@endif
-
-@if ($mmsCodeMismatch->isNotEmpty())
-    <div class="alert alert-warning py-2 small mb-2">
-        <i class="fas fa-exclamation-triangle"></i>
-        <b>{{ $mmsCodeMismatch->count() }} lô lệch mã thành phẩm giữa PMS và MMS.</b>
-        Cùng số lệnh và cùng số lô nhưng hai hệ thống ghi mã TP khác nhau, nên <b>Ngày KCS</b> và
-        <b>Số Phiếu COATP</b> không tự điền được - vui lòng nhập tay và kiểm tra lại mã TP.
-        Mã MMS đang dùng hiện ở nhãn <span class="badge badge-warning">MMS: ...</span> cột <b>Mã TP</b>.
-    </div>
-@endif
+{{-- Cố ý không có banner tổng cho phần MMS: ô nền xanh đã cho biết dữ liệu lấy từ MMS,
+     còn lô lệch mã TP thì cảnh báo ngay tại nhãn "MMS: <mã>" ở cột Mã TP của đúng dòng đó. --}}
 
 {{-- <div class="alert alert-light border py-2 small">
     <i class="fas fa-info-circle text-info"></i>
@@ -148,6 +173,10 @@
                     $mmsValue = function ($field) use ($mms, $record) {
                         return $mms[$field] ?? ($record?->getRawOriginal($field) ?? '');
                     };
+
+                    // Ngày KCS đang hiệu lực, dùng chung cho ô Ngày KCS và cột Tháng KCS để
+                    // hai chỗ không bao giờ vênh nhau (bộ lọc Tháng KCS cũng chạy trên nó).
+                    $kcsDate = $kcsDates[$data->id] ?? null;
 
                     // Các ô người dùng nhập: đã có dòng theo dõi thì lấy đúng dữ liệu đã lưu,
                     // chưa có thì gợi ý mốc sẵn có trên kế hoạch để khỏi gõ lại rồi tự bấm lưu.
@@ -247,7 +276,7 @@
                     <td><input type="date" class="form-control form-control-sm kcs-input" name="kcs_queue_date"
                             value="{{ $value('kcs_queue_date') }}" {{ $canUpdate ? '' : 'disabled' }}></td>
                     <td><input type="date" class="form-control form-control-sm kcs-locked" name="kcs_date"
-                            value="{{ $mmsValue('kcs_date') }}" disabled
+                            value="{{ $kcsDate }}" disabled
                             title="Ngày KCS lấy từ MMS (bước QA Approval), không nhập tay."></td>
                     <td><input type="text" class="form-control form-control-sm kcs-input" name="note"
                             value="{{ $value('note') }}" {{ $canUpdate ? '' : 'disabled' }}></td>
@@ -259,7 +288,9 @@
                         {{ $record?->completion_days }}
                     </td>
                     <td class="text-center align-middle" data-cell="kcs_pending">{{ $record?->kcs_pending }}</td>
-                    <td class="text-center align-middle" data-cell="kcs_month">{{ $record?->kcs_month }}</td>
+                    <td class="text-center align-middle" data-cell="kcs_month">
+                        {{ $kcsDate ? (int) substr($kcsDate, 5, 2) : '' }}
+                    </td>
                     <td class="text-center align-middle" data-cell="bottleneck">{{ $record?->bottleneck }}</td>
                     <td class="text-center align-middle" data-cell="result">
                         @if ($record?->result)

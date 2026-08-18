@@ -36,7 +36,7 @@
 </div>
 
 <div class="alert alert-light border">
-    <b>Công thức:</b> Số lô KCS đúng hạn / Tổng số lô đã KCS × 100%.
+    <b>Công thức:</b> Số lô đúng hạn / Số lô đã chấm được × 100%.
     Một lô đúng hạn khi <b>Ngày KCS</b> cách <b>Ngày đủ điều kiện</b> không quá
     {{ PlanMasterKcs::ON_TIME_DAYS }} ngày.
     <span class="ml-3">
@@ -44,6 +44,14 @@
         <span class="badge badge-warning">Cảnh báo</span>
         <span class="badge badge-danger">Phải hành động &lt; {{ PlanMasterKcs::CRITICAL_RATE }}%</span>
     </span>
+    <div class="small text-muted mt-2">
+        <i class="fas fa-info-circle"></i>
+        Bảng chỉ thống kê lô <b>đã chấm được kết quả</b>. Lô đã có Ngày KCS nhưng chưa nhập đủ mốc để ra
+        Ngày Đủ Điều Kiện thì chưa đánh giá được nên không được đếm ở đây - vì vậy số lô trong bảng này
+        nhỏ hơn số lô có Ngày KCS ở tab Theo Dõi Hồ Sơ.
+        Muốn xem đúng nhóm lô này trên lưới, chọn <b>Tháng KCS</b> tương ứng, để khoảng tháng kế hoạch
+        cả năm và lọc <b>Kết Quả</b> = Đáp Ứng hoặc Trễ Hạn.
+    </div>
 </div>
 
 <div class="row">
@@ -57,7 +65,8 @@
                     <thead class="bg-light">
                         <tr>
                             <th>Thời Gian Đo</th>
-                            <th>Tổng Số Lô Đã KCS</th>
+                            <th title="Chỉ tính lô đã có Ngày Đủ Điều Kiện nên chấm được kết quả.">
+                                Tổng Số Lô Đã Chấm</th>
                             <th>Số Lô Đúng Hạn</th>
                             <th>Số Lô Trễ</th>
                             <th>Tỉ Lệ Theo Tháng</th>
