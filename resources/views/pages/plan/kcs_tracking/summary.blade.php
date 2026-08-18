@@ -139,6 +139,83 @@
     </div>
 </div>
 
+@php $lateReasons = $summary['late_reasons']; @endphp
+
+<div class="row mt-3">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header py-2">
+                <h3 class="card-title">
+                    Nguyên Nhân Lô KCS Trễ - Năm {{ $summaryYear }}
+                    <small class="text-muted ml-2">{{ $lateReasons['total'] }} lô trễ</small>
+                </h3>
+            </div>
+            <div class="card-body p-0">
+                @if ($lateReasons['total'] === 0)
+                    <div class="p-3 text-muted text-center">
+                        Không có lô trễ hạn trong năm {{ $summaryYear }}.
+                    </div>
+                @else
+                    <table class="table table-bordered table-sm mb-0">
+                        <thead class="bg-light text-center">
+                            <tr>
+                                <th style="width: 30px;">#</th>
+                                <th class="text-left"
+                                    title="Mốc hoàn tất muộn nhất của lô - khâu giữ hồ sơ lâu nhất trước khi lô đủ điều kiện KCS.">
+                                    Nguyên Nhân (Mốc Quyết Định)
+                                </th>
+                                <th style="width: 110px;">Số Lô Trễ</th>
+                                <th style="width: 90px;">Tỉ Lệ</th>
+                                <th style="width: 130px;"
+                                    title="Trung bình số ngày từ Ngày Đủ Điều Kiện đến Ngày KCS của nhóm này.">
+                                    Số Ngày HT TB
+                                </th>
+                                <th>Mức Độ Ảnh Hưởng</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($lateReasons['rows'] as $index => $reason)
+                                <tr>
+                                    <td class="text-center">{{ $index + 1 }}</td>
+                                    <td>{{ $reason['reason'] }}</td>
+                                    <td class="text-center font-weight-bold">{{ $reason['total'] }}</td>
+                                    <td class="text-center font-weight-bold">{{ $reason['rate'] }}%</td>
+                                    <td class="text-center">
+                                        {{ $reason['avg_days'] === null ? '-' : $reason['avg_days'] }}
+                                    </td>
+                                    <td>
+                                        <div class="progress" style="height: 18px;">
+                                            <div class="progress-bar {{ $index === 0 ? 'bg-danger' : 'bg-warning' }}"
+                                                style="width: {{ $reason['rate'] }}%">
+                                                {{ $reason['rate'] }}%
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                        <tfoot class="bg-light font-weight-bold">
+                            <tr>
+                                <td colspan="2" class="text-right">Tổng số lô trễ</td>
+                                <td class="text-center">{{ $lateReasons['total'] }}</td>
+                                <td class="text-center">100%</td>
+                                <td colspan="2"></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                    <div class="small text-muted p-2 border-top">
+                        <i class="fas fa-info-circle"></i>
+                        Tỉ lệ tính trên tổng số lô <b>trễ</b> (không phải trên tổng số lô đã chấm), trả lời
+                        "nguyên nhân này chiếm bao nhiêu phần trong các lô trễ".
+                        Nguyên nhân lấy theo cột <b>Mốc Quyết Định</b> - mốc hoàn tất muộn nhất khiến lô chậm
+                        đủ điều kiện KCS.
+                    </div>
+                @endif
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         // Tải lại riêng khối tổng kết để không mất bộ lọc / dữ liệu đang nhập ở tab theo dõi

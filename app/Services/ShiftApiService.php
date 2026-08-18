@@ -339,6 +339,9 @@ class ShiftApiService
      * thiếu vào một `curl_multi` nên tổng thời gian ≈ request chậm nhất, bất kể
      * đang hỏi 1 tháng hay 2 tháng, có gộp Kho hay không.
      *
+     * Cache ghi theo nguyên tắc tất-cả-hoặc-không: chỉ tháng nào lấy đủ cả 3
+     * endpoint mới được ghi, xem giải thích ở vòng lặp ghép kết quả bên dưới.
+     *
      * @param array $specs list of ['year'=>int,'month'=>int,'dept'=>int,'wh'=>bool]
      * @return array [specKey => array|null]  (null = API lỗi và hết bản sao lưu)
      */
@@ -383,24 +386,50 @@ class ShiftApiService
 
         foreach ($pending as $key => $spec) {
             $range = $responses[$key . "\0range"] ?? null;
-
-            // `range` là nguồn xương sống. Không có nó thì bản dựng vô nghĩa,
-            // dùng bản sao lưu gần nhất để giao diện vẫn chạy.
-            if (!is_array($range)) {
-                $backup = $this->cacheGet($this->cacheKeyFor($spec, true));
-                $result[$key] = $this->memo[$key] = is_array($backup) ? $backup : null;
-                continue;
-            }
-
             $leave = $responses[$key . "\0leave"] ?? null;
             $overtime = $responses[$key . "\0overtime"] ?? null;
 
-            $index = $this->buildIndex(
-                $range,
-                is_array($leave) ? $leave : [],
-                is_array($overtime) ? $overtime : [],
-                (bool) $spec['wh']
-            );
+            // Chỉ bản dựng từ ĐỦ 3 endpoint mới được ghi cache.
+            //
+            // Thiếu `range` thì bản dựng vô nghĩa. Nhưng thiếu `leave` hoặc
+            // `overtime` cũng nguy hiểm không kém mà lại lặng lẽ: bản dựng vẫn
+            // ra bảng đầy đủ người, chỉ có ngày nghỉ / giờ tăng ca hụt về 0.
+            // Nếu ghi cache bản khuyết đó thì một cú HTTP 429 lẻ tẻ sẽ đè lên
+            // số liệu đủ của lần gọi trước và giữ nguyên suốt `backup_ttl`
+            // (24h) mà không ai biết. Nên coi thiếu bất kỳ endpoint nào là
+            // thất bại và ưu tiên bản sao lưu cũ - dữ liệu cũ nhưng ĐỦ vẫn
+            // đúng hơn dữ liệu mới nhưng KHUYẾT.
+            if (!is_array($range) || !is_array($leave) || !is_array($overtime)) {
+                $backup = $this->cacheGet($this->cacheKeyFor($spec, true));
+                if (is_array($backup)) {
+                    $result[$key] = $this->memo[$key] = $backup;
+                    continue;
+                }
+
+                // Hết bản sao lưu. Còn `range` thì vẫn dựng bản khuyết để giao
+                // diện không trống, nhưng KHÔNG cache: lần gọi sau phải thử lại.
+                $result[$key] = $this->memo[$key] = is_array($range)
+                    ? $this->buildIndex(
+                        $range,
+                        is_array($leave) ? $leave : [],
+                        is_array($overtime) ? $overtime : [],
+                        (bool) $spec['wh']
+                    )
+                    : null;
+
+                Log::warning('Shift API thieu endpoint, khong ghi cache thang nay', [
+                    'spec' => $key,
+                    'missing' => array_keys(array_filter([
+                        'range' => !is_array($range),
+                        'leave' => !is_array($leave),
+                        'overtime' => !is_array($overtime),
+                    ])),
+                    'fallback' => is_array($range) ? 'ban khuyet (khong cache)' : 'khong co du lieu',
+                ]);
+                continue;
+            }
+
+            $index = $this->buildIndex($range, $leave, $overtime, (bool) $spec['wh']);
 
             $this->cachePut($this->cacheKeyFor($spec, false), $index, (int) config('shiftapi.cache_ttl', 120));
             $this->cachePut($this->cacheKeyFor($spec, true), $index, (int) config('shiftapi.backup_ttl', 86400));

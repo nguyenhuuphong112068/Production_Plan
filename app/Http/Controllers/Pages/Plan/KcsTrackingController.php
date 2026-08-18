@@ -649,16 +649,7 @@ class KcsTrackingController extends Controller
      */
     private function buildSummary(string $department, int $year): array
     {
-        $rows = PlanMasterKcs::query()
-            ->join('plan_master', 'plan_master_KCS.plan_master_id', '=', 'plan_master.id')
-            ->join('plan_list as pl', 'plan_master.plan_list_id', '=', 'pl.id')
-            ->where('plan_master_KCS.kcs_year', $year)
-            ->whereNotNull('plan_master_KCS.result')
-            ->where('plan_master_KCS.result', '<>', '')
-            ->where('plan_master.active', 1)
-            ->where('plan_master.cancel', 0)
-            ->where('pl.type', 1)
-            ->when($department, fn($q) => $q->where('plan_master.deparment_code', $department))
+        $rows = $this->summaryQuery($department, $year)
             ->groupBy('plan_master_KCS.kcs_month')
             ->select(
                 'plan_master_KCS.kcs_month',
@@ -712,6 +703,62 @@ class KcsTrackingController extends Controller
                 'late' => $total - $onTime,
                 'rate' => $total > 0 ? (int) round($onTime / $total * 100) : null,
             ],
+            'late_reasons' => $this->lateReasons($department, $year),
+        ];
+    }
+
+    /**
+     * Nhóm lô đã chấm được kết quả của một năm / phân xưởng.
+     * Dùng chung cho bảng tỉ lệ theo tháng và bảng nguyên nhân trễ để hai bảng
+     * luôn đếm trên cùng một tập lô.
+     */
+    private function summaryQuery(string $department, int $year)
+    {
+        return PlanMasterKcs::query()
+            ->join('plan_master', 'plan_master_KCS.plan_master_id', '=', 'plan_master.id')
+            ->join('plan_list as pl', 'plan_master.plan_list_id', '=', 'pl.id')
+            ->where('plan_master_KCS.kcs_year', $year)
+            ->whereNotNull('plan_master_KCS.result')
+            ->where('plan_master_KCS.result', '<>', '')
+            ->where('plan_master.active', 1)
+            ->where('plan_master.cancel', 0)
+            ->where('pl.type', 1)
+            ->when($department, fn($q) => $q->where('plan_master.deparment_code', $department));
+    }
+
+    /**
+     * Phân bố nguyên nhân của các lô KCS trễ trong năm, theo cột Mốc Quyết Định.
+     *
+     * Mốc Quyết Định là mốc hoàn tất muộn nhất - tức khâu giữ hồ sơ lâu nhất trước khi lô
+     * đủ điều kiện KCS - nên đây là dữ liệu sẵn có sát nghĩa "nguyên nhân" nhất. Tỉ lệ tính
+     * trên tổng số lô TRỄ (không phải trên tổng số lô đã chấm) để trả lời "nguyên nhân này
+     * chiếm bao nhiêu phần trong các lô trễ".
+     *
+     * @return array{total: int, rows: array<int, array{reason: string, total: int, rate: float}>}
+     */
+    private function lateReasons(string $department, int $year): array
+    {
+        $rows = $this->summaryQuery($department, $year)
+            ->where('plan_master_KCS.result', PlanMasterKcs::RESULT_NOT_MET)
+            ->groupBy('plan_master_KCS.bottleneck')
+            ->select(
+                'plan_master_KCS.bottleneck',
+                DB::raw('COUNT(*) as total'),
+                DB::raw('ROUND(AVG(plan_master_KCS.completion_days), 1) as avg_days')
+            )
+            ->orderByDesc('total')
+            ->get();
+
+        $late = (int) $rows->sum('total');
+
+        return [
+            'total' => $late,
+            'rows' => $rows->map(fn($row) => [
+                'reason' => $row->bottleneck ?: 'Chưa xác định',
+                'total' => (int) $row->total,
+                'rate' => $late > 0 ? round($row->total / $late * 100, 1) : 0.0,
+                'avg_days' => $row->avg_days === null ? null : (float) $row->avg_days,
+            ])->all(),
         ];
     }
 
