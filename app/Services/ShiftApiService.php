@@ -27,6 +27,12 @@ class ShiftApiService
     private array $memo = [];
 
     /**
+     * Số giây cần chờ do máy chủ nguồn trả HTTP 429 ở lần `fetchAll` gần nhất,
+     * null nếu không bị chặn. Đặt lại ở đầu mỗi `fetchAll`.
+     */
+    private ?int $rateLimitedFor = null;
+
+    /**
      * Bảng tra ca trực theo NGÀY LỊCH THẬT cho một khoảng ngày bất kỳ.
      *
      * Trả về null khi KHÔNG tháng nào lấy được dữ liệu (API lỗi và cũng không
@@ -373,6 +379,34 @@ class ShiftApiService
     }
 
     /**
+     * Cache nóng của tháng này đã có ĐỦ chưa?
+     *
+     * `monthlyByDayKey` trả về mảng cả khi phải rơi về bản sao lưu 24h, nên chỉ
+     * nhìn giá trị trả về thì không phân biệt được "vừa nạp mới" với "dùng lại
+     * số cũ". Command nạp nền cần phân biệt để báo cáo trung thực và để biết có
+     * phải thử lại hay không.
+     */
+    public function hasFreshMonth(int $month, int $year, int $department, bool $mergeWarehouse = false): bool
+    {
+        foreach ($this->monthSpecs($year, $month, $department, $mergeWarehouse) as $spec) {
+            if (!is_array($this->cacheGet($this->cacheKeyFor($spec, false)))) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Số giây máy chủ nguồn yêu cầu chờ sau khi trả 429, null nếu lần gọi vừa
+     * rồi không bị chặn. Chỉ có ý nghĩa ngay sau một lượt nạp.
+     */
+    public function rateLimitedFor(): ?int
+    {
+        return $this->rateLimitedFor;
+    }
+
+    /**
      * Nạp bảng tra của NHIỀU tháng × NHIỀU bộ phận trong MỘT mẻ song song.
      *
      * Đây là điểm mấu chốt về tốc độ: nếu gọi lần lượt từng tháng thì thời gian
@@ -693,6 +727,9 @@ class ShiftApiService
             curl_multi_setopt($multi, CURLMOPT_MAX_TOTAL_CONNECTIONS, $maxConn);
         }
         $handles = [];
+        $retryAfter = [];   // key => số giây máy chủ nguồn yêu cầu chờ (header Retry-After)
+
+        $this->rateLimitedFor = null;
 
         foreach ($urls as $key => $url) {
             $ch = curl_init($url);
@@ -705,6 +742,15 @@ class ShiftApiService
                 CURLOPT_SSL_VERIFYHOST => $verify ? 2 : 0,
                 CURLOPT_ENCODING => '',
                 CURLOPT_HTTPHEADER => ['Accept: application/json'],
+                // Chỉ quan tâm `Retry-After` của phản hồi 429: nó cho biết CHÍNH
+                // XÁC phải chờ bao lâu, thay vì để command nạp nền ngồi đoán.
+                CURLOPT_HEADERFUNCTION => function ($ch, $line) use (&$retryAfter, $key) {
+                    $parts = explode(':', $line, 2);
+                    if (count($parts) === 2 && strtolower(trim($parts[0])) === 'retry-after') {
+                        $retryAfter[$key] = trim($parts[1]);
+                    }
+                    return strlen($line);
+                },
             ]);
             curl_multi_add_handle($multi, $ch);
             $handles[$key] = $ch;
@@ -730,12 +776,25 @@ class ShiftApiService
                     Log::warning('Shift API tra ve JSON khong hop le', ['url' => $urls[$key]]);
                 }
             } elseif ($httpCode === 429) {
-                // Rate limit của máy chủ nguồn. Hệ thống sẽ rơi về bản sao lưu
-                // 24h nên giao diện vẫn chạy, nhưng số liệu là dữ liệu cũ.
-                // Gặp log này nhiều thì giảm `shiftapi.max_concurrency`.
+                // Rate limit của máy chủ nguồn. Luồng web rơi về bản sao lưu 24h
+                // nên giao diện vẫn chạy, nhưng số liệu là dữ liệu cũ.
+                //
+                // Dấu hiệu nhận biết: 429 trả về TỨC THÌ (0s) vì server từ chối
+                // mà không xử lý. Thấy một loạt lượt nạp mất 0s là đã bị chặn,
+                // không phải mạng chậm.
+                //
+                // Ghi lại thời gian chờ để `shifts:warm-cache` lùi lại đúng mức
+                // máy chủ nguồn yêu cầu. Không có header thì mặc định 60s.
+                $wait = isset($retryAfter[$key]) && is_numeric($retryAfter[$key])
+                    ? max(1, (int) $retryAfter[$key])
+                    : 60;
+                $this->rateLimitedFor = max((int) $this->rateLimitedFor, $wait);
+
                 Log::warning('Shift API bi chan do rate limit (429)', [
                     'url' => $urls[$key],
                     'max_concurrency' => $maxConn,
+                    'retry_after' => $retryAfter[$key] ?? '(khong co header)',
+                    'cho_lai' => $wait . 's',
                 ]);
             } else {
                 Log::warning('Shift API loi', [
