@@ -52,6 +52,29 @@ return [
     'max_concurrency' => env('SHIFT_API_MAX_CONCURRENCY', 3),
 
     /*
+    |--------------------------------------------------------------------------
+    | Hạn ngạch dùng chung tới eO2 PMS
+    |--------------------------------------------------------------------------
+    |
+    | `max_concurrency` ở trên chỉ giới hạn được TRONG MỘT tiến trình PHP. Năm
+    | người cùng mở trang chưa có cache là năm tiến trình độc lập, không ai biết
+    | ai, tổng lưu lượng vượt xa hạn mức của máy chủ nguồn.
+    |
+    | Bộ đếm này nằm trong bảng `cache` nên MỌI tiến trình (web, command nạp nền,
+    | nút Đồng bộ) cùng nhìn một con số. Hết hạn ngạch thì tự dừng gọi và rơi về
+    | bản sao lưu, thay vì bắn tiếp để bị eO2 trả HTTP 429.
+    |
+    | Đo thực tế 18/08/2026: eO2 chặn sau ~24 request trong ~175s, cửa sổ tính
+    | hạn mức là 5 phút. Đặt 18/300s để chừa biên cho các luồng khác. Một lượt
+    | `shifts:warm-cache` là 24 request nên sẽ trải qua 2 cửa sổ — command tự chờ
+    | hết cửa sổ rồi chạy tiếp, không cần can thiệp tay.
+    |
+    | Đặt rate_limit = 0 để tắt hẳn cơ chế này.
+    */
+    'rate_limit' => env('SHIFT_API_RATE_LIMIT', 18),
+    'rate_window' => env('SHIFT_API_RATE_WINDOW', 300),
+
+    /*
     | Giờ làm việc chuẩn một ngày. Bộ 3 endpoint mới KHÔNG trả
     | `regular_working_Hours` nên giá trị này được suy ra: mặc định 8h, ngày
     | nghỉ phép thì trừ số giờ nghỉ, ngày không có ca thì bằng 0.

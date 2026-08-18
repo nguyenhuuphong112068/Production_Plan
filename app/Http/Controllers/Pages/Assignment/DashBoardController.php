@@ -106,8 +106,10 @@ class DashBoardController extends Controller
             $wait = $shiftApi->rateLimitedFor();
 
             return response()->json([
+                // $wait có giá trị ở cả hai trường hợp: eO2 trả 429, hoặc hạn
+                // ngạch nội bộ đã hết nên hệ thống chủ động không gọi.
                 'error' => $wait
-                    ? "Máy chủ eO2 đang chặn do quá tải (429). Thử lại sau khoảng {$wait}s."
+                    ? "Đang tạm dừng gọi eO2 để tránh bị chặn. Thử lại sau khoảng {$wait}s."
                     : 'Máy chủ eO2 không trả dữ liệu. Xem storage/logs/laravel.log để biết chi tiết.',
             ], 503);
         }

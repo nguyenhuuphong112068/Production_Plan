@@ -398,12 +398,73 @@ class ShiftApiService
     }
 
     /**
-     * Số giây máy chủ nguồn yêu cầu chờ sau khi trả 429, null nếu lần gọi vừa
-     * rồi không bị chặn. Chỉ có ý nghĩa ngay sau một lượt nạp.
+     * Số giây cần chờ trước khi gọi lại eO2, null nếu lần gọi vừa rồi không bị
+     * chặn. Gộp hai nguồn: máy chủ nguồn trả 429, hoặc hạn ngạch nội bộ đã hết.
+     * Chỉ có ý nghĩa ngay sau một lượt nạp.
      */
     public function rateLimitedFor(): ?int
     {
         return $this->rateLimitedFor;
+    }
+
+    /**
+     * Giữ chỗ trong hạn ngạch dùng chung trước khi gọi eO2.
+     *
+     * Bộ đếm chia theo cửa sổ thời gian cố định (mặc định 5 phút, khớp cửa sổ
+     * tính hạn mức của eO2). Khoá nằm trong bảng `cache` nên mọi tiến trình web
+     * và command đều cộng vào cùng một con số — đây là điểm mà
+     * `max_concurrency` không làm được vì nó chỉ có tác dụng nội bộ một tiến
+     * trình.
+     *
+     * `Cache::increment` trên database store chạy trong transaction kèm
+     * `lockForUpdate()` nên hai tiến trình không thể cùng giữ một chỗ.
+     *
+     * @return bool false = hết hạn ngạch, KHÔNG được gọi API
+     */
+    private function reserveQuota(int $need): bool
+    {
+        $limit = (int) config('shiftapi.rate_limit', 18);
+        if ($limit <= 0 || $need <= 0) {
+            return true; // 0 = tắt cơ chế
+        }
+
+        $window = max(1, (int) config('shiftapi.rate_window', 300));
+        $slot = intdiv(time(), $window);
+        $key = "shiftapi:quota:{$slot}";
+
+        try {
+            // TTL dài hơn cửa sổ để bộ đếm không biến mất giữa chừng.
+            Cache::add($key, 0, $window + 60);
+            $used = Cache::increment($key, $need);
+        } catch (\Throwable $e) {
+            // Cache hỏng thì không được vì thế mà chặn luôn tính năng.
+            Log::warning('Khong dat duoc han ngach Shift API: ' . $e->getMessage());
+            return true;
+        }
+
+        if ($used === false || $used <= $limit) {
+            return true;
+        }
+
+        // Trả lại phần vừa giữ: lượt này không gọi nên không được tính. Nhờ vậy
+        // một mẻ nhỏ vẫn có thể lọt qua sau khi mẻ lớn bị từ chối.
+        try {
+            Cache::decrement($key, $need);
+        } catch (\Throwable $e) {
+            // Đếm dư một chút thì chỉ thận trọng hơn, không sao.
+        }
+
+        $resetIn = max(1, ($slot + 1) * $window - time());
+        $this->rateLimitedFor = $resetIn;
+
+        Log::warning('Tam dung goi Shift API do het han ngach noi bo', [
+            'can' => $need,
+            'han_ngach' => $limit,
+            'cua_so' => $window . 's',
+            'cho_lai' => $resetIn . 's',
+        ]);
+
+        return false;
     }
 
     /**
@@ -716,6 +777,18 @@ class ShiftApiService
             return $result;
         }
 
+        // Đặt lại ở đây, trước cổng hạn ngạch, để giá trị của lượt gọi trước
+        // không lẫn sang lượt này.
+        $this->rateLimitedFor = null;
+
+        // Cổng hạn ngạch dùng chung: chặn TRƯỚC khi mở kết nối. Đợi eO2 trả 429
+        // rồi mới biết thì đã muộn - hạn mức đã bị tiêu và cả hệ thống bị chặn
+        // tới hết cửa sổ. Tự dừng sớm thì luồng web rơi về bản sao lưu ngay lập
+        // tức (0s) thay vì chờ rồi vẫn hỏng.
+        if (!$this->reserveQuota(count($urls))) {
+            return $result;
+        }
+
         $timeout = $timeoutOverride ?: (int) config('shiftapi.timeout', 90);
         $verify = (bool) config('shiftapi.verify_tls', false);
 
@@ -728,8 +801,6 @@ class ShiftApiService
         }
         $handles = [];
         $retryAfter = [];   // key => số giây máy chủ nguồn yêu cầu chờ (header Retry-After)
-
-        $this->rateLimitedFor = null;
 
         foreach ($urls as $key => $url) {
             $ch = curl_init($url);
