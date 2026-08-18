@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Pages\Assignment;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Http\Controllers\Pages\Report\DailyReportController;
@@ -618,6 +619,25 @@ class ProductionAssignmentController extends Controller
         $departmentId = (int) $request->department;
 
         try {
+            // Nút "Đồng bộ" ở sidebar: bỏ cache nóng để lấy lại số liệu từ eO2.
+            //
+            // Có khoá 60s vì một lần nạp lại = 3-6 request nặng tới máy chủ nguồn.
+            // Cache nằm trên server (bảng `cache` của MySQL) và dùng chung cho mọi
+            // người, nên một người bấm là tất cả cùng có dữ liệu mới - không cần
+            // ai bấm thêm. Không khoá thì vài người bấm dồn sẽ làm eO2 trả 429.
+            //
+            // Cache::add là thao tác nguyên tử: chỉ tiến trình đặt được khoá mới
+            // đi tiếp, các tiến trình còn lại bị từ chối ngay.
+            if ($request->boolean('refresh')) {
+                $lockKey = "shiftapi:refresh:{$year}:{$month}:{$departmentId}";
+                if (!Cache::add($lockKey, 1, 60)) {
+                    return response()->json([
+                        'error' => 'Tháng này vừa được đồng bộ. Vui lòng chờ khoảng 1 phút rồi thử lại.',
+                    ], 429);
+                }
+                $shiftApi->forgetMonth($month, $year, $departmentId, $departmentId === 15);
+            }
+
             // PXV1 (15) có một số nhân sự Kho (17) làm tại Trung Tâm Cân.
             $personnelData = $shiftApi->monthlyByDayKey($month, $year, $departmentId, $departmentId === 15);
             if ($personnelData === null) {

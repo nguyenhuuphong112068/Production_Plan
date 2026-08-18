@@ -877,8 +877,12 @@
         <div class="personnel-sidebar" id="personnel-sidebar">
             <div class="p-3 border-bottom d-flex justify-content-between align-items-center bg-light shadow-sm">
                 <h6 class="mb-0 font-weight-bold text-primary"><i class="fas fa-users mr-2"></i>Tình Hình Nhân Sự</h6>
-                <button class="btn btn-sm btn-link text-muted p-0" id="close-sidebar-btn"><i
-                        class="fas fa-times"></i></button>
+                <div class="d-flex align-items-center">
+                    <button class="btn btn-sm btn-link text-primary p-0 mr-3" id="refresh-shifts-btn"
+                        title="Đồng bộ: lấy lại lịch trực mới nhất từ eO2 PMS"><i class="fas fa-sync-alt"></i></button>
+                    <button class="btn btn-sm btn-link text-muted p-0" id="close-sidebar-btn"><i
+                            class="fas fa-times"></i></button>
+                </div>
             </div>
             <div class="p-2 border-bottom bg-white">
                 <div class="input-group input-group-sm shadow-sm mb-2">
@@ -3471,7 +3475,35 @@
         $toggleBtn.on('click', toggleSidebar);
         $closeBtn.on('click', toggleSidebar);
 
-        function fetchPersonnelShifts() {
+        // Nút Đồng bộ: bỏ cache trên server rồi hỏi lại eO2 PMS.
+        //
+        // Cache nằm ở SERVER và dùng chung cho toàn hệ thống, nên một người bấm
+        // là mọi người cùng thấy số liệu mới - không ai phải bấm lại. Đổi lại,
+        // mỗi lượt là 3 request nặng tới máy chủ nguồn và có thể mất ~10s, nên
+        // nút bị khoá trong lúc chạy; backend còn khoá thêm 60s cho mỗi tháng.
+        $(document).on('click', '#refresh-shifts-btn', function() {
+            const $btn = $(this);
+            if ($btn.prop('disabled')) return;
+
+            $btn.prop('disabled', true).find('i').addClass('fa-spin');
+
+            fetchPersonnelShifts(true)
+                .done(function() {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Đã đồng bộ lịch trực',
+                        timer: 2000,
+                        showConfirmButton: false,
+                        toast: true,
+                        position: 'top-end'
+                    });
+                })
+                .always(function() {
+                    $btn.prop('disabled', false).find('i').removeClass('fa-spin');
+                });
+        });
+
+        function fetchPersonnelShifts(refresh = false) {
             const dateStr = '{{ $reportedDate }}';
             const date = new Date(dateStr);
             let month = date.getMonth() + 1;
@@ -3489,18 +3521,24 @@
             };
             const department = depMapping[groupCode] || 3;
 
+            const params = {
+                month,
+                year,
+                department
+            };
+            // refresh=1 báo backend bỏ cache nóng trước khi dựng lại.
+            if (refresh) params.refresh = 1;
+
             $container.html(
-                '<div class="text-center py-5"><div class="spinner-border text-primary"></div><div class="mt-2 text-muted">Đang tải dữ liệu...</div></div>'
+                '<div class="text-center py-5"><div class="spinner-border text-primary"></div><div class="mt-2 text-muted">' +
+                (refresh ? 'Đang lấy dữ liệu mới từ eO2 PMS...' : 'Đang tải dữ liệu...') +
+                '</div></div>'
             );
 
-            $.ajax({
+            return $.ajax({
                 url: `{{ route('pages.assignment.maintenance.shifts') }}`,
                 method: 'GET',
-                data: {
-                    month,
-                    year,
-                    department
-                },
+                data: params,
                 success: function(res) {
                     isSidebarLoaded = true;
                     currentSidebarData = res;
@@ -3508,9 +3546,12 @@
                     renderSidebarData(res, day);
                     updateSidebarHighlights();
                 },
-                error: function() {
+                error: function(xhr) {
+                    // Backend trả 429 kèm lời nhắn khi tháng này vừa được đồng bộ.
+                    const msg = (xhr.responseJSON && xhr.responseJSON.error) ||
+                        'Không thể tải dữ liệu từ máy chủ API.';
                     $container.html(
-                        '<div class="alert alert-danger m-3">Không thể tải dữ liệu từ máy chủ API.</div>'
+                        '<div class="alert alert-danger m-3">' + msg + '</div>'
                     );
                 }
             });

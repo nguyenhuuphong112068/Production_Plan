@@ -52,17 +52,12 @@ class ShiftApiService
             return [];
         }
 
-        $warehouseId = (int) config('shiftapi.warehouse_department', 17);
-        // Nếu chính nó đã là bộ phận Kho thì không gộp thêm lần nữa.
-        $mergeWarehouse = $mergeWarehouse && (int) $department !== $warehouseId;
-
         // Dữ liệu được lấy và cache trọn từng tháng lịch để mọi màn hình
         // (sidebar, dashboard, portal) dùng chung một bản cache.
         $specs = [];
         foreach ($this->monthsBetween($from, $to) as [$year, $month]) {
-            $specs[] = ['year' => $year, 'month' => $month, 'dept' => (int) $department, 'wh' => false];
-            if ($mergeWarehouse) {
-                $specs[] = ['year' => $year, 'month' => $month, 'dept' => $warehouseId, 'wh' => true];
+            foreach ($this->monthSpecs($year, $month, (int) $department, $mergeWarehouse) as $spec) {
+                $specs[] = $spec;
             }
         }
 
@@ -329,6 +324,52 @@ class ShiftApiService
     private function specKey(array $spec): string
     {
         return "{$spec['year']}-{$spec['month']}-{$spec['dept']}-" . (int) $spec['wh'];
+    }
+
+    /**
+     * Các "ô" dữ liệu cần có để dựng một tháng của một bộ phận.
+     *
+     * Tách riêng để phía ĐỌC (`shiftIndex`) và phía XOÁ (`forgetMonth`) luôn
+     * nhìn cùng một tập khoá. Nếu hai bên tự dựng spec riêng rồi lệch nhau thì
+     * nút Đồng bộ sẽ xoá hụt phần Kho và người dùng bấm xong vẫn thấy số cũ.
+     */
+    private function monthSpecs(int $year, int $month, int $department, bool $mergeWarehouse): array
+    {
+        $warehouseId = (int) config('shiftapi.warehouse_department', 17);
+
+        $specs = [['year' => $year, 'month' => $month, 'dept' => $department, 'wh' => false]];
+
+        // Nếu chính nó đã là bộ phận Kho thì không gộp thêm lần nữa.
+        if ($mergeWarehouse && $department !== $warehouseId) {
+            $specs[] = ['year' => $year, 'month' => $month, 'dept' => $warehouseId, 'wh' => true];
+        }
+
+        return $specs;
+    }
+
+    /**
+     * Bỏ cache nóng của một tháng để lần gọi sau bắt buộc hỏi lại eO2.
+     *
+     * Dùng cho nút Đồng bộ ở sidebar Lịch công tác và cho command
+     * `shifts:warm-cache`. Gọi xong phải gọi tiếp `monthlyByDayKey`/`shiftIndex`
+     * thì mới thực sự nạp lại.
+     *
+     * CỐ Ý không đụng tới bản sao lưu 24h: nếu lần gọi lại này dính 429 hoặc
+     * timeout thì `loadMonthIndexes` vẫn còn bản đủ để rơi về, thay vì để người
+     * dùng bấm Đồng bộ xong lại nhận trang trống.
+     */
+    public function forgetMonth(int $month, int $year, int $department, bool $mergeWarehouse = false): void
+    {
+        foreach ($this->monthSpecs($year, $month, $department, $mergeWarehouse) as $spec) {
+            unset($this->memo[$this->specKey($spec)]);
+            try {
+                Cache::forget($this->cacheKeyFor($spec, false));
+            } catch (\Throwable $e) {
+                Log::warning('Khong xoa duoc cache lich truc: ' . $e->getMessage(), [
+                    'key' => $this->cacheKeyFor($spec, false),
+                ]);
+            }
+        }
     }
 
     /**

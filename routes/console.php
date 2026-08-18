@@ -21,3 +21,10 @@ Schedule::command('wip:snapshot-coverage')->dailyAt('06:00')->withoutOverlapping
 // giữa ngày để bắt các thay đổi nhân sự phát sinh.
 Schedule::command('employees:sync-roster')->dailyAt('05:00')->withoutOverlapping();
 Schedule::command('employees:sync-roster')->dailyAt('12:30')->withoutOverlapping();
+
+// Nạp sẵn cache lịch trực cho trang Lịch công tác.
+// Chạy mỗi giờ trong khung giờ làm việc, ngắn hơn `shiftapi.cache_ttl` (2h) nên
+// cache luôn được làm mới trước khi hết hạn -> người dùng đọc cache chứ không
+// gọi API, vừa nhanh vừa không dội request làm eO2 trả HTTP 429.
+// withoutOverlapping: một lượt nạp đủ 7 bộ phận có thể kéo dài vài phút.
+Schedule::command('shifts:warm-cache')->hourly()->between('5:00', '20:00')->withoutOverlapping();

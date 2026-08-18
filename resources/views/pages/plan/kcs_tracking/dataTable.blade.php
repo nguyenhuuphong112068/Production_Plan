@@ -68,7 +68,8 @@
             <span class="badge badge-success">KCS {{ \Carbon\Carbon::parse($kcsMonth . '-01')->format('m/Y') }}</span>
         @endif
         @if ($result !== '')
-            <span class="badge {{ $result === \App\Models\PlanMasterKcs::RESULT_MET ? 'badge-success' : 'badge-danger' }}">
+            <span
+                class="badge {{ $result === \App\Models\PlanMasterKcs::RESULT_MET ? 'badge-success' : 'badge-danger' }}">
                 {{ $result === \App\Models\PlanMasterKcs::RESULT_MET ? 'Đáp Ứng' : 'Trễ Hạn' }}
             </span>
         @endif
@@ -81,13 +82,13 @@
         @endif
     </div>
 </form>
-
+{{--
 @unless ($canUpdate)
-    <div class="alert alert-warning py-2">
+     <div class="alert alert-warning py-2">
         <i class="fas fa-lock"></i> Bạn chỉ có quyền xem. Liên hệ quản trị để được cấp quyền
         <b>Cập Nhật Theo Dõi Hồ Sơ KCS</b>.
-    </div>
-@endunless
+    </div> 
+@endunless --}}
 
 @unless ($mmsAvailable)
     <div class="alert alert-secondary py-2 small">

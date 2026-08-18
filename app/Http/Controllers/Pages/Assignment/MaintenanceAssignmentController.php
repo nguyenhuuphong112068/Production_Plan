@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Pages\Assignment;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Support\WorkingDay;
@@ -409,6 +410,18 @@ class MaintenanceAssignmentController extends Controller
         $departmentId = (int) $request->department;
 
         try {
+            // Nút "Đồng bộ" ở sidebar. Xem ProductionAssignmentController để biết
+            // vì sao phải khoá 60s trước khi gọi lại API.
+            if ($request->boolean('refresh')) {
+                $lockKey = "shiftapi:refresh:{$year}:{$month}:{$departmentId}";
+                if (!Cache::add($lockKey, 1, 60)) {
+                    return response()->json([
+                        'error' => 'Tháng này vừa được đồng bộ. Vui lòng chờ khoảng 1 phút rồi thử lại.',
+                    ], 429);
+                }
+                $shiftApi->forgetMonth($month, $year, $departmentId, $departmentId === 15);
+            }
+
             $personnelData = $shiftApi->monthlyByDayKey($month, $year, $departmentId, $departmentId === 15);
             if ($personnelData === null) {
                 return response()->json(['error' => 'Không thể tải dữ liệu từ máy chủ API.'], 500);
