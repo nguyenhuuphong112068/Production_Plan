@@ -35,10 +35,17 @@
     </div>
 </div>
 
+{{-- Layout chung đặt body { overflow-y: hidden } (resources/views/layout/css.blade.php) nên
+     cửa sổ không bao giờ cuộn được - tab này phải tự cuộn giống lưới ở tab Theo Dõi Hồ Sơ.
+     Chiều cao thật do fitTableHeight() trong dataTable.blade.php tính; calc() dưới đây chỉ là
+     dự phòng khi JS chưa chạy. Thanh lọc Phân Xưởng / Năm KCS cố ý nằm ngoài hộp cuộn. --}}
+<div id="kcs_summary_scroll">
+
 <div class="alert alert-light border">
     <b>Công thức:</b> Số lô đúng hạn / Số lô đã chấm được × 100%.
     Một lô đúng hạn khi <b>Ngày KCS</b> cách <b>Ngày đủ điều kiện</b> không quá
-    {{ PlanMasterKcs::ON_TIME_DAYS }} ngày.
+    {{ PlanMasterKcs::ON_TIME_DAYS }} <b>ngày làm việc</b> - đã loại Chủ nhật và các ngày
+    nghỉ theo lịch công ty (Dữ Liệu Gốc &rsaquo; Cập nhật ngày nghỉ).
     <span class="ml-3">
         <span class="badge badge-success">Mục tiêu ≥ {{ PlanMasterKcs::TARGET_RATE }}%</span>
         <span class="badge badge-warning">Cảnh báo</span>
@@ -167,7 +174,7 @@
                                 <th style="width: 110px;">Số Lô Trễ</th>
                                 <th style="width: 90px;">Tỉ Lệ</th>
                                 <th style="width: 130px;"
-                                    title="Trung bình số ngày từ Ngày Đủ Điều Kiện đến Ngày KCS của nhóm này.">
+                                    title="Trung bình số ngày làm việc từ Ngày Đủ Điều Kiện đến Ngày KCS của nhóm này, đã loại Chủ nhật và ngày nghỉ theo lịch công ty.">
                                     Số Ngày HT TB
                                 </th>
                                 <th>Mức Độ Ảnh Hưởng</th>
@@ -216,6 +223,11 @@
     </div>
 </div>
 
+</div>{{-- /#kcs_summary_scroll --}}
+
+{{-- CSS của hộp cuộn nằm trong dataTable.blade.php: khối này được nạp lại bằng AJAX mỗi
+     lần đổi phân xưởng / năm, để <style> ở đây sẽ nhân bản thêm một thẻ sau mỗi lần đổi. --}}
+
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         // Tải lại riêng khối tổng kết để không mất bộ lọc / dữ liệu đang nhập ở tab theo dõi
@@ -231,6 +243,11 @@
                     },
                     success: function(res) {
                         $('#summary_container').html(res.html);
+                        // Hộp cuộn vừa được dựng lại nên phải đo lại chiều cao.
+                        // Bắn sự kiện thay vì gọi thẳng: khối <script> này không chạy
+                        // lại sau khi thay HTML (DOMContentLoaded đã bắn xong), còn
+                        // handler bên dataTable.blade.php thì vẫn sống.
+                        $(document).trigger('kcs:summary-loaded');
                     },
                     error: function() {
                         toastr.error('Lỗi khi tải bảng tổng kết');

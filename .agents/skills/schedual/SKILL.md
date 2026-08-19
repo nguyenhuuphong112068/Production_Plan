@@ -26,7 +26,9 @@ Khi người dùng sửa đổi lịch của 1 lô thuộc một "chiến dịch
 * Backend lấy toàn bộ lô thuộc campaign đó, sắp xếp theo thời gian (`start`).
 * Lô được sửa sẽ nhận thời gian mới.
 * Các lô tiếp theo sẽ tự động lùi/tiến nối tiếp liên tục (back-to-back) ngay sau lô trước đó, cộng dồn với thời lượng sản xuất và thời gian vệ sinh (nếu có). Tránh tình trạng các lô trong chiến dịch bị dồn cục vào cùng một thời điểm.
-* **Chặn vi phạm công đoạn trước** (`update()` trong `SchedualController.php`): trước khi ghi DB, backend xếp thử back-to-back từ điểm thả và so từng lô với `pred.end`. Nếu có lô vi phạm, **cả chiến dịch** được dời trễ đúng bằng khoảng thiếu lớn nhất (các lô cách đều nhau nên chỉ cần 1 lượt tính). Số phút đã dời trả về frontend qua trường `campaign_shift_minutes` để hiển thị thông báo cho người dùng.
+* **Chặn vi phạm công đoạn trước - theo TỪNG LÔ** (`update()` trong `SchedualController.php`): khi rải từng lô, nếu lô sắp ghi có thời điểm bắt đầu sớm hơn `pred.end` của **chính lô đó** thì kéo về đúng `pred.end`, chấp nhận hở một khoảng trước lô. Các lô sau vẫn bám sát lô liền trước nếu đã hợp lệ. Trả về `campaign_shift_batches` (số lô bị kéo) và `campaign_shift_minutes` (mức kéo lớn nhất) để frontend báo cho người dùng.
+
+  > ⚠️ **Không** dời cả chiến dịch ra sau chiến dịch công đoạn trước. Lô N của công đoạn sau chỉ phụ thuộc lô N của công đoạn trước, nên đúng nghiệp vụ là ĐH lô 1 chạy ngay khi THT lô 1 xong (song song với THT lô 2), chứ không chờ toàn bộ THT kết thúc.
 
 ### 3.1. Tạo Lịch Thủ Công - Thả Nhóm Lô Vào Phòng (`store()`)
 
@@ -34,7 +36,9 @@ Nút "tạo chiến dịch" (`createManualCampain`, `createManualCampainStage`) 
 
 * Các lô được rải liên tục (back-to-back) từ điểm thả: lô đầu `p_time + m_time`, các lô sau `m_time`, xen vệ sinh C1 và kết bằng C2; giữa các lô có `skipOffTime()` để nhảy ngày nghỉ / phòng bận.
 * `manualBatchTimes()` tính trước thời gian của cả nhóm; `predecessorReadyTimes()` lấy `pred.end` của từng lô (bỏ qua công đoạn cân 1, 2 và lô có công đoạn trước chưa xếp).
-* **Chặn vi phạm công đoạn trước**: lô nào bắt đầu trước `pred.end` thì dời **cả nhóm** trễ thêm đúng khoảng thiếu lớn nhất rồi xếp lại, lặp tối đa 5 lần - phải lặp vì giờ làm việc / ngày nghỉ khiến khoảng cách giữa các lô không tuyến tính. Số phút đã dời trả về qua `manual_shift_minutes`.
+* **Chặn vi phạm công đoạn trước - theo TỪNG LÔ**: trong lúc rải, lô nào bị lô trước đẩy tới sớm hơn `pred.end` của **chính nó** thì kéo về đúng `pred.end` rồi `skipOffTime()`; các lô sau tiếp tục bám sát lô liền trước. Một lượt duyệt xuôi là đủ, không cần lặp. Trả về `manual_shift_batches` và `manual_shift_minutes` (mức kéo lớn nhất).
+
+  > ⚠️ Cố ý **cho phép hở khoảng trống** giữa các lô. Kéo cả nhóm ra sau toàn bộ công đoạn trước là sai nghiệp vụ: lô N chỉ phụ thuộc lô N của công đoạn trước.
 * Thả nhóm lô công đoạn PC (stage 3) còn gán luôn `campaign_code` cho **mọi công đoạn** của các lô đó (`whereIn('plan_master_id', ...)`, không lọc stage).
 
 ## 4. Bảo Trì (BT), Hiệu Chuẩn (HC), Tiện Ích (TI)

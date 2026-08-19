@@ -150,8 +150,12 @@
                 <th class="bg-warning" style="min-width: 150px;">Ghi Chú</th>
 
                 <th class="bg-info text-white" style="min-width: 110px;">Ngày Đủ Điều Kiện</th>
-                <th class="bg-info text-white" style="min-width: 90px;">Số Ngày HT</th>
-                <th class="bg-info text-white" style="min-width: 90px;">KCS Pending</th>
+                <th class="bg-info text-white" style="min-width: 90px;"
+                    title="Số ngày làm việc từ Ngày Đủ Điều Kiện đến Ngày KCS. Đã loại Chủ nhật và các ngày nghỉ theo lịch công ty. Đáp Ứng khi &le; {{ \App\Models\PlanMasterKcs::ON_TIME_DAYS }} ngày.">
+                    Số Ngày HT</th>
+                <th class="bg-info text-white" style="min-width: 90px;"
+                    title="Số ngày làm việc từ Ngày Nhận Hồ Sơ đến Ngày KCS. Đã loại Chủ nhật và các ngày nghỉ theo lịch công ty.">
+                    KCS Pending</th>
                 <th class="bg-info text-white" style="min-width: 80px;">Tháng KCS</th>
                 <th class="bg-info text-white" style="min-width: 140px;">Mốc Quyết Định</th>
                 <th class="bg-info text-white" style="min-width: 130px;">Kết Quả</th>
@@ -331,11 +335,39 @@
 </div>
 
 <style>
-    /* Chiều cao thật do fitTableHeight() tính theo vị trí bảng trên màn hình;
-       giá trị dưới đây chỉ là dự phòng khi JS chưa chạy. */
+    /* Layout chung đặt body { overflow-y: hidden } (resources/views/layout/css.blade.php)
+       nên cửa sổ không bao giờ cuộn được: mỗi tab phải có hộp cuộn dọc của riêng nó.
+
+       Chiều cao thật do fitTableHeight() tính theo vị trí hộp trên màn hình;
+       các giá trị calc() dưới đây chỉ là dự phòng khi JS chưa chạy. */
     #kcs_table_scroll {
         max-height: calc(100vh - 330px);
         overflow: auto;
+    }
+
+    /* Tab Tổng Kết Tỉ Lệ - phần tử nằm trong summary.blade.php, CSS để chung ở đây vì
+       khối đó được nạp lại bằng AJAX (xem ghi chú cuối summary.blade.php). */
+    #kcs_summary_scroll {
+        max-height: calc(100vh - 300px);
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+
+    /* Ghim tiêu đề cột khi cuộn. Nền phải đặt trên chính th: bg-light nằm ở thead nên
+       ô sticky sẽ trong suốt và để lộ các dòng chạy bên dưới. */
+    #kcs_summary_scroll thead th {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background-color: #f8f9fa;
+    }
+
+    /* Dòng tổng luôn nhìn thấy: đây mới là con số cần đọc khi cuộn qua 12 tháng */
+    #kcs_summary_scroll tfoot td {
+        position: sticky;
+        bottom: 0;
+        z-index: 2;
+        background-color: #f8f9fa;
     }
 
     #kcs_tracking_table thead th {
@@ -408,6 +440,21 @@
         font-weight: 600;
         cursor: not-allowed;
     }
+
+    /* Lô sửa nhiều lần có hàng trăm dòng lịch sử; cho phần thân modal tự cuộn để
+       tiêu đề modal và tiêu đề cột luôn nằm trong tầm nhìn. */
+    #kcsHistoryBody {
+        max-height: calc(100vh - 200px);
+        overflow-y: auto;
+        padding: 0;
+    }
+
+    #kcsHistoryBody thead th {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background-color: #f8f9fa;
+    }
 </style>
 
 <script>
@@ -415,11 +462,11 @@
         const RESULT_MET = @json(\App\Models\PlanMasterKcs::RESULT_MET);
         const saveUrl = '{{ route('pages.plan.kcs_tracking.save') }}';
 
-        // Cho bảng cao hết phần màn hình còn lại thay vì trừ một số cố định:
+        // Cho hộp cao hết phần màn hình còn lại thay vì trừ một số cố định:
         // thanh lọc có thể xuống dòng, có thể hiện thêm cảnh báo "chỉ có quyền xem"...
-        // nên vị trí bắt đầu của bảng không cố định.
-        function fitTableHeight() {
-            const box = document.getElementById('kcs_table_scroll');
+        // nên vị trí bắt đầu của hộp không cố định.
+        function fitBoxHeight(id) {
+            const box = document.getElementById(id);
 
             // Tab đang ẩn thì không đo được, để lần hiện tab tính lại
             if (!box || box.offsetParent === null) {
@@ -437,11 +484,20 @@
             box.style.maxHeight = Math.max(available, 240) + 'px';
         }
 
+        // Cả hai tab đều phải tự cuộn: layout chung đặt body { overflow-y: hidden }
+        // (resources/views/layout/css.blade.php) nên cửa sổ không bao giờ cuộn được.
+        function fitTableHeight() {
+            fitBoxHeight('kcs_table_scroll');
+            fitBoxHeight('kcs_summary_scroll');
+        }
+
         fitTableHeight();
         window.addEventListener('resize', fitTableHeight);
-        $('#tab-records-tab').on('shown.bs.tab', fitTableHeight);
+        $('#tab-records-tab, #tab-summary-tab').on('shown.bs.tab', fitTableHeight);
         // Thu/mở menu trái làm bảng đổi bề ngang -> thanh lọc có thể xuống dòng
         $(document).on('collapsed.lte.pushmenu shown.lte.pushmenu', fitTableHeight);
+        // Bảng tổng kết được tải lại bằng AJAX -> hộp cuộn mới, phải đo lại
+        $(document).on('kcs:summary-loaded', fitTableHeight);
 
         // Lưu cả dòng mỗi khi một ô đổi giá trị: các cột dẫn xuất phụ thuộc lẫn nhau
         // nên phải để server tính lại trên toàn bộ dữ liệu của dòng.

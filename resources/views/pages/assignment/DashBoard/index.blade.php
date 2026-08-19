@@ -71,17 +71,22 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="row">
-                                <div class="col-12 d-flex align-items-center">
-                                    <button type="button" class="btn btn-outline-primary btn-sm" id="btn-warm-cache">
-                                        <i class="fas fa-sync-alt mr-1"></i>Đồng bộ lịch trực
-                                    </button>
-                                    <small class="text-muted ml-3">
-                                        Lấy lại lịch trực của phân xưởng đang chọn từ eO2 PMS. Chỉ dùng khi thấy số
-                                        liệu chưa đúng — bình thường hệ thống tự nạp lúc 00:00, 05:55, 12:00 và 16:00.
-                                    </small>
+                            @if (user_has_permission(session('user')['userId'], 'e-o_synchronization', 'boolean'))
+                                <div class="row">
+                                    <div class="col-12 d-flex align-items-center">
+                                        <button type="button" class="btn btn-outline-primary btn-sm"
+                                            id="btn-warm-cache">
+                                            <i class="fas fa-sync-alt mr-1"></i>Đồng bộ dữ liệu e-o
+                                        </button>
+
+                                        <small class="text-muted ml-3">
+                                            Lấy lại lịch trực của phân xưởng đang chọn từ eO2 PMS. Chỉ dùng khi thấy số
+                                            liệu chưa đúng — bình thường hệ thống tự nạp lúc 00:00, 05:55, 12:00 và
+                                            16:00.
+                                        </small>
+                                    </div>
                                 </div>
-                            </div>
+                            @endif
                         </form>
                     </div>
                 </div>
@@ -463,7 +468,10 @@
         // là mọi người cùng thấy số liệu mới. Đổi lại mỗi lượt là 3-6 request
         // nặng, mất ~10-40s tuỳ phân xưởng (PXV1 lâu nhất vì gộp thêm Kho), nên
         // nút bị khoá trong lúc chạy và backend còn khoá thêm 60s mỗi tháng.
-        document.getElementById('btn-warm-cache').addEventListener('click', function() {
+        // Nút chỉ hiện với người có quyền `e-o_synchronization`. Không kiểm tra
+        // null ở đây thì với người không có quyền, addEventListener sẽ ném lỗi và
+        // giết luôn toàn bộ JS phía dưới - Dashboard không tải được dữ liệu.
+        document.getElementById('btn-warm-cache')?.addEventListener('click', function() {
             const btn = this;
             if (btn.disabled) return;
 

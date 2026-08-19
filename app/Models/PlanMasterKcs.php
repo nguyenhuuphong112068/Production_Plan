@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\OffDays;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -18,7 +19,11 @@ class PlanMasterKcs extends Model
 
     protected $table = 'plan_master_KCS';
 
-    /** Đạt yêu cầu khi KCS xong trong vòng 3 ngày kể từ ngày đủ điều kiện */
+    /**
+     * Đạt yêu cầu khi KCS xong trong vòng 3 NGÀY LÀM VIỆC kể từ ngày đủ điều kiện.
+     * Ngày nghỉ theo lịch công ty (bảng off_days) và Chủ nhật không được tính vào
+     * 3 ngày này - xem workingDaysAfter().
+     */
     public const ON_TIME_DAYS = 3;
 
     public const RESULT_MET = 'Đáp Ứng';
@@ -212,8 +217,7 @@ class PlanMasterKcs extends Model
         $derived['kcs_year'] = (int) $kcsDate->year;
         $derived['kcs_month'] = (int) $kcsDate->month;
 
-        // Số ngày chờ KCS: từ ngày nhận hồ sơ đến ngày KCS, tính theo ngày làm việc
-        // (chỉ nghỉ Chủ nhật) và trừ chính ngày bắt đầu.
+        // Số ngày chờ KCS: từ ngày nhận hồ sơ đến ngày KCS, tính theo ngày làm việc.
         //
         // Chỉ tính từ ngày nhận hồ sơ, không lấy MAX với ngày nhận COATP như công thức
         // Excel gốc. Cột này để tham khảo, không ảnh hưởng kết quả Đáp Ứng / Không Đáp Ứng
@@ -221,11 +225,13 @@ class PlanMasterKcs extends Model
         $receivedDate = self::toDate($input['record_received_date'] ?? null);
 
         if ($receivedDate) {
-            $derived['kcs_pending'] = self::workingDays($receivedDate, $kcsDate) - 1;
+            $derived['kcs_pending'] = self::workingDaysAfter($receivedDate, $kcsDate);
         }
 
         if ($eligible) {
-            $completionDays = (int) $eligible->diffInDays($kcsDate, false);
+            // Đếm theo ngày làm việc: lô đủ điều kiện ngay trước một đợt nghỉ lễ không
+            // thể bị chấm trễ vì những ngày cả nhà máy đều nghỉ.
+            $completionDays = self::workingDaysAfter($eligible, $kcsDate);
             $derived['completion_days'] = $completionDays;
             $derived['result'] = $completionDays <= self::ON_TIME_DAYS
                 ? self::RESULT_MET
@@ -236,8 +242,41 @@ class PlanMasterKcs extends Model
     }
 
     /**
-     * Số ngày làm việc từ $start đến $end (tính cả hai đầu), nghỉ Chủ nhật.
-     * Tương đương NETWORKDAYS.INTL(...; 11) của Excel.
+     * Số ngày làm việc trôi qua SAU $start cho tới hết $end, tức đếm trên khoảng
+     * ($start, $end]. Ngày nghỉ theo lịch công ty và Chủ nhật không được tính.
+     *
+     * Cố ý không dùng "workingDays() - 1": khi chính $start là ngày nghỉ thì nó đã
+     * không nằm trong phép đếm, trừ thêm 1 sẽ hụt mất một ngày làm việc thật.
+     *
+     * Trả về số âm khi $end trước $start (dữ liệu nhập sai thứ tự), giữ nguyên hành vi
+     * của diffInDays(..., false) trước đây để cột Số Ngày HT vẫn lộ ra chỗ nhập ngược.
+     */
+    public static function workingDaysAfter(Carbon $start, Carbon $end): int
+    {
+        if ($end->lt($start)) {
+            return -self::workingDaysAfter($end, $start);
+        }
+
+        // Chặn vòng lặp chạy quá xa khi dữ liệu nhập sai (VD gõ nhầm năm)
+        if ($start->diffInDays($end) > 3650) {
+            return 0;
+        }
+
+        $days = 0;
+
+        for ($cursor = $start->copy()->addDay(); $cursor->lte($end); $cursor->addDay()) {
+            if (!OffDays::isRestDay($cursor)) {
+                $days++;
+            }
+        }
+
+        return $days;
+    }
+
+    /**
+     * Số ngày làm việc từ $start đến $end (tính cả hai đầu), loại ngày nghỉ theo lịch
+     * công ty (bảng off_days) và Chủ nhật.
+     * Tương đương NETWORKDAYS(...) của Excel với danh sách ngày lễ là off_days.
      */
     public static function workingDays(Carbon $start, Carbon $end): int
     {
@@ -253,7 +292,7 @@ class PlanMasterKcs extends Model
         $days = 0;
 
         for ($cursor = $start->copy(); $cursor->lte($end); $cursor->addDay()) {
-            if ($cursor->dayOfWeek !== Carbon::SUNDAY) {
+            if (!OffDays::isRestDay($cursor)) {
                 $days++;
             }
         }

@@ -2120,7 +2120,8 @@ class SchedualController extends Controller
 
         $start_date = null;
 
-        // Số phút đã phải dời thêm để nhóm lô không bắt đầu trước công đoạn trước (báo về frontend)
+        // Số lô đã bị kéo lùi về mốc kết thúc công đoạn trước, và mức kéo lớn nhất (báo về frontend)
+        $manualShiftBatches = 0;
         $manualShiftMinutes = 0;
 
         DB::beginTransaction();
@@ -2214,38 +2215,22 @@ class SchedualController extends Controller
             |--------------------------------------------------------------------------
             | tính thời gian sản xuất + vệ sinh, có chặn ràng buộc công đoạn trước
             |--------------------------------------------------------------------------
-            | Xếp thử từ điểm thả; lô nào bắt đầu trước khi công đoạn trước kết thúc thì
-            | dời CẢ nhóm trễ thêm đúng khoảng thiếu lớn nhất rồi xếp lại. Phải lặp vì
-            | giờ làm việc / ngày nghỉ khiến khoảng cách giữa các lô không tuyến tính.
+            | Các lô rải liên tục từ điểm thả; lô nào chạm phải mốc kết thúc công đoạn
+            | trước của CHÍNH nó thì bị kéo lùi về đúng mốc đó (hở một khoảng trước lô),
+            | các lô còn lại vẫn bám sát lô liền trước.
             */
             $predReady = $this->predecessorReadyTimes($products);
 
-            $batchTimes = $this->manualBatchTimes($products, $request->room_id, $current_start, $quotaTimes);
+            $batchTimes = $this->manualBatchTimes($products, $request->room_id, $current_start, $quotaTimes, $predReady);
 
-            for ($attempt = 0; $attempt < 5; $attempt++) {
+            // Thống kê để báo về frontend: bao nhiêu lô bị kéo lùi và mức lớn nhất
+            foreach ($batchTimes as $row) {
 
-                $shiftMinutes = 0;
+                if ($row['shift_minutes'] > 0) {
 
-                foreach ($batchTimes as $i => $row) {
-
-                    if (isset($predReady[$i]) && $row['start']->lt($predReady[$i])) {
-
-                        $gap = (int) ceil(($predReady[$i]->getTimestamp() - $row['start']->getTimestamp()) / 60);
-
-                        if ($gap > $shiftMinutes) {
-                            $shiftMinutes = $gap;
-                        }
-                    }
+                    $manualShiftBatches++;
+                    $manualShiftMinutes = max($manualShiftMinutes, $row['shift_minutes']);
                 }
-
-                if ($shiftMinutes <= 0) {
-                    break;
-                }
-
-                $current_start = $current_start->copy()->addMinutes($shiftMinutes);
-                $manualShiftMinutes += $shiftMinutes;
-
-                $batchTimes = $this->manualBatchTimes($products, $request->room_id, $current_start, $quotaTimes);
             }
 
             $firstBatachStart = $batchTimes[0]['start'] ?? null;
@@ -2537,6 +2522,7 @@ class SchedualController extends Controller
             'events' => $events,
             'plan' => $plan_waiting,
             'sumBatchByStage' => $sumBatchByStage,
+            'manual_shift_batches' => $manualShiftBatches,
             'manual_shift_minutes' => $manualShiftMinutes,
         ]);
     }
@@ -2551,7 +2537,8 @@ class SchedualController extends Controller
      */
     private function predecessorReadyTimes($products): array
     {
-        $ids = collect($products)->pluck('id')->filter()->all();
+        // Nhận cả mảng (payload từ frontend) lẫn object (dòng lấy từ DB)
+        $ids = collect($products)->map(fn($product) => data_get($product, 'id'))->filter()->all();
 
         if (empty($ids)) {
             return [];
@@ -2570,7 +2557,7 @@ class SchedualController extends Controller
 
         foreach ($products as $index => $product) {
 
-            $end = $ends[$product['id']] ?? null;
+            $end = $ends[data_get($product, 'id')] ?? null;
 
             if ($end) {
                 $readyTimes[$index] = Carbon::parse($end);
@@ -2583,13 +2570,17 @@ class SchedualController extends Controller
     /**
      * Thời gian của tất cả các lô khi sắp lịch thủ công liên tục từ $startTime.
      *
-     * Tách khỏi store() để có thể xếp thử → kiểm tra ràng buộc công đoạn trước → dời cả
-     * nhóm rồi mới ghi DB, bảo đảm lịch đã kiểm tra và lịch lưu luôn khớp nhau.
+     * Tách khỏi store() để tính một lần rồi mới ghi DB, bảo đảm lịch tính và lịch lưu khớp nhau.
+     *
+     * Ràng buộc công đoạn trước được áp cho TỪNG LÔ: lô nào bị lô trước đẩy tới sớm hơn thời
+     * điểm kết thúc công đoạn trước của CHÍNH nó thì kéo về đúng mốc đó, chấp nhận có khoảng
+     * trống trước lô đó. Không dời cả nhóm - các lô sau vẫn bám sát lô trước nếu đã hợp lệ.
      *
      * @param  array{p: mixed, m: mixed, C1: mixed, C2: mixed, campaign_index: mixed}  $quotaTimes
-     * @return array<int, array{start: Carbon, end: Carbon, start_clearning: Carbon, end_clearning: Carbon, clearning_type: string}>
+     * @param  array<int, Carbon>  $predReady  Mốc kết thúc công đoạn trước của từng lô
+     * @return array<int, array{start: Carbon, end: Carbon, start_clearning: Carbon, end_clearning: Carbon, clearning_type: string, shift_minutes: int}>
      */
-    private function manualBatchTimes($products, $roomId, Carbon $startTime, array $quotaTimes): array
+    private function manualBatchTimes($products, $roomId, Carbon $startTime, array $quotaTimes, array $predReady = []): array
     {
         $batchTimes = [];
 
@@ -2616,6 +2607,8 @@ class SchedualController extends Controller
                 }
             }
 
+            $shift_minutes = 0;
+
             if ($product['stage_code'] <= 2) {
 
                 $end_man = $current_start->copy()->addMinutes($p_time_adj + $m_time_adj * $quotaTimes['campaign_index']);
@@ -2626,6 +2619,20 @@ class SchedualController extends Controller
 
                 if ($count === 1) {
                     $current_start = $this->skipOffTime($current_start, $this->offDate, $roomId);
+                }
+
+                // 🔹 Chốt chặn từng lô: không được bắt đầu trước khi công đoạn trước của
+                // chính lô này kết thúc. Kéo đúng về mốc đó, chấp nhận hở một khoảng.
+                if (isset($predReady[$index]) && $current_start->lt($predReady[$index])) {
+
+                    $shift_minutes = (int) ceil(
+                        ($predReady[$index]->getTimestamp() - $current_start->getTimestamp()) / 60
+                    );
+
+                    $current_start = $this->skipOffTime($predReady[$index]->copy(), $this->offDate, $roomId);
+                }
+
+                if ($count === 1) {
 
                     $end_man = $this->addWorkingMinutes($current_start->copy(), $p_time_adj + $m_time_adj, $roomId, $this->work_sunday);
 
@@ -2659,6 +2666,7 @@ class SchedualController extends Controller
                 'start_clearning' => $start_clearning,
                 'end_clearning' => $end_clearning,
                 'clearning_type' => $clearning_type,
+                'shift_minutes' => $shift_minutes,
             ];
 
             // Lô kế tiếp bắt đầu ngay sau vệ sinh, rồi nhảy qua ngày nghỉ / phòng bận
@@ -2990,7 +2998,8 @@ class SchedualController extends Controller
             $sharedStart = null;
             $sharedResource = null;
             $isMoveSelectedBatches = $request->input('move_selected_batches', false);
-            // Số phút đã phải dời thêm để chiến dịch không bắt đầu trước công đoạn trước (báo về frontend)
+            // Số lô đã bị kéo lùi về mốc kết thúc công đoạn trước, và mức kéo lớn nhất (báo về frontend)
+            $campaignShiftBatches = 0;
             $campaignShiftMinutes = 0;
 
             foreach ($changes as $change) {
@@ -3117,47 +3126,27 @@ class SchedualController extends Controller
                             ];
                         }
 
-                        // 🔹 Chặn lô bắt đầu trước khi công đoạn trước kết thúc.
-                        // Xếp thử back-to-back từ điểm thả; nếu có lô vi phạm thì dời CẢ chiến dịch
-                        // đúng bằng khoảng thiếu lớn nhất (các lô cách đều nhau nên chỉ cần 1 lượt).
-                        $shiftSeconds = 0;
-                        $cursor = $currentStart->copy();
-
-                        foreach ($campaignEvents as $i => $ev) {
-
-                            $pred = $ev->predecessor_code
-                                ? DB::table('stage_plan')->where('code', $ev->predecessor_code)->first()
-                                : null;
-
-                            if ($pred && !in_array($pred->stage_code, [1, 2]) && !empty($pred->end)) {
-
-                                $predEnd = Carbon::parse($pred->end);
-
-                                if ($cursor->lt($predEnd)) {
-
-                                    $gap = $predEnd->getTimestamp() - $cursor->getTimestamp();
-
-                                    if ($gap > $shiftSeconds) {
-                                        $shiftSeconds = $gap;
-                                    }
-                                }
-                            }
-
-                            $cursor = $cursor->copy()->addSeconds($campaignDurations[$i]['duration']);
-
-                            if ($campaignDurations[$i]['clean'] !== null) {
-                                $cursor = $cursor->copy()->addSeconds($campaignDurations[$i]['clean']);
-                            }
-                        }
-
-                        if ($shiftSeconds > 0) {
-                            $currentStart = $currentStart->copy()->addSeconds($shiftSeconds);
-                            $campaignShiftMinutes = max($campaignShiftMinutes, (int) ceil($shiftSeconds / 60));
-                        }
+                        // Mốc kết thúc công đoạn trước của TỪNG lô, dùng để chốt chặn bên dưới
+                        $predReady = $this->predecessorReadyTimes($campaignEvents);
 
                         foreach ($campaignEvents as $i => $ev) {
 
                             $duration = $campaignDurations[$i]['duration'];
+
+                            // 🔹 Chốt chặn từng lô: lô nào bị lô trước đẩy tới sớm hơn thời điểm
+                            // kết thúc công đoạn trước của CHÍNH nó thì kéo về đúng mốc đó,
+                            // chấp nhận hở một khoảng. Không dời cả chiến dịch.
+                            if (isset($predReady[$i]) && $currentStart->lt($predReady[$i])) {
+
+                                $campaignShiftMinutes = max(
+                                    $campaignShiftMinutes,
+                                    (int) ceil(($predReady[$i]->getTimestamp() - $currentStart->getTimestamp()) / 60)
+                                );
+
+                                $campaignShiftBatches++;
+
+                                $currentStart = $predReady[$i]->copy();
+                            }
 
                             $newStart = $currentStart->copy();
                             $newEnd = $newStart->copy()->addSeconds($duration);
@@ -3404,6 +3393,7 @@ class SchedualController extends Controller
             return response()->json([
                 'status' => 'ok',
                 'batch' => 'intermediate',
+                'campaign_shift_batches' => $campaignShiftBatches,
                 'campaign_shift_minutes' => $campaignShiftMinutes,
             ]);
         }
@@ -3416,6 +3406,7 @@ class SchedualController extends Controller
             'events' => $events,
             'resources' => $resources,
             'sumBatchByStage' => $sumBatchByStage,
+            'campaign_shift_batches' => $campaignShiftBatches,
             'campaign_shift_minutes' => $campaignShiftMinutes,
         ]);
     }
