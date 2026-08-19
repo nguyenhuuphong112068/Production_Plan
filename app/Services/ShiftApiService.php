@@ -15,10 +15,11 @@ use Illuminate\Support\Facades\Log;
  * làm việc trên ngày lịch thật (Y-m-d).
  *
  * Cách hợp nhất 3 nguồn cho một ngày:
- *   - `range`    cho mã ca (C1/C2/C3/C4/HC/P...) và cờ ngày lễ.
- *   - `leave`    ghi đè mã ca thành 'P' khi đơn nghỉ được tính (xem
- *                `isCountedLeaveStatus`). API `range` đã tự trả 'P' cho đơn
- *                ĐÃ DUYỆT, nên phần bổ sung thực sự ở đây là đơn CHỜ DUYỆT.
+ *   - `range`    cho mã ca (C1/C2/C3/C4/HC...) và cờ ngày lễ.
+ *   - `leave`    là nguồn DUY NHẤT quyết định một ngày có phải nghỉ phép hay
+ *                không (xem `isCountedLeaveStatus`): có đơn được tính thì ghi đè
+ *                mã ca thành 'P'. Mã 'P' do `range` tự trả về mà `leave` không
+ *                xác nhận sẽ bị quy về 'HC' - xem giải thích trong `buildIndex`.
  *   - `overtime` cho số giờ tăng ca, không xét status theo yêu cầu nghiệp vụ.
  */
 class ShiftApiService
@@ -650,6 +651,29 @@ class ShiftApiService
                 // Nghỉ phép đè lên mã ca: phép đã duyệt thì `range` đã trả 'P'
                 // sẵn, phép chờ duyệt thì vẫn còn mã ca gốc nên phải ghi đè.
                 $index[$code]['days'][$dateKey]['shift'] = 'P';
+            }
+        }
+
+        // `range` đánh 'P' cho cả những ngày mà `leave` KHÔNG có đơn nào.
+        //
+        // Đo thực tế 19/08/2026, PXDN (34) tháng 8: 19 ngày mang mã 'P', trong đó
+        // 9 ngày khớp đơn nghỉ - toàn bộ là ngày ĐÃ QUA; 10 ngày còn lại không có
+        // đơn nào - toàn bộ là ngày TƯƠNG LAI. Không một ngoại lệ. Tức endpoint
+        // `leave` chỉ trả đơn của ngày đã qua, còn `range` đánh 'P' ngay từ lúc
+        // đăng ký. Hai nguồn của eO2 mâu thuẫn nhau ở phần ngày tương lai.
+        //
+        // Quyết định nghiệp vụ: tình trạng nghỉ phép CHỈ lấy theo endpoint
+        // `leave`. Mã 'P' không có đơn tương ứng (kể cả đơn Rejected/Cancelled
+        // vì những đơn đó không được ghi vào `leave` ở vòng lặp trên) được coi là
+        // ngày làm việc bình thường và quy về 'HC'.
+        //
+        // Phải chạy TRƯỚC vòng tính `regular_working_Hours` bên dưới, nhờ vậy
+        // nhánh 'P' ở đó chỉ còn gặp ngày nghỉ đã được `leave` xác nhận.
+        foreach ($index as $code => $person) {
+            foreach ($person['days'] as $dateKey => $day) {
+                if ($day['shift'] === 'P' && (float) $day['leave'] <= 0) {
+                    $index[$code]['days'][$dateKey]['shift'] = 'HC';
+                }
             }
         }
 

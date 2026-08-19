@@ -88,6 +88,11 @@ Kỹ năng này tài liệu hóa quy trình quản lý nhân sự và phân côn
     - **Không tính:** `Rejected`, `Cancelled`.
     - Chuỗi chờ duyệt **không cố định** (`Waiting TLE Approval/Chờ tổ trưởng duyệt`, `Waiting DH Approval/Chờ trưởng phòng duyệt`, `Waiting BOD Approval/Chờ BGD duyệt`) nên phải khớp theo từ khoá (`chứa "Waiting"` **và** `chứa "Approval"`), tuyệt đối không so bằng chuỗi `"Waiting Approval"`.
     - *Lưu ý:* `range` đã tự trả `P` cho đơn **đã duyệt**; phần `leave` thực sự bổ sung là đơn **chờ duyệt** (những ngày này `range` vẫn trả ca gốc như `C1`/`C3`). Phép chờ duyệt được đối xử y hệt phép đã duyệt: gạch tên trong sidebar, chặn kéo-thả và chặn auto-assign.
+- ⚠️ **`leave` là nguồn DUY NHẤT của tình trạng nghỉ phép.** Mã `P` do `range` trả về mà `leave` **không** có đơn được tính sẽ bị quy về `HC` (ngày làm việc bình thường).
+    - **Lý do:** hai endpoint của eO2 mâu thuẫn nhau ở phần ngày tương lai. Đo thực tế 19/08/2026, PXDN tháng 8: 19 ngày mang mã `P` — 9 ngày khớp đơn nghỉ, **toàn bộ là ngày đã qua**; 10 ngày không có đơn nào, **toàn bộ là ngày tương lai**; không một ngoại lệ. Tức `leave` chỉ trả đơn của ngày đã qua, còn `range` đánh `P` ngay từ lúc đăng ký.
+    - Ví dụ điển hình — nhân sự `63004` (Bùi Thị Mỹ Châu): ngày `10/08` cả hai nguồn khớp (`shift=P` + `{leave:8, status:"Approved"}`), ngày `21/08` thì `range` trả `shift=P` nhưng `leave` trả `{leave:0, status:""}`.
+    - Đơn `Rejected`/`Cancelled` cũng rơi vào nhánh này (không được ghi vào `leave`) nên cũng quy về `HC` — đúng nghiệp vụ.
+    - Quy tắc quy đổi nằm trong `ShiftApiService::buildIndex`, chạy **sau** vòng ghép `leave` và **trước** vòng tính `regular_working_Hours`.
 - `overtime` **không xét `status`** (theo yêu cầu nghiệp vụ) — cứ `overtime > 0` là tính.
 - `regular_working_Hours` (giờ e-office) **không có** trong bộ 3 endpoint mới nên được **suy ra** trong service, tính SAU khi đã phủ nghỉ phép lên mã ca:
 
@@ -96,6 +101,8 @@ Kỹ năng này tài liệu hóa quy trình quản lý nhân sự và phân côn
 | Không có ca (`shift = null`) | `0` |
 | Nghỉ phép (`shift = P`) | `8 - số giờ nghỉ` (dữ liệu nguồn hiện chỉ có nghỉ trọn ngày 8h → ra `0`) |
 | Còn lại | `8` |
+
+  Nhờ bước quy `P`-không-đơn về `HC` ở trên, nhánh `shift = P` chỉ còn gặp ngày nghỉ đã được `leave` xác nhận nên `số giờ nghỉ` luôn `> 0`. Trước khi có bước này, ngày nghỉ tương lai rơi vào nhánh `P` với `leave = 0` và bị tính `8 - 0 = 8h`, lệch hẳn so với `0h` của ngày nghỉ đã qua.
 
   Số 8 lấy từ `shiftapi.standard_working_hours`. Dashboard vẫn ép về 0 cho các ngày nằm trong bảng `off_days`.
 
