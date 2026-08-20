@@ -481,11 +481,6 @@
                                 <input class="form-check-input additional-checkbox" type="checkbox" name="additional"
                                     data-id="{{ $data->id }}" {{ $auth_update }}
                                     {{ $data->additional ? 'checked' : '' }}>
-                                @if ($data->additional)
-                                    <div class="mt-2" style="font-size: 13px;">
-                                        <span class="badge badge-danger px-2 py-1">Phát sinh</span>
-                                    </div>
-                                @endif
                             </td>
 
                             <td>
@@ -1497,17 +1492,6 @@
                         oldValue: checked ? 0 : 1
                     },
                     success: function(res) {
-                        let badge = checkbox.siblings('div').find('.badge');
-                        if (checked) {
-                            if (badge.length == 0) {
-                                checkbox.after(
-                                    '<div class="mt-2" style="font-size: 13px;"><span class="badge badge-danger px-2 py-1">Phát sinh</span></div>'
-                                );
-                            }
-                        } else {
-                            checkbox.siblings('div').remove();
-                        }
-
                         Swal.mixin({
                                 toast: true,
                                 position: 'top-end',
