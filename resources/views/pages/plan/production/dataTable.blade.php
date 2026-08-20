@@ -81,15 +81,33 @@
         /* vàng nhạt */
     }
 
-    /* Cột "Lô Thẩm định": badge TĐNL dài làm cột tự giãn rất rộng,
-       chặn độ rộng tối đa để các cột ngày phía sau không bị bóp lại */
+    /* Cột "Lô Thẩm định": badge TĐNL nội dung dài làm cột tự giãn rất rộng.
+       Đặt độ rộng theo % để cân đối với các cột còn lại; min-width giữ cho cột
+       không bị bóp lại thành chữ dọc khi bảng chật.
+       KHÔNG dùng word-break: break-word - nó cho phép cột co xuống bằng 1 ký tự. */
     #data_table_plan_master th.col-val-batch,
     #data_table_plan_master td.col-val-batch {
-        width: 130px;
-        max-width: 130px;
+        width: 8%;
+        min-width: 110px;
         white-space: normal;
         overflow-wrap: break-word;
-        word-break: break-word;
+    }
+
+    /* Badge TĐNL: nội dung dài thì cuộn trong ô, không kéo dòng cao lên */
+    #data_table_plan_master td.col-val-batch .validation-badge {
+        display: block;
+        max-height: 100px;
+        overflow-y: auto;
+        font-size: 12px;
+    }
+
+    /* Cột "Lô phát sinh so với kế hoạch dự kiến": tiêu đề dài, giữ tối thiểu
+       đủ rộng để không bẻ dọc từng ký tự */
+    #data_table_plan_master th.col-additional,
+    #data_table_plan_master td.col-additional {
+        width: 5%;
+        min-width: 90px;
+        white-space: normal;
     }
 
     .additional-checkbox {
@@ -225,7 +243,7 @@
                         <th style="width:4%">Ngày dự kiến KCS</th>
                         <th>Ưu Tiên/KH</th>
                         <th class="col-val-batch">Lô Thẩm định</th>
-                        <th style="width:4%">Lô phát sinh so với kế hoạch dự kiến</th>
+                        <th class="col-additional">Lô phát sinh so với kế hoạch dự kiến</th>
 
                         <th>
                             <div> {{ '(1) Ngày có đủ NL' }} </div>
@@ -445,7 +463,8 @@
                                     @endphp
                                     @foreach ($vts as $vt)
                                         <div class="mt-1 text-left">
-                                            <span class="badge badge-warning"
+                                            <span class="badge badge-warning validation-badge"
+                                                title="{{ trim($vt->MaterialName . ' ' . $vt->purpose) }}"
                                                 style="white-space: normal; text-align: left; line-height: 1.4; border: 1px solid #ffc107;">
                                                 <i class="fas fa-exclamation-triangle"></i> TĐNL:
                                                 {{ $vt->MaterialName }}
@@ -458,7 +477,7 @@
                                 @endif
                             </td>
 
-                            <td class="text-center align-middle">
+                            <td class="text-center align-middle col-additional">
                                 <input class="form-check-input additional-checkbox" type="checkbox" name="additional"
                                     data-id="{{ $data->id }}" {{ $auth_update }}
                                     {{ $data->additional ? 'checked' : '' }}>
