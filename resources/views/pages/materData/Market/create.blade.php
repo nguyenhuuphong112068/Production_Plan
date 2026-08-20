@@ -46,6 +46,20 @@
                 <div class="alert alert-danger">{{ $message }}</div>
             @enderror
 
+            {{-- Quyết định thị trường này nằm ở tab nào của trang Thông Báo Đóng Gói --}}
+            <div class="form-group">
+              <div class="custom-control custom-checkbox">
+                {{-- Ô ẩn để khi không tick trình duyệt vẫn gửi giá trị 0 --}}
+                <input type="hidden" name="is_eu" value="0">
+                <input type="checkbox" class="custom-control-input" id="create_is_eu" name="is_eu" value="1">
+                <label class="custom-control-label" for="create_is_eu">Thuộc Châu Âu</label>
+              </div>
+              <small class="form-text text-muted">
+                Tick vào đây thì sản phẩm của thị trường này hiện ở tab
+                <b>Sản Phẩm Châu Âu</b> của trang Thông Báo Đóng Gói.
+              </small>
+            </div>
+
         </div>
 
 

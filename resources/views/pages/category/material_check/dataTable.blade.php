@@ -1,25 +1,5 @@
 <link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet">
 <style>
-    .status-pill {
-        display: inline-block;
-        padding: 3px 10px;
-        border-radius: 8px;
-        border: 1px solid #999;
-        font-size: 11px;
-        white-space: nowrap;
-    }
-
-    .status-active {
-        background: #28a745;
-        color: #fff;
-        border-color: #28a745;
-    }
-
-    .status-inactive {
-        background: #f1f1f1;
-        color: #666;
-    }
-
     .code-list {
         margin: 0;
         padding: 0;
@@ -125,7 +105,6 @@
                         <th>Mã TP</th>
                         <th>Tên Sản Phẩm</th>
                         <th>Cỡ Lô</th>
-                        <th>Trạng Thái</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -171,12 +150,6 @@
                             </td>
                             <td>{{ trim((string) $data->PrdName) }}</td>
                             <td>{{ trim($mms_number($data->BatchQty) . ' ' . $data->BatchqtyUOM) }}</td>
-                            <td>
-                                <span
-                                    class="status-pill {{ $data->BOMSTS == 'BOM Active' ? 'status-active' : 'status-inactive' }}">
-                                    {{ $data->BOMSTS }}
-                                </span>
-                            </td>
                         </tr>
                     @endforeach
 

@@ -80,6 +80,24 @@
         background-color: #fff3cd !important;
         /* vàng nhạt */
     }
+
+    /* Cột "Lô Thẩm định": badge TĐNL dài làm cột tự giãn rất rộng,
+       chặn độ rộng tối đa để các cột ngày phía sau không bị bóp lại */
+    #data_table_plan_master th.col-val-batch,
+    #data_table_plan_master td.col-val-batch {
+        width: 130px;
+        max-width: 130px;
+        white-space: normal;
+        overflow-wrap: break-word;
+        word-break: break-word;
+    }
+
+    .additional-checkbox {
+        width: 20px;
+        height: 20px;
+        cursor: pointer;
+        accent-color: #dc3545;
+    }
 </style>
 
 
@@ -206,7 +224,8 @@
 
                         <th style="width:4%">Ngày dự kiến KCS</th>
                         <th>Ưu Tiên/KH</th>
-                        <th>Lô Thẩm định</th>
+                        <th class="col-val-batch">Lô Thẩm định</th>
+                        <th style="width:4%">Lô phát sinh so với kế hoạch dự kiến</th>
 
                         <th>
                             <div> {{ '(1) Ngày có đủ NL' }} </div>
@@ -400,7 +419,7 @@
                                 @endif
                             </td>
 
-                            <td class="text-center ">
+                            <td class="text-center col-val-batch">
                                 <input class="form-check-input step-checkbox2" type="checkbox" role="switch"
                                     data-id="{{ $data->id }}" id="{{ $data->id }}"
                                     {{ $auth_update != '' ? 'readOnly' : '' }} {{ $data->is_val ? 'checked' : '' }}
@@ -436,6 +455,17 @@
                                             </span>
                                         </div>
                                     @endforeach
+                                @endif
+                            </td>
+
+                            <td class="text-center align-middle">
+                                <input class="form-check-input additional-checkbox" type="checkbox" name="additional"
+                                    data-id="{{ $data->id }}" {{ $auth_update }}
+                                    {{ $data->additional ? 'checked' : '' }}>
+                                @if ($data->additional)
+                                    <div class="mt-2" style="font-size: 13px;">
+                                        <span class="badge badge-danger px-2 py-1">Phát sinh</span>
+                                    </div>
                                 @endif
                             </td>
 
@@ -887,6 +917,7 @@
                 <th>Ngày dự kiến KCS</th>
                 <th>Ưu Tiên/KH</th>
                 <th>Lô Thẩm định</th>
+                <th>Lô phát sinh so với kế hoạch dự kiến</th>
                 <th>Ngày có đủ NL</th>
                 <th>Ngày có đủ BB</th>
                 <th>Ngày được phép cân</th>
@@ -930,6 +961,7 @@
                     </td>
                     <td>{{ $data->level }}</td>
                     <td>{{ $data->is_val ? '1' : '0' }}</td>
+                    <td>{{ $data->additional ? 'Phát sinh' : '' }}</td>
                     <td>{{ $data->after_weigth_date ? \Carbon\Carbon::parse($data->after_weigth_date)->format('d/m/Y') : '' }}
                     </td>
                     <td>{{ $data->after_parkaging_date ? \Carbon\Carbon::parse($data->after_parkaging_date)->format('d/m/Y') : '' }}
@@ -1424,6 +1456,65 @@
                     }
                 });
             }
+
+            // Lô phát sinh so với kế hoạch dự kiến: dùng class riêng, không dùng
+            // .step-checkbox vì class đó đang phục vụ chọn dòng cho Sửa Hàng Loạt
+            $(document).on('change', '#data_table_plan_master .additional-checkbox', function() {
+                let checkbox = $(this);
+                let id = checkbox.data('id');
+                let checked = checkbox.is(':checked');
+
+                if (!id || id == '') return;
+
+                $.ajax({
+                    url: "{{ route('pages.plan.production.updateInput') }}",
+                    type: 'POST',
+                    dataType: 'json',
+                    data: {
+                        _token: '{{ csrf_token() }}',
+                        id: id,
+                        name: 'additional',
+                        updateValue: checked ? 1 : 0,
+                        oldValue: checked ? 0 : 1
+                    },
+                    success: function(res) {
+                        let badge = checkbox.siblings('div').find('.badge');
+                        if (checked) {
+                            if (badge.length == 0) {
+                                checkbox.after(
+                                    '<div class="mt-2" style="font-size: 13px;"><span class="badge badge-danger px-2 py-1">Phát sinh</span></div>'
+                                );
+                            }
+                        } else {
+                            checkbox.siblings('div').remove();
+                        }
+
+                        Swal.mixin({
+                                toast: true,
+                                position: 'top-end',
+                                showConfirmButton: false,
+                                timer: 2000
+                            })
+                            .fire({
+                                icon: 'success',
+                                title: 'Cập nhật thành công'
+                            });
+                    },
+                    error: function(xhr) {
+                        checkbox.prop('checked', !checked);
+                        Swal.mixin({
+                                toast: true,
+                                position: 'top-end',
+                                showConfirmButton: false,
+                                timer: 2000
+                            })
+                            .fire({
+                                icon: 'error',
+                                title: 'Cập nhật thất bại'
+                            });
+                    }
+                });
+            });
 
             $(document).on('change', '#data_table_plan_master .step-checkbox', function() {
 

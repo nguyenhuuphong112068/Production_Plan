@@ -36,6 +36,8 @@ class MarketController extends Controller
                 DB::table('market')->insert([
                         'code' => $request->code,
                         'name' => $request->name,
+                        // Phân loại tab Châu Âu / Ngoài Châu Âu của trang Thông Báo Đóng Gói
+                        'is_eu' => $request->boolean('is_eu'),
                         'active' => true,
                         'created_by' => session('user')['fullName'],
                         'created_at' => now(),
@@ -65,6 +67,8 @@ class MarketController extends Controller
         DB::table('market')->where('id', $request->id)->update([
                         'code' => $request->code,
                         'name' => $request->name,
+                        // Phân loại tab Châu Âu / Ngoài Châu Âu của trang Thông Báo Đóng Gói
+                        'is_eu' => $request->boolean('is_eu'),
                         'active' => true,
                         'created_by' => session('user')['fullName'] ,
                         'updated_at' => now(),

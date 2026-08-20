@@ -466,6 +466,13 @@
                         </li>
 
                         <li class="nav-item">
+                            <a href="{{ route('pages.plan.packaging_notification.list') }}" class="nav-link">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Thông Báo Đóng Gói</p>
+                            </a>
+                        </li>
+
+                        <li class="nav-item">
                             <a href="{{ route('pages.plan.production.feedback_list') }}" class="nav-link">
                                 <i class="far fa-circle nav-icon"></i>
                                 <p>Phản hồi KHSX</p>

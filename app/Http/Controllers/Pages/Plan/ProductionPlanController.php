@@ -2285,6 +2285,12 @@ class ProductionPlanController extends Controller
 
                 DB::table('stage_plan')->insert($dataToInsert);
 
+                // Sinh sẵn dòng Thông Báo Đóng Gói cho các lô đủ điều kiện của kế hoạch này
+                // (bỏ lô thị trường VN và lô không chia lô - xem
+                // PlanMasterInforParkaging::eligibleQuery). Người dùng nhập số PO và thông
+                // tin lấy mẫu sau ở trang Kế Hoạch > Thông Báo Đóng Gói.
+                \App\Models\PlanMasterInforParkaging::createForPlanList((int) $request->plan_list_id);
+
                 DB::table('plan_list')->where('id', $request->plan_list_id)->update([
                         'send' => 1,
                         'send_by' => session('user')['fullName'],

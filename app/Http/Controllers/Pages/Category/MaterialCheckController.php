@@ -78,9 +78,8 @@ class MaterialCheckController extends Controller
                         'Mã TP',
                         'Tên Sản Phẩm',
                         'Cỡ Lô',
-                        'Trạng Thái',
                 ];
-                $lastColumn = 'H';
+                $lastColumn = 'G';
 
                 // Tiêu đề + thông tin mã đang tra cứu
                 $sheet->setCellValue('A1', 'KIỂM TRA NL/BB');
@@ -122,7 +121,6 @@ class MaterialCheckController extends Controller
                                 $this->codeLines($data->tp_items),
                                 trim((string) $data->PrdName),
                                 trim($this->mmsNumber($data->BatchQty) . ' ' . $data->BatchqtyUOM),
-                                $data->BOMSTS,
                         ], null, 'A' . $row);
 
                         $row++;
@@ -229,8 +227,7 @@ class MaterialCheckController extends Controller
                                 p.MatNM                                             AS PrdName,
                                 b.Revno1                                            AS BOMRevsion,
                                 b.BatchQty,
-                                b.BatchqtyUOM,
-                                IIF(b.BOMSts = 0, 'BOM Active', 'BOM Not Active')    AS BOMSTS
+                                b.BatchqtyUOM
                         FROM maxrev mr
                         INNER JOIN MstBOM     b  ON b.PrdID  = mr.PrdID AND b.RevNo  = mr.MaxRevNo
                         INNER JOIN MstBOMItem bi ON bi.PrdID = b.PrdID  AND bi.RevNo = b.RevNo

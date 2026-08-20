@@ -81,6 +81,15 @@ Route::prefix('/plan')
                 Route::post('save', 'save')->name('save');
             });
 
+        Route::prefix('/packaging_notification')
+            ->name('packaging_notification.')
+            ->controller(App\Http\Controllers\Pages\Plan\PackagingNotificationController::class)
+            ->group(function () {
+                Route::get('', 'index')->name('list');
+                Route::get('open', 'open')->name('open');
+                Route::post('save', 'save')->name('save');
+            });
+
         Route::prefix('/maintenance')
             ->name('maintenance.')
             ->controller(MaintenancePlanController::class)

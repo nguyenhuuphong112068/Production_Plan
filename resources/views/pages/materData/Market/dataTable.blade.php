@@ -21,6 +21,8 @@
                         <th>STT</th>
                         <th>Mã Thị Trường</th>
                         <th>Tên Thị Trường</th>
+                        <th title="Dùng để tách 2 tab Sản Phẩm Châu Âu / Ngoài Châu Âu ở trang Thông Báo Đóng Gói">
+                            Châu Âu</th>
                         <th>Người Tạo/ Ngày Tạo</th>
                         <th>Cập Nhật</th>
                         <th class="text-center align-middle">Lịch Sử</th>
@@ -34,6 +36,13 @@
 
                             <td>{{ $data->code }}</td>
                             <td>{{ $data->name }}</td>
+                            <td class="text-center align-middle">
+                                @if ($data->is_eu)
+                                    <span class="badge badge-primary">Châu Âu</span>
+                                @else
+                                    <span class="text-muted">-</span>
+                                @endif
+                            </td>
 
                             <td>
                                 <div> {{ $data->created_by }} </div>
@@ -44,7 +53,8 @@
                             <td class="text-center align-middle">
                                 <button type="button" class="btn btn-warning btn-edit" data-id="{{ $data->id }}"
                                     {{ user_has_permission(session('user')['userId'], 'materData_Market_update', 'disabled') }}
-                                    data-name="{{ $data->name }}" data-code="{{ $data->code }}" data-toggle="modal"
+                                    data-name="{{ $data->name }}" data-code="{{ $data->code }}"
+                                    data-is-eu="{{ $data->is_eu ? 1 : 0 }}" data-toggle="modal"
                                     data-target="#update_modal">
                                     <i class="fas fa-edit"></i>
                                 </button>
@@ -99,6 +109,7 @@
             modal.find('input[name="id"]').val(button.data('id'));
             modal.find('input[name="name"]').val(button.data('name'));
             modal.find('input[name="code"]').val(button.data('code'));
+            modal.find('input[name="is_eu"]').prop('checked', button.data('is-eu') == 1);
 
         });
 
