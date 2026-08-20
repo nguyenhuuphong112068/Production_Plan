@@ -100,7 +100,7 @@
                                     <div class="col-md-8">
                                         <label for="batch_qty">Cỡ Lô Theo Đơn Vị Liều </label>
                                         <input type="number" min = "0" class="form-control" name="batch_qty"
-                                            value="{{ old('batch_qty') }}">
+                                            value="{{ old('batch_qty') }}" readonly>
                                         @error('batch_qty', 'updateErrors')
                                             <div class="alert alert-danger">{{ $message }}</div>
                                         @enderror

@@ -48,13 +48,23 @@
 
 <style>
     @keyframes blink {
-        0% { opacity: 1; }
-        50% { opacity: 0.3; }
-        100% { opacity: 1; }
+        0% {
+            opacity: 1;
+        }
+
+        50% {
+            opacity: 0.3;
+        }
+
+        100% {
+            opacity: 1;
+        }
     }
+
     .blink-animation {
         animation: blink 1s infinite;
     }
+
     :root {
         --primary-gold: #007bff;
         --light-gold: #e7f3ff;
@@ -451,6 +461,7 @@
     $isPastDate = $reportedDateObj->lt($todayObj->copy()->subDay(1));
     $hasEditPermission = user_has_permission(session('user')['userId'], 'production_assignment', 'boolean');
     $hasAuthorizeOvertime = user_has_permission(session('user')['userId'], 'Authorize_overtime', 'boolean');
+    $hasEoSync = user_has_permission(session('user')['userId'], 'e-o_synchronization', 'boolean');
     $canEdit = $hasEditPermission && !$isPastDate && (!empty($group_code) || $production_code != 'PXV1');
 @endphp
 
@@ -546,7 +557,8 @@
                     @foreach ($tasks as $task)
                         <tr class="room-row {{ $task->assignments->first()->off_stream ?? 0 ? 'off-stream-row' : '' }}"
                             data-sp-id="{{ $task->sp_id ?: (count($task->assignments) > 0 ? 'EXT_EXISTING_' . $task->assignments[0]->id : '') }}"
-                            data-room-id="{{ $task->room_id ?? ($task->room_name !== 'Công tác khác' ? $task->room_name : '') }}" data-group-code="{{ $task->group_code }}"
+                            data-room-id="{{ $task->room_id ?? ($task->room_name !== 'Công tác khác' ? $task->room_name : '') }}"
+                            data-group-code="{{ $task->group_code }}"
                             data-n1="{{ $task->number_of_employes_on_sheet1 }}"
                             data-n2="{{ $task->number_of_employes_on_sheet2 }}"
                             data-n3="{{ $task->number_of_employes_on_sheet3 }}"
@@ -989,8 +1001,11 @@
             <div class="p-3 border-bottom d-flex justify-content-between align-items-center bg-light shadow-sm">
                 <h6 class="mb-0 font-weight-bold text-primary"><i class="fas fa-users mr-2"></i>Tình Hình Nhân Sự</h6>
                 <div class="d-flex align-items-center">
-                    <button class="btn btn-sm btn-link text-primary p-0 mr-3" id="refresh-shifts-btn"
-                        title="Đồng bộ: lấy lại lịch trực mới nhất từ eO2 PMS"><i class="fas fa-sync-alt"></i></button>
+                    @if ($hasEoSync)
+                        <button class="btn btn-sm btn-link text-primary p-0 mr-3" id="refresh-shifts-btn"
+                            title="Đồng bộ: lấy lại lịch trực mới nhất từ eO2 PMS"><i
+                                class="fas fa-sync-alt"></i></button>
+                    @endif
                     <button class="btn btn-sm btn-link text-muted p-0" id="close-sidebar-btn"><i
                             class="fas fa-times"></i></button>
                 </div>
@@ -1383,6 +1398,7 @@
     // Helper: extract basic minute intervals [start, end] excluding lunch break if applicable
     function extractBasicIntervals(startStr, endStr, shiftVal = null) {
         if (!startStr || !endStr) return [];
+
         function getMins(t) {
             const p = t.split(':');
             return parseInt(p[0], 10) * 60 + parseInt(p[1], 10);
@@ -1398,7 +1414,7 @@
 
         if (!isNoLunchBreakShift) {
             const lunchStart = 11 * 60 + 30; // 690
-            const lunchEnd = 12 * 60 + 15;   // 735
+            const lunchEnd = 12 * 60 + 15; // 735
             const overlapStart = Math.max(sMin, lunchStart);
             const overlapEnd = Math.min(eMin, lunchEnd);
             if (overlapStart < overlapEnd) {
@@ -1408,7 +1424,9 @@
                 return res;
             }
         }
-        return [[sMin, eMin]];
+        return [
+            [sMin, eMin]
+        ];
     }
 
     // Helper: merge overlapping intervals and return total duration in hours
@@ -1426,7 +1444,9 @@
             }
         }
         let totalMins = 0;
-        merged.forEach(m => { totalMins += (m[1] - m[0]); });
+        merged.forEach(m => {
+            totalMins += (m[1] - m[0]);
+        });
         return totalMins / 60;
     }
 
@@ -1448,13 +1468,13 @@
 
         // Step 2: Single-pass DOM scan to group assignments by personId
         let personAssignments = {}; // personId -> array of assignments
-        
+
         $('.room-row .assignment-item:not(.foreign-assignment)').each(function() {
             const $item = $(this);
             const shiftVal = $item.find('.shift-select').val() || '4';
             const itemStart = $item.find('.start-time-input').val() || '';
             const itemEnd = $item.find('.end-time-input').val() || '';
-            
+
             $item.find('.personnel-row').each(function() {
                 const $row = $(this);
                 const pid = $row.find('.person-select').val();
@@ -1483,7 +1503,7 @@
 
         allPersonIds.forEach(personId => {
             let assignments = [];
-            
+
             // Add local assignments
             const locals = personAssignments[personId] || [];
             locals.forEach(la => {
@@ -1495,7 +1515,7 @@
                     is_local: true
                 });
             });
-            
+
             // Add DB assignments
             const dbList = dbAssignments[personId] || [];
             dbList.forEach(dbAss => {
@@ -1538,11 +1558,12 @@
                     html = html.replace(/<span style="color:#dc3545[^>]*>.*?<\/span>/g, '').trim();
 
                     if (tc > 0.01) {
-                        html += ` <span style="color:#dc3545;font-weight:bold;">TC:${tc.toFixed(1)}h</span>`;
+                        html +=
+                            ` <span style="color:#dc3545;font-weight:bold;">TC:${tc.toFixed(1)}h</span>`;
                     }
                     displayEl.html(html);
                 }
-                
+
                 mergedIntervals = [...mergedIntervals, ...basicIntervals];
                 // sort & merge again for next iteration to keep it clean
                 mergedIntervals = mergedIntervals.sort((a, b) => a[0] - b[0]);
@@ -1579,12 +1600,12 @@
         $('.room-row .assignment-item:not(.foreign-assignment) .personnel-row').each(function() {
             const $row = $(this);
             const pid = $row.find('.person-select').val();
-            
+
             // Remove old warning badges first
             $row.find('.custom-warning-badge').remove();
-            
+
             if (!pid) return;
-            
+
             // 1. Check Leave (Nghỉ phép)
             let isOnLeave = false;
             let isOnLongLeave = false;
@@ -1603,16 +1624,18 @@
                     }
                 }
             }
-            
+
             // 2. Check Overtime >= 8h
             const totalHours = personCumulativeTimes[pid.toString()] || 0;
             const overtime = Math.max(0, totalHours - 8);
             const isOvertimeExceeded = overtime >= 8;
-            
+
             let headerRow = $row.find('.d-flex.align-items-center.w-100').first();
-            
+
             if (isOnLeave) {
-                const leaveBadge = $('<span class="badge badge-danger custom-warning-badge blink-animation ml-1 cursor-pointer" title="Nhân sự đang trong trạng thái nghỉ phép!" style="font-size:0.7rem;"><i class="fas fa-plane-departure mr-1"></i>Nghỉ phép</span>');
+                const leaveBadge = $(
+                    '<span class="badge badge-danger custom-warning-badge blink-animation ml-1 cursor-pointer" title="Nhân sự đang trong trạng thái nghỉ phép!" style="font-size:0.7rem;"><i class="fas fa-plane-departure mr-1"></i>Nghỉ phép</span>'
+                );
                 if (headerRow.find('.btn-remove-person').length > 0) {
                     leaveBadge.insertBefore(headerRow.find('.btn-remove-person'));
                 } else {
@@ -1621,7 +1644,9 @@
             }
 
             if (isOnLongLeave) {
-                const longLeaveBadge = $('<span class="badge custom-warning-badge blink-animation ml-1 cursor-pointer" title="Nhân sự đang nghỉ phép dài hạn!" style="font-size:0.7rem; color:#fff; background-color:#6f42c1;"><i class="fas fa-calendar-times mr-1"></i>Nghỉ phép dài hạn</span>');
+                const longLeaveBadge = $(
+                    '<span class="badge custom-warning-badge blink-animation ml-1 cursor-pointer" title="Nhân sự đang nghỉ phép dài hạn!" style="font-size:0.7rem; color:#fff; background-color:#6f42c1;"><i class="fas fa-calendar-times mr-1"></i>Nghỉ phép dài hạn</span>'
+                );
                 if (headerRow.find('.btn-remove-person').length > 0) {
                     longLeaveBadge.insertBefore(headerRow.find('.btn-remove-person'));
                 } else {
@@ -1630,7 +1655,9 @@
             }
 
             if (isOvertimeExceeded) {
-                const otExceededBadge = $(`<span class="badge badge-warning custom-warning-badge blink-animation ml-1 cursor-pointer" title="Tăng ca quá nhiều (TC: ${overtime.toFixed(1)}h >= 8h)!" style="font-size:0.7rem; color: #fff; background-color: #fd7e14;"><i class="fas fa-exclamation-triangle mr-1"></i>TC >= 8h (${overtime.toFixed(1)}h)</span>`);
+                const otExceededBadge = $(
+                    `<span class="badge badge-warning custom-warning-badge blink-animation ml-1 cursor-pointer" title="Tăng ca quá nhiều (TC: ${overtime.toFixed(1)}h >= 8h)!" style="font-size:0.7rem; color: #fff; background-color: #fd7e14;"><i class="fas fa-exclamation-triangle mr-1"></i>TC >= 8h (${overtime.toFixed(1)}h)</span>`
+                );
                 if (headerRow.find('.btn-remove-person').length > 0) {
                     otExceededBadge.insertBefore(headerRow.find('.btn-remove-person'));
                 } else {
@@ -1658,16 +1685,16 @@
 
             if (personId) {
                 totalHours = personCumulativeTimes[personId.toString()] || 0;
-                
+
                 const assignments = [];
-                
+
                 // Get local assignments from Step 2 map instead of query selector inside loop
                 const locals = personAssignments[personId.toString()] || [];
                 locals.forEach(la => {
                     const roomRow = la.element.closest('.room-row');
                     const isSaved = !roomRow.find('.btn-save-room').hasClass('is-dirty');
                     const assId = la.element.closest('.assignment-item').attr('data-id');
-                    
+
                     let roomCode = 'Khác';
                     const customSelect = roomRow.find('.room-select-custom');
                     if (customSelect.length > 0) {
@@ -3076,7 +3103,8 @@
 
                                     row.remove();
 
-                                    if (isCustomTask && roomRow.find('.assignment-item').length === 0) {
+                                    if (isCustomTask && roomRow.find(
+                                            '.assignment-item').length === 0) {
                                         roomRow.remove();
                                     }
 
@@ -3303,11 +3331,13 @@
                     $(this).find('.person-select').each(function() {
                         if ($(this).val()) pCount++;
                     });
-                    if (pCount === 0) return true; // Ca trống -> bỏ qua, không chặn cả phòng
+                    if (pCount === 0)
+                        return true; // Ca trống -> bỏ qua, không chặn cả phòng
 
                     const jobDesc = $(this).find('.job-desc').html().trim();
                     if (!jobDesc || jobDesc === '<br>' || jobDesc === 'Nội dung...') {
-                        const shiftName = $(this).find('.shift-select option:selected').text();
+                        const shiftName = $(this).find('.shift-select option:selected')
+                            .text();
                         validationError = `Ca ${shiftName}: chưa nhập nội dung công việc`;
                         return false; // Break loop
                     }
@@ -3375,7 +3405,7 @@
         let approvedOvertimeHours = {{ (float) ($approvedOvertimeHours ?? 0) }};
         let approvedOvertimePersons = {{ (int) ($approvedOvertimePersons ?? 0) }};
         // false = bản ghi duyệt cũ chưa lưu mốc giờ → không bắt duyệt lại
-        let hasOvertimeBaseline = {{ ($hasOvertimeBaseline ?? false) ? 'true' : 'false' }};
+        let hasOvertimeBaseline = {{ $hasOvertimeBaseline ?? false ? 'true' : 'false' }};
         let overtimeApprovedBy = @json($overtimeApprovedBy ?? '');
         let overtimeApprovedAt = @json($overtimeApprovedAt ?? '');
 
@@ -3420,7 +3450,9 @@
             if (state.reason === 'increased') {
                 return `Tổng giờ tăng ca hiện tại là <b>${state.curHours.toFixed(2)} giờ</b> (${state.curPersons} người), ` +
                     `lớn hơn mức đã duyệt là <b>${approvedOvertimeHours.toFixed(2)} giờ</b>` +
-                    (overtimeApprovedAt ? ` (duyệt lúc ${overtimeApprovedAt}${overtimeApprovedBy ? ' bởi ' + overtimeApprovedBy : ''})` : '') +
+                    (overtimeApprovedAt ?
+                        ` (duyệt lúc ${overtimeApprovedAt}${overtimeApprovedBy ? ' bởi ' + overtimeApprovedBy : ''})` :
+                        '') +
                     `.<br>Vui lòng bấm <b>Duyệt lại Tăng ca</b> trước khi tiếp tục.`;
             }
             return 'Có nhân sự tăng ca (làm việc > 8h). Vui lòng bấm <b>Chấp Nhận Tăng ca</b> trước khi tiếp tục.';
@@ -3441,7 +3473,8 @@
             if (state.reason === 'increased') {
                 $btn.removeClass('btn-warning').addClass('btn-danger')
                     .attr('title',
-                        `Giờ tăng ca đã tăng từ ${approvedOvertimeHours.toFixed(2)}h lên ${state.curHours.toFixed(2)}h so với lần duyệt trước`)
+                        `Giờ tăng ca đã tăng từ ${approvedOvertimeHours.toFixed(2)}h lên ${state.curHours.toFixed(2)}h so với lần duyệt trước`
+                    )
                     .find('.approve-ot-label').text('Duyệt lại Tăng ca');
             } else {
                 $btn.removeClass('btn-danger').addClass('btn-warning')
@@ -3460,13 +3493,15 @@
             const state = getOvertimeApprovalState();
             const isReapproval = isOvertimeApproved;
 
-            let confirmHtml = `Tổng giờ tăng ca sẽ được duyệt: <b>${state.curHours.toFixed(2)} giờ</b> / <b>${state.curPersons} người</b>.`;
+            let confirmHtml =
+                `Tổng giờ tăng ca sẽ được duyệt: <b>${state.curHours.toFixed(2)} giờ</b> / <b>${state.curPersons} người</b>.`;
             if (isReapproval) {
                 confirmHtml +=
                     `<br>Mức đã duyệt trước đó: <b>${approvedOvertimeHours.toFixed(2)} giờ</b> / <b>${approvedOvertimePersons} người</b>` +
                     (overtimeApprovedAt ? ` (${overtimeApprovedAt})` : '') + `.`;
             }
-            confirmHtml += `<br><br>Bạn có chắc chắn muốn phê duyệt cho ngày này? (Sẽ cho phép in lịch)`;
+            confirmHtml +=
+                `<br><br>Bạn có chắc chắn muốn phê duyệt cho ngày này? (Sẽ cho phép in lịch)`;
 
             Swal.fire({
                 title: isReapproval ? 'Xác nhận Duyệt lại' : 'Xác nhận Phê duyệt',
@@ -3498,10 +3533,14 @@
                             if (res.success) {
                                 isOvertimeApproved = true;
                                 hasOvertimeBaseline = true;
-                                approvedOvertimeHours = parseFloat(res.approved_hours) || state.curHours;
-                                approvedOvertimePersons = parseInt(res.approved_persons) || state.curPersons;
-                                overtimeApprovedBy = res.approved_by || overtimeApprovedBy;
-                                overtimeApprovedAt = res.approved_at || overtimeApprovedAt;
+                                approvedOvertimeHours = parseFloat(res
+                                    .approved_hours) || state.curHours;
+                                approvedOvertimePersons = parseInt(res
+                                    .approved_persons) || state.curPersons;
+                                overtimeApprovedBy = res.approved_by ||
+                                    overtimeApprovedBy;
+                                overtimeApprovedAt = res.approved_at ||
+                                    overtimeApprovedAt;
                                 Swal.fire('Thành công',
                                     `Đã phê duyệt tăng ca ở mức ${approvedOvertimeHours.toFixed(2)} giờ. Bạn đã có thể in lịch.`,
                                     'success');
@@ -3545,7 +3584,8 @@
 
                     let html = '';
                     if (!res.data || res.data.length === 0) {
-                        html = `<div class="alert alert-secondary p-2 small mb-0"><i class="fas fa-info-circle"></i> Chưa có lần duyệt tăng ca nào ` +
+                        html =
+                            `<div class="alert alert-secondary p-2 small mb-0"><i class="fas fa-info-circle"></i> Chưa có lần duyệt tăng ca nào ` +
                             (onlyThisDate ?
                                 `cho ngày {{ \Carbon\Carbon::parse($reportedDate)->format('d/m/Y') }}.` :
                                 `được ghi nhận.`) + `</div>`;
@@ -3588,7 +3628,8 @@
                         html: html,
                         width: '900px',
                         showDenyButton: true,
-                        denyButtonText: onlyThisDate ? 'Xem tất cả các ngày' : 'Chỉ ngày đang xem',
+                        denyButtonText: onlyThisDate ? 'Xem tất cả các ngày' :
+                            'Chỉ ngày đang xem',
                         denyButtonColor: '#6c757d',
                         confirmButtonText: 'Đóng'
                     }).then((result) => {
@@ -3633,7 +3674,8 @@
 
                     let html = '';
                     if (!res.data || res.data.length === 0) {
-                        html = `<div class="alert alert-secondary p-2 small mb-0"><i class="fas fa-info-circle"></i> ` +
+                        html =
+                            `<div class="alert alert-secondary p-2 small mb-0"><i class="fas fa-info-circle"></i> ` +
                             (scope ?
                                 `Nhân sự này chưa có lần chỉnh giờ công tác nào.` :
                                 `Chưa có lần chỉnh giờ công tác nào trong ngày {{ \Carbon\Carbon::parse($reportedDate)->format('d/m/Y') }}.`
@@ -3652,9 +3694,12 @@
                                 </thead>
                                 <tbody>`;
                         res.data.forEach(function(r) {
-                            const oldHrs = r.old_hours !== null ? ` <span class="text-muted">(${r.old_hours}h)</span>` : '';
-                            const newHrs = r.new_hours !== null ? ` <span class="text-muted">(${r.new_hours}h)</span>` : '';
-                            const isUp = r.new_hours !== null && r.old_hours !== null && r.new_hours > r.old_hours;
+                            const oldHrs = r.old_hours !== null ?
+                                ` <span class="text-muted">(${r.old_hours}h)</span>` : '';
+                            const newHrs = r.new_hours !== null ?
+                                ` <span class="text-muted">(${r.new_hours}h)</span>` : '';
+                            const isUp = r.new_hours !== null && r.old_hours !== null && r
+                                .new_hours > r.old_hours;
                             html += `<tr>
                                     ${scope ? '' : `<td>${r.personnel_name || ''}</td><td>${r.room_name || ''}</td>`}
                                     <td><span class="text-muted">${r.old_time}</span>${oldHrs}</td>
@@ -3694,7 +3739,8 @@
 
             if (!assignmentId || !personnelId) {
                 Swal.fire('Chưa có lịch sử',
-                    'Dòng phân công này chưa được lưu nên chưa ghi nhận thay đổi giờ công tác.', 'info');
+                    'Dòng phân công này chưa được lưu nên chưa ghi nhận thay đổi giờ công tác.',
+                    'info');
                 return;
             }
 
@@ -4906,8 +4952,12 @@
                                 r: R
                             });
                             if (!ws[cellAddress]) {
-                                ws[cellAddress] = { t: 's', v: '\xA0' };
-                            } else if (!ws[cellAddress].v || ws[cellAddress].v.toString().trim() === '' || ws[cellAddress].v === '\u200B') {
+                                ws[cellAddress] = {
+                                    t: 's',
+                                    v: '\xA0'
+                                };
+                            } else if (!ws[cellAddress].v || ws[cellAddress].v.toString().trim() ===
+                                '' || ws[cellAddress].v === '\u200B') {
                                 ws[cellAddress].v = '\xA0';
                                 ws[cellAddress].t = 's';
                             }
@@ -5173,7 +5223,8 @@
                     `;
                     const isLeave = key === 'P';
                     shifts[key].forEach(p => {
-                        const cantDrag = isLeave || p.on_maternity_leave == 1 || p.on_long_leave == 1;
+                        const cantDrag = isLeave || p.on_maternity_leave == 1 || p
+                            .on_long_leave == 1;
                         const otBadge = p.overtime > 0 ?
                             `<span class="badge badge-warning text-white ml-1" style="font-size:0.6rem; padding:1px 3px;" title="Làm thêm ${p.overtime}h">TC:${p.overtime}h</span>` :
                             '';
@@ -5448,7 +5499,8 @@
                             }
                             p_list.push({
                                 personnel_id: pid,
-                                notification: $(this).find('.person-notif').val(),
+                                notification: $(this).find('.person-notif')
+                                    .val(),
                                 operation_type: 'nhân bản',
                                 start: pStart,
                                 end: pEnd
@@ -5519,7 +5571,9 @@
             assignments.forEach((a, i) => {
                 console.log(`Assignment[${i}]:`, a.start_time, '-', a.end_time);
                 (a.personnel_list || []).forEach((p, j) => {
-                    console.log(`  Personnel[${j}]: id=${p.personnel_id}, start="${p.start}", end="${p.end}"`);
+                    console.log(
+                        `  Personnel[${j}]: id=${p.personnel_id}, start="${p.start}", end="${p.end}"`
+                    );
                 });
             });
             console.log('Full payload:', JSON.stringify(payload, null, 2));
@@ -5836,6 +5890,7 @@
 
     // Tính lại giờ tăng ca + cập nhật badge và nút duyệt (debounce vì gắn vào nhiều sự kiện)
     let _otRefreshTimer = null;
+
     function refreshOvertimeOverview() {
         const otData = calculateTotalOvertime();
         if (typeof window.refreshOvertimeApprovalButton === 'function') {
@@ -5893,25 +5948,30 @@
 
                     const pStartStr = $(this).find('.p-start-input').val();
                     const pEndStr = $(this).find('.p-end-input').val();
-                    
+
                     let basicIntervals = [];
                     // Extract start/end from display HTML or inputs
                     const displayHtml = $(this).find('.time-display').html() || '';
-                    const timeMatch = displayHtml.match(/>([0-9]{2}:[0-9]{2})-([0-9]{2}:[0-9]{2})</);
-                    
+                    const timeMatch = displayHtml.match(
+                        />([0-9]{2}:[0-9]{2})-([0-9]{2}:[0-9]{2})</);
+
                     if (timeMatch) {
-                        basicIntervals = extractBasicIntervals(timeMatch[1], timeMatch[2], shiftVal);
+                        basicIntervals = extractBasicIntervals(timeMatch[1], timeMatch[2],
+                            shiftVal);
                     } else if (pStartStr && pEndStr) {
                         basicIntervals = extractBasicIntervals(pStartStr, pEndStr, shiftVal);
                     } else {
                         // fallback to item shift times
                         const itemStartStr = $item.find('.start-time-input').val();
                         const itemEndStr = $item.find('.end-time-input').val();
-                        basicIntervals = extractBasicIntervals(itemStartStr, itemEndStr, shiftVal);
+                        basicIntervals = extractBasicIntervals(itemStartStr, itemEndStr,
+                            shiftVal);
                     }
 
-                    const personName = $(this).find('.person-select option:selected').text().trim() || 'Unknown';
-                    const roomName = $roomRow.find('.room-name-cell').text().trim().replace(/\s+/g, ' ');
+                    const personName = $(this).find('.person-select option:selected').text()
+                        .trim() || 'Unknown';
+                    const roomName = $roomRow.find('.room-name-cell').text().trim().replace(
+                        /\s+/g, ' ');
 
                     if (!personData[pid]) {
                         personData[pid] = {
@@ -5921,7 +5981,7 @@
                             details: []
                         };
                     }
-                    
+
                     personData[pid].intervals.push(...basicIntervals);
                     personData[pid].details.push(`Phòng: ${roomName}, Ca: ${shiftVal}`);
                     if (itemGroup) personData[pid].groupCodes.add(itemGroup.toString());
@@ -6006,7 +6066,8 @@
                 let groupName = typeof stageGroupsMap !== 'undefined' && stageGroupsMap[gCode] ? stageGroupsMap[
                     gCode] : `Tổ ${gCode}`;
                 if (gCode === '7') {
-                    groupName = 'ĐGSC'; // stage_groups.name của tổ 7 là "ĐGSC-ĐGTC", hiển thị gọn cho khớp danh sách tổ
+                    groupName =
+                        'ĐGSC'; // stage_groups.name của tổ 7 là "ĐGSC-ĐGTC", hiển thị gọn cho khớp danh sách tổ
                 }
                 title = groupName;
             }
@@ -6069,7 +6130,8 @@
                     pol.group_code_value : pol.group_id).toString();
                 curP = otData.groups.persons[gCode] || 0;
                 curH = otData.groups.hours[gCode] || 0;
-                title = `Tổ ${gCode === '7' ? 'ĐGSC' : (typeof stageGroupsMap !== 'undefined' && stageGroupsMap[gCode] ? stageGroupsMap[gCode] : gCode)}`;
+                title =
+                    `Tổ ${gCode === '7' ? 'ĐGSC' : (typeof stageGroupsMap !== 'undefined' && stageGroupsMap[gCode] ? stageGroupsMap[gCode] : gCode)}`;
             }
 
             if (maxP > 0 && curP > maxP) {

@@ -159,15 +159,21 @@ class ProductCategoryController extends Controller
                         return redirect()->back()->withErrors($validator, 'createErrors')->withInput();
                 }
 
+                // Cỡ lô của mã TP luôn bằng cỡ lô của mã BTP tương ứng nên lấy thẳng từ danh mục BTP,
+                // không tin vào giá trị gửi lên (ô nhập trên form chỉ để xem).
+                $intermediate = DB::table('intermediate_category')
+                        ->where('intermediate_code', $request->intermediate_code)
+                        ->first();
+
                 DB::table('finished_product_category')->insert([
                         'process_code' => $request->process_code,
-                        'finished_product_code' => $request->finished_product_code,                       
+                        'finished_product_code' => $request->finished_product_code,
                         'intermediate_code' => $request->intermediate_code,
                         'product_name_id'=> $request->product_name_id,
                         'market_id'=> $request->market_id,
                         'specification_id' => $request->specification_id,
-                        'batch_qty' => $request->batch_qty,
-                        'unit_batch_qty'=> $request->unit_batch_qty,
+                        'batch_qty' => $intermediate->batch_qty ?? $request->batch_qty,
+                        'unit_batch_qty'=> $intermediate->unit_batch_qty ?? $request->unit_batch_qty,
                         'primary_parkaging'=> $request->primary_parkaging == "on"? true:false,
                         'secondary_parkaging' => false,
                          'IsHypothesis' => $request->is_Hypothesis??0,
@@ -201,11 +207,19 @@ class ProductCategoryController extends Controller
     
                  $this->logHistory($request->id);
 
+                // Cỡ lô của mã TP luôn bằng cỡ lô của mã BTP tương ứng (xem
+                // IntermediateCategoryController::syncFinishedProductBatch) nên lấy thẳng từ danh mục BTP.
+                $intermediate_code = DB::table('finished_product_category')->where('id', $request->id)->value('intermediate_code');
+                $intermediate = DB::table('intermediate_category')
+                        ->where('intermediate_code', $intermediate_code)
+                        ->first();
+
                  DB::table('finished_product_category')->where ('id', $request->id)->update([
                         'product_name_id'=> $request->product_name_id,
                         'market_id'=> $request->market_id,
                         'specification_id' => $request->specification_id,
-                        'batch_qty' => $request->batch_qty,
+                        'batch_qty' => $intermediate->batch_qty ?? $request->batch_qty,
+                        'unit_batch_qty' => $intermediate->unit_batch_qty ?? $request->unit_batch_qty,
                         'primary_parkaging'=> $request->primary_parkaging == "on"? true:false,
                         'prepared_by' => session('user')['fullName'],
                         'updated_at' => now(),

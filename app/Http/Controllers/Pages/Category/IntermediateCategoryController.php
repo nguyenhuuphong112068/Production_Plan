@@ -200,40 +200,100 @@ class IntermediateCategoryController extends Controller
                         $weight_2 = 2;
                 }
 
-                $this->logHistory($request->id);
+                // Lấy mã BTP đang lưu để tìm các mã TP gắn với nó (ô mã trên form là readonly nên mã không đổi).
+                $intermediate_code = DB::table('intermediate_category')->where('id', $request->id)->value('intermediate_code');
 
-                DB::table('intermediate_category')->where('id', $request->id)->update([
+                // Sửa cỡ lô BTP và đồng bộ cỡ lô cho các mã TP phải cùng thành công hoặc cùng huỷ.
+                $synced = DB::transaction(function () use ($request, $weight_2, $intermediate_code) {
 
-                        'intermediate_code' => $request->intermediate_code,
-                        'product_name_id' => $request->product_name_id,
-                        'batch_size' => $request->batch_size,
-                        'unit_batch_size' => $request->unit_batch_size,
-                        'batch_qty' => $request->batch_qty,
-                        'unit_batch_qty' => $request->unit_batch_qty,
+                        $this->logHistory($request->id);
 
-                        'dosage_id' => $request->dosage_id,
-                        'weight_1' => $request->has('weight_1_chk') ? ($request->weight_1 ?? '1') : '0',
-                        'weight_2' => $weight_2,
-                        'prepering' => $request->has('prepering_chk') ? ($request->prepering ?? '1') : '0',
-                        'blending' => $request->has('blending_chk') ? ($request->blending ?? '1') : '0',
-                        'forming' => $request->has('forming_chk') ? ($request->forming ?? '1') : '0',
-                        'coating' => $request->has('coating_chk') ? ($request->coating ?? '1') : '0',
+                        DB::table('intermediate_category')->where('id', $request->id)->update([
 
-                        'quarantine_total' => $request->quarantine_total ?? 0,
-                        'quarantine_weight' => $request->quarantine_weight ?? 0,
-                        'quarantine_preparing' => $request->quarantine_preparing ?? 0,
-                        'quarantine_blending' => $request->quarantine_blending ?? 0,
-                        'quarantine_forming' => $request->quarantine_forming ?? 0,
-                        'quarantine_coating' => $request->quarantine_coating ?? 0,
-                        'quarantine_time_unit' => $request->quarantine_time_unit === "on" ? true : false,
+                                'intermediate_code' => $request->intermediate_code,
+                                'product_name_id' => $request->product_name_id,
+                                'batch_size' => $request->batch_size,
+                                'unit_batch_size' => $request->unit_batch_size,
+                                'batch_qty' => $request->batch_qty,
+                                'unit_batch_qty' => $request->unit_batch_qty,
 
-                        'deparment_code' => session('user')['production_code'],
-                        'pharmacist_id' => $request->pharmacist_id ?: null,
-                        'prepared_by' => session('user')['fullName'],
-                        'updated_at' => now(),
-                ]);
+                                'dosage_id' => $request->dosage_id,
+                                'weight_1' => $request->has('weight_1_chk') ? ($request->weight_1 ?? '1') : '0',
+                                'weight_2' => $weight_2,
+                                'prepering' => $request->has('prepering_chk') ? ($request->prepering ?? '1') : '0',
+                                'blending' => $request->has('blending_chk') ? ($request->blending ?? '1') : '0',
+                                'forming' => $request->has('forming_chk') ? ($request->forming ?? '1') : '0',
+                                'coating' => $request->has('coating_chk') ? ($request->coating ?? '1') : '0',
 
-                return redirect()->back()->with('success', 'Đã cập nhật thành công!');
+                                'quarantine_total' => $request->quarantine_total ?? 0,
+                                'quarantine_weight' => $request->quarantine_weight ?? 0,
+                                'quarantine_preparing' => $request->quarantine_preparing ?? 0,
+                                'quarantine_blending' => $request->quarantine_blending ?? 0,
+                                'quarantine_forming' => $request->quarantine_forming ?? 0,
+                                'quarantine_coating' => $request->quarantine_coating ?? 0,
+                                'quarantine_time_unit' => $request->quarantine_time_unit === "on" ? true : false,
+
+                                'deparment_code' => session('user')['production_code'],
+                                'pharmacist_id' => $request->pharmacist_id ?: null,
+                                'prepared_by' => session('user')['fullName'],
+                                'updated_at' => now(),
+                        ]);
+
+                        return $this->syncFinishedProductBatch($intermediate_code, $request->batch_qty, $request->unit_batch_qty);
+                });
+
+                $message = 'Đã cập nhật thành công!';
+                if ($synced > 0) {
+                        $message .= ' Đã cập nhật cỡ lô cho ' . $synced . ' mã thành phẩm tương ứng.';
+                }
+
+                return redirect()->back()->with('success', $message);
+        }
+
+        /**
+         * Cỡ lô của mã TP luôn bằng cỡ lô của mã BTP tương ứng, nên sửa cỡ lô bên BTP
+         * thì mọi mã TP đang gắn với mã BTP đó phải đổi theo.
+         * Cỡ lô theo khối lượng (batch_size) không cần đồng bộ: danh mục thành phẩm
+         * không lưu cột này mà lấy trực tiếp từ intermediate_category khi hiển thị.
+         * Bỏ qua các dòng đã huỷ (cancel = 1) vì đó là dữ liệu không còn dùng.
+         *
+         * @return int Số mã TP đã được cập nhật
+         */
+        private function syncFinishedProductBatch($intermediate_code, $batch_qty, $unit_batch_qty)
+        {
+                if (empty($intermediate_code)) {
+                        return 0;
+                }
+
+                $products = DB::table('finished_product_category')
+                        ->where('intermediate_code', $intermediate_code)
+                        ->where('cancel', 0)
+                        ->get();
+
+                $synced = 0;
+
+                foreach ($products as $product) {
+                        // Chỉ ghi lịch sử và cập nhật những dòng thực sự lệch cỡ lô.
+                        if ((float) $product->batch_qty == (float) $batch_qty && (string) $product->unit_batch_qty === (string) $unit_batch_qty) {
+                                continue;
+                        }
+
+                        $history = (array) $product;
+                        $history['category_id'] = $history['id'];
+                        unset($history['id']);
+                        DB::table('finished_product_category_history')->insert($history);
+
+                        DB::table('finished_product_category')->where('id', $product->id)->update([
+                                'batch_qty' => $batch_qty,
+                                'unit_batch_qty' => $unit_batch_qty,
+                                'prepared_by' => session('user')['fullName'],
+                                'updated_at' => now(),
+                        ]);
+
+                        $synced++;
+                }
+
+                return $synced;
         }
 
         public function deActive(Request $request)

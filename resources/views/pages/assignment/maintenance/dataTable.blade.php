@@ -16,13 +16,16 @@
         background: #555 !important;
         cursor: grab;
     }
+
     .time-slider .noUi-handle:active {
         cursor: grabbing;
     }
+
     .time-slider .noUi-handle::before,
     .time-slider .noUi-handle::after {
         display: none !important;
     }
+
     .time-slider {
         border: none !important;
         background: #e9ecef !important;
@@ -30,9 +33,18 @@
         box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1) !important;
         margin-top: 5px;
     }
-    .shift-1-slider .noUi-connect { background: #007bff !important; }
-    .shift-2-slider .noUi-connect { background: #28a745 !important; }
-    .shift-3-slider .noUi-connect { background: #dc3545 !important; }
+
+    .shift-1-slider .noUi-connect {
+        background: #007bff !important;
+    }
+
+    .shift-2-slider .noUi-connect {
+        background: #28a745 !important;
+    }
+
+    .shift-3-slider .noUi-connect {
+        background: #dc3545 !important;
+    }
 
     :root {
         --primary-gold: #007bff;
@@ -415,6 +427,7 @@
     $userGroupNameSession = $user['group_name'] ?? '';
 
     $hasBasePermission = user_has_permission($user['userId'], 'maintenance_assignment', 'boolean');
+    $hasEoSync = user_has_permission($user['userId'], 'e-o_synchronization', 'boolean');
 
     $canAccessGroup = false;
     if (str_contains($userGroup, 'Admin')) {
@@ -429,15 +442,18 @@
         $canAccessGroup = true;
     } elseif (str_contains($userGroup, 'Calibration and Maintenance Scheduler')) {
         $normalizedSessionName = trim(preg_replace('/\s+/', ' ', str_replace("\xC2\xA0", ' ', $userGroupNameSession)));
-        $userStageGroup = collect($stage_groups)->first(function($g) use ($normalizedSessionName) {
+        $userStageGroup = collect($stage_groups)->first(function ($g) use ($normalizedSessionName) {
             return trim(preg_replace('/\s+/', ' ', str_replace("\xC2\xA0", ' ', $g->name))) === $normalizedSessionName;
         });
         $userStageGroupCode = $userStageGroup ? $userStageGroup->code : null;
-        $canAccessGroup = ($userStageGroupCode == $group_code);
+        $canAccessGroup = $userStageGroupCode == $group_code;
     }
 
     $hasEditPermission = $hasBasePermission && $canAccessGroup;
-    $canEdit = $hasEditPermission && !$isPastDate && (request()->group_code !== 'EN_ALL' || str_contains($userGroup, 'Engineer Manager'));
+    $canEdit =
+        $hasEditPermission &&
+        !$isPastDate &&
+        (request()->group_code !== 'EN_ALL' || str_contains($userGroup, 'Engineer Manager'));
 @endphp
 
 <div class="content-wrapper">
@@ -483,7 +499,8 @@
                     title="Ẩn/Hiện cột Lịch Lý Thuyết">
                     <i class="fas fa-eye"></i>
                 </button>
-                <button class="btn btn-sm btn-dark shadow-sm ml-2" id="btn-print-schedule" title="In lịch công tác" data-url="{{ route('pages.assignment.public') }}?group_code={{ $group_code }}&reportedDate={{ $reportedDate }}&print=1">
+                <button class="btn btn-sm btn-dark shadow-sm ml-2" id="btn-print-schedule" title="In lịch công tác"
+                    data-url="{{ route('pages.assignment.public') }}?group_code={{ $group_code }}&reportedDate={{ $reportedDate }}&print=1">
                     <i class="fas fa-print"></i> In Lịch
                 </button>
             </div>
@@ -520,10 +537,14 @@
                                 @if (str_starts_with($task->sp_id, 'EXT_'))
                                     <div class="mb-1 text-primary font-weight-bold" style="font-size: 11px;">Công tác
                                         khác</div>
-                                    <input type="text" list="room-list-options-{{ $loop->index }}" class="form-control form-control-sm room-select-custom mb-2" value="{{ $task->room_name !== 'Công tác khác' ? $task->room_name : '' }}" placeholder="-- Vị trí công tác --" {{ !$canEdit ? 'disabled' : '' }}>
+                                    <input type="text" list="room-list-options-{{ $loop->index }}"
+                                        class="form-control form-control-sm room-select-custom mb-2"
+                                        value="{{ $task->room_name !== 'Công tác khác' ? $task->room_name : '' }}"
+                                        placeholder="-- Vị trí công tác --" {{ !$canEdit ? 'disabled' : '' }}>
                                     <datalist id="room-list-options-{{ $loop->index }}">
                                         @foreach ($rooms as $r)
-                                            <option value="{{ $r->name }}">{{ $r->code }} - {{ $r->name }}</option>
+                                            <option value="{{ $r->name }}">{{ $r->code }} -
+                                                {{ $r->name }}</option>
                                         @endforeach
                                     </datalist>
                                 @else
@@ -629,12 +650,15 @@
                                                                     <div class="personnel-label">
                                                                         {{ chr(65 + $loop->index) }}
                                                                     </div>
-                                                                    <div style="flex: 1" class="d-flex align-items-center">
-                                                                        <select class="form-control form-control-sm person-select"
+                                                                    <div style="flex: 1"
+                                                                        class="d-flex align-items-center">
+                                                                        <select
+                                                                            class="form-control form-control-sm person-select"
                                                                             style="width: 40%"
                                                                             data-selected="{{ $p_info->personnel_id }}"
                                                                             {{ !$canEdit || ($assignment->is_foreign ?? false) ? 'disabled' : '' }}>
-                                                                            <option value="">-- Chọn người --</option>
+                                                                            <option value="">-- Chọn người --
+                                                                            </option>
                                                                         </select>
                                                                         <input type="text"
                                                                             class="form-control form-control-sm person-notif ml-1"
@@ -644,7 +668,8 @@
                                                                             {{ !$canEdit || ($assignment->is_foreign ?? false) ? 'disabled' : '' }}>
                                                                     </div>
                                                                     @if ($canEdit && !($assignment->is_foreign ?? false))
-                                                                        <i class="fas fa-times text-danger ml-1 btn-remove-person cursor-pointer"></i>
+                                                                        <i
+                                                                            class="fas fa-times text-danger ml-1 btn-remove-person cursor-pointer"></i>
                                                                     @endif
                                                                 </div>
                                                                 <div class="d-flex align-items-center w-100 pl-4 pr-2 mt-1 mb-1 time-slider-container"
@@ -689,12 +714,11 @@
                                                 </td>
                                                 <td style="width: 60px" class="text-center">
                                                     @if ($canEdit)
-                                                        <i
-                                                            class="fas fa-times-circle btn-remove-shift cursor-pointer" style="font-size: 1.1rem" title="Xóa ca này"></i>
+                                                        <i class="fas fa-times-circle btn-remove-shift cursor-pointer"
+                                                            style="font-size: 1.1rem" title="Xóa ca này"></i>
                                                         <br />
                                                         <i class="fas fa-copy btn-clone-shift cursor-pointer text-info mt-1"
-                                                            style="font-size: 1.1rem;"
-                                                            title="Nhân bản ca này"></i>
+                                                            style="font-size: 1.1rem;" title="Nhân bản ca này"></i>
                                                     @else
                                                         <i class="fas fa-lock text-muted"
                                                             title="Không thể chỉnh sửa"></i>
@@ -741,36 +765,42 @@
                                                 </td>
                                                 <td class="p-0" style="width: 250px">
                                                     <div class="personnel-container">
-                                                            <div class="personnel-row d-flex flex-column p-1 border-bottom">
-                                                                <div class="d-flex align-items-center w-100">
-                                                                    <div class="personnel-label">A</div>
-                                                                    <div style="flex: 1" class="d-flex align-items-center">
-                                                                        <select
-                                                                            class="form-control form-control-sm person-select"
-                                                                            style="width: 40%"
-                                                                            {{ !$canEdit ? 'disabled' : '' }}>
-                                                                            <option value="">-- Chọn người --</option>
-                                                                        </select>
-                                                                        <input type="text"
-                                                                            class="form-control form-control-sm person-notif ml-1"
-                                                                            style="width: 60%; font-size: 0.7rem; height: 28px; padding: 2px 5px;"
-                                                                            placeholder="Lưu ý (nếu có)..."
-                                                                            {{ !$canEdit ? 'disabled' : '' }}>
-                                                                    </div>
-                                                                    @if ($canEdit)
-                                                                        <i class="fas fa-times text-danger ml-1 btn-remove-person cursor-pointer"></i>
-                                                                    @endif
+                                                        <div
+                                                            class="personnel-row d-flex flex-column p-1 border-bottom">
+                                                            <div class="d-flex align-items-center w-100">
+                                                                <div class="personnel-label">A</div>
+                                                                <div style="flex: 1"
+                                                                    class="d-flex align-items-center">
+                                                                    <select
+                                                                        class="form-control form-control-sm person-select"
+                                                                        style="width: 40%"
+                                                                        {{ !$canEdit ? 'disabled' : '' }}>
+                                                                        <option value="">-- Chọn người --
+                                                                        </option>
+                                                                    </select>
+                                                                    <input type="text"
+                                                                        class="form-control form-control-sm person-notif ml-1"
+                                                                        style="width: 60%; font-size: 0.7rem; height: 28px; padding: 2px 5px;"
+                                                                        placeholder="Lưu ý (nếu có)..."
+                                                                        {{ !$canEdit ? 'disabled' : '' }}>
                                                                 </div>
-                                                                <div class="d-flex align-items-center w-100 pl-4 pr-2 mt-1 mb-1 time-slider-container"
-                                                                    style="{{ !$canEdit ? 'opacity: 0.6; pointer-events: none;' : '' }}">
-                                                                    <div class="time-slider flex-grow-1"></div>
-                                                                    <div class="time-display ml-2 font-weight-bold"
-                                                                        style="font-size: 0.7rem; width: 140px; text-align: right; line-height: 1.4; flex-shrink: 0;">
-                                                                    </div>
-                                                                    <input type="hidden" class="p-start-input" value="">
-                                                                    <input type="hidden" class="p-end-input" value="">
-                                                                </div>
+                                                                @if ($canEdit)
+                                                                    <i
+                                                                        class="fas fa-times text-danger ml-1 btn-remove-person cursor-pointer"></i>
+                                                                @endif
                                                             </div>
+                                                            <div class="d-flex align-items-center w-100 pl-4 pr-2 mt-1 mb-1 time-slider-container"
+                                                                style="{{ !$canEdit ? 'opacity: 0.6; pointer-events: none;' : '' }}">
+                                                                <div class="time-slider flex-grow-1"></div>
+                                                                <div class="time-display ml-2 font-weight-bold"
+                                                                    style="font-size: 0.7rem; width: 140px; text-align: right; line-height: 1.4; flex-shrink: 0;">
+                                                                </div>
+                                                                <input type="hidden" class="p-start-input"
+                                                                    value="">
+                                                                <input type="hidden" class="p-end-input"
+                                                                    value="">
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                     @if ($canEdit)
                                                         <div class="text-left p-1"
@@ -788,12 +818,11 @@
                                                 </td>
                                                 <td style="width: 60px" class="text-center">
                                                     @if ($canEdit)
-                                                        <i
-                                                            class="fas fa-times-circle btn-remove-shift cursor-pointer" style="font-size: 1.1rem" title="Xóa ca này"></i>
+                                                        <i class="fas fa-times-circle btn-remove-shift cursor-pointer"
+                                                            style="font-size: 1.1rem" title="Xóa ca này"></i>
                                                         <br />
                                                         <i class="fas fa-copy btn-clone-shift cursor-pointer text-info mt-1"
-                                                            style="font-size: 1.1rem;"
-                                                            title="Nhân bản ca này"></i>
+                                                            style="font-size: 1.1rem;" title="Nhân bản ca này"></i>
                                                     @else
                                                         <i class="fas fa-lock text-muted"
                                                             title="Không thể chỉnh sửa"></i>
@@ -878,8 +907,11 @@
             <div class="p-3 border-bottom d-flex justify-content-between align-items-center bg-light shadow-sm">
                 <h6 class="mb-0 font-weight-bold text-primary"><i class="fas fa-users mr-2"></i>Tình Hình Nhân Sự</h6>
                 <div class="d-flex align-items-center">
-                    <button class="btn btn-sm btn-link text-primary p-0 mr-3" id="refresh-shifts-btn"
-                        title="Đồng bộ: lấy lại lịch trực mới nhất từ eO2 PMS"><i class="fas fa-sync-alt"></i></button>
+                    @if ($hasEoSync)
+                        <button class="btn btn-sm btn-link text-primary p-0 mr-3" id="refresh-shifts-btn"
+                            title="Đồng bộ: lấy lại lịch trực mới nhất từ eO2 PMS"><i
+                                class="fas fa-sync-alt"></i></button>
+                    @endif
                     <button class="btn btn-sm btn-link text-muted p-0" id="close-sidebar-btn"><i
                             class="fas fa-times"></i></button>
                 </div>
@@ -895,7 +927,8 @@
                 </div>
                 <div class="custom-control custom-switch pl-4">
                     <input type="checkbox" class="custom-control-input" id="filter-under-8h">
-                    <label class="custom-control-label small text-muted font-weight-bold cursor-pointer" for="filter-under-8h">Chỉ hiện nhân sự < 8h làm việc</label>
+                    <label class="custom-control-label small text-muted font-weight-bold cursor-pointer"
+                        for="filter-under-8h">Chỉ hiện nhân sự < 8h làm việc</label>
                 </div>
             </div>
             <div class="sidebar-body p-0 overflow-auto" id="sidebar-data-container" style="flex: 1">
@@ -1006,8 +1039,10 @@
                 </div>
                 <div class="mt-3">
                     <label class="font-weight-bold">Các ngày đã chọn:</label>
-                    <div id="clone-dates-container" class="d-flex flex-wrap" style="gap: 8px; min-height: 40px; border: 1px dashed #ccc; padding: 10px; border-radius: 5px;">
-                        <span class="text-muted small w-100 text-center" id="clone-dates-empty">Chưa có ngày nào được chọn</span>
+                    <div id="clone-dates-container" class="d-flex flex-wrap"
+                        style="gap: 8px; min-height: 40px; border: 1px dashed #ccc; padding: 10px; border-radius: 5px;">
+                        <span class="text-muted small w-100 text-center" id="clone-dates-empty">Chưa có ngày nào được
+                            chọn</span>
                     </div>
                 </div>
             </div>
@@ -1061,15 +1096,15 @@
             if (!startStr || !endStr) return 0;
             const sParts = startStr.split(':');
             const eParts = endStr.split(':');
-            
+
             let sMin = parseInt(sParts[0], 10) * 60 + parseInt(sParts[1], 10);
             let eMin = parseInt(eParts[0], 10) * 60 + parseInt(eParts[1], 10);
-            
+
             if (eMin < sMin) {
                 // Crosses midnight
                 eMin += 24 * 60;
             }
-            
+
             let durationMin = eMin - sMin;
 
             let isNoLunchBreakShift = false;
@@ -1090,7 +1125,7 @@
             if (!isNoLunchBreakShift) {
                 // Subtract lunch break (11:30 - 12:15)
                 const lunchStart = 11 * 60 + 30; // 690
-                const lunchEnd = 12 * 60 + 15;   // 735
+                const lunchEnd = 12 * 60 + 15; // 735
 
                 const overlapStart = Math.max(sMin, lunchStart);
                 const overlapEnd = Math.min(eMin, lunchEnd);
@@ -1110,12 +1145,12 @@
             const code = $el.attr('data-code');
             const personId = employeeCodeToId[code];
             const isLeave = $el.attr('data-shift-key') === 'P';
-            
+
             // Remove existing badges container
             $el.find('.personnel-time-ranges').remove();
-            
+
             let totalHours = 0;
-            
+
             if (personId) {
                 const assignments = [];
                 // 1. Scan DOM
@@ -1145,10 +1180,17 @@
                         }
                         const start = $item.find('.start-time-input').val() || '';
                         const end = $item.find('.end-time-input').val() || '';
-                        
+
                         const shiftVal = $item.find('.shift-select').val() || '4';
                         if (start || end) {
-                            assignments.push({ assignment_id: assId, room: roomCode, start: start, end: end, is_local: true, shift: shiftVal });
+                            assignments.push({
+                                assignment_id: assId,
+                                room: roomCode,
+                                start: start,
+                                end: end,
+                                is_local: true,
+                                shift: shiftVal
+                            });
                         }
                     }
                 });
@@ -1156,7 +1198,8 @@
                 // 2. Scan DB assignments from other groups/departments
                 const dbList = dbAssignments[personId.toString()] || [];
                 dbList.forEach(dbAss => {
-                    const existsInDom = dbAss.assignment_id && $(`.assignment-item[data-id="${dbAss.assignment_id}"]`).length > 0;
+                    const existsInDom = dbAss.assignment_id && $(
+                        `.assignment-item[data-id="${dbAss.assignment_id}"]`).length > 0;
                     if (!existsInDom) {
                         assignments.push({
                             assignment_id: dbAss.assignment_id,
@@ -1168,7 +1211,7 @@
                         });
                     }
                 });
-                
+
                 if (assignments.length > 0) {
                     assignments.forEach(a => {
                         totalHours += calculateDurationHours(a.start, a.end, a.shift);
@@ -1176,12 +1219,15 @@
                     totalHours = Math.round(totalHours * 100) / 100;
 
                     let badgeHtml = '<div class="personnel-time-ranges mt-1">';
-                    badgeHtml += `<span class="badge badge-success text-white mr-1" style="font-size: 0.65rem; padding: 2px 4px; font-weight: bold;"><i class="fas fa-hourglass-half mr-1"></i>Tổng: ${totalHours}h</span>`;
+                    badgeHtml +=
+                        `<span class="badge badge-success text-white mr-1" style="font-size: 0.65rem; padding: 2px 4px; font-weight: bold;"><i class="fas fa-hourglass-half mr-1"></i>Tổng: ${totalHours}h</span>`;
                     assignments.forEach(a => {
                         if (a.is_local) {
-                            badgeHtml += `<span class="badge badge-info text-white mr-1" style="font-size: 0.65rem; padding: 2px 4px; font-weight: normal;"><i class="far fa-clock mr-1"></i>${a.room}: ${a.start}-${a.end}</span>`;
+                            badgeHtml +=
+                                `<span class="badge badge-info text-white mr-1" style="font-size: 0.65rem; padding: 2px 4px; font-weight: normal;"><i class="far fa-clock mr-1"></i>${a.room}: ${a.start}-${a.end}</span>`;
                         } else {
-                            badgeHtml += `<span class="badge text-white mr-1" style="font-size: 0.65rem; padding: 2px 4px; font-weight: normal; background-color: #6c757d;" title="Tổ khác: ${a.group_name}"><i class="fas fa-exchange-alt mr-1"></i>${a.group_name} (${a.room}): ${a.start}-${a.end}</span>`;
+                            badgeHtml +=
+                                `<span class="badge text-white mr-1" style="font-size: 0.65rem; padding: 2px 4px; font-weight: normal; background-color: #6c757d;" title="Tổ khác: ${a.group_name}"><i class="fas fa-exchange-alt mr-1"></i>${a.group_name} (${a.room}): ${a.start}-${a.end}</span>`;
                         }
                     });
                     badgeHtml += '</div>';
@@ -1475,7 +1521,7 @@
             const $el = $(this);
             const $item = $el.closest('.assignment-item');
             const prevVal = $el.data('prev-val') || '';
-            
+
             let hasOverlap = false;
             let overlapMsg = '';
             $item.find('.personnel-container .person-select').each(function() {
@@ -1489,7 +1535,7 @@
                     }
                 }
             });
-            
+
             if (hasOverlap) {
                 Swal.fire({
                     icon: 'error',
@@ -1642,7 +1688,8 @@
 
         // Click to select multiple personnel
         $(document).on('click', '.draggable-person', function(e) {
-            if ($(e.target).closest('.custom-control, .btn-view-skills, .btn-toggle-has-assign').length > 0) {
+            if ($(e.target).closest('.custom-control, .btn-view-skills, .btn-toggle-has-assign')
+                .length > 0) {
                 return;
             }
             if ($(this).hasClass('person-on-leave')) return;
@@ -1742,33 +1789,37 @@
         }
 
         function checkTimeOverlapForEmployee(personId, currentAssignmentItem) {
-            if (!personId) return { overlap: false };
-            
+            if (!personId) return {
+                overlap: false
+            };
+
             const startStr = currentAssignmentItem.find('.start-time-input').val();
             const endStr = currentAssignmentItem.find('.end-time-input').val();
-            if (!startStr || !endStr) return { overlap: false };
-            
+            if (!startStr || !endStr) return {
+                overlap: false
+            };
+
             const sOffset = timeToOffset(startStr);
             let eOffset = timeToOffset(endStr);
             if (eOffset <= sOffset) {
                 eOffset += 24.0;
             }
-            
+
             let hasOverlap = false;
             let overlapMsg = '';
-            
+
             // 1. Scan DOM
             $('.room-row .assignment-item:not(.foreign-assignment)').each(function() {
                 const $item = $(this);
                 if ($item.is(currentAssignmentItem)) return; // Skip ourselves!
-                
+
                 let hasPerson = false;
                 $item.find('.personnel-container .person-select').each(function() {
                     if ($(this).val() == personId.toString()) {
                         hasPerson = true;
                     }
                 });
-                
+
                 if (hasPerson) {
                     const otherStart = $item.find('.start-time-input').val();
                     const otherEnd = $item.find('.end-time-input').val();
@@ -1778,7 +1829,7 @@
                         if (eOther <= sOther) {
                             eOther += 24.0;
                         }
-                        
+
                         if (sOffset < eOther && sOther < eOffset) {
                             hasOverlap = true;
                             const roomRow = $item.closest('.room-row');
@@ -1793,29 +1844,34 @@
                             } else {
                                 roomCode = roomRow.find('.room-name-cell b').text().trim() || 'NA';
                             }
-                            overlapMsg = `Trùng lịch trên trang hiện tại: Nhân sự đã được phân công tại phòng ${roomCode} trong khoảng ${otherStart} - ${otherEnd}.`;
+                            overlapMsg =
+                                `Trùng lịch trên trang hiện tại: Nhân sự đã được phân công tại phòng ${roomCode} trong khoảng ${otherStart} - ${otherEnd}.`;
                             return false; // Break loop
                         }
                     }
                 }
             });
-            
+
             if (hasOverlap) {
-                return { overlap: true, message: overlapMsg };
+                return {
+                    overlap: true,
+                    message: overlapMsg
+                };
             }
-            
+
             // 2. Scan DB assignments
             const dbList = dbAssignments[personId.toString()] || [];
             for (const dbAss of dbList) {
-                const existsInDom = dbAss.assignment_id && $(`.assignment-item[data-id="${dbAss.assignment_id}"]`).length > 0;
+                const existsInDom = dbAss.assignment_id && $(
+                    `.assignment-item[data-id="${dbAss.assignment_id}"]`).length > 0;
                 if (existsInDom) continue;
-                
+
                 const sOther = timeToOffset(dbAss.start);
                 let eOther = timeToOffset(dbAss.end);
                 if (eOther <= sOther) {
                     eOther += 24.0;
                 }
-                
+
                 if (sOffset < eOther && sOther < eOffset) {
                     return {
                         overlap: true,
@@ -1823,8 +1879,10 @@
                     };
                 }
             }
-            
-            return { overlap: false };
+
+            return {
+                overlap: false
+            };
         }
 
         function checkRoomAuthorization(personId, roomId, callback) {
@@ -1848,7 +1906,8 @@
                 const $container = $(this);
                 const $roomRow = $container.closest('.room-row');
                 const roomId = $roomRow.attr('data-room-id');
-                const targetShiftCode = $container.closest('.assignment-item').find('.shift-select').val();
+                const targetShiftCode = $container.closest('.assignment-item').find('.shift-select')
+                    .val();
 
                 for (const person of persons) {
                     if (person.shiftKey === 'P') {
@@ -1869,7 +1928,8 @@
                         if (!isAuthorized) continue;
 
                         // 2. Kiểm tra trùng lịch (Time Overlap)
-                        const overlapCheck = checkTimeOverlapForEmployee(personId, $container.closest('.assignment-item'));
+                        const overlapCheck = checkTimeOverlapForEmployee(personId, $container
+                            .closest('.assignment-item'));
                         if (overlapCheck.overlap) {
                             await Swal.fire({
                                 icon: 'error',
@@ -1956,7 +2016,8 @@
                         }
 
                         // 2. Kiểm tra trùng lịch
-                        const overlapCheck = checkTimeOverlapForEmployee(personId, $el.closest('.assignment-item'));
+                        const overlapCheck = checkTimeOverlapForEmployee(personId, $el.closest(
+                            '.assignment-item'));
                         if (overlapCheck.overlap) {
                             Swal.fire({
                                 icon: 'error',
@@ -2052,7 +2113,9 @@
                 if (count > 0) {
                     if ($badge.length === 0) {
                         const $rightSpan = $item.find('.float-right');
-                        $badge = $(`<span class="badge badge-success badge-pill assign-count-badge mr-1" style="font-size: 0.7rem; padding: 2px 5px; background-color: #28a745; color: white;" title="Số lần phân công trong ngày">${count}</span>`);
+                        $badge = $(
+                            `<span class="badge badge-success badge-pill assign-count-badge mr-1" style="font-size: 0.7rem; padding: 2px 5px; background-color: #28a745; color: white;" title="Số lần phân công trong ngày">${count}</span>`
+                        );
                         $rightSpan.prepend($badge);
                     } else {
                         $badge.text(count).show();
@@ -2286,7 +2349,8 @@
                         if (pid) p_list.push({
                             personnel_id: pid,
                             notification: $(this).find('.person-notif').val(),
-                            start_time: $(this).find('.p-start-input').val() || null,
+                            start_time: $(this).find('.p-start-input').val() ||
+                                null,
                             end_time: $(this).find('.p-end-input').val() || null
                         });
                     });
@@ -2411,7 +2475,8 @@
                     $(this).find('.person-select').each(function() {
                         if ($(this).val()) pCount++;
                     });
-                    if (!jobDesc || jobDesc === '<br>' || jobDesc === 'Nội dung...' || pCount === 0) {
+                    if (!jobDesc || jobDesc === '<br>' || jobDesc === 'Nội dung...' ||
+                        pCount === 0) {
                         isValid = false;
                         return false; // Break loop
                     }
@@ -2474,7 +2539,7 @@
             }
 
             const url = $(this).attr('data-url');
-            
+
             // Hiện thông báo đang chuẩn bị trang in
             Swal.fire({
                 title: 'Đang chuẩn bị trang in...',
@@ -2486,15 +2551,15 @@
 
             // Xóa iframe cũ nếu có
             $('#print-iframe').remove();
-            
+
             // Tạo iframe ẩn
             const iframe = document.createElement('iframe');
             iframe.id = 'print-iframe';
             iframe.style.display = 'none';
             iframe.src = url;
-            
+
             document.body.appendChild(iframe);
-            
+
             // Iframe tải xong sẽ tự gọi window.print() từ bên trong do có mã xử lý phía publicView
             setTimeout(() => {
                 Swal.close();
@@ -3034,7 +3099,8 @@
                 currentSidebarData.forEach(person => {
                     const dayKey = 'day' + currentSidebarDay;
                     const dayData = person.days && person.days[dayKey];
-                    const shiftCode = dayData ? (dayData?.shift ?? dayData).toString().toUpperCase() : 'HC';
+                    const shiftCode = dayData ? (dayData?.shift ?? dayData).toString()
+                        .toUpperCase() : 'HC';
                     const personCode = person.employeeId || person.code || '';
                     const personId = employeeCodeToId[personCode];
                     if (!personId || shiftCode === 'P') return;
@@ -3291,14 +3357,15 @@
                 if ($row.find('.room-select-custom').length > 0) {
                     roomName = $row.find('.room-select-custom').val() || 'Công tác khác';
                 } else {
-                    roomName = $row.find('.room-name-cell b').text() + ' - ' + $row.find('.room-name-cell div').eq(1).text();
+                    roomName = $row.find('.room-name-cell b').text() + ' - ' + $row.find(
+                        '.room-name-cell div').eq(1).text();
                     const eqName = $row.find('.room-name-cell .text-muted').text().trim();
                     if (eqName) roomName += ' (' + eqName + ')';
                 }
 
                 $row.find('.assignment-item').each(function() {
                     const $item = $(this);
-                    
+
                     const shiftVal = $item.find('.shift-select').val();
                     let shiftName = 'Khác';
                     if (shiftVal === '1') shiftName = 'Ca 1';
@@ -3309,7 +3376,8 @@
 
                     const startTime = $item.find('.start-time-input').val() || '';
                     const endTime = $item.find('.end-time-input').val() || '';
-                    const timeStr = (startTime && endTime) ? `${startTime} - ${endTime}` : '';
+                    const timeStr = (startTime && endTime) ?
+                        `${startTime} - ${endTime}` : '';
 
                     const personnel = [];
                     $item.find('.personnel-container .person-select').each(function() {
@@ -3319,9 +3387,11 @@
                             let pTimeStr = '';
                             const pRow = $(this).closest('.personnel-row');
                             if (pRow.length > 0) {
-                                const displayEl = pRow.find('.time-display').text().trim();
+                                const displayEl = pRow.find('.time-display')
+                                    .text().trim();
                                 if (displayEl) {
-                                    let timePart = displayEl.split('=')[0].trim();
+                                    let timePart = displayEl.split('=')[0]
+                                        .trim();
                                     if (timePart) {
                                         pTimeStr = ` (${timePart})`;
                                     }
@@ -3337,7 +3407,8 @@
                     const assignedCount = personnel.length;
 
                     const workDetailElement = $item.find('.job-desc')[0];
-                    const workDetail = workDetailElement ? workDetailElement.innerText.trim().replace(/\n/g, '<br>') : '';
+                    const workDetail = workDetailElement ? workDetailElement.innerText
+                        .trim().replace(/\n/g, '<br>') : '';
 
                     if (!shiftSummary[shiftName]) shiftSummary[shiftName] = 0;
                     shiftSummary[shiftName] += assignedCount;
@@ -3368,10 +3439,12 @@
             `;
             let totalAssignedAllShifts = 0;
             for (const shift in shiftSummary) {
-                tableHtml += `<tr><td style="text-align:center">${shift}</td><td style="text-align:center; font-weight:bold">${shiftSummary[shift]}</td></tr>`;
+                tableHtml +=
+                    `<tr><td style="text-align:center">${shift}</td><td style="text-align:center; font-weight:bold">${shiftSummary[shift]}</td></tr>`;
                 totalAssignedAllShifts += shiftSummary[shift];
             }
-            tableHtml += `<tr><td style="text-align:center; font-weight:bold">Tổng cộng</td><td style="text-align:center; font-weight:bold; color: red;">${totalAssignedAllShifts}</td></tr>`;
+            tableHtml +=
+                `<tr><td style="text-align:center; font-weight:bold">Tổng cộng</td><td style="text-align:center; font-weight:bold; color: red;">${totalAssignedAllShifts}</td></tr>`;
             tableHtml += `</tbody></table></div>`;
 
             const tempDiv = document.createElement('div');
@@ -3379,50 +3452,122 @@
             document.body.appendChild(tempDiv);
 
             try {
-                const wb = XLSX.utils.table_to_book(tempDiv, {sheet: "Lich_Cong_Tac"});
-                
+                const wb = XLSX.utils.table_to_book(tempDiv, {
+                    sheet: "Lich_Cong_Tac"
+                });
+
                 const ws = wb.Sheets["Lich_Cong_Tac"];
                 if (ws) {
-                    ws['!cols'] = [
-                        { wpx: 150 },
-                        { wpx: 80 },
-                        { wpx: 120 },
-                        { wpx: 200 },
-                        { wpx: 120 },
-                        { wpx: 300 }
+                    ws['!cols'] = [{
+                            wpx: 150
+                        },
+                        {
+                            wpx: 80
+                        },
+                        {
+                            wpx: 120
+                        },
+                        {
+                            wpx: 200
+                        },
+                        {
+                            wpx: 120
+                        },
+                        {
+                            wpx: 300
+                        }
                     ];
-                    
+
                     const range = XLSX.utils.decode_range(ws['!ref']);
                     for (let R = range.s.r; R <= range.e.r; ++R) {
                         for (let C = range.s.c; C <= range.e.c; ++C) {
-                            const cellAddress = XLSX.utils.encode_cell({c: C, r: R});
-                            if (!ws[cellAddress]) ws[cellAddress] = { t: "s", v: "" };
+                            const cellAddress = XLSX.utils.encode_cell({
+                                c: C,
+                                r: R
+                            });
+                            if (!ws[cellAddress]) ws[cellAddress] = {
+                                t: "s",
+                                v: ""
+                            };
                             if (!ws[cellAddress].s) ws[cellAddress].s = {};
-                            
+
                             if (R < metaRows) {
-                                ws[cellAddress].s.font = { bold: true, sz: (R === 0 ? 14 : 12) };
-                            } else if (R === metaRows) {
-                                ws[cellAddress].s.font = { bold: true };
-                                ws[cellAddress].s.border = {
-                                    top: { style: "medium", color: { auto: 1 } },
-                                    bottom: { style: "medium", color: { auto: 1 } },
-                                    left: { style: "medium", color: { auto: 1 } },
-                                    right: { style: "medium", color: { auto: 1 } }
+                                ws[cellAddress].s.font = {
+                                    bold: true,
+                                    sz: (R === 0 ? 14 : 12)
                                 };
-                                ws[cellAddress].s.alignment = { vertical: "center", horizontal: "center", wrapText: true };
+                            } else if (R === metaRows) {
+                                ws[cellAddress].s.font = {
+                                    bold: true
+                                };
+                                ws[cellAddress].s.border = {
+                                    top: {
+                                        style: "medium",
+                                        color: {
+                                            auto: 1
+                                        }
+                                    },
+                                    bottom: {
+                                        style: "medium",
+                                        color: {
+                                            auto: 1
+                                        }
+                                    },
+                                    left: {
+                                        style: "medium",
+                                        color: {
+                                            auto: 1
+                                        }
+                                    },
+                                    right: {
+                                        style: "medium",
+                                        color: {
+                                            auto: 1
+                                        }
+                                    }
+                                };
+                                ws[cellAddress].s.alignment = {
+                                    vertical: "center",
+                                    horizontal: "center",
+                                    wrapText: true
+                                };
                             } else {
                                 ws[cellAddress].s.border = {
-                                    top: { style: "medium", color: { auto: 1 } },
-                                    bottom: { style: "medium", color: { auto: 1 } },
-                                    left: { style: "medium", color: { auto: 1 } },
-                                    right: { style: "medium", color: { auto: 1 } }
+                                    top: {
+                                        style: "medium",
+                                        color: {
+                                            auto: 1
+                                        }
+                                    },
+                                    bottom: {
+                                        style: "medium",
+                                        color: {
+                                            auto: 1
+                                        }
+                                    },
+                                    left: {
+                                        style: "medium",
+                                        color: {
+                                            auto: 1
+                                        }
+                                    },
+                                    right: {
+                                        style: "medium",
+                                        color: {
+                                            auto: 1
+                                        }
+                                    }
                                 };
-                                ws[cellAddress].s.alignment = { wrapText: true, vertical: "top" };
+                                ws[cellAddress].s.alignment = {
+                                    wrapText: true,
+                                    vertical: "top"
+                                };
                             }
                         }
                     }
                 }
-                const fileName = "Lich_Cong_Tac_" + ($('input[name="reportedDate"]').val() || $('#reportedDate').val() || "Export") + ".xlsx";
+                const fileName = "Lich_Cong_Tac_" + ($('input[name="reportedDate"]').val() || $(
+                    '#reportedDate').val() || "Export") + ".xlsx";
                 XLSX.writeFile(wb, fileName);
             } catch (e) {
                 console.error("Lỗi xuất Excel:", e);
@@ -3740,7 +3885,8 @@
         let assignItem = row.closest('.assignment-item');
         if (assignItem.length === 0) assignItem = row.closest('tr');
 
-        let assignStartStr = assignItem.find('.start-time-input').val() || assignItem.find('.assign-start').val() || '06:00';
+        let assignStartStr = assignItem.find('.start-time-input').val() || assignItem.find('.assign-start').val() ||
+            '06:00';
         let assignEndStr = assignItem.find('.end-time-input').val() || assignItem.find('.assign-end').val() || '14:00';
 
         let shiftVal = assignItem.find('.shift-select').val() || '1';
@@ -3796,8 +3942,12 @@
             },
             step: 15,
             format: {
-                to: function(v) { return minutesToTime(v); },
-                from: function(v) { return timeToMinutes(v); }
+                to: function(v) {
+                    return minutesToTime(v);
+                },
+                from: function(v) {
+                    return timeToMinutes(v);
+                }
             }
         });
 
@@ -3836,7 +3986,7 @@
 
             row.find('.p-start-input').val(values[0]);
             row.find('.p-end-input').val(values[1]);
-            
+
             if (typeof renderOvertimeBadge === 'function') {
                 clearTimeout(window._overtimeBadgeTimer);
                 window._overtimeBadgeTimer = setTimeout(renderOvertimeBadge, 300);
@@ -3903,7 +4053,7 @@
     $(document).on('click', '.btn-clone-shift', function() {
         currentCloneTarget = $(this).closest('.assignment-item');
         cloneTargetDates.clear();
-        if(cloneDateFp) cloneDateFp.clear();
+        if (cloneDateFp) cloneDateFp.clear();
         renderCloneDates();
         $('#modalCloneCustomTask').modal('show');
     });
@@ -3911,7 +4061,7 @@
     $(document).on('click', '.btn-clone-row', function() {
         currentCloneTarget = $(this).closest('.room-row');
         cloneTargetDates.clear();
-        if(cloneDateFp) cloneDateFp.clear();
+        if (cloneDateFp) cloneDateFp.clear();
         renderCloneDates();
         $('#modalCloneCustomTask').modal('show');
     });
@@ -3919,7 +4069,7 @@
     $(document).on('click', '.btn-remove-clone-date', function() {
         const dateToRemove = $(this).data('date');
         cloneTargetDates.delete(dateToRemove);
-        if(cloneDateFp) cloneDateFp.setDate(Array.from(cloneTargetDates));
+        if (cloneDateFp) cloneDateFp.setDate(Array.from(cloneTargetDates));
         renderCloneDates();
     });
 
@@ -4066,7 +4216,7 @@
 
         const roomId = roomRow.attr('data-room-id');
         let roomName = '';
-        if(!roomId) {
+        if (!roomId) {
             roomName = roomRow.find('.room-select-custom').val();
         }
 
@@ -4087,7 +4237,8 @@
             method: "POST",
             data: payload,
             success: function(res) {
-                btn.prop('disabled', false).html('<i class="fas fa-check mr-1"></i> Xác nhận Clone');
+                btn.prop('disabled', false).html(
+                    '<i class="fas fa-check mr-1"></i> Xác nhận Clone');
                 if (res.success) {
                     $('#modalCloneCustomTask').modal('hide');
                     Swal.fire('Thành công', res.message, 'success');
@@ -4096,8 +4247,10 @@
                 }
             },
             error: function(err) {
-                btn.prop('disabled', false).html('<i class="fas fa-check mr-1"></i> Xác nhận Clone');
-                const msg = err.responseJSON && err.responseJSON.message ? err.responseJSON.message : 'Không thể kết nối đến máy chủ';
+                btn.prop('disabled', false).html(
+                    '<i class="fas fa-check mr-1"></i> Xác nhận Clone');
+                const msg = err.responseJSON && err.responseJSON.message ? err.responseJSON
+                    .message : 'Không thể kết nối đến máy chủ';
                 Swal.fire('Lỗi', msg, 'error');
             }
         });
