@@ -726,7 +726,7 @@ class PublicationTrackingController extends Controller
         {
                 $validated = $request->validate([
                         'period_id' => 'required|integer',
-                        'content' => 'required|string|max:500',
+                        'content' => 'required|string',
                 ], [
                         'content.required' => 'Vui lòng nhập nội dung theo dõi.',
                 ]);
@@ -1128,7 +1128,7 @@ class PublicationTrackingController extends Controller
         {
                 $validated = $request->validate([
                         'task_id' => 'required|integer',
-                        'content' => 'required|string|max:500',
+                        'content' => 'required|string',
                 ]);
 
                 $task = PublicationTrackingTask::find($validated['task_id']);

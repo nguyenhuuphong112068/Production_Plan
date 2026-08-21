@@ -272,7 +272,7 @@
                 <div class="modal-body">
                     <div class="form-group">
                         <label for="task_content">Nội dung công việc <span class="text-danger">*</span></label>
-                        <textarea class="form-control" id="task_content" rows="3" maxlength="500"
+                        <textarea class="form-control" id="task_content" rows="3"
                             placeholder="Ví dụ: Rà soát lại cỡ lô trên hồ sơ lô..."></textarea>
                     </div>
 
@@ -914,9 +914,6 @@
                     title: 'Sửa nội dung theo dõi',
                     input: 'textarea',
                     inputValue: current,
-                    inputAttributes: {
-                        maxlength: 500
-                    },
                     // Sửa là đổi cho mọi mã đang dùng chung nội dung này, phải nói trước
                     html: count > 1 ?
                         '<div class="text-danger">Nội dung này đang gắn cho <strong>' + count +
@@ -1112,9 +1109,6 @@
                         '</strong><br><span class="text-muted">' + escapeHtml(name) + '</span></div>',
                     input: 'textarea',
                     inputPlaceholder: 'Nhập nội dung công việc...',
-                    inputAttributes: {
-                        maxlength: 500
-                    },
                     showCancelButton: true,
                     confirmButtonText: 'Lưu',
                     cancelButtonText: 'Hủy',
