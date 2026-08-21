@@ -34,7 +34,7 @@
                     <th class="bg-light" style="min-width: 150px;">Quy Cách</th>
                     <th class="bg-light" style="min-width: 100px;">Cỡ Lô</th>
                     <th class="bg-light" style="min-width: 90px;">Tỉ Lệ ĐG</th>
-                    <th class="bg-light" style="min-width: 100px;">Ngày DK</th>
+                    {{-- <th class="bg-light" style="min-width: 100px;">Ngày DK</th> --}}
                     <th class="bg-light" style="min-width: 200px;">Thời Gian Đóng Gói Dự Kiến</th>
 
                     <th class="bg-warning" style="min-width: 130px;">Số PO</th>
@@ -66,7 +66,9 @@
                             @endunless
                             @if ($record && $record->is_manual)
                                 <div class="mt-1">
-                                    <span class="badge badge-info" title="Lô nằm ngoài quy tắc tự động, do người dùng tạo thêm">Thông báo khác</span>
+                                    <span class="badge badge-info"
+                                        title="Lô nằm ngoài quy tắc tự động, do người dùng tạo thêm">Thông báo
+                                        khác</span>
                                     @if ($canAdd)
                                         <button type="button" class="btn btn-link btn-sm p-0 text-danger pkg-remove"
                                             title="Gỡ thông báo đóng gói của lô này">
@@ -88,9 +90,9 @@
                         <td class="text-center">
                             {{ $data->percent_parkaging !== null ? round($data->percent_parkaging * 100, 2) . '%' : '' }}
                         </td>
-                        <td class="text-center">
+                        {{-- <td class="text-center">
                             {{ $data->expected_date ? \Carbon\Carbon::parse($data->expected_date)->format('d/m/Y') : '' }}
-                        </td>
+                        </td> --}}
                         <td class="text-center">
                             @if ($stage && $stage['start'])
                                 <div>
@@ -122,16 +124,16 @@
                                 maxlength="50" value="{{ $record->PO_no ?? '' }}" {{ $disabledPo }}>
                         </td>
                         <td>
-                            <textarea class="form-control form-control-sm pkg-input" name="primary_sample" rows="3"
-                                maxlength="2000" {{ $disabledSampling }}>{{ $record->primary_sample ?? '' }}</textarea>
+                            <textarea class="form-control form-control-sm pkg-input" name="primary_sample" rows="3" maxlength="2000"
+                                {{ $disabledSampling }}>{{ $record->primary_sample ?? '' }}</textarea>
                         </td>
                         <td>
-                            <textarea class="form-control form-control-sm pkg-input" name="secondary_sample" rows="3"
-                                maxlength="2000" {{ $disabledSampling }}>{{ $record->secondary_sample ?? '' }}</textarea>
+                            <textarea class="form-control form-control-sm pkg-input" name="secondary_sample" rows="3" maxlength="2000"
+                                {{ $disabledSampling }}>{{ $record->secondary_sample ?? '' }}</textarea>
                         </td>
                         <td>
-                            <textarea class="form-control form-control-sm pkg-input" name="Reason" rows="3"
-                                maxlength="255" {{ $disabledSampling }}>{{ $record->Reason ?? '' }}</textarea>
+                            <textarea class="form-control form-control-sm pkg-input" name="Reason" rows="3" maxlength="255"
+                                {{ $disabledSampling }}>{{ $record->Reason ?? '' }}</textarea>
                         </td>
                         @php
                             $hasPo = (bool) ($record->PO_no ?? null);
@@ -140,7 +142,7 @@
                             <input type="checkbox" class="pkg-input pkg-confirm-check" name="sampled_confirmed"
                                 style="width: 20px; height: 20px;"
                                 {{ $record && $record->sampled_confirmed ? 'checked' : '' }}
-                                {{ ($disabledSampling || !$hasPo) ? 'disabled' : '' }}
+                                {{ $disabledSampling || !$hasPo ? 'disabled' : '' }}
                                 @unless ($hasPo) title="Lô chưa có Số PO nên chưa xác nhận đã lấy mẫu được." @endunless>
                         </td>
                     </tr>
