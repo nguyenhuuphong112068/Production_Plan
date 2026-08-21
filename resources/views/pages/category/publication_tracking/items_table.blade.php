@@ -110,6 +110,10 @@
                     $item->opinion_by . ($item->opinion_at ? ' · ' . $item->opinion_at->format('d/m/Y H:i') : ''),
                     ' ·',
                 );
+                $readyMeta = trim(
+                    $item->ready_by . ($item->ready_at ? ' · ' . $item->ready_at->format('d/m/Y H:i') : ''),
+                    ' ·',
+                );
 
                 // Quyền tạo hàng loạt thao tác được trên mọi mã; quyền thêm từng mã
                 // chỉ thao tác được trên mã do chính mình phụ trách
@@ -194,6 +198,20 @@
                      Ô này cũng mang class pt-detail để textarea "Ý kiến DSPT" bên dưới được lưu
                      chung 1 request với 2 ô Quyết Định / Kết Quả của cùng mã. --}}
                 <td class="align-middle p-1 pt-detail" data-detail-id="{{ $item->id }}">
+                    {{-- Hồ sơ sẵn sàng: cờ dược sĩ phụ trách tự tick, cùng quyền với nội dung
+                         theo dõi của mã này. Mặc định false - mã chưa ai xác nhận vẫn coi là
+                         hồ sơ chưa sẵn sàng bên trang Phản Hồi KHSX. --}}
+                    <div class="pt-ready-box">
+                        <div class="custom-control custom-checkbox">
+                            <input type="checkbox" class="custom-control-input pt-ready"
+                                id="pt_ready_{{ $item->id }}" {{ $item->ready ? 'checked' : '' }}
+                                {{ $canManage ? '' : 'disabled' }}>
+                            <label class="custom-control-label font-weight-bold text-success"
+                                for="pt_ready_{{ $item->id }}">Hồ sơ sẵn sàng</label>
+                        </div>
+                        <div class="pt-meta pt-ready-meta" title="Người xác nhận gần nhất">{{ $readyMeta }}</div>
+                    </div>
+
                     {{-- Thanh 3 nút và ghi chú "đã chấp nhận" do JS dựng cho các dòng đang hiển thị.
                          Bảng có tới cả nghìn mã, in sẵn markup nút cho mọi badge làm HTML phình lên
                          hàng MB chỉ vì thụt lề, trong khi DataTables mỗi lúc chỉ hiện 25 dòng. --}}

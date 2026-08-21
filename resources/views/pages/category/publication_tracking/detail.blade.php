@@ -111,6 +111,13 @@
             resize: vertical;
         }
 
+        /* Hồ sơ sẵn sàng nằm đầu ô Nội Dung Theo Dõi, tách khỏi các badge bằng 1 vạch */
+        .pt-ready-box {
+            margin-bottom: 6px;
+            padding-bottom: 5px;
+            border-bottom: 1px dashed #ced4da;
+        }
+
         /* Ý kiến DSPT nằm cuối ô Nội Dung Theo Dõi, tách khỏi các badge bằng 1 vạch */
         .pt-opinion-box {
             margin-top: 6px;
@@ -1188,6 +1195,11 @@
                 saveDetail($cell);
             });
 
+            // Hồ sơ sẵn sàng lưu ngay khi tích/bỏ tích, giống các ô tích khác trên trang
+            $(document).on('change', '.pt-ready', function() {
+                saveDetail($(this).closest('.pt-detail'));
+            });
+
             // Ghi chú kết quả và ý kiến DSPT đều chỉ lưu khi rời ô và có thay đổi
             $(document).on('focus', '.pt-comment, .pt-opinion', function() {
                 $(this).data('original', $(this).val());
@@ -1216,7 +1228,8 @@
                     due_date: $all.find('.pt-due-date').val() || '',
                     completed_date: $all.find('.pt-completed-date').val() || '',
                     comment: $all.find('.pt-comment').val() || '',
-                    pharmacist_opinion: $all.find('.pt-opinion').val() || ''
+                    pharmacist_opinion: $all.find('.pt-opinion').val() || '',
+                    ready: $all.find('.pt-ready').is(':checked') ? '1' : '0'
                 };
 
                 $.ajax({
@@ -1228,10 +1241,11 @@
                             $all.find('.pt-comment, .pt-opinion').each(function() {
                                 $(this).data('original', $(this).val());
                             });
-                            // Server chỉ đóng dấu ô nào thực sự đổi nên cứ nhận cả 3 nhãn về
+                            // Server chỉ đóng dấu ô nào thực sự đổi nên cứ nhận cả 4 nhãn về
                             $all.find('.pt-decision-meta').text(res.decision_meta || '');
                             $all.find('.pt-result-meta').text(res.result_meta || '');
                             $all.find('.pt-opinion-meta').text(res.opinion_meta || '');
+                            $all.find('.pt-ready-meta').text(res.ready_meta || '');
                             flash($all);
                         } else {
                             Swal.fire('Không lưu được', res.message, 'warning');

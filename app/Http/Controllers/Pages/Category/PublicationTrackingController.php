@@ -1345,6 +1345,7 @@ class PublicationTrackingController extends Controller
                         'completed_date' => 'nullable|date',
                         'comment' => 'nullable|string|max:2000',
                         'pharmacist_opinion' => 'nullable|string|max:2000',
+                        'ready' => 'nullable|in:0,1',
                 ]);
 
                 $detail = PublicationTrackingDetail::find($request->input('id'));
@@ -1370,11 +1371,13 @@ class PublicationTrackingController extends Controller
                 $newCompletedDate = $request->input('completed_date') ?: null;
                 $newComment = $request->input('comment');
                 $newOpinion = $request->input('pharmacist_opinion');
+                $readyInput = $request->input('ready');
+                $newReady = !($readyInput === null || $readyInput === '' || $readyInput === '0');
 
                 // Các cột phân quyền riêng nhưng client gửi chung 1 request: cột nào không
                 // có quyền thì giữ nguyên giá trị đang lưu thay vì nhận theo client.
-                // Quyết Định có quyền riêng; Ý Kiến DSPT và Kết Quả theo đúng luật của
-                // cột Nội Dung Theo Dõi (dược sĩ phụ trách của mã).
+                // Quyết Định có quyền riêng; Ý Kiến DSPT, Kết Quả và Hồ Sơ Sẵn Sàng theo
+                // đúng luật của cột Nội Dung Theo Dõi (dược sĩ phụ trách của mã).
                 $canDecide = $this->canUpdateDecision();
                 $canSaveResult = $this->canManageDetails([$detail->id]);
 
@@ -1391,13 +1394,14 @@ class PublicationTrackingController extends Controller
                         $newCompletedDate = optional($detail->completed_date)->format('Y-m-d');
                         $newComment = $detail->comment;
                         $newOpinion = $detail->pharmacist_opinion;
+                        $newReady = $detail->ready;
                 }
 
                 if ($decision === true && blank($newDueDate)) {
                         return response()->json(['success' => false, 'message' => 'Chọn "Có" thì phải nhập ngày hoàn thành.']);
                 }
 
-                // Client luôn gửi cả 4 ô nên phải so với giá trị cũ, nếu không mỗi lần
+                // Client luôn gửi cả các ô nên phải so với giá trị cũ, nếu không mỗi lần
                 // gõ ghi chú lại đóng dấu nhầm cho cả ô Quyết Định và ngược lại
                 $decisionChanged = $detail->decision !== $decision
                         || optional($detail->due_date)->format('Y-m-d') !== $newDueDate;
@@ -1406,6 +1410,8 @@ class PublicationTrackingController extends Controller
                         || (string) $detail->comment !== (string) $newComment;
 
                 $opinionChanged = (string) $detail->pharmacist_opinion !== (string) $newOpinion;
+
+                $readyChanged = (bool) $detail->ready !== $newReady;
 
                 $user = session('user')['fullName'] ?? 'System';
                 $now = now();
@@ -1416,6 +1422,7 @@ class PublicationTrackingController extends Controller
                         'completed_date' => $newCompletedDate,
                         'comment' => $newComment,
                         'pharmacist_opinion' => $newOpinion,
+                        'ready' => $newReady,
                         'updated_by' => $user,
                 ];
 
@@ -1434,6 +1441,11 @@ class PublicationTrackingController extends Controller
                         $data['opinion_at'] = $now;
                 }
 
+                if ($readyChanged) {
+                        $data['ready_by'] = $user;
+                        $data['ready_at'] = $now;
+                }
+
                 $detail->update($data);
 
                 return response()->json([
@@ -1442,6 +1454,7 @@ class PublicationTrackingController extends Controller
                         'decision_meta' => $this->actorMeta($detail->decision_by, $detail->decision_at),
                         'result_meta' => $this->actorMeta($detail->result_by, $detail->result_at),
                         'opinion_meta' => $this->actorMeta($detail->opinion_by, $detail->opinion_at),
+                        'ready_meta' => $this->actorMeta($detail->ready_by, $detail->ready_at),
                         'message' => 'Đã lưu.',
                 ]);
         }

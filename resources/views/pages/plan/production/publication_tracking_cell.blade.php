@@ -36,6 +36,15 @@
             @endforelse
 
             <div class="pt-inline-meta">
+                Hồ sơ sẵn sàng:
+                @if ($detail->ready)
+                    <span class="text-success font-weight-bold">Có</span>
+                @else
+                    <span class="text-muted">Chưa</span>
+                @endif
+            </div>
+
+            <div class="pt-inline-meta">
                 Quyết định:
                 @if ($detail->decision)
                     <span class="text-success font-weight-bold">Có thực hiện</span>

@@ -999,8 +999,10 @@
                     <td>{{ $data->note ?? '' }}</td>
                     {{-- 4 cột phản hồi QA: giữ đúng cách thể hiện của open_feedback_API
                          (has_BMR_text / qa_feedback_text) để file Excel QA và bản xuất
-                         từ web đọc ra cùng một giá trị --}}
-                    <td>{{ $data->has_BMR ? 'Đã sẵn sàng' : 'Chưa sẵn sàng' }}</td>
+                         từ web đọc ra cùng một giá trị.
+                         Hồ sơ lô nay tách thành BMR (has_BMR) và BPR (has_BPR); cột này
+                         giữ nguyên nghĩa cũ "cả lô đã xong hồ sơ" nên phải đủ cả hai. --}}
+                    <td>{{ $data->has_BMR && ($data->has_BPR ?? 1) ? 'Đã sẵn sàng' : 'Chưa sẵn sàng' }}</td>
                     <td>{{ $data->qa_feedback ?? 'NA' }}</td>
                     <td>{{ $data->qa_feedback_by ?? '' }}</td>
                     <td>{{ $data->qa_feedback_date ? \Carbon\Carbon::parse($data->qa_feedback_date)->format('d/m/Y') : '' }}

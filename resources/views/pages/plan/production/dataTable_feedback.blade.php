@@ -116,6 +116,7 @@
             $actual_Mod_Count = 0;
             $actual_export_record_Count = 0;
             $has_BMR = 0;
+            $has_BPR = 0;
         @endphp
 
         <!-- /.card-Body -->
@@ -136,6 +137,9 @@
                             }
                             if ($data->has_BMR == 0) {
                                 $has_BMR++;
+                            }
+                            if (($data->has_BPR ?? 1) == 0) {
+                                $has_BPR++;
                             }
                             if ($data->has_punch_die_mold == 0) {
                                 $actual_Mod_Count++;
@@ -319,11 +323,23 @@
                                 {{-- Theo dõi lên ấn bản của kỳ trùng tháng kế hoạch: mã nào chưa có
                                      nội dung nào thì không hiện gì, cột giữ nguyên như trước --}}
                                 @php
+                                    // pt_details giờ chứa TOÀN BỘ mã khớp kế hoạch (kể cả mã chưa ai
+                                    // đụng tới, cần thiết để tính đúng has_BMR - xem
+                                    // ProductionPlanController::publicationTrackingForPlan), nên phải
+                                    // tự lọc lại ở đây: chỉ hiện mã có gì đáng xem, tránh cột phản hồi
+                                    // rỗng tràn lan cho những mã chưa ai xác nhận.
                                     $pt_entries = [];
                                     if ($pt_period) {
                                         foreach ([['TP', $data->finished_product_code], ['BTP', $data->intermediate_code]] as [$pt_type, $pt_code]) {
                                             $pt_detail = $pt_code ? $pt_details->get($pt_type . '-' . $pt_code) : null;
-                                            if ($pt_detail) {
+                                            if (
+                                                $pt_detail &&
+                                                ($pt_detail->taskItems->isNotEmpty() ||
+                                                    $pt_detail->decision !== null ||
+                                                    $pt_detail->completed_date ||
+                                                    filled($pt_detail->comment) ||
+                                                    $pt_detail->ready)
+                                            ) {
                                                 $pt_entries[] = ['type' => $pt_type, 'detail' => $pt_detail];
                                             }
                                         }
@@ -365,19 +381,49 @@
                                 @else
                                     {{-- Từ 09/2026 tình trạng hồ sơ lô do "Theo dõi lên ấn bản" quyết định
                                          nên nói thẳng bằng chữ, không còn ô tích để hiểu nhầm là nhập tay --}}
-                                    <div class="pt-bmr-status {{ $data->has_BMR ? 'text-success' : 'text-danger' }}">
-                                        <i
-                                            class="fas {{ $data->has_BMR ? 'fa-check-circle' : 'fa-exclamation-circle' }}"></i>
-                                        @if ($data->has_BMR)
-                                            Hồ sơ lô sẵn sàng
-                                        @else
-                                            Hồ sơ lô chưa sẵn sàng
-                                            @if ($data->pt_expected_date ?? null)
-                                                - dự kiến hoàn thành lên ấn bản ngày
-                                                {{ $data->pt_expected_date->format('d/m/Y') }}
+                                    {{-- Mỗi lô có 2 hồ sơ do 2 mã khác nhau quyết định: BMR theo mã
+                                         BTP, BPR theo mã TP. Gộp 1 dòng thì nhìn ô đỏ không biết còn
+                                         phải vào tick "Hồ sơ sẵn sàng" cho mã nào, nên tách hẳn 2 dòng
+                                         và nêu luôn mã của từng hồ sơ. --}}
+                                    @php
+                                        $pt_status_rows = [
+                                            [
+                                                'label' => 'BMR',
+                                                'code' => $data->intermediate_code,
+                                                'ready' => $data->has_BMR,
+                                                'due' => $data->pt_bmr_due ?? null,
+                                                // Công thức MMS gắn với mã BTP nên chỉ chặn hồ sơ BMR
+                                                'missing_formula' => $data->pt_missing_formula ?? false,
+                                            ],
+                                            [
+                                                'label' => 'BPR',
+                                                'code' => $data->finished_product_code,
+                                                'ready' => $data->has_BPR ?? 1,
+                                                'due' => $data->pt_bpr_due ?? null,
+                                                'missing_formula' => false,
+                                            ],
+                                        ];
+                                    @endphp
+
+                                    @foreach ($pt_status_rows as $pt_status)
+                                        <div
+                                            class="pt-bmr-status {{ $pt_status['ready'] ? 'text-success' : 'text-danger' }}">
+                                            <i
+                                                class="fas {{ $pt_status['ready'] ? 'fa-check-circle' : 'fa-exclamation-circle' }}"></i>
+                                            {{ $pt_status['label'] }} {{ $pt_status['code'] }}:
+                                            @if ($pt_status['ready'])
+                                                Hồ sơ sẵn sàng
+                                            @else
+                                                Hồ sơ chưa sẵn sàng
+                                                @if ($pt_status['missing_formula'])
+                                                    - chưa có công thức trên MMS
+                                                @elseif ($pt_status['due'])
+                                                    - dự kiến lên ấn bản
+                                                    {{ \Carbon\Carbon::parse($pt_status['due'])->format('d/m/Y') }}
+                                                @endif
                                             @endif
-                                        @endif
-                                    </div>
+                                        </div>
+                                    @endforeach
                                 @endif
 
                                 @if (!empty($pt_entries))
@@ -520,8 +566,16 @@
                         </th>
                         <th>
                             <div>{{ 'ĐẢM BẢO CHẤT LƯỢNG' }}</div>
-                            <div>{{ '(1) Tình hình hồ sơ lô' }} <span class ="text-red">
-                                    {{ "(chưa có:  $has_BMR lô)" }} </span></div>
+                            <div>{{ '(1) Tình hình hồ sơ lô' }}
+                                @if ($show_qa_feedback)
+                                    <span class ="text-red">{{ "(chưa có:  $has_BMR lô)" }} </span>
+                                @else
+                                    {{-- 2 hồ sơ tách riêng nên phải đếm riêng, gộp lại thì
+                                         không biết đang thiếu phía BMR hay phía BPR --}}
+                                    <span class ="text-red">
+                                        {{ "(BMR chưa SS: $has_BMR lô - BPR chưa SS: $has_BPR lô)" }} </span>
+                                @endif
+                            </div>
                             {{-- <div>{{"(2) Hồ sơ thực tế?"}} </div> --}}
                             <div>{{ $show_qa_feedback ? '(2) Phản hồi' : '(2) Theo dõi lên ấn bản' }} </div>
                             {{-- @if ($department == 'QA' && $plan_feedback)

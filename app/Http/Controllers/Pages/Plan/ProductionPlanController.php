@@ -2743,6 +2743,11 @@ class ProductionPlanController extends Controller
                         return [$period, collect()];
                 }
 
+                // Trả về TOÀN BỘ mã khớp kế hoạch, kể cả mã chưa ai đụng tới: từ giờ mã chưa
+                // được xác nhận "Hồ sơ sẵn sàng" vẫn phải tính là đang chặn hồ sơ lô (xem
+                // publicationTrackingSettled), nên không được lọc bớt ở đây như trước nữa.
+                // View chỉ hiển thị lại các mã có nội dung đáng xem (xem $pt_entries trong
+                // dataTable_feedback.blade.php) để cột phản hồi không bị rỗng tràn lan.
                 $details = PublicationTrackingDetail::with(['taskItems.task'])
                         ->where('period_id', $period->id)
                         ->where(function ($q) use ($product_codes, $intermediate_codes) {
@@ -2753,24 +2758,29 @@ class ProductionPlanController extends Controller
                                 });
                         })
                         ->get()
-                        // Mã chưa ai đụng tới thì bỏ hẳn, cột phản hồi giữ nguyên như cũ
-                        ->filter(fn($detail) => $detail->taskItems->isNotEmpty()
-                                || $detail->decision !== null
-                                || $detail->completed_date
-                                || filled($detail->comment))
                         ->keyBy(fn($detail) => $detail->category_type . '-' . $detail->code);
 
                 return [$period, $details];
         }
 
         /**
-         * Đặt lại "Hồ sơ lô" theo tình trạng lên ấn bản của các mã TP / BTP của dòng:
-         * mọi mã liên quan đều đã chốt (không lên ấn bản, hoặc đã lên xong đúng hạn)
-         * thì hồ sơ lô sẵn sàng, còn một mã đang chờ là chưa. Dòng không khớp mã nào
-         * trong kỳ nghĩa là không có gì phải chờ nên cũng tính là sẵn sàng.
+         * Đặt lại tình trạng hồ sơ của lô theo "Theo dõi lên ấn bản".
          *
-         * Ghi thẳng xuống plan_master để báo cáo và số đếm "chưa có N lô" không lệch
-         * với ô hiển thị, kèm pt_expected_date cho view nêu ngày dự kiến hoàn thành.
+         * Mỗi lô gắn với 2 mã và 2 loại hồ sơ do 2 nơi xác nhận khác nhau, nên tách
+         * thành 2 trạng thái độc lập thay vì gộp làm một:
+         *   - has_BMR theo mã BTP (intermediate_code)
+         *   - has_BPR theo mã TP  (finished_product_code)
+         * Gộp chung như trước thì nhìn ô đỏ không biết còn phải đi tick cho mã nào.
+         *
+         * Một mã coi là xong khi publicationTrackingSettled() trả về true. Mã không có
+         * mặt trong kỳ theo dõi thì KHÔNG tính là đang chờ: không có dòng nào để dược sĩ
+         * tick nên bắt chờ sẽ kẹt vĩnh viễn.
+         *
+         * Riêng BMR còn phải có công thức chính thức trên MMS: chưa có công thức nghĩa là
+         * chưa đủ cơ sở ra hồ sơ lô, bất kể "Theo dõi lên ấn bản" nói gì.
+         *
+         * Ghi thẳng xuống plan_master để báo cáo và số đếm "chưa sẵn sàng N lô" không lệch
+         * với ô hiển thị, kèm ngày dự kiến lên ấn bản cho view nêu lý do còn chờ.
          */
         private function syncHasBmrFromPublicationTracking($datas, $pt_period, $pt_details): void
         {
@@ -2779,49 +2789,70 @@ class ProductionPlanController extends Controller
                         return;
                 }
 
-                $updates = [0 => [], 1 => []];
+                $mmsRevisions = mms_bom_revisions(collect($datas)->pluck('intermediate_code'));
+
+                $updates = ['has_BMR' => [0 => [], 1 => []], 'has_BPR' => [0 => [], 1 => []]];
 
                 foreach ($datas as $data) {
-                        $blocking = collect(['TP-' . $data->finished_product_code, 'BTP-' . $data->intermediate_code])
-                                ->map(fn($key) => $pt_details->get($key))
-                                ->filter()
-                                ->reject(fn($detail) => $this->publicationTrackingSettled($detail));
+                        $hasFormula = isset($mmsRevisions[trim((string) $data->intermediate_code)]);
+                        $data->pt_missing_formula = !$hasFormula;
 
-                        $ready = (int) $blocking->isEmpty();
+                        $bmr = $pt_details->get('BTP-' . $data->intermediate_code);
+                        $bpr = $pt_details->get('TP-' . $data->finished_product_code);
 
-                        // Mã cuối cùng lên xong mới là lúc hồ sơ lô sẵn sàng, nên lấy hạn muộn nhất
-                        $data->pt_expected_date = $blocking->pluck('due_date')->filter()->max();
+                        $bmrBlocked = $bmr && !$this->publicationTrackingSettled($bmr);
+                        $bprBlocked = $bpr && !$this->publicationTrackingSettled($bpr);
 
-                        if ((int) $data->has_BMR !== $ready) {
-                                $updates[$ready][] = $data->id;
+                        // Ngày dự kiến lên ấn bản của mã đang chờ, để ô hiển thị nêu lý do
+                        $data->pt_bmr_due = $bmrBlocked ? $bmr->due_date : null;
+                        $data->pt_bpr_due = $bprBlocked ? $bpr->due_date : null;
+
+                        $values = [
+                                'has_BMR' => (int) ($hasFormula && !$bmrBlocked),
+                                'has_BPR' => (int) !$bprBlocked,
+                        ];
+
+                        foreach ($values as $column => $value) {
+                                if ((int) $data->$column !== $value) {
+                                        $updates[$column][$value][] = $data->id;
+                                }
+
+                                $data->$column = $value;
                         }
-
-                        $data->has_BMR = $ready;
                 }
 
-                foreach ($updates as $value => $ids) {
-                        foreach (array_chunk($ids, 500) as $chunk) {
-                                DB::table('plan_master')->whereIn('id', $chunk)->update(['has_BMR' => $value]);
+                foreach ($updates as $column => $idsByValue) {
+                        foreach ($idsByValue as $value => $ids) {
+                                foreach (array_chunk($ids, 500) as $chunk) {
+                                        DB::table('plan_master')->whereIn('id', $chunk)->update([$column => $value]);
+                                }
                         }
                 }
         }
 
         /**
-         * Mã này không còn chặn hồ sơ lô: hoặc đã quyết định không thực hiện,
-         * hoặc đã hoàn thành không trễ hơn ngày dự kiến - đúng điều kiện mà trang
-         * Theo Dõi Lên Ấn Bản gắn nhãn "Đáp ứng". Thiếu ngày dự kiến thì chưa
-         * kết luận được là đáp ứng nên vẫn tính là đang chờ.
+         * Mã này không còn chặn hồ sơ lô. Mặc định là CÓ chặn (chưa sẵn sàng); chỉ 2
+         * trường hợp coi là hết chặn:
+         *   - Dược sĩ phụ trách tự tick "Hồ sơ sẵn sàng" (cột ready) ở trang Theo Dõi
+         *     Lên Ấn Bản, bất kể nội dung theo dõi / quyết định thế nào.
+         *   - Đã quyết định "Có thực hiện" VÀ đã có ngày hoàn thành không muộn hơn
+         *     hôm nay.
+         * Quyết định "Không thực hiện" một mình KHÔNG đủ để coi là sẵn sàng nữa -
+         * dược sĩ vẫn phải tick "Hồ sơ sẵn sàng" để xác nhận.
          */
         private function publicationTrackingSettled($detail): bool
         {
-                if (!$detail->decision) {
+                if ($detail->ready) {
                         return true;
                 }
 
-                $due = $detail->due_date?->format('Y-m-d');
+                if (!$detail->decision) {
+                        return false;
+                }
+
                 $completed = $detail->completed_date?->format('Y-m-d');
 
-                return $due && $completed && $completed <= $due;
+                return $completed && $completed <= now()->format('Y-m-d');
         }
 
         public function accept_expected_date(Request $request)

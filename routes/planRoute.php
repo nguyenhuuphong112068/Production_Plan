@@ -87,7 +87,11 @@ Route::prefix('/plan')
             ->group(function () {
                 Route::get('', 'index')->name('list');
                 Route::get('open', 'open')->name('open');
+                Route::get('candidates', 'candidates')->name('candidates');
+                Route::get('history', 'history')->name('history');
                 Route::post('save', 'save')->name('save');
+                Route::post('store', 'store')->name('store');
+                Route::post('destroy', 'destroy')->name('destroy');
             });
 
         Route::prefix('/maintenance')

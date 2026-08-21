@@ -35,6 +35,9 @@ class PublicationTrackingDetail extends Model
         'result_at',
         'opinion_by',
         'opinion_at',
+        'ready',
+        'ready_by',
+        'ready_at',
         'sort_order',
         'updated_by',
     ];
@@ -46,6 +49,8 @@ class PublicationTrackingDetail extends Model
         'decision_at' => 'datetime',
         'result_at' => 'datetime',
         'opinion_at' => 'datetime',
+        'ready' => 'boolean',
+        'ready_at' => 'datetime',
     ];
 
     public function period()
