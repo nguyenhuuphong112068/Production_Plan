@@ -594,21 +594,33 @@
             });
 
             // ----- Lọc theo kế hoạch tháng -----
-            // Lọc theo data-planned của dòng chứ không theo chữ trong ô: nhãn "KH" nằm
-            // cùng ô với mã, tìm theo text sẽ dính nhầm cả nội dung theo dõi của mã khác.
+            // Lọc theo data-planned / data-additional của dòng chứ không theo chữ trong ô:
+            // nhãn "KH" và "PS" nằm cùng ô với mã, tìm theo text sẽ dính nhầm cả nội dung
+            // theo dõi của mã khác. Hai bộ lọc chồng nhau: chọn cả hai thì phải thoả cả hai.
+            const rowFilters = [{
+                selector: '.pt-filter-planned',
+                attr: 'data-planned'
+            }, {
+                selector: '.pt-filter-additional',
+                attr: 'data-additional'
+            }];
+
             $.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
-                const $select = $('.pt-filter-planned[data-table="' + settings.nTable.id + '"]');
-
-                // Bảng khác trên trang không có bộ lọc này thì không đụng tới
-                if (!$select.length || $select.val() === '') {
-                    return true;
-                }
-
                 const row = settings.aoData[dataIndex].nTr;
-                return $(row).attr('data-planned') === $select.val();
+
+                return rowFilters.every(function(filter) {
+                    const $select = $(filter.selector + '[data-table="' + settings.nTable.id + '"]');
+
+                    // Bảng khác trên trang không có bộ lọc này thì không đụng tới
+                    if (!$select.length || $select.val() === '') {
+                        return true;
+                    }
+
+                    return $(row).attr(filter.attr) === $select.val();
+                });
             });
 
-            $(document).on('change', '.pt-filter-planned', function() {
+            $(document).on('change', '.pt-filter-planned, .pt-filter-additional', function() {
                 const selector = '#' + $(this).attr('data-table');
 
                 Object.keys(tables).forEach(function(type) {

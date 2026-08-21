@@ -17,24 +17,45 @@
 {{-- Lọc theo kế hoạch tháng: chưa lập kế hoạch thì không có gì để lọc, ẩn luôn cho gọn --}}
 @if ($hasMonthlyPlan)
     @php
-        $plannedCount = $items->filter(
-            fn($i) => isset($plannedBatches[$i->category_type . '-' . $i->category_id]),
-        )->count();
+        $plannedCount = $items
+            ->filter(fn($i) => isset($plannedBatches[$i->category_type . '-' . $i->category_id]))
+            ->count();
+
+        // Mã có ít nhất 1 lô phát sinh so với kế hoạch dự kiến (plan_master.additional = 1)
+        $additionalCount = $items
+            ->filter(fn($i) => ($plannedBatches[$i->category_type . '-' . $i->category_id]['additional_count'] ?? 0) > 0)
+            ->count();
     @endphp
 
     <div class="d-flex align-items-center flex-wrap mb-2">
         <label class="mb-0 mr-2" for="filter_planned_{{ $type }}">
             <i class="fas fa-calendar-check text-danger"></i> Kế hoạch {{ $planLabel }}:
         </label>
-        <select class="form-control form-control-sm w-auto mr-2 pt-filter-planned" id="filter_planned_{{ $type }}"
-            data-table="{{ $tableId }}">
+        <select class="form-control form-control-sm w-auto mr-3 pt-filter-planned"
+            id="filter_planned_{{ $type }}" data-table="{{ $tableId }}">
             <option value="">Tất cả mã ({{ $items->count() }})</option>
             <option value="1">Có kế hoạch ({{ $plannedCount }})</option>
             <option value="0">Chưa có kế hoạch ({{ $items->count() - $plannedCount }})</option>
         </select>
+
+        <label class="mb-0 mr-2" for="filter_additional_{{ $type }}">
+            <i class="fas fa-bolt text-warning"></i> Lô phát sinh:
+        </label>
+        <select class="form-control form-control-sm w-auto pt-filter-additional"
+            id="filter_additional_{{ $type }}" data-table="{{ $tableId }}">
+            <option value="">Tất cả mã ({{ $items->count() }})</option>
+            <option value="1">Có lô phát sinh ({{ $additionalCount }})</option>
+            <option value="0">Không có lô phát sinh ({{ $items->count() - $additionalCount }})</option>
+        </select>
+    </div>
+
+    <div class="mb-2">
         <small class="text-muted">
+            <i class="fas fa-info-circle"></i>
             Mã có nhãn <span class="badge badge-danger"><i class="fas fa-calendar-check"></i> KH</span>
-            sẽ được sản xuất trong {{ $planLabel }} &mdash; nên ưu tiên quyết định lên ấn bản.
+            sẽ được sản xuất trong {{ $planLabel }} &mdash;.
+            Nhãn <span class="badge badge-warning"><i class="fas fa-bolt"></i> PS</span>
+            là lô phát sinh so với kế hoạch dự kiến.
         </small>
     </div>
 @else
@@ -101,9 +122,13 @@
                 // Kế hoạch tháng của mã; null = tháng này không có lô nào của mã đó
                 $planned = $plannedBatches[$item->category_type . '-' . $item->category_id] ?? null;
                 $plannedLots = collect($planned['lots'] ?? []);
+
+                // Phần lô phát sinh so với kế hoạch dự kiến, là tập con của số lô trên
+                $additionalBatches = $planned['additional_count'] ?? 0;
+                $additionalLots = collect($planned['additional_lots'] ?? []);
             @endphp
             <tr data-detail-id="{{ $item->id }}" data-can-manage="{{ $canManage ? 1 : 0 }}"
-                data-planned="{{ $planned ? 1 : 0 }}">
+                data-planned="{{ $planned ? 1 : 0 }}" data-additional="{{ $additionalBatches ? 1 : 0 }}">
                 @if ($showPicker)
                     <td class="text-center align-middle">
                         <input type="checkbox" class="pt-row-check" data-type="{{ $type }}"
@@ -130,6 +155,17 @@
                             <span class="badge badge-danger pt-planned-badge"
                                 title="Kế hoạch {{ $planLabel }}: {{ $planned['count'] }} lô{{ $plannedLots->isNotEmpty() ? ' — số lô ' . $plannedLots->implode(', ') : '' }}">
                                 <i class="fas fa-calendar-check"></i> KH {{ $planned['count'] }} lô
+                            </span>
+                        </div>
+                    @endif
+
+                    {{-- Lô phát sinh ngoài kế hoạch dự kiến: nhãn riêng vì đây là phần chen
+                         ngang kế hoạch, dược sĩ cần thấy tách bạch với số lô đã dự kiến --}}
+                    @if ($additionalBatches)
+                        <div>
+                            <span class="badge badge-warning pt-additional-badge"
+                                title="Lô phát sinh so với kế hoạch dự kiến: {{ $additionalBatches }} lô{{ $additionalLots->isNotEmpty() ? ' — số lô ' . $additionalLots->implode(', ') : '' }}">
+                                <i class="fas fa-bolt"></i> PS {{ $additionalBatches }} lô
                             </span>
                         </div>
                     @endif
@@ -183,10 +219,10 @@
                     {{-- Ý kiến của dược sĩ phụ trách về các nội dung theo dõi của mã này --}}
                     <div class="pt-opinion-box">
                         <label class="pt-opinion-label mb-0">Ý kiến DSPT</label>
-                        <textarea class="form-control form-control-sm pt-opinion" rows="2"
-                            placeholder="Ý kiến của dược sĩ phụ trách..."
+                        <textarea class="form-control form-control-sm pt-opinion" rows="2" placeholder="Ý kiến của dược sĩ phụ trách..."
                             {{ $canManage ? '' : 'readonly' }}>{{ $item->pharmacist_opinion }}</textarea>
-                        <div class="pt-meta pt-opinion-meta" title="Người ghi ý kiến gần nhất">{{ $opinionMeta }}</div>
+                        <div class="pt-meta pt-opinion-meta" title="Người ghi ý kiến gần nhất">{{ $opinionMeta }}
+                        </div>
                     </div>
                 </td>
 

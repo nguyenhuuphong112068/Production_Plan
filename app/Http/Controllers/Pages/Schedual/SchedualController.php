@@ -6354,10 +6354,7 @@ class SchedualController extends Controller
             ->where('sp.active', 1)
             ->where('sp.not_schedule', 0)
             ->whereNull('sp.start')
-            ->where(function ($q) {
-                $q->whereNotNull('plan_master.after_weigth_date')
-                    ->whereDate('plan_master.after_weigth_date', '<=', \Carbon\Carbon::today());
-            })
+            ->whereNotNull('plan_master.after_weigth_date')
             ->whereIn('sp.campaign_code', $vipCampaigns)
             ->where('sp.deparment_code', session('user.production_code'))
             ->orderByRaw("FIELD(sp.campaign_code, '" . implode("','", $vipCampaigns) . "') ASC")
@@ -6514,10 +6511,7 @@ class SchedualController extends Controller
             ->where('sp.not_schedule', 0)
             ->where('sp.active', 1)
             ->whereNull('sp.start')
-            ->where(function ($q) {
-                $q->whereNotNull('plan_master.after_weigth_date')
-                    ->whereDate('plan_master.after_weigth_date', '<=', \Carbon\Carbon::today());
-            })
+            ->whereNotNull('plan_master.after_weigth_date')
             ->where(function ($q) {
                 // Chỉ sắp nếu predecessor đã có lịch hoặc không có predecessor (stage 3)
                 $q->whereNotNull('prev.start')
@@ -6663,10 +6657,6 @@ class SchedualController extends Controller
             ->where('sp.not_schedule', 0)
             ->where('sp.active', 1)
             ->whereNull('sp.start')
-            ->where(function ($q) {
-                $q->whereNotNull('plan_master.after_weigth_date')
-                    ->whereDate('plan_master.after_weigth_date', '<=', \Carbon\Carbon::today());
-            })
             ->whereNotNull('prev.start')
             ->whereNotNull('plan_master.after_weigth_date')
             ->when($stageCode == 7, function ($q) {
@@ -6779,10 +6769,6 @@ class SchedualController extends Controller
             ->where('sp.active', 1)
             ->where('intermediate_category.quarantine_total', '>', 0)
             ->whereNull('sp.start')
-            ->where(function ($q) {
-                $q->whereNotNull('plan_master.after_weigth_date')
-                    ->whereDate('plan_master.after_weigth_date', '<=', \Carbon\Carbon::today());
-            })
             ->whereNotNull('plan_master.after_weigth_date')
             ->when($stageCode == 7, function ($q) {
 
@@ -6908,10 +6894,6 @@ class SchedualController extends Controller
                 ->where('sp.finished', 0)
                 ->where('sp.active', 1)
                 ->whereNull('sp.start')
-                ->where(function ($q) {
-                    $q->whereNotNull('plan_master.after_weigth_date')
-                        ->whereDate('plan_master.after_weigth_date', '<=', \Carbon\Carbon::today());
-                })
                 ->where('sp.not_schedule', 0)
                 ->whereNotNull('plan_master.after_weigth_date')
                 ->when($promotionalFilter !== null, function ($q) use ($promotionalFilter) {
@@ -6967,10 +6949,6 @@ class SchedualController extends Controller
                 ->where('sp.finished', 0)
                 ->where('sp.active', 1)
                 ->whereNull('sp.start')
-                ->where(function ($q) {
-                    $q->whereNotNull('plan_master.after_weigth_date')
-                        ->whereDate('plan_master.after_weigth_date', '<=', \Carbon\Carbon::today());
-                })
                 ->where('sp.not_schedule', 0)
                 ->whereNotNull('plan_master.after_weigth_date')
                 ->when($stageCode == 7, function ($q) {
@@ -7082,10 +7060,6 @@ class SchedualController extends Controller
             ->where('next.active', 1)
             ->whereIn('sp.stage_code', [1,  2])
             ->whereNull('sp.start')
-            ->where(function ($q) {
-                $q->whereNotNull('plan_master.after_weigth_date')
-                    ->whereDate('plan_master.after_weigth_date', '<=', \Carbon\Carbon::today());
-            })
             ->where('sp.finished', 0)
             ->where('next.finished', 0)
             ->whereNotNull('next.start')
@@ -8284,11 +8258,7 @@ class SchedualController extends Controller
                 ->where('sp.finished', 0)
                 ->where('sp.not_schedule', 0)
                 ->whereNull('sp.start')  // Chỉ sắp task chưa có lịch
-                ->where(function ($q) {
-                    $q->whereNotNull('plan_master.after_weigth_date')
-                        ->whereDate('plan_master.after_weigth_date', '<=', \Carbon\Carbon::today());
-                })
-                // ->whereNotNull('plan_master.after_weigth_date')
+                ->whereNotNull('plan_master.after_weigth_date')
                 ->where('sp.deparment_code', session('user.production_code'))
                 ->orderBy('prev.start', 'asc')
                 ->get();

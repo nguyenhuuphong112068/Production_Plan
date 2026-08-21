@@ -559,13 +559,13 @@
                                         data-id="{{ $data->id }}">
                                 </div>
 
-                                <div style="display:flex; align-items:center; gap:6px;">
+                                {{-- <div style="display:flex; align-items:center; gap:6px;">
                                     <span>(5):</span>
                                     <input {{ $auth_update }} type="date" class="updateInput"
                                         name="parkaging_before_date"
                                         value="{{ $data->parkaging_before_date ? \Carbon\Carbon::parse($data->parkaging_before_date)->format('Y-m-d') : '' }}"
                                         data-id="{{ $data->id }}">
-                                </div>
+                                </div> --}}
 
                             </td>
 
@@ -1313,13 +1313,13 @@
                                   <td class="text-center align-middle">
                                       ${item.is_val ? '<i class="fas fa-check-circle text-primary fs-4"></i>' : ''}
                                       ${item.vts && item.vts.length > 0 ? item.vts.map(vt => `
-                                                                                      <div class="mt-1 text-left">
-                                                                                          <span class="badge badge-warning" style="white-space: normal; text-align: left; line-height: 1.4; border: 1px solid #ffc107;">
-                                                                                              <i class="fas fa-exclamation-triangle"></i> TĐNL: ${vt.MaterialName}
-                                                                                              ${vt.purpose ? `<br><small>${vt.purpose}</small>` : ''}
-                                                                                          </span>
-                                                                                      </div>
-                                                                                  `).join('') : ''}
+                                                                                          <div class="mt-1 text-left">
+                                                                                              <span class="badge badge-warning" style="white-space: normal; text-align: left; line-height: 1.4; border: 1px solid #ffc107;">
+                                                                                                  <i class="fas fa-exclamation-triangle"></i> TĐNL: ${vt.MaterialName}
+                                                                                                  ${vt.purpose ? `<br><small>${vt.purpose}</small>` : ''}
+                                                                                              </span>
+                                                                                          </div>
+                                                                                      `).join('') : ''}
                                   </td>
 
 

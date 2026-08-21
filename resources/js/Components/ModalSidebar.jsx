@@ -211,11 +211,17 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
     return date.getTime() > today.getTime();
   };
 
+  // Chỉ chặn khi chưa xác định ngày. Ngày ở tương lai vẫn cho kéo thả (chỉ cảnh báo).
+  const isDateMissing = (dateStr) => {
+    if (!dateStr) return true;
+    return isNaN(new Date(dateStr).getTime());
+  };
+
   const isRowBlocked = (rowData) => {
     const showWeight = [1, 2, 3, 4, 5, 6].includes(stageFilter);
     const showPkg = stageFilter === 7;
-    if (showWeight && checkNotReady(rowData.after_weigth_date)) return true;
-    if (showPkg && checkNotReady(rowData.after_parkaging_date)) return true;
+    if (showWeight && isDateMissing(rowData.after_weigth_date)) return true;
+    if (showPkg && isDateMissing(rowData.after_parkaging_date)) return true;
     return false;
   };
 
@@ -1994,7 +2000,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
                       className={blocked ? "px-2 py-1 bg-gray-100 border border-gray-400 rounded text-sm text-center text-gray-400 cursor-not-allowed" : "fc-event cursor-move px-2 py-1 bg-blue-100 border border-blue-400 rounded text-sm text-center"}
                       draggable={blocked ? "false" : "true"}
                       onClick={blocked ? undefined : handleSelectionChange}
-                      title={blocked ? "Chưa sẵn sàng để kéo thả" : ""}
+                      title={blocked ? "Chưa xác định ngày có đủ NL/BB" : ""}
                       style={blocked ? { opacity: 0.6 } : {}}
                     >
                       <i className="fas fa-arrows-alt"></i>

@@ -263,7 +263,11 @@ class PublicationTrackingController extends Controller
          * Kế hoạch lập theo mã TP; mã BTP nhận số lô của mọi mã TP dùng chung
          * bán thành phẩm đó, vì lên ấn bản BMR là lên cho cả nhóm TP ấy.
          *
-         * @return array ['TP-12' => ['count' => 3, 'lots' => [...]], ...]
+         * Lô phát sinh so với kế hoạch dự kiến (plan_master.additional = 1) là tập con
+         * của số lô trên, được đếm riêng để có nhãn và bộ lọc riêng.
+         *
+         * @return array ['TP-12' => ['count' => 3, 'lots' => [...],
+         *                            'additional_count' => 1, 'additional_lots' => [...]], ...]
          *               mã không có kế hoạch thì vắng mặt
          */
         private function plannedBatches(PublicationTrackingPeriod $period): array
@@ -278,7 +282,8 @@ class PublicationTrackingController extends Controller
                         ->select(
                                 'finished_product_category.id as tp_id',
                                 'intermediate_category.id as btp_id',
-                                'plan_master.batch'
+                                'plan_master.batch',
+                                'plan_master.additional'
                         )
                         ->join(
                                 'finished_product_category',
@@ -310,6 +315,16 @@ class PublicationTrackingController extends Controller
                                 if (filled($row->batch)) {
                                         $planned[$key]['lots'][] = $row->batch;
                                 }
+
+                                if (!$row->additional) {
+                                        continue;
+                                }
+
+                                $planned[$key]['additional_count'] = ($planned[$key]['additional_count'] ?? 0) + 1;
+
+                                if (filled($row->batch)) {
+                                        $planned[$key]['additional_lots'][] = $row->batch;
+                                }
                         }
                 }
 
@@ -334,7 +349,8 @@ class PublicationTrackingController extends Controller
         }
 
         /**
-         * Ghi danh sách mã BTP / TP còn hiệu lực tới ngày kết thúc kỳ vào bảng chi tiết.
+         * Ghi danh sách mã BTP / TP còn hiệu lực tới mốc xét của kỳ (xem effectiveUntil())
+         * vào bảng chi tiết.
          * Kỳ đã chốt được giữ nguyên; kỳ đang mở thì thêm mã mới, cập nhật lại
          * snapshot và dọn các mã không còn hiệu lực mà chưa ai nhập nội dung.
          */
@@ -424,10 +440,28 @@ class PublicationTrackingController extends Controller
                 });
         }
 
-        /** Mã bán thành phẩm còn hiệu lực tính tới ngày kết thúc kỳ */
+        /**
+         * Mốc thời gian xét mã còn hiệu lực của kỳ.
+         *
+         * Kỳ đã chốt giữ nguyên ngày kết thúc chu kỳ để tái hiện đúng danh sách mã
+         * tại thời điểm chốt. Kỳ đang mở lấy tới hôm nay, vì kỳ vẫn đang quyết định
+         * lên ấn bản nên mã mới thêm vào danh mục sau ngày kết thúc chu kỳ cũng
+         * phải đồng bộ được vào kỳ. Kỳ đang mở mà chu kỳ còn ở tương lai thì giữ
+         * ngày kết thúc để không thu hẹp phạm vi so với trước.
+         */
+        private function effectiveUntil(PublicationTrackingPeriod $period): string
+        {
+                if ($period->status === 'Đã chốt') {
+                        return $period->end_date->toDateString();
+                }
+
+                return $period->end_date->max(Carbon::now())->toDateString();
+        }
+
+        /** Mã bán thành phẩm còn hiệu lực tính tới mốc xét của kỳ */
         private function effectiveIntermediates(PublicationTrackingPeriod $period)
         {
-                $endDate = $period->end_date->toDateString();
+                $endDate = $this->effectiveUntil($period);
 
                 return DB::table('intermediate_category')
                         ->select(
@@ -472,10 +506,10 @@ class PublicationTrackingController extends Controller
                         ]);
         }
 
-        /** Mã thành phẩm còn hiệu lực tính tới ngày kết thúc kỳ */
+        /** Mã thành phẩm còn hiệu lực tính tới mốc xét của kỳ */
         private function effectiveProducts(PublicationTrackingPeriod $period)
         {
-                $endDate = $period->end_date->toDateString();
+                $endDate = $this->effectiveUntil($period);
 
                 // Dược sĩ phụ trách của mã TP (BPR) lấy theo mã BTP (BMR) tương ứng:
                 // danh mục thành phẩm không còn tự xác định dược sĩ phụ trách nữa.
