@@ -22,8 +22,15 @@
                     <td class="text-center">{{ $index + 1 }}</td>
                     <td>{{ optional($history->created_at)->format('d/m/Y H:i') }}</td>
                     <td>{{ $history->changed_by }}</td>
+                    @php
+                        $actionBadge = [
+                            'create' => 'badge-success',
+                            'lock' => 'badge-danger',
+                            'unlock' => 'badge-warning',
+                        ][$history->action] ?? 'badge-primary';
+                    @endphp
                     <td>
-                        <span class="badge {{ $history->action === 'create' ? 'badge-success' : 'badge-primary' }}">
+                        <span class="badge {{ $actionBadge }}">
                             {{ $history->action_label }}
                         </span>
                     </td>

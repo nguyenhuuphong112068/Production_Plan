@@ -12,8 +12,10 @@ use Illuminate\Support\Facades\DB;
  *
  * Dòng được sinh tự động khi gửi kế hoạch tháng, ban đầu chỉ có plan_master_id và
  * plan_list_id; người dùng bổ sung số PO và thông tin lấy mẫu ở trang Thông Báo Đóng Gói.
- * Lô nằm ngoài quy tắc tự động vẫn thêm tay được bằng nút "Tạo Thông Báo Khác" - những
- * dòng đó có is_manual = 1.
+ * Quy tắc tự động (xem eligibleQuery/applyRule) hiện phủ mọi lô còn hiệu lực của kế
+ * hoạch, kể cả lô không chia lô thuộc thị trường Việt Nam. Nút "Tạo Thông Báo Khác" (đánh
+ * dấu is_manual = 1) vẫn còn cho lô thêm tay ngoài quy tắc, nhưng hiện luôn rỗng vì
+ * không còn nhóm nào bị loại - xem manualCandidateQuery.
  */
 class PlanMasterInforParkaging extends Model
 {
@@ -58,11 +60,20 @@ class PlanMasterInforParkaging extends Model
     /** Quyền nhập các cột lấy mẫu và lý do */
     public const PERMISSION_SAMPLING = 'packaging_notification_update_sampling';
 
+    /** Quyền khoá/mở khoá Mẫu Đóng Gói Sơ Cấp, Thứ Cấp và Lý Do */
+    public const PERMISSION_LOCK = 'packaging_notification_lock';
+
     /**
      * Cột nào thuộc quyền nào. Mỗi cột chỉ nằm ở đúng một quyền, cột không liệt kê ở đây
      * coi như thuộc nhóm lấy mẫu (xem fieldPermission).
      */
     public const PO_FIELDS = ['PO_no'];
+
+    /** Các cột bị khoá khi is_locked = true, không cho sửa dù có quyền lấy mẫu */
+    public const LOCKED_FIELDS = ['primary_sample', 'secondary_sample', 'Reason'];
+
+    /** Tên trường giả dùng để ghi vết hành động khoá/mở khoá vào lịch sử nhập liệu */
+    public const LOCK_FIELD = 'lock_status';
 
     protected $fillable = [
         'plan_master_id',
@@ -73,6 +84,10 @@ class PlanMasterInforParkaging extends Model
         'secondary_sample',
         'Reason',
         'sampled_confirmed',
+        'is_locked',
+        'ever_locked',
+        'locked_by',
+        'locked_at',
         'updated_by',
         'created_by',
     ];
@@ -80,6 +95,9 @@ class PlanMasterInforParkaging extends Model
     protected $casts = [
         'is_manual' => 'boolean',
         'sampled_confirmed' => 'boolean',
+        'is_locked' => 'boolean',
+        'ever_locked' => 'boolean',
+        'locked_at' => 'datetime',
     ];
 
     /** Tên các cột người dùng được nhập (INPUT_LABELS là nguồn duy nhất) */
@@ -91,6 +109,10 @@ class PlanMasterInforParkaging extends Model
     /** Nhãn tiếng Việt của một cột, dùng khi hiển thị lịch sử nhập liệu */
     public static function inputLabel(string $field): string
     {
+        if ($field === self::LOCK_FIELD) {
+            return 'Trạng Thái Khoá';
+        }
+
         return self::INPUT_LABELS[$field] ?? self::LEGACY_LABELS[$field] ?? $field;
     }
 
@@ -169,13 +191,11 @@ class PlanMasterInforParkaging extends Model
      * Các lô của một kế hoạch tháng cần có thông báo đóng gói.
      *
      * Quy tắc nghiệp vụ (dùng chung cho cả lúc gửi kế hoạch lẫn lúc hiển thị trang,
-     * để hai nơi không bao giờ lệch nhau) - lô còn hiệu lực và thoả MỘT TRONG HAI:
-     *   - có chia lô: nhóm main_parkaging_id có từ 2 lô trở lên, kể cả lô thị trường VN
-     *   - không phải thị trường nội địa VN, kể cả lô không chia
-     * Lô chưa gán thị trường vẫn giữ lại: chưa xác định thì chưa thể coi là nội địa.
-     *
-     * Phần còn lại (không chia lô VÀ thị trường VN) không sinh tự động, nhưng người dùng
-     * vẫn thêm tay được - xem manualCandidateQuery.
+     * để hai nơi không bao giờ lệch nhau) - lô còn hiệu lực thì LUÔN đủ điều kiện, xếp
+     * vào một trong ba tab của trang Thông Báo Đóng Gói theo market.is_eu / mã thị
+     * trường: Châu Âu, Ngoài Châu Âu, hoặc Việt Nam (kể cả lô không chia lô - trước đây
+     * nhóm này bị loại, phải thêm tay qua "Tạo Thông Báo Khác", nay tự sinh như các
+     * nhóm còn lại). Lô chưa gán thị trường rơi vào tab Ngoài Châu Âu.
      *
      * @return \Illuminate\Database\Query\Builder Query trên plan_master (alias 'pm')
      */
@@ -184,46 +204,42 @@ class PlanMasterInforParkaging extends Model
         return self::applyRule(self::baseQuery($planListId));
     }
 
-    /** Ràng buộc quy tắc tự động lên một query đã dựng từ baseQuery */
+    /**
+     * Ràng buộc quy tắc tự động lên một query đã dựng từ baseQuery.
+     *
+     * Hiện KHÔNG loại lô nào (mọi lô còn hiệu lực đều đủ điều kiện) - giữ lại hàm này
+     * làm một điểm duy nhất cho quy tắc tự động, để nếu sau này cần loại trừ lại một
+     * nhóm nào đó thì sửa đúng một chỗ (và nhớ đối chiếu lại manualCandidateQuery).
+     */
     private static function applyRule($query)
     {
-        return $query->where(function ($q) {
-            $q->whereNotNull('sg.main_parkaging_id')
-                ->orWhereNull('mk.code')
-                ->orWhere('mk.code', '<>', self::DOMESTIC_MARKET_CODE);
-        });
+        return $query;
     }
 
     /**
-     * Các lô hiển thị trên lưới: lô theo quy tắc tự động, cộng thêm lô người dùng đã
-     * chủ động tạo thông báo (is_manual = 1).
+     * Các lô hiển thị trên lưới.
+     *
+     * Trùng với eligibleQuery(): quy tắc tự động giờ phủ mọi lô còn hiệu lực nên không
+     * còn nhóm nào cần hợp thêm qua cờ is_manual nữa (lô is_manual = 1 từ trước khi mở
+     * rộng quy tắc vẫn hiển thị bình thường vì đã nằm sẵn trong baseQuery()).
      */
     public static function visibleQuery(int $planListId)
     {
-        $manual = DB::table('plan_master_infor_parkaging')
-            ->where('plan_list_id', $planListId)
-            ->where('is_manual', 1)
-            ->select('plan_master_id');
-
-        return self::baseQuery($planListId)->where(function ($q) use ($manual) {
-            self::applyRule($q)->orWhereIn('pm.id', $manual);
-        });
+        return self::eligibleQuery($planListId);
     }
 
     /**
-     * Các lô được phép thêm tay: phần bù của quy tắc tự động (không chia lô VÀ thị trường
-     * VN) và chưa có dòng thông báo nào.
+     * Các lô được phép thêm tay qua nút "Tạo Thông Báo Khác": phần bù của quy tắc tự
+     * động.
+     *
+     * Quy tắc tự động (applyRule) hiện phủ mọi lô còn hiệu lực nên phần bù luôn rỗng -
+     * không còn lô nào cần thêm tay. Giữ lại hàm này (cùng route/nút/modal liên quan)
+     * thay vì xoá hẳn, phòng khi sau này quy tắc tự động thu hẹp lại; nếu applyRule() có
+     * loại trừ lại một nhóm nào đó thì sửa điều kiện ở đây cho khớp.
      */
     public static function manualCandidateQuery(int $planListId)
     {
-        $existing = DB::table('plan_master_infor_parkaging')
-            ->where('plan_list_id', $planListId)
-            ->select('plan_master_id');
-
-        return self::baseQuery($planListId)
-            ->whereNull('sg.main_parkaging_id')
-            ->where('mk.code', self::DOMESTIC_MARKET_CODE)
-            ->whereNotIn('pm.id', $existing);
+        return self::baseQuery($planListId)->whereRaw('1 = 0');
     }
 
     /**
@@ -256,6 +272,40 @@ class PlanMasterInforParkaging extends Model
         ])->all();
 
         return DB::table('plan_master_infor_parkaging')->insertOrIgnore($rows);
+    }
+
+    /**
+     * Số lô đủ điều kiện của nhiều kế hoạch tháng cùng lúc, chia theo 3 tab của trang
+     * Thông Báo Đóng Gói (Châu Âu / Ngoài Châu Âu / Việt Nam) - dùng cho cột "Số Lô" ở
+     * trang danh sách kế hoạch, tính trực tiếp trên plan_master để khớp đúng con số
+     * đang hiển thị ở open() (không dựa vào plan_master_infor_parkaging vì dòng đó chỉ
+     * được tạo khi người dùng lưu ô đầu tiên - xem createForPlanList).
+     *
+     * @param  array<int>  $planListIds
+     * @return \Illuminate\Support\Collection<int, object{plan_list_id:int,eu:int,non_eu:int,vn:int}>
+     */
+    public static function tabCountsForPlans(array $planListIds): Collection
+    {
+        if (empty($planListIds)) {
+            return collect();
+        }
+
+        return DB::table('plan_master as pm')
+            ->leftJoin('finished_product_category as fpc', 'pm.product_caterogy_id', '=', 'fpc.id')
+            ->leftJoin('market as mk', 'fpc.market_id', '=', 'mk.id')
+            ->whereIn('pm.plan_list_id', $planListIds)
+            ->where('pm.active', 1)
+            ->where('pm.cancel', 0)
+            ->selectRaw(
+                'pm.plan_list_id,'
+                . ' SUM(CASE WHEN COALESCE(mk.is_eu, 0) = 1 THEN 1 ELSE 0 END) as eu,'
+                . ' SUM(CASE WHEN COALESCE(mk.is_eu, 0) = 0 AND mk.code = ? THEN 1 ELSE 0 END) as vn,'
+                . ' SUM(CASE WHEN COALESCE(mk.is_eu, 0) = 0 AND (mk.code IS NULL OR mk.code <> ?) THEN 1 ELSE 0 END) as non_eu',
+                [self::DOMESTIC_MARKET_CODE, self::DOMESTIC_MARKET_CODE]
+            )
+            ->groupBy('pm.plan_list_id')
+            ->get()
+            ->keyBy('plan_list_id');
     }
 
     /**

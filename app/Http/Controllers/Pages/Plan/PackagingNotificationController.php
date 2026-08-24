@@ -13,18 +13,22 @@ use Illuminate\Support\Facades\DB;
  * Thông Báo Đóng Gói.
  *
  * Dùng chung bảng plan_list làm cổng vào: trang đầu liệt kê các kế hoạch tháng,
- * mở một kế hoạch ra sẽ thấy lưới nhập chia làm hai tab "Sản Phẩm Châu Âu" và
- * "Sản Phẩm Ngoài Châu Âu" (phân loại theo cờ market.is_eu).
+ * mở một kế hoạch ra sẽ thấy lưới nhập chia làm ba tab "Sản Phẩm Châu Âu",
+ * "Sản Phẩm Ngoài Châu Âu" và "Sản Phẩm Việt Nam" (phân loại theo cờ market.is_eu và
+ * mã thị trường nội địa - xem open()). Mọi lô còn hiệu lực của kế hoạch đều lên lưới,
+ * kể cả lô không chia lô (xem PlanMasterInforParkaging::eligibleQuery).
  *
  * Dòng dữ liệu được sinh sẵn khi gửi kế hoạch tháng (xem
  * PlanMasterInforParkaging::createForPlanList). Trang vẫn hiển thị được lô chưa có
  * dòng - ví dụ kế hoạch đã gửi từ trước khi có chức năng này - và tạo dòng ngay lúc
- * người dùng lưu ô đầu tiên. Lô nằm ngoài quy tắc tự động thì thêm bằng nút
- * "Tạo Thông Báo Khác".
+ * người dùng lưu ô đầu tiên. Nút "Tạo Thông Báo Khác" (thêm lô ngoài quy tắc tự động)
+ * vẫn còn nhưng hiện luôn rỗng vì quy tắc tự động đã phủ mọi lô - xem
+ * PlanMasterInforParkaging::manualCandidateQuery.
  *
- * Hai quyền nhập tách riêng: PERMISSION_PO cho cột Số PO, PERMISSION_SAMPLING cho
- * các cột lấy mẫu và lý do. Quyền tạo/gỡ thông báo cho lô ngoài quy tắc (nút
- * "Tạo Thông Báo Khác") đi chung nhóm với PERMISSION_PO chứ không tách riêng.
+ * Ba quyền tách riêng: PERMISSION_PO cho cột Số PO, PERMISSION_SAMPLING cho các cột
+ * lấy mẫu và lý do, PERMISSION_LOCK cho việc khoá/mở khoá ba cột đó (xem lock()).
+ * Quyền tạo/gỡ thông báo qua nút "Tạo Thông Báo Khác" đi chung nhóm với PERMISSION_PO
+ * chứ không tách riêng.
  */
 class PackagingNotificationController extends Controller
 {
@@ -40,24 +44,15 @@ class PackagingNotificationController extends Controller
             ->orderBy('id', 'desc')
             ->get();
 
-        // Số lô đã có thông báo đóng gói của từng kế hoạch, để người dùng biết kế hoạch
-        // nào đã được gửi và có việc để làm trước khi mở ra.
-        $rowCounts = DB::table('plan_master_infor_parkaging')
-            ->whereIn('plan_list_id', $plans->pluck('id'))
-            ->select('plan_list_id', DB::raw('COUNT(*) as total'))
-            ->groupBy('plan_list_id')
-            ->pluck('total', 'plan_list_id');
+        // Số lô của từng kế hoạch, chia theo 3 tab (Châu Âu / Ngoài Châu Âu / Việt Nam)
+        // - tính trực tiếp trên plan_master, khớp đúng với con số hiển thị khi mở kế
+        // hoạch ra (xem open()), không phụ thuộc đã có dòng lưu hay chưa.
+        $tabCounts = PlanMasterInforParkaging::tabCountsForPlans($plans->pluck('id')->all());
 
-        // Số lô đã nhập ít nhất một thông tin, dùng cho cột tiến độ
-        $filledCounts = DB::table('plan_master_infor_parkaging')
+        // Số lô đã xác nhận lấy mẫu (sampled_confirmed), dùng cho cột tiến độ
+        $sampledCounts = DB::table('plan_master_infor_parkaging')
             ->whereIn('plan_list_id', $plans->pluck('id'))
-            ->where(function ($q) {
-                foreach (PlanMasterInforParkaging::inputFields() as $field) {
-                    $q->orWhere(function ($sub) use ($field) {
-                        $sub->whereNotNull($field)->where($field, '<>', '');
-                    });
-                }
-            })
+            ->where('sampled_confirmed', 1)
             ->select('plan_list_id', DB::raw('COUNT(*) as total'))
             ->groupBy('plan_list_id')
             ->pluck('total', 'plan_list_id');
@@ -66,12 +61,12 @@ class PackagingNotificationController extends Controller
 
         return view('pages.plan.packaging_notification.plan_list', [
             'plans' => $plans,
-            'rowCounts' => $rowCounts,
-            'filledCounts' => $filledCounts,
+            'tabCounts' => $tabCounts,
+            'sampledCounts' => $sampledCounts,
         ]);
     }
 
-    /** Mở một kế hoạch tháng: lưới nhập chia hai tab Châu Âu / Ngoài Châu Âu */
+    /** Mở một kế hoạch tháng: lưới nhập chia ba tab Châu Âu / Ngoài Châu Âu / Việt Nam */
     public function open(Request $request)
     {
         $planListId = (int) $request->query('plan_list_id');
@@ -84,19 +79,39 @@ class PackagingNotificationController extends Controller
                 ->with('error', 'Không tìm thấy kế hoạch.');
         }
 
-        $keyword = trim((string) $request->query('keyword', ''));
+        // Bộ lọc theo từng cột thay vì một ô tìm kiếm gộp: mỗi ô lọc đúng một cột, kết hợp
+        // AND với nhau. Thị Trường dùng đúng danh sách thị trường của kế hoạch (marketOptions)
+        // nên so khớp tuyệt đối, các cột còn lại so khớp gần đúng (LIKE).
+        $filters = [
+            'product' => trim((string) $request->query('product', '')),
+            'batch' => trim((string) $request->query('batch', '')),
+            'finishedCode' => trim((string) $request->query('finished_code', '')),
+            'intermediateCode' => trim((string) $request->query('intermediate_code', '')),
+            'market' => trim((string) $request->query('market', '')),
+        ];
+
+        // Danh sách thị trường đổ vào <select> lọc - lấy trên toàn bộ lô của kế hoạch,
+        // KHÔNG áp các bộ lọc khác, để người dùng luôn thấy đủ lựa chọn dù đang lọc dở
+        $marketOptions = PlanMasterInforParkaging::visibleQuery($planListId)
+            ->whereNotNull('mk.name')
+            ->distinct()
+            ->orderBy('mk.name')
+            ->pluck('mk.name');
 
         $datas = PlanMasterInforParkaging::visibleQuery($planListId)
             ->leftJoin('product_name as fp_name', 'fpc.product_name_id', '=', 'fp_name.id')
             ->leftJoin('specification as spec', 'fpc.specification_id', '=', 'spec.id')
-            ->when($keyword !== '', function ($q) use ($keyword) {
-                $q->where(function ($sub) use ($keyword) {
-                    $sub->where('pm.batch', 'like', "%{$keyword}%")
-                        ->orWhere('fpc.finished_product_code', 'like', "%{$keyword}%")
-                        ->orWhere('fpc.intermediate_code', 'like', "%{$keyword}%")
-                        ->orWhere('fp_name.name', 'like', "%{$keyword}%");
-                });
-            })
+            ->when($filters['product'] !== '', fn($q) => $q->where('fp_name.name', 'like', "%{$filters['product']}%"))
+            ->when($filters['batch'] !== '', fn($q) => $q->where('pm.batch', 'like', "%{$filters['batch']}%"))
+            ->when(
+                $filters['finishedCode'] !== '',
+                fn($q) => $q->where('fpc.finished_product_code', 'like', "%{$filters['finishedCode']}%")
+            )
+            ->when(
+                $filters['intermediateCode'] !== '',
+                fn($q) => $q->where('fpc.intermediate_code', 'like', "%{$filters['intermediateCode']}%")
+            )
+            ->when($filters['market'] !== '', fn($q) => $q->where('mk.name', $filters['market']))
             ->select(
                 'pm.id',
                 'pm.batch',
@@ -137,19 +152,29 @@ class PackagingNotificationController extends Controller
         $userId = session('user')['userId'];
         $canUpdatePo = user_has_permission($userId, PlanMasterInforParkaging::PERMISSION_PO, 'boolean');
         $canUpdateSampling = user_has_permission($userId, PlanMasterInforParkaging::PERMISSION_SAMPLING, 'boolean');
+        $canLock = user_has_permission($userId, PlanMasterInforParkaging::PERMISSION_LOCK, 'boolean');
 
         session()->put(['title' => $plan->name . ' - THÔNG BÁO ĐÓNG GÓI']);
 
         return view('pages.plan.packaging_notification.list', [
             'plan' => $plan,
-            // Hai tab là hai lát cắt của cùng một tập lô, chia theo cờ market.is_eu
+            // Ba tab là ba lát cắt của cùng một tập lô: Châu Âu theo cờ market.is_eu,
+            // Việt Nam theo mã thị trường nội địa, còn lại (nước ngoài không thuộc EU,
+            // kể cả thị trường chưa xác định) rơi vào tab Ngoài Châu Âu.
             'euDatas' => $datas->where('is_eu', 1)->values(),
-            'nonEuDatas' => $datas->where('is_eu', 0)->values(),
+            'vnDatas' => $datas->where('is_eu', 0)
+                ->where('market_code', PlanMasterInforParkaging::DOMESTIC_MARKET_CODE)
+                ->values(),
+            'nonEuDatas' => $datas->where('is_eu', 0)
+                ->where('market_code', '<>', PlanMasterInforParkaging::DOMESTIC_MARKET_CODE)
+                ->values(),
             'records' => $records,
             'stageInfo' => $stageInfo,
-            'keyword' => $keyword,
+            'filters' => $filters,
+            'marketOptions' => $marketOptions,
             'canUpdatePo' => $canUpdatePo,
             'canUpdateSampling' => $canUpdateSampling,
+            'canLock' => $canLock,
             // Quyền tạo/gỡ lô ngoài quy tắc đi chung nhóm với quyền nhập Số PO
             'canAdd' => $canUpdatePo,
         ]);
@@ -224,17 +249,33 @@ class PackagingNotificationController extends Controller
         $record = PlanMasterInforParkaging::firstOrNew(['plan_master_id' => $planMasterId]);
         $isNew = !$record->exists;
 
-        // Chỉ được tích "Xác Nhận Đã Lấy Mẫu" khi lô đã có Số PO. PO_no có thể không nằm
-        // trong request này (người xác nhận thường không có quyền Số PO), nên lấy giá trị
-        // SẼ CÓ sau khi lưu: ưu tiên giá trị mới nếu request này có sửa PO_no, không thì
-        // lấy giá trị đang lưu sẵn trên dòng.
-        if (($values['sampled_confirmed'] ?? false) === true) {
-            $effectivePoNo = array_key_exists('PO_no', $values) ? $values['PO_no'] : $record->PO_no;
+        // Mẫu Sơ Cấp/Thứ Cấp/Lý Do đang bị khoá thì bỏ qua thay đổi ở các cột này, kể cả
+        // khi client vẫn gửi lên (giao diện đã disable, nhưng phòng trường hợp gọi API
+        // trực tiếp) - phải mở khoá trước mới sửa lại được.
+        if ($record->exists && $record->is_locked) {
+            $values = array_diff_key($values, array_flip(PlanMasterInforParkaging::LOCKED_FIELDS));
+        }
 
-            if (empty($effectivePoNo)) {
+        // Chỉ được tích "Xác Nhận Đã Lấy Mẫu" khi đã nhập đủ Mẫu Sơ Cấp/Thứ Cấp/Lý Do VÀ
+        // dòng đang ở trạng thái khoá (dữ liệu đã chốt, không sửa được nữa). Ba cột này
+        // luôn bị lọc khỏi $values khi đã khoá (xem trên) nên trong trường hợp đó luôn rơi
+        // vào nhánh lấy từ $record - đúng giá trị đang lưu, không đổi được lúc khoá.
+        if (($values['sampled_confirmed'] ?? false) === true) {
+            $effectivePrimary = array_key_exists('primary_sample', $values) ? $values['primary_sample'] : $record->primary_sample;
+            $effectiveSecondary = array_key_exists('secondary_sample', $values) ? $values['secondary_sample'] : $record->secondary_sample;
+            $effectiveReason = array_key_exists('Reason', $values) ? $values['Reason'] : $record->Reason;
+
+            if (empty($effectivePrimary) || empty($effectiveSecondary) || empty($effectiveReason)) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Lô chưa có Số PO nên chưa xác nhận đã lấy mẫu được.',
+                    'message' => 'Cần nhập đủ Mẫu Đóng Gói Sơ Cấp, Thứ Cấp và Lý Do trước khi xác nhận đã lấy mẫu.',
+                ], 422);
+            }
+
+            if (!$record->is_locked) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Chỉ xác nhận đã lấy mẫu được khi dòng dữ liệu đang ở trạng thái khoá.',
                 ], 422);
             }
         }
@@ -248,6 +289,98 @@ class PackagingNotificationController extends Controller
         $this->recordHistory($record, $before, $isNew);
 
         return response()->json(['success' => true]);
+    }
+
+    /**
+     * Khoá hoặc mở khoá Mẫu Đóng Gói Sơ Cấp, Thứ Cấp và Lý Do của một lô.
+     *
+     * Khoá lần đầu tiên đánh dấu ever_locked = true vĩnh viễn - mốc này quyết định thời
+     * điểm bắt đầu ghi lịch sử nhập liệu (xem recordHistory). Mở khoá luôn bắt buộc nhập
+     * lý do, kể cả sau đó khoá lại rồi mở khoá tiếp.
+     */
+    public function lock(Request $request)
+    {
+        $userId = session('user')['userId'];
+
+        if (!user_has_permission($userId, PlanMasterInforParkaging::PERMISSION_LOCK, 'boolean')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Bạn không có quyền khoá/mở khoá Thông Báo Đóng Gói.',
+            ], 403);
+        }
+
+        $planMasterId = (int) $request->input('plan_master_id');
+        $action = $request->input('action');
+
+        $record = PlanMasterInforParkaging::where('plan_master_id', $planMasterId)->first();
+
+        if (!$record) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Lô chưa có dữ liệu để khoá. Vui lòng nhập thông tin trước.',
+            ], 404);
+        }
+
+        $fullName = session('user')['fullName'];
+        $now = now();
+
+        if ($action === 'lock') {
+            if ($record->is_locked) {
+                return response()->json(['success' => true, 'is_locked' => true]);
+            }
+
+            $record->is_locked = true;
+            $record->ever_locked = true;
+            $record->locked_by = $fullName;
+            $record->locked_at = $now;
+            $record->save();
+
+            PlanMasterInforParkagingHistory::insert([
+                'plan_master_id' => $record->plan_master_id,
+                'infor_parkaging_id' => $record->id,
+                'action' => 'lock',
+                'field' => PlanMasterInforParkaging::LOCK_FIELD,
+                'old_value' => 'Mở khoá',
+                'new_value' => 'Đã khoá',
+                'changed_by' => $fullName,
+                'created_at' => $now,
+            ]);
+
+            return response()->json(['success' => true, 'is_locked' => true]);
+        }
+
+        if ($action === 'unlock') {
+            if (!$record->is_locked) {
+                return response()->json(['success' => true, 'is_locked' => false]);
+            }
+
+            $validated = $request->validate([
+                'reason' => 'required|string|max:255',
+            ], [
+                'reason.required' => 'Vui lòng nhập lý do mở khoá.',
+            ]);
+
+            $record->is_locked = false;
+            $record->save();
+
+            PlanMasterInforParkagingHistory::insert([
+                'plan_master_id' => $record->plan_master_id,
+                'infor_parkaging_id' => $record->id,
+                'action' => 'unlock',
+                'field' => PlanMasterInforParkaging::LOCK_FIELD,
+                'old_value' => 'Đã khoá',
+                'new_value' => 'Mở khoá - Lý do: ' . $validated['reason'],
+                'changed_by' => $fullName,
+                'created_at' => $now,
+            ]);
+
+            return response()->json(['success' => true, 'is_locked' => false]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Hành động không hợp lệ.',
+        ], 422);
     }
 
     /** Lịch sử nhập liệu của một lô, hiển thị trong modal */
@@ -293,10 +426,17 @@ class PackagingNotificationController extends Controller
      * Ghi vết những ô thật sự thay đổi. Lần lưu đầu tiên của một lô được đánh dấu
      * "create"; các lần sau là "update". Không có ô nào đổi thì không ghi gì.
      *
+     * Chỉ ghi vết SAU KHI lô đã được khoá lần đầu (xem lock()) - trước đó coi là giai
+     * đoạn nháp, người nhập có thể chỉnh sửa thoải mái mà không cần lưu vết từng lần sửa.
+     *
      * @param  array<string, string|null>  $before
      */
     private function recordHistory(PlanMasterInforParkaging $record, array $before, bool $isNew): void
     {
+        if (!$record->ever_locked) {
+            return;
+        }
+
         $after = $this->snapshot($record);
         $now = now();
         $changedBy = session('user')['fullName'];

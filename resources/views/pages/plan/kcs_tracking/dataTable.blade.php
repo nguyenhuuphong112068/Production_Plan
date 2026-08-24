@@ -63,6 +63,16 @@
         <a href="{{ route('pages.plan.kcs_tracking.list') }}" class="btn btn-sm btn-secondary">
             <i class="fas fa-redo"></i> Mặc định
         </a>
+        <a href="{{ route('pages.plan.kcs_tracking.export', [
+            'department' => $department,
+            'from_month' => $fromMonth,
+            'to_month' => $toMonth,
+            'kcs_month' => $kcsMonth,
+            'result' => $result,
+            'keyword' => $keyword,
+        ]) }}" class="btn btn-sm btn-success" title="Xuất Excel đúng dữ liệu đang lọc trên lưới">
+            <i class="fas fa-file-excel"></i> Xuất Excel
+        </a>
         <span class="ml-2 text-muted small">{{ $datas->count() }} lô</span>
         @if ($kcsMonth !== '')
             <span class="badge badge-success">KCS {{ \Carbon\Carbon::parse($kcsMonth . '-01')->format('m/Y') }}</span>

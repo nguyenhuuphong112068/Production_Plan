@@ -25,61 +25,58 @@
                     <div class="alert alert-light border py-2 mb-3">
                         <i class="fas fa-info-circle text-info"></i>
                         Danh sách lô của thông báo đóng gói được tạo tự động khi
-                        <b>Gửi Kế Hoạch Tháng</b>. Chỉ gồm lô <b>có chia lô</b> và
-                        <b>không thuộc thị trường VN</b>.
+                        <b>Gửi Kế Hoạch Tháng</b>, gồm mọi lô còn hiệu lực, chia theo 3 tab
+                        <b><i class="fas fa-globe-europe text-primary"></i> Châu Âu</b> /
+                        <b><i class="fas fa-globe-asia text-success"></i> Ngoài Châu Âu</b> /
+                        <b><i class="fas fa-flag text-danger"></i> Việt Nam</b>.
                     </div>
 
-                    <table id="example1" class="table table-bordered table-striped" style="font-size: 20px">
-                        <thead style="position: sticky; top: 60px; background-color: white; z-index: 1020">
+                    {{-- id riêng (không dùng "example1") để tự init DataTable với scrollY thay vì
+                         theo cấu hình mặc định ở layout.master --}}
+                    <table id="pkgPlanTable" class="table table-bordered table-striped" style="font-size: 20px">
+                        <thead>
                             <tr>
                                 <th>STT</th>
                                 <th>Kế Hoạch</th>
                                 <th>Phân Xưởng</th>
-                                <th>Người Tạo</th>
-                                <th>Ngày Tạo</th>
-                                <th>Tình Trạng</th>
-                                <th class="text-center">Số Lô</th>
-                                <th class="text-center">Đã Nhập</th>
-                                <th>Người Gửi</th>
-                                <th>Ngày Gửi</th>
+                                <th class="text-center">Số Lượng</th>
+                                <th class="text-center">Đã Lấy Mẫu</th>
                                 <th class="text-center">Chi Tiết</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach ($plans as $data)
                                 @php
-                                    $total = $rowCounts[$data->id] ?? 0;
-                                    $filled = $filledCounts[$data->id] ?? 0;
+                                    $tab = $tabCounts[$data->id] ?? null;
+                                    $euTotal = (int) ($tab->eu ?? 0);
+                                    $nonEuTotal = (int) ($tab->non_eu ?? 0);
+                                    $vnTotal = (int) ($tab->vn ?? 0);
+                                    $total = $euTotal + $nonEuTotal + $vnTotal;
 
-                                    $colors = [
-                                        0 => 'background-color: #ffeb3b; color: white;', // vàng
-                                        1 => 'background-color: #4caf50; color: white;', // xanh lá
-                                    ];
-                                    $status = [
-                                        0 => 'Pending', // vàng
-                                        1 => 'Send', // xanh lá
-                                    ];
+                                    $sampled = $sampledCounts[$data->id] ?? 0;
                                 @endphp
                                 <tr>
                                     <td>{{ $loop->iteration }}</td>
                                     <td>{{ $data->name }}</td>
                                     <td>{{ $data->deparment_code }}</td>
-                                    <td>{{ $data->prepared_by ?? 'NA' }}</td>
-                                    <td>
-                                        {{ $data->created_at ? \Carbon\Carbon::parse($data->created_at)->format('d/m/Y H:i') : '' }}
-                                    </td>
-
-                                    <td style="text-align: center; vertical-align: middle;">
-                                        <span
-                                            style="padding: 6px 15px; border-radius: 20px; {{ $colors[$data->send ?? 1] ?? '' }}">
-                                            {{ $status[$data->send ?? 1] }}
-                                        </span>
-                                    </td>
 
                                     <td class="text-center align-middle">
                                         @if ($total > 0)
-                                            <span class="badge badge-info"
-                                                style="font-size: 16px; padding: 6px 12px;">{{ $total }}</span>
+                                            <div class="d-flex flex-row justify-content-center align-items-center"
+                                                style="gap: 6px;">
+                                                <span class="badge badge-primary" style="font-size: 13px; padding: 4px 8px;"
+                                                    title="Sản Phẩm Châu Âu">
+                                                    <i class="fas fa-globe-europe"></i> {{ $euTotal }}
+                                                </span>
+                                                <span class="badge badge-success" style="font-size: 13px; padding: 4px 8px;"
+                                                    title="Sản Phẩm Ngoài Châu Âu">
+                                                    <i class="fas fa-globe-asia"></i> {{ $nonEuTotal }}
+                                                </span>
+                                                <span class="badge badge-danger" style="font-size: 13px; padding: 4px 8px;"
+                                                    title="Sản Phẩm Việt Nam">
+                                                    <i class="fas fa-flag"></i> {{ $vnTotal }}
+                                                </span>
+                                            </div>
                                         @else
                                             <span class="text-muted">-</span>
                                         @endif
@@ -87,18 +84,13 @@
 
                                     <td class="text-center align-middle">
                                         @if ($total > 0)
-                                            <span class="badge {{ $filled >= $total ? 'badge-success' : 'badge-warning' }}"
+                                            <span class="badge {{ $sampled >= $total ? 'badge-success' : 'badge-warning' }}"
                                                 style="font-size: 16px; padding: 6px 12px;">
-                                                {{ $filled }}/{{ $total }}
+                                                {{ $sampled }}/{{ $total }}
                                             </span>
                                         @else
                                             <span class="text-muted">-</span>
                                         @endif
-                                    </td>
-
-                                    <td>{{ $data->send_by }}</td>
-                                    <td>
-                                        {{ $data->send_date ? \Carbon\Carbon::parse($data->send_date)->format('d/m/Y') : '' }}
                                     </td>
 
                                     <td class="text-center align-middle">
@@ -120,9 +112,14 @@
 
     <script>
         $(function() {
-            // Layout chung đặt body { overflow-y: hidden }; trang này cuộn bình thường như
-            // trang Kế Hoạch Sản Xuất Tháng, tiêu đề cột đã được ghim bằng position: sticky.
-            document.body.style.overflowY = "auto";
+            // Bảng riêng của trang này, không phải "example1" mặc định của layout.master,
+            // nên tự init để bật scrollY (cuộn dọc trong khung cố định thay vì cuộn cả trang)
+            $('#pkgPlanTable').DataTable({
+                responsive: true,
+                autoWidth: false,
+                scrollY: '65vh',
+                scrollCollapse: true,
+            });
         });
     </script>
 

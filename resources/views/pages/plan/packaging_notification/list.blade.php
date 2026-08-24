@@ -31,14 +31,40 @@
         <section class="content">
             <div class="container-fluid">
                 <form method="GET" action="{{ route('pages.plan.packaging_notification.open') }}"
-                    class="form-row align-items-end mb-3">
+                    class="form-row align-items-end mb-2">
                     <input type="hidden" name="plan_list_id" value="{{ $plan->id }}">
-                    <div class="col-md-3">
-                        <label class="mb-1">Tìm kiếm</label>
-                        <input type="text" class="form-control form-control-sm" name="keyword"
-                            value="{{ $keyword }}" placeholder="Số lô / mã TP / mã BTP / tên SP...">
+                    <div class="col-md-2">
+                        <label class="mb-1">Sản Phẩm</label>
+                        <input type="text" class="form-control form-control-sm" name="product"
+                            value="{{ $filters['product'] }}" placeholder="Tên sản phẩm...">
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-2">
+                        <label class="mb-1">Số Lô</label>
+                        <input type="text" class="form-control form-control-sm" name="batch"
+                            value="{{ $filters['batch'] }}">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="mb-1">Mã TP</label>
+                        <input type="text" class="form-control form-control-sm" name="finished_code"
+                            value="{{ $filters['finishedCode'] }}">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="mb-1">Mã BTP</label>
+                        <input type="text" class="form-control form-control-sm" name="intermediate_code"
+                            value="{{ $filters['intermediateCode'] }}">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="mb-1">Thị Trường</label>
+                        <select class="form-control form-control-sm" name="market">
+                            <option value="">-- Tất cả --</option>
+                            @foreach ($marketOptions as $option)
+                                <option value="{{ $option }}" {{ $filters['market'] === $option ? 'selected' : '' }}>
+                                    {{ $option }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-2">
                         <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-search"></i> Lọc</button>
                         <a href="{{ route('pages.plan.packaging_notification.open', ['plan_list_id' => $plan->id]) }}"
                             class="btn btn-sm btn-secondary">
@@ -46,7 +72,7 @@
                         </a>
                     </div>
                     @if ($canAdd)
-                        <div class="col-md-6 text-right">
+                        <div class="col-12 text-right mt-2">
                             <button type="button" class="btn btn-sm btn-success" data-toggle="modal"
                                 data-target="#pkgAddModal">
                                 <i class="fas fa-plus"></i> Tạo Thông Báo Khác
@@ -90,6 +116,13 @@
                                     <span class="badge badge-success ml-1">{{ $nonEuDatas->count() }}</span>
                                 </a>
                             </li>
+                            <li class="nav-item">
+                                <a class="nav-link font-weight-bold" id="tab-vn-tab" data-toggle="pill"
+                                    href="#tab-vn" role="tab" aria-controls="tab-vn" aria-selected="false">
+                                    <i class="fas fa-flag text-danger"></i> Sản Phẩm Việt Nam
+                                    <span class="badge badge-danger ml-1">{{ $vnDatas->count() }}</span>
+                                </a>
+                            </li>
                         </ul>
                     </div>
                     <div class="card-body">
@@ -110,6 +143,15 @@
                                     'emptyText' => 'Không có lô sản phẩm ngoài Châu Âu nào trong kế hoạch này.',
                                 ])
                             </div>
+                            <div class="tab-pane fade" id="tab-vn" role="tabpanel" aria-labelledby="tab-vn-tab">
+                                @include('pages.plan.packaging_notification.dataTable', [
+                                    'datas' => $vnDatas,
+                                    'tableId' => 'pkg_table_vn',
+                                    'emptyText' => 'Không có lô sản phẩm Việt Nam nào trong kế hoạch này.',
+                                    // Số PO không áp dụng cho thị trường nội địa
+                                    'showPo' => false,
+                                ])
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -118,9 +160,9 @@
     </div>
 
     @if ($canAdd)
-        {{-- Lô nằm ngoài quy tắc tự động (không chia lô và thị trường nội địa) không được
-             sinh sẵn khi gửi kế hoạch, nhưng vẫn có trường hợp cần thông báo đóng gói nên
-             cho người dùng tự chọn thêm. --}}
+        {{-- Quy tắc tự động hiện phủ mọi lô còn hiệu lực (xem
+             PlanMasterInforParkaging::eligibleQuery) nên modal này thường không còn lô
+             nào để thêm - giữ lại phòng khi quy tắc tự động thu hẹp lại trong tương lai. --}}
         <div class="modal fade" id="pkgAddModal" tabindex="-1" role="dialog">
             <div class="modal-dialog pkg-add-modal-dialog" role="document">
                 <div class="modal-content">
@@ -132,8 +174,8 @@
                     </div>
                     <div class="modal-body">
                         <p class="text-muted mb-2">
-                            Danh sách các lô của <b>{{ $plan->name }}</b> chưa có thông báo đóng gói vì không thuộc
-                            quy tắc tự động (không chia lô và thuộc thị trường nội địa).
+                            Danh sách các lô của <b>{{ $plan->name }}</b> chưa có thông báo đóng gói và nằm ngoài quy
+                            tắc tự động.
                         </p>
                         <div class="form-row align-items-end mb-2">
                             <div class="col-md-5">
@@ -195,6 +237,33 @@
             </div>
         </div>
     </div>
+
+    @if ($canLock)
+        {{-- Mở khoá luôn bắt buộc nhập lý do, khoá thì không cần (chỉ hỏi xác nhận) --}}
+        <div class="modal fade" id="pkgUnlockModal" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header bg-warning">
+                        <h5 class="modal-title">
+                            <i class="fas fa-unlock"></i> Mở Khoá - Lô <span id="pkgUnlockBatch"></span>
+                        </h5>
+                        <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <label class="mb-1">Lý do mở khoá <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="pkgUnlockReason" rows="3" maxlength="255"
+                            placeholder="Nhập lý do mở khoá..."></textarea>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-sm btn-secondary" data-dismiss="modal">Đóng</button>
+                        <button type="button" class="btn btn-sm btn-warning" id="pkgUnlockConfirm">
+                            <i class="fas fa-unlock"></i> Xác Nhận Mở Khoá
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
 
     <style>
         /* Modal chọn lô thêm tay: rộng 90% màn hình để thấy được nhiều cột cùng lúc */
@@ -319,11 +388,12 @@
             function fitTableHeight() {
                 fitBoxHeight('pkg_table_eu_scroll');
                 fitBoxHeight('pkg_table_non_eu_scroll');
+                fitBoxHeight('pkg_table_vn_scroll');
             }
 
             fitTableHeight();
             window.addEventListener('resize', fitTableHeight);
-            $('#tab-eu-tab, #tab-non-eu-tab').on('shown.bs.tab', fitTableHeight);
+            $('#tab-eu-tab, #tab-non-eu-tab, #tab-vn-tab').on('shown.bs.tab', fitTableHeight);
             $(document).on('collapsed.lte.pushmenu shown.lte.pushmenu', fitTableHeight);
 
             // Lưu cả dòng mỗi khi một ô đổi giá trị, giống trang Theo Dõi Hồ Sơ KCS:
@@ -375,6 +445,18 @@
                 });
             });
 
+            // Lọc theo ngày đóng gói dự kiến ngay trên tiêu đề cột - lọc tức thời trên
+            // dữ liệu đã có sẵn trong bảng (client-side), không cần tải lại trang
+            $('.pkg-table').on('change', '.pkg-date-filter', function() {
+                const $table = $(this).closest('table');
+                const value = this.value;
+
+                $table.find('tbody tr').each(function() {
+                    const $row = $(this);
+                    $row.toggle(!value || $row.attr('data-expected-date') === value);
+                });
+            });
+
             const historyUrl = '{{ route('pages.plan.packaging_notification.history') }}';
 
             $('.pkg-table').on('click', '.pkg-history', function() {
@@ -393,6 +475,73 @@
                         '<div class="text-center text-danger p-3">Lỗi khi tải lịch sử</div>');
                 });
             });
+
+            @if ($canLock)
+                const lockUrl = '{{ route('pages.plan.packaging_notification.lock') }}';
+                let $pkgUnlockRow = null;
+
+                // Một nút toggle duy nhất: đang mở thì bấm để khoá (chỉ hỏi xác nhận),
+                // đang khoá thì bấm để mở khoá (bắt buộc nhập lý do qua modal riêng)
+                $('.pkg-table').on('click', '.pkg-lock-toggle', function() {
+                    const $btn = $(this);
+                    const $row = $btn.closest('tr');
+                    const isLocked = $btn.data('locked') == 1;
+
+                    if (isLocked) {
+                        $pkgUnlockRow = $row;
+                        $('#pkgUnlockReason').val('');
+                        $('#pkgUnlockBatch').text($row.data('batch'));
+                        $('#pkgUnlockModal').modal('show');
+                        return;
+                    }
+
+                    if (!confirm('Khoá Mẫu Đóng Gói Sơ Cấp, Thứ Cấp và Lý Do của lô ' +
+                            $row.data('batch') + '?')) {
+                        return;
+                    }
+
+                    $.post(lockUrl, {
+                        _token: '{{ csrf_token() }}',
+                        plan_master_id: $row.data('plan-master-id'),
+                        action: 'lock'
+                    }, function() {
+                        toastr.success('Đã khoá.');
+                        window.location.reload();
+                    }).fail(function(xhr) {
+                        const message = xhr.responseJSON && xhr.responseJSON.message ?
+                            xhr.responseJSON.message :
+                            'Không khoá được';
+                        toastr.error(message);
+                    });
+                });
+
+                $('#pkgUnlockConfirm').on('click', function() {
+                    const reason = $('#pkgUnlockReason').val().trim();
+
+                    if (!reason) {
+                        toastr.warning('Vui lòng nhập lý do mở khoá.');
+                        return;
+                    }
+
+                    const $btn = $(this).prop('disabled', true);
+
+                    $.post(lockUrl, {
+                        _token: '{{ csrf_token() }}',
+                        plan_master_id: $pkgUnlockRow.data('plan-master-id'),
+                        action: 'unlock',
+                        reason: reason
+                    }, function() {
+                        toastr.success('Đã mở khoá.');
+                        window.location.reload();
+                    }).fail(function(xhr) {
+                        $btn.prop('disabled', false);
+                        const message = xhr.responseJSON && xhr.responseJSON.message ?
+                            xhr.responseJSON.message :
+                            'Không mở khoá được';
+                        toastr.error(message);
+                    });
+                });
+            @endif
 
             @if ($canAdd)
                 const candidatesUrl = '{{ route('pages.plan.packaging_notification.candidates') }}';

@@ -10,6 +10,12 @@ use App\Support\MmsFgQc;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 /**
  * Theo dõi hồ sơ KCS: mỗi lô sản xuất là một dòng, người dùng nhập các mốc hồ sơ
@@ -50,6 +56,66 @@ class KcsTrackingController extends Controller
 
     public function index(Request $request)
     {
+        $filters = $this->queryFilters($request);
+        $filtered = $this->filteredData($filters);
+
+        session()->put(['title' => 'THEO DÕI HỒ SƠ KCS']);
+
+        return view('pages.plan.kcs_tracking.list', array_merge($filtered, [
+            'summary' => $this->buildSummary($filters['department'], $filters['summaryYear']),
+            'summaryYear' => $filters['summaryYear'],
+            'summaryYears' => $this->summaryYears(),
+            'departments' => self::DEPARTMENTS,
+            'department' => $filters['department'],
+            'fromMonth' => $filters['fromMonth'],
+            'toMonth' => $filters['toMonth'],
+            'keyword' => $filters['keyword'],
+            'kcsMonth' => $filters['kcsMonth'],
+            'result' => $filters['result'],
+            'canUpdate' => user_has_permission(session('user')['userId'], 'kcs_tracking_update', 'boolean'),
+        ]));
+    }
+
+    /**
+     * Xuất Excel danh sách lô đang được lọc trên tab Theo Dõi Hồ Sơ. Dùng đúng
+     * queryFilters()/filteredData() của index() nên file luôn khớp với lưới đang xem,
+     * kể cả các cột dẫn xuất (Ngày Đủ Điều Kiện, Số Ngày HT, Kết Quả...).
+     */
+    public function export(Request $request)
+    {
+        $filters = $this->queryFilters($request);
+        $filtered = $this->filteredData($filters);
+
+        $spreadsheet = $this->buildExportSpreadsheet($filters, $filtered);
+
+        $fileName = 'Theo_Doi_Ho_So_KCS_'
+            . ($filters['department'] ?: 'TatCa') . '_'
+            . now()->format('d-m-Y_His') . '.xlsx';
+
+        return response()->streamDownload(function () use ($spreadsheet) {
+            // Dọn mọi output buffer trước khi ghi: chỉ một ký tự thừa lọt vào
+            // đầu luồng là Excel báo file hỏng
+            while (ob_get_level()) {
+                ob_end_clean();
+            }
+
+            (new Xlsx($spreadsheet))->save('php://output');
+        }, $fileName, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
+    }
+
+    /**
+     * Đọc và chuẩn hoá các tham số lọc trên thanh lọc của trang.
+     *
+     * Tách riêng khỏi filteredData() vì cả view (hiện lại lựa chọn đang chọn) lẫn tên
+     * file Excel đều cần các giá trị "thô" (fromMonth/toMonth gốc, chưa nới theo kcsMonth).
+     *
+     * @return array{department: string, fromMonth: string, toMonth: string, keyword: string,
+     *               kcsMonth: string, result: string, summaryYear: int, planFrom: string, planTo: string}
+     */
+    private function queryFilters(Request $request): array
+    {
         // Mặc định chỉ lấy tháng kế hoạch hiện tại: lưới có tới 15 ô nhập mỗi lô nên
         // mở rộng cả năm sẽ nặng trang. Người dùng tự nới khoảng khi cần xem lại.
         $department = $request->query('department', session('user')['production_code'] ?? '');
@@ -82,6 +148,34 @@ class KcsTrackingController extends Controller
             $planTo = $anchor->copy()->addMonths(2)->format('Y-m');
         }
 
+        return compact(
+            'department',
+            'fromMonth',
+            'toMonth',
+            'keyword',
+            'kcsMonth',
+            'result',
+            'summaryYear',
+            'planFrom',
+            'planTo'
+        );
+    }
+
+    /**
+     * Danh sách lô đã áp toàn bộ bộ lọc của thanh lọc, dùng chung cho lưới và xuất Excel
+     * để file luôn khớp với dữ liệu đang hiển thị trên trang.
+     *
+     * @param  array  $filters  kết quả của queryFilters()
+     * @return array{datas: \Illuminate\Support\Collection, records: \Illuminate\Support\Collection,
+     *               bomVersions: \Illuminate\Support\Collection, kcsDates: array<int, string>,
+     *               mmsSuggestions: \Illuminate\Support\Collection, mmsCodeMismatch: \Illuminate\Support\Collection,
+     *               mmsAvailable: bool}
+     */
+    private function filteredData(array $filters): array
+    {
+        ['department' => $department, 'planFrom' => $planFrom, 'planTo' => $planTo,
+            'keyword' => $keyword, 'kcsMonth' => $kcsMonth, 'result' => $result] = $filters;
+
         $datas = $this->batches($department, $planFrom, $planTo, $keyword);
 
         $bomVersions = $this->captureBomVersions($datas);
@@ -109,9 +203,7 @@ class KcsTrackingController extends Controller
             )->values();
         }
 
-        session()->put(['title' => 'THEO DÕI HỒ SƠ KCS']);
-
-        return view('pages.plan.kcs_tracking.list', [
+        return [
             'datas' => $datas,
             'records' => $records,
             'bomVersions' => $bomVersions,
@@ -119,18 +211,180 @@ class KcsTrackingController extends Controller
             'mmsSuggestions' => $mms['suggestions'],
             'mmsCodeMismatch' => $mms['code_mismatch'],
             'mmsAvailable' => $mms['available'],
-            'summary' => $this->buildSummary($department, $summaryYear),
-            'summaryYear' => $summaryYear,
-            'summaryYears' => $this->summaryYears(),
-            'departments' => self::DEPARTMENTS,
-            'department' => $department,
-            'fromMonth' => $fromMonth,
-            'toMonth' => $toMonth,
-            'keyword' => $keyword,
-            'kcsMonth' => $kcsMonth,
-            'result' => $result,
-            'canUpdate' => user_has_permission(session('user')['userId'], 'kcs_tracking_update', 'boolean'),
+        ];
+    }
+
+    /**
+     * Dựng file Excel cho export(): mỗi dòng lấy đúng giá trị hiển thị trên lưới
+     * (giá trị đã lưu, hoặc gợi ý điền sẵn nếu lô chưa có dòng theo dõi), gồm cả các
+     * cột dẫn xuất (Ngày Đủ Điều Kiện, Số Ngày HT, Kết Quả...).
+     */
+    private function buildExportSpreadsheet(array $filters, array $filtered): Spreadsheet
+    {
+        ['datas' => $datas, 'records' => $records, 'bomVersions' => $bomVersions,
+            'kcsDates' => $kcsDates, 'mmsSuggestions' => $mmsSuggestions] = $filtered;
+
+        $prefill = self::PREFILL_FROM_PLAN_MASTER;
+
+        $headers = [
+            'STT', 'Số Lệnh', 'Số Lô', 'Tên Sản Phẩm', 'Mã BTP', 'Mã TP', 'Thị Trường', 'Quy Cách',
+            'Cỡ Lô', 'Lô TĐ',
+            'Ngày Nhận Hồ Sơ', 'Người Đọc', 'Ngày Đọc Xong HS', 'Số Phiếu COATP', 'Ngày Nhận COATP',
+            'DR/IR', 'Ngày AP DR/IR', 'OOS', 'Ngày AP OOS', 'Ngày AP DR/IR KCQ', 'Ngày AP OPV/PVR',
+            'Ngày Chờ KCS Theo Đúng Thứ Tự Lô', 'Ngày KCS', 'Ghi Chú',
+            'Ngày Đủ Điều Kiện', 'Số Ngày HT', 'KCS Pending', 'Tháng KCS', 'Mốc Quyết Định', 'Kết Quả',
+        ];
+        $lastColumn = Coordinate::stringFromColumnIndex(count($headers));
+
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Theo Doi Ho So KCS');
+
+        $sheet->setCellValue('A1', 'THEO DÕI HỒ SƠ KCS');
+        $sheet->mergeCells("A1:{$lastColumn}1");
+        $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
+        $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+
+        $sheet->setCellValue('A2', $this->exportFilterSummary($filters));
+        $sheet->mergeCells("A2:{$lastColumn}2");
+
+        $headerRow = 4;
+        $sheet->fromArray($headers, null, 'A' . $headerRow);
+        $sheet->getStyle("A{$headerRow}:{$lastColumn}{$headerRow}")->applyFromArray([
+            'font' => ['bold' => true],
+            'fill' => [
+                'fillType' => Fill::FILL_SOLID,
+                'startColor' => ['rgb' => 'D9E1F2'],
+            ],
+            'alignment' => [
+                'horizontal' => Alignment::HORIZONTAL_CENTER,
+                'vertical' => Alignment::VERTICAL_CENTER,
+                'wrapText' => true,
+            ],
         ]);
+
+        // Ô ngày hiển thị dạng chuỗi d/m/Y, không dùng kiểu ngày thật của Excel: các cột
+        // này trộn lẫn ngày và ô trống, để dạng chuỗi tránh Excel tự đoán sai định dạng.
+        $formatDate = fn($value) => $value ? Carbon::parse($value)->format('d/m/Y') : '';
+
+        $row = $headerRow + 1;
+
+        foreach ($datas as $index => $datum) {
+            $record = $records->get($datum->id);
+            $bom = $bomVersions->get($datum->id);
+            $mms = $mmsSuggestions->get($datum->id);
+            $kcsDate = $kcsDates[$datum->id] ?? null;
+
+            // Giống hệt closure $value()/$mmsValue() của dataTable.blade.php: lô đã có dòng
+            // theo dõi thì lấy đúng dữ liệu đã lưu, chưa có thì lấy gợi ý điền sẵn từ kế hoạch.
+            $value = function (string $field) use ($record, $datum, $prefill) {
+                if ($record) {
+                    return $record->getRawOriginal($field) ?? '';
+                }
+
+                return isset($prefill[$field]) ? ($datum->{$prefill[$field]} ?? '') : '';
+            };
+
+            $mmsValue = fn(string $field) => $mms[$field] ?? ($record?->getRawOriginal($field) ?? '');
+
+            $orderNumber = trim((string) $datum->order_number_R1);
+            if ($datum->order_number_R2) {
+                $orderNumber .= ($orderNumber !== '' ? "\n" : '') . $datum->order_number_R2;
+            }
+
+            $btpCode = trim($datum->intermediate_code . ($bom?->btp_version ? ' (v' . $bom->btp_version . ')' : ''));
+            $tpCode = trim($datum->finished_product_code . ($bom?->tp_version ? ' (v' . $bom->tp_version . ')' : ''));
+
+            $sheet->fromArray([
+                $index + 1,
+                $orderNumber,
+                $datum->actual_batch ?: $datum->batch,
+                $datum->product_name,
+                $btpCode,
+                $tpCode,
+                $datum->market,
+                $datum->specification,
+                trim(number_format((float) $datum->batch_qty, 0, ',', '.') . ' ' . $datum->unit_batch_qty),
+                $datum->is_val ? 'TĐ' : '',
+
+                $formatDate($value('record_received_date')),
+                $value('reader'),
+                $formatDate($value('record_done_date')),
+                $mmsValue('coatp_number'),
+                $formatDate($value('coatp_received_date')),
+                $value('dr_ir'),
+                $formatDate($value('dr_ir_approval_date')),
+                $value('oos'),
+                $formatDate($value('oos_approval_date')),
+                $formatDate($value('dr_ir_kcq_approval_date')),
+                $formatDate($value('opv_pvr_approval_date')),
+                $formatDate($value('kcs_queue_date')),
+                $formatDate($kcsDate),
+                $value('note'),
+
+                $formatDate($record?->eligible_date),
+                $record?->completion_days,
+                $record?->kcs_pending,
+                $kcsDate ? (int) substr($kcsDate, 5, 2) : '',
+                $record?->bottleneck,
+                $record?->result,
+            ], null, 'A' . $row);
+
+            $row++;
+        }
+
+        $lastRow = max($row - 1, $headerRow);
+
+        $sheet->getStyle("A{$headerRow}:{$lastColumn}{$lastRow}")->applyFromArray([
+            'borders' => [
+                'allBorders' => ['borderStyle' => Border::BORDER_THIN],
+            ],
+        ]);
+        $sheet->getStyle("A{$headerRow}:{$lastColumn}{$lastRow}")
+            ->getAlignment()
+            ->setVertical(Alignment::VERTICAL_TOP)
+            ->setWrapText(true);
+
+        for ($col = 1; $col <= count($headers); $col++) {
+            $sheet->getColumnDimension(Coordinate::stringFromColumnIndex($col))->setAutoSize(true);
+        }
+
+        // Tên sản phẩm dài để auto size sẽ tràn màn hình
+        $sheet->getColumnDimension('D')->setAutoSize(false)->setWidth(35);
+        $sheet->getColumnDimension('X')->setAutoSize(false)->setWidth(25); // Ghi Chú
+
+        // Ghim tiêu đề + 3 cột định danh đầu (Số Lệnh, Số Lô), giống vùng ghim của lưới
+        $sheet->freezePane('D' . ($headerRow + 1));
+
+        return $spreadsheet;
+    }
+
+    /** Dòng mô tả bộ lọc đang áp dụng, hiển thị ngay dưới tiêu đề file Excel */
+    private function exportFilterSummary(array $filters): string
+    {
+        $parts = [];
+
+        $parts[] = 'Phân xưởng: ' . ($filters['department']
+            ? (self::DEPARTMENTS[$filters['department']] ?? $filters['department'])
+            : 'Tất cả');
+
+        if ($filters['kcsMonth'] !== '') {
+            $parts[] = 'Tháng KCS: ' . Carbon::parse($filters['kcsMonth'] . '-01')->format('m/Y');
+        } else {
+            $parts[] = 'Tháng kế hoạch: ' . $filters['fromMonth'] . ' - ' . $filters['toMonth'];
+        }
+
+        if ($filters['result'] !== '') {
+            $parts[] = 'Kết quả: ' . ($filters['result'] === PlanMasterKcs::RESULT_MET ? 'Đáp Ứng' : 'Trễ Hạn');
+        }
+
+        if ($filters['keyword'] !== '') {
+            $parts[] = 'Tìm kiếm: ' . $filters['keyword'];
+        }
+
+        $parts[] = 'Ngày xuất: ' . now()->format('d/m/Y H:i');
+
+        return implode('   |   ', $parts);
     }
 
     /**

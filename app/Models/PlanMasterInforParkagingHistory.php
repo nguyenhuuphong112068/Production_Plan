@@ -34,6 +34,8 @@ class PlanMasterInforParkagingHistory extends Model
         return [
             'create' => 'Nhập mới',
             'update' => 'Chỉnh sửa',
+            'lock' => 'Khoá',
+            'unlock' => 'Mở Khoá',
         ][$this->action] ?? $this->action;
     }
 

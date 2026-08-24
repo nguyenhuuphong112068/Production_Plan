@@ -79,6 +79,7 @@ Route::prefix('/plan')
                 Route::get('summary', 'summary')->name('summary');
                 Route::get('history', 'history')->name('history');
                 Route::post('save', 'save')->name('save');
+                Route::get('export', 'export')->name('export');
             });
 
         Route::prefix('/packaging_notification')
@@ -90,6 +91,7 @@ Route::prefix('/plan')
                 Route::get('candidates', 'candidates')->name('candidates');
                 Route::get('history', 'history')->name('history');
                 Route::post('save', 'save')->name('save');
+                Route::post('lock', 'lock')->name('lock');
                 Route::post('store', 'store')->name('store');
                 Route::post('destroy', 'destroy')->name('destroy');
             });

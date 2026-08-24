@@ -3,6 +3,9 @@
     $disabledPo = $canUpdatePo ? '' : 'disabled';
     $disabledSampling = $canUpdateSampling ? '' : 'disabled';
 
+    // Tab Sản Phẩm Việt Nam không hiển thị Số PO (không áp dụng cho thị trường nội địa)
+    $showPo = $showPo ?? true;
+
     // Cùng bảng màu với cột Tình Trạng của lưới Kế Hoạch Sản Xuất Tháng
     $statusColors = [
         'Chưa làm' => 'background-color: green; color: white;',
@@ -34,13 +37,21 @@
                     <th class="bg-light" style="min-width: 150px;">Quy Cách</th>
                     <th class="bg-light" style="min-width: 100px;">Cỡ Lô</th>
                     <th class="bg-light" style="min-width: 90px;">Tỉ Lệ ĐG</th>
-                    {{-- <th class="bg-light" style="min-width: 100px;">Ngày DK</th> --}}
-                    <th class="bg-light" style="min-width: 200px;">Thời Gian Đóng Gói Dự Kiến</th>
+                    <th class="bg-light" style="min-width: 200px;">
+                        Thời Gian Đóng Gói Dự Kiến
+                        <div class="mt-1">
+                            <input type="date" class="form-control form-control-sm pkg-date-filter"
+                                title="Lọc theo ngày đóng gói dự kiến">
+                        </div>
+                    </th>
 
-                    <th class="bg-warning" style="min-width: 130px;">Số PO</th>
+                    @if ($showPo)
+                        <th class="bg-warning" style="min-width: 130px;">Số PO</th>
+                    @endif
                     <th class="bg-warning" style="min-width: 260px;">Mẫu Đóng Gói Sơ Cấp</th>
                     <th class="bg-warning" style="min-width: 260px;">Mẫu Đóng Gói Thứ Cấp</th>
                     <th class="bg-warning" style="min-width: 220px;">Lý Do</th>
+                    <th class="bg-light" style="min-width: 120px;">Khoá/Mở Khoá</th>
                     <th class="bg-warning" style="min-width: 130px;">Xác Nhận Đã Lấy Mẫu</th>
                 </tr>
             </thead>
@@ -50,9 +61,21 @@
                         $record = $records->get($data->id);
                         $stage = $stageInfo[$data->id] ?? null;
                         $status = $stage['status'] ?? 'Chưa làm';
+                        $isLocked = (bool) ($record->is_locked ?? false);
+                        // Mẫu Sơ Cấp/Thứ Cấp/Lý Do khoá riêng, cộng thêm điều kiện quyền lấy
+                        // mẫu sẵn có - khoá thì disable dù có quyền, chưa khoá thì theo quyền
+                        $lockDisabled = ($disabledSampling || $isLocked) ? 'disabled' : '';
+                        $expectedDate = $stage && $stage['start'] ? \Carbon\Carbon::parse($stage['start'])->format('Y-m-d') : '';
+
+                        // Chỉ xác nhận được khi đã nhập đủ Mẫu Sơ Cấp/Thứ Cấp/Lý Do VÀ dòng
+                        // đang khoá (dữ liệu đã chốt) - khớp điều kiện kiểm tra ở server
+                        $samplesFilled = trim((string) ($record->primary_sample ?? '')) !== ''
+                            && trim((string) ($record->secondary_sample ?? '')) !== ''
+                            && trim((string) ($record->Reason ?? '')) !== '';
+                        $canConfirm = $samplesFilled && $isLocked;
                     @endphp
                     <tr data-plan-master-id="{{ $data->id }}" data-batch="{{ $data->batch }}"
-                        class="{{ $record ? '' : 'table-light' }}">
+                        data-expected-date="{{ $expectedDate }}" class="{{ $record ? '' : 'table-light' }}">
                         <td class="pkg-sticky pkg-sticky-1 text-center">{{ $index + 1 }}</td>
                         <td class="pkg-sticky pkg-sticky-2 text-center font-weight-bold">
                             {{ $data->batch }}
@@ -90,9 +113,6 @@
                         <td class="text-center">
                             {{ $data->percent_parkaging !== null ? round($data->percent_parkaging * 100, 2) . '%' : '' }}
                         </td>
-                        {{-- <td class="text-center">
-                            {{ $data->expected_date ? \Carbon\Carbon::parse($data->expected_date)->format('d/m/Y') : '' }}
-                        </td> --}}
                         <td class="text-center">
                             @if ($stage && $stage['start'])
                                 <div>
@@ -119,31 +139,51 @@
                             </span>
                         </td>
 
-                        <td>
-                            <input type="text" class="form-control form-control-sm pkg-input" name="PO_no"
-                                maxlength="50" value="{{ $record->PO_no ?? '' }}" {{ $disabledPo }}>
-                        </td>
+                        @if ($showPo)
+                            <td>
+                                <input type="text" class="form-control form-control-sm pkg-input" name="PO_no"
+                                    maxlength="50" value="{{ $record->PO_no ?? '' }}" {{ $disabledPo }}>
+                            </td>
+                        @endif
                         <td>
                             <textarea class="form-control form-control-sm pkg-input" name="primary_sample" rows="3" maxlength="2000"
-                                {{ $disabledSampling }}>{{ $record->primary_sample ?? '' }}</textarea>
+                                {{ $lockDisabled }}>{{ $record->primary_sample ?? '' }}</textarea>
                         </td>
                         <td>
                             <textarea class="form-control form-control-sm pkg-input" name="secondary_sample" rows="3" maxlength="2000"
-                                {{ $disabledSampling }}>{{ $record->secondary_sample ?? '' }}</textarea>
+                                {{ $lockDisabled }}>{{ $record->secondary_sample ?? '' }}</textarea>
                         </td>
                         <td>
                             <textarea class="form-control form-control-sm pkg-input" name="Reason" rows="3" maxlength="255"
-                                {{ $disabledSampling }}>{{ $record->Reason ?? '' }}</textarea>
+                                {{ $lockDisabled }}>{{ $record->Reason ?? '' }}</textarea>
                         </td>
-                        @php
-                            $hasPo = (bool) ($record->PO_no ?? null);
-                        @endphp
+                        <td class="text-center">
+                            @if (!$record)
+                                <span class="text-muted small">Chưa có dữ liệu</span>
+                            @else
+                                @php
+                                    $lockToggleClass = $isLocked ? 'btn-danger' : 'btn-outline-secondary';
+                                    $lockToggleIcon = $isLocked ? 'fa-lock' : 'fa-lock-open';
+                                    $lockToggleText = $isLocked ? 'Đã Khoá' : 'Mở Khoá';
+                                    $lockToggleTitle = $isLocked
+                                        ? 'Đã khoá Mẫu Đóng Gói Sơ Cấp, Thứ Cấp và Lý Do - bấm để mở khoá (yêu cầu nhập lý do)'
+                                        : 'Đang mở, sửa được bình thường - bấm để khoá lại';
+                                @endphp
+                                <button type="button" class="btn btn-sm {{ $lockToggleClass }} pkg-lock-toggle"
+                                    data-locked="{{ $isLocked ? 1 : 0 }}" title="{{ $lockToggleTitle }}"
+                                    {{ $canLock ? '' : 'disabled' }}>
+                                    <i class="fas {{ $lockToggleIcon }}"></i> {{ $lockToggleText }}
+                                </button>
+                            @endif
+                        </td>
                         <td class="text-center">
                             <input type="checkbox" class="pkg-input pkg-confirm-check" name="sampled_confirmed"
                                 style="width: 20px; height: 20px;"
                                 {{ $record && $record->sampled_confirmed ? 'checked' : '' }}
-                                {{ $disabledSampling || !$hasPo ? 'disabled' : '' }}
-                                @unless ($hasPo) title="Lô chưa có Số PO nên chưa xác nhận đã lấy mẫu được." @endunless>
+                                {{ $disabledSampling || !$canConfirm ? 'disabled' : '' }}
+                                @unless ($canConfirm)
+                                    title="Chỉ xác nhận được khi đã nhập đủ Mẫu Đóng Gói Sơ Cấp, Thứ Cấp, Lý Do và dòng đang ở trạng thái khoá."
+                                @endunless>
                         </td>
                     </tr>
                 @endforeach
