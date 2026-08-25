@@ -384,7 +384,7 @@
                 </li>
 
                 <!-- Droplist MMS-->
-                @if (user_has_permission(session('user')['userId'], 'layout_MMS_bo', 'boolean'))
+                {{-- @if (user_has_permission(session('user')['userId'], 'layout_MMS_bo', 'boolean'))
                     <li class="nav-item has-treeview {{ str_contains(url()->current(), 'MMS') ? 'menu-open' : '' }}">
                         <a href="#"
                             class="nav-link {{ str_contains(url()->current(), 'MMS') ? 'active' : '' }}">
@@ -423,7 +423,8 @@
 
                         </ul>
                     </li>
-                @endif
+                @endif --}}
+
                 <!-- Droplist Kế Hoạch-->
                 <li class="nav-item has-treeview {{ str_contains(url()->current(), 'plan') ? 'menu-open' : '' }}">
                     <a href="#" class="nav-link {{ str_contains(url()->current(), 'plan') ? 'active' : '' }}">
@@ -606,20 +607,20 @@
                             </a>
                         </li>
 
-                        <li class="nav-item">
+                        {{-- <li class="nav-item">
                             <a href="{{ route('pages.Schedual.audit.index') }}" class="nav-link">
                                 <i class="far fa-circle nav-icon"></i>
                                 <p>Lịch Sử Thay Đổi Lịch</p>
                             </a>
-                        </li>
-                        @if (user_has_permission(session('user')['userId'], 'layout_test', 'boolean'))
+                        </li> --}}
+                        {{-- @if (user_has_permission(session('user')['userId'], 'layout_test', 'boolean'))
                             <li class="nav-item">
                                 <a href="{{ route('pages.Schedual.audit.compare') }}" class="nav-link">
                                     <i class="far fa-circle nav-icon"></i>
                                     <p>So Sánh Lịch Sử </p>
                                 </a>
                             </li>
-                        @endif
+                        @endif --}}
 
                         @if (user_has_permission(session('user')['userId'], 'layout_finised', 'boolean'))
                             <li class="nav-item">
@@ -819,7 +820,7 @@
                 @endif
 
                 <!-- roplist Trang Thái Sản Xuất-->
-                @if (user_has_permission(session('user')['userId'], 'layout_status', 'boolean'))
+                {{-- @if (user_has_permission(session('user')['userId'], 'layout_status', 'boolean'))
                     <li class="nav-item has-treeview">
                         <a href="#" class="nav-link">
                             <i class="nav-icon fas fa-recycle"></i>
@@ -847,7 +848,7 @@
 
                         </ul>
                     </li>
-                @endif
+                @endif --}}
 
                 <!-- Droplist Thống Kê -->
                 {{-- @if (user_has_permission(session('user')['userId'], 'layout_statistics', 'boolean'))
@@ -942,12 +943,12 @@
                                 </a>
                             </li>
 
-                            <li class="nav-item">
+                            {{-- <li class="nav-item">
                                 <a href="{{ route('pages.User.permission.list') }}" class="nav-link">
                                     <i class="far fa-circle nav-icon"></i>
                                     <p> Danh Sách Quyền </p>
                                 </a>
-                            </li>
+                            </li> --}}
                         </ul>
                     </li>
                 @endif
@@ -962,7 +963,7 @@
                     </a>
                 </li>
 
-                @if (user_has_permission(session('user')['userId'], 'layout_test', 'boolean'))
+                {{-- @if (user_has_permission(session('user')['userId'], 'layout_test', 'boolean'))
                     <li class="nav-item">
                         <a href="{{ route('pages.Schedual.test') }}" class="nav-link">
                             <i class="nav-icon fas fa-th"></i>
@@ -971,7 +972,7 @@
                             </p>
                         </a>
                     </li>
-                @endif
+                @endif --}}
             </ul>
 
         </nav>

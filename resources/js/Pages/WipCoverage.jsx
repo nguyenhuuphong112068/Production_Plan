@@ -25,6 +25,7 @@ import {
     formatDate,
     formatDateShort,
 } from '../Components/wipCoverageShared';
+import WipCoverageDayDetailModal from '../Components/WipCoverageDayDetailModal';
 
 const WipCoverage = () => {
     const [allGroups, setAllGroups] = useState([]);
@@ -38,6 +39,12 @@ const WipCoverage = () => {
     const [error, setError] = useState(null);
     const [expanded, setExpanded] = useState(null);
     const [showFlows, setShowFlows] = useState(false);
+    // Con số đang xem chi tiết lô: { date, groupCode, kind, groupLabel } | null
+    const [dayModal, setDayModal] = useState(null);
+
+    const openDayModal = useCallback((date, groupCode, kind, groupLabelText) => {
+        setDayModal({ date, groupCode, kind, groupLabel: groupLabelText });
+    }, []);
 
     // Cho phép mở thẳng vào một công đoạn từ nơi khác, ví dụ ?group=DG
     const initialGroup = useMemo(
@@ -488,12 +495,18 @@ const WipCoverage = () => {
                                             borderLeft: '1px solid #e2e8f0',
                                             color: row.supply_dvl > 0 ? SUPPLY_COLOR : '#cbd5e1',
                                             fontWeight: row.supply_dvl > 0 ? 600 : 400,
+                                            cursor: row.supply_dvl > 0 ? 'pointer' : 'default',
                                         }}
+                                        onClick={
+                                            row.supply_dvl > 0
+                                                ? () => openDayModal(row.date, 'SUPPLY', 'stock', 'Pha chế nhập vào')
+                                                : undefined
+                                        }
                                         title={
                                             row.supply_dvl > 0
                                                 ? `${formatFull(row.supply_dvl)} ĐVL · ${formatKg(
                                                       row.supply_kg
-                                                  )} Kg · ${row.supply_lots} lô`
+                                                  )} Kg · ${row.supply_lots} lô — bấm để xem từng lô`
                                                 : 'Không có mẻ Pha chế nào trong ngày'
                                         }
                                     >
@@ -528,21 +541,25 @@ const WipCoverage = () => {
                                                                 : breach === 'high'
                                                                 ? '#fef3c7'
                                                                 : undefined,
+                                                        cursor: 'pointer',
                                                     }}
+                                                    onClick={() =>
+                                                        openDayModal(row.date, c, 'stock', groupLabel(g))
+                                                    }
                                                     title={
-                                                        breach === 'low'
+                                                        (breach === 'low'
                                                             ? `Dưới giới hạn dưới (${formatFull(
                                                                   limits[c].min_stock_dvl
-                                                              )} ĐVL) — thiếu hàng cho công đoạn sau`
+                                                              )} ĐVL) — thiếu hàng cho công đoạn sau. `
                                                             : breach === 'high'
                                                             ? `Trên giới hạn trên (${formatFull(
                                                                   limits[c].max_stock_dvl
-                                                              )} ĐVL) — ứ hàng, công đoạn sau không tiêu thụ kịp`
+                                                              )} ĐVL) — ứ hàng, công đoạn sau không tiêu thụ kịp. `
                                                             : isLow
-                                                            ? 'Mức tồn thấp nhất trong kỳ'
+                                                            ? 'Mức tồn thấp nhất trong kỳ. '
                                                             : isHigh
-                                                            ? 'Mức tồn cao nhất trong kỳ'
-                                                            : undefined
+                                                            ? 'Mức tồn cao nhất trong kỳ. '
+                                                            : '') + 'Bấm để xem từng lô.'
                                                     }
                                                 >
                                                     {formatFull(row[c])}
@@ -552,12 +569,46 @@ const WipCoverage = () => {
                                                     )}
                                                 </td>
                                                 {showFlows && (
-                                                    <td style={{ ...styles.td, color: '#0d9488' }}>
+                                                    <td
+                                                        style={{
+                                                            ...styles.td,
+                                                            color: '#0d9488',
+                                                            cursor: row[`${c}_in`] > 0 ? 'pointer' : 'default',
+                                                        }}
+                                                        onClick={
+                                                            row[`${c}_in`] > 0
+                                                                ? () =>
+                                                                      openDayModal(row.date, c, 'in', groupLabel(g))
+                                                                : undefined
+                                                        }
+                                                        title={
+                                                            row[`${c}_in`] > 0
+                                                                ? 'Bấm để xem từng lô mới nhập'
+                                                                : undefined
+                                                        }
+                                                    >
                                                         {row[`${c}_in`] > 0 ? `+${formatDvl(row[`${c}_in`])}` : '—'}
                                                     </td>
                                                 )}
                                                 {showFlows && (
-                                                    <td style={{ ...styles.td, color: '#b45309' }}>
+                                                    <td
+                                                        style={{
+                                                            ...styles.td,
+                                                            color: '#b45309',
+                                                            cursor: row[`${c}_out`] > 0 ? 'pointer' : 'default',
+                                                        }}
+                                                        onClick={
+                                                            row[`${c}_out`] > 0
+                                                                ? () =>
+                                                                      openDayModal(row.date, c, 'out', groupLabel(g))
+                                                                : undefined
+                                                        }
+                                                        title={
+                                                            row[`${c}_out`] > 0
+                                                                ? 'Bấm để xem từng lô đã xuất'
+                                                                : undefined
+                                                        }
+                                                    >
                                                         {row[`${c}_out`] > 0 ? `−${formatDvl(row[`${c}_out`])}` : '—'}
                                                     </td>
                                                 )}
@@ -740,6 +791,8 @@ const WipCoverage = () => {
                     </DataTable>
                 </div>
             )}
+
+            <WipCoverageDayDetailModal request={dayModal} onHide={() => setDayModal(null)} />
         </div>
     );
 };

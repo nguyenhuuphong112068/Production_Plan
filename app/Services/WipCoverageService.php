@@ -194,13 +194,34 @@ class WipCoverageService
             }
 
             if ($kind === 'out') {
-                // Xuất theo TỪNG đợt rút, không gộp: một lô đóng gói một phần có thể
-                // xuất cho nhiều lô con ở nhiều mốc khác nhau trong cùng một ngày.
-                foreach ($lot['exits'] as $exit) {
-                    if ($exit['start'] < $from || $exit['start'] >= $to) {
-                        continue;
-                    }
-                    $qty = $lot['qty_dvl'] * $exit['weight'];
+                // lotStockAt() coi một đợt rút đúng vào giờ ranh giới ngày (06:00:00)
+                // là ĐÃ xảy ra tính đến giờ đó — nghĩa là nó thuộc về ngày KẾT THÚC
+                // tại mốc đó, không phải ngày BẮT ĐẦU từ mốc đó. Khoảng so khớp phải
+                // theo đúng quy ước này (hở trái, kín phải), nếu không một đợt rút
+                // đúng 06:00:00 sẽ bị tính trùng — vừa vào ngày trước qua delta tổng,
+                // vừa vào ngày sau qua vòng lặp này.
+                $windowExits = array_values(array_filter(
+                    $lot['exits'],
+                    fn($exit) => $exit['start'] > $from && $exit['start'] <= $to
+                ));
+                if ($windowExits === []) {
+                    continue;
+                }
+
+                // Lấy TỔNG lượng rút thật của ngày từ chênh lệch tồn — con số này đã
+                // tự động trừ đúng phần bị kẹp về 0 khi tổng tỉ lệ các đợt rút vượt
+                // 100% do làm tròn percent_parkaging, nên luôn khớp tuyệt đối với cột
+                // "Xuất" trên biểu đồ. Tỉ lệ danh nghĩa của từng đợt chỉ dùng để CHIA
+                // lại đúng tổng đó cho từng lô con, không dùng trực tiếp làm số lượng.
+                $delta = $this->lotStockAt($lot, $from) - $this->lotStockAt($lot, $to);
+                if ($delta <= 1e-9) {
+                    continue;
+                }
+
+                $weightSum = array_sum(array_column($windowExits, 'weight'));
+                foreach ($windowExits as $exit) {
+                    $share = $weightSum > 0 ? $exit['weight'] / $weightSum : 1 / count($windowExits);
+                    $qty = $delta * $share;
                     if ($qty <= 1e-9) {
                         continue;
                     }
@@ -288,8 +309,11 @@ class WipCoverageService
     {
         $next = null;
         foreach ($lot['exits'] as $exit) {
-            if ($exit['start'] < $from) {
-                continue;   // đã xảy ra trước mốc này rồi, không còn là "sắp tới"
+            // lotStockAt() coi đợt rút đúng bằng mốc này là đã xảy ra (dùng <=), nên
+            // lượng tồn đưa lên màn đã trừ sẵn phần đó rồi — không thể vừa trừ vừa
+            // còn hẹn "sắp tới" đúng lúc đó được nữa.
+            if ($exit['start'] <= $from) {
+                continue;
             }
             if ($next === null || $exit['start'] < $next) {
                 $next = $exit['start'];
