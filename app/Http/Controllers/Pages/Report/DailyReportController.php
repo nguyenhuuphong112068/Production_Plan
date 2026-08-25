@@ -188,7 +188,10 @@ class DailyReportController extends Controller
         |--------------------------------------------------------------------------
         */
         $yield_day = $theory_detail
-            ->groupBy('resourceId')
+            // Nhóm theo resourceId, nhưng nếu resourceId NULL (lô không gán phòng)
+            // thì gộp thêm theo stage_code để tránh cộng nhầm sản lượng khác công đoạn
+            // vào chung 1 nhóm (groupBy('resourceId') coi mọi giá trị NULL là cùng 1 khóa).
+            ->groupBy(fn($item) => $item->resourceId ?? 'no_resource_' . $item->stage_code)
             ->map(function ($items) {
                 $first = $items->first();
                 return [
@@ -394,7 +397,11 @@ class DailyReportController extends Controller
 
         $yield_day = $actual_detail
             ->whereNotNull('yields')
-            ->groupBy('resourceId')
+            // Nhóm theo resourceId, nhưng nếu resourceId NULL (lô đóng gói không gán
+            // phòng, ví dụ chỉ có actual_start/actual_end mà không lịch phòng) thì gộp
+            // thêm theo stage_code để không bị cộng lẫn sản lượng của công đoạn khác
+            // vào chung 1 nhóm (groupBy('resourceId') coi mọi giá trị NULL là cùng 1 khóa).
+            ->groupBy(fn($item) => $item->resourceId ?? 'no_resource_' . $item->stage_code)
             ->map(function ($items) {
                 return [
                     'resourceId'    => $items->first()->resourceId,

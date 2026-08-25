@@ -48,6 +48,7 @@ class ShedualYieldController extends Controller
             ->where('sp.active', 1)
             ->select(
                 "sp.$group_By",
+                "sp.stage_code",
                 //'sp.start',
                 DB::raw('SUM(sp.Theoretical_yields * (CASE WHEN sp.stage_code = 7 THEN plan_master.percent_parkaging ELSE 1 END)) as total_qty'),
                 DB::raw('SUM(sp.Theoretical_yields_qty) as total_qty_unit'),
@@ -58,7 +59,7 @@ class ShedualYieldController extends Controller
                     END as unit
                 ')
             )
-            ->groupBy("sp.$group_By", "unit")
+            ->groupBy("sp.$group_By", "sp.stage_code", "unit")
             ->get();
 
 
@@ -73,6 +74,7 @@ class ShedualYieldController extends Controller
             ->where('sp.active', 1)
             ->select(
                 "sp.$group_By",
+                "sp.stage_code",
                 DB::raw('
                     SUM(
                         (sp.Theoretical_yields * (CASE WHEN sp.stage_code = 7 THEN plan_master.percent_parkaging ELSE 1 END)) *
@@ -94,13 +96,15 @@ class ShedualYieldController extends Controller
                     END as unit
                 ')
             )
-            ->groupBy("sp.$group_By", "unit")
+            ->groupBy("sp.$group_By", "sp.stage_code", "unit")
             ->get();
 
         // --- 3️⃣ Gộp và tổng hợp
         $merged = $stage_plan_100->merge($stage_plan_part)
             ->groupBy(function ($item) use ($group_By) {
-                return $item->$group_By . '-' . $item->unit;
+                // Nếu resourceId NULL (lô không gán phòng), gộp thêm theo stage_code để
+                // tránh cộng lẫn sản lượng của các công đoạn khác nhau vào chung 1 nhóm.
+                return ($item->$group_By ?? 'no_resource_' . $item->stage_code) . '-' . $item->unit;
             })
             ->map(function ($items) use ($group_By) {
                 $first = $items->first();
@@ -109,17 +113,19 @@ class ShedualYieldController extends Controller
 
                 // Nếu group_By là room_id hoặc resourceId → lấy thêm thông tin phòng
                 if ($group_By === 'room_id' || $group_By === 'resourceId') {
-                    $room = DB::table('room')
-                        ->select('code', 'name', 'stage_code', 'order_by')
-                        ->where('id', $first->$group_By)
-                        ->first();
+                    $room = $first->$group_By
+                        ? DB::table('room')
+                            ->select('code', 'name', 'stage_code', 'order_by')
+                            ->where('id', $first->$group_By)
+                            ->first()
+                        : null;
 
-                    // Bỏ qua nếu phòng không tồn tại (bị xóa hoặc resourceId không hợp lệ)
-                    if (!$room) return null;
-
+                    // Không bỏ qua khi không có phòng (resourceId null hoặc phòng đã bị xóa) —
+                    // trước đây "return null" ở đây làm mất hẳn sản lượng lý thuyết của các lô
+                    // không gán phòng khỏi báo cáo. Dùng stage_code của stage_plan làm fallback.
                     return (object)[
-                        'stage_code' => $room->stage_code,
-                        'order_by'   => $room->order_by,
+                        'stage_code' => $room->stage_code ?? $first->stage_code,
+                        'order_by'   => $room->order_by ?? null,
                         $group_By    => $first->$group_By,
                         'room_code'  => $room->code ?? null,
                         'room_name'  => $room->name ?? null,
@@ -165,17 +171,23 @@ class ShedualYieldController extends Controller
 
             $totalForDay = DB::table("stage_plan as sp")
                 ->leftJoin('plan_master', 'sp.plan_master_id', '=', 'plan_master.id')
-                ->join('room as r', 'sp.resourceId', '=', 'r.id') // 👈 JOIN thêm bảng room
+                // LEFT JOIN (không phải INNER JOIN): một số lô có Theoretical_yields/start/end
+                // hợp lệ nhưng không gán resourceId/phòng — INNER JOIN sẽ loại các lô này
+                // hoàn toàn khỏi báo cáo theo ngày, gây thiếu sản lượng so với Báo Cáo Ngày.
+                ->leftJoin('room as r', function ($join) {
+                    $join->on('sp.resourceId', '=', 'r.id')
+                        ->where('r.deparment_code', session('user')['production_code']);
+                })
                 ->where('sp.deparment_code', session('user')['production_code'])
             ->where('sp.active', 1)
-                ->where('r.deparment_code', session('user')['production_code'])
                 ->whereNotNull('sp.start')
                 ->whereRaw('(sp.start <= ? AND sp.end >= ?)', [$dayEnd, $dayStart])
                 ->select(
                     "sp.$group_By",
                     'r.code as room_code',
                     'r.name as room_name',
-                    'r.stage_code as stage_code',
+                    // Fallback về stage_code của stage_plan khi lô không có resourceId/phòng
+                    DB::raw('COALESCE(r.stage_code, sp.stage_code) as stage_code'),
                     DB::raw('
                         SUM(
                             (sp.Theoretical_yields * (CASE WHEN sp.stage_code = 7 THEN plan_master.percent_parkaging ELSE 1 END)) *
@@ -197,7 +209,7 @@ class ShedualYieldController extends Controller
                         END as unit
                     ')
                 )
-                ->groupBy("sp.$group_By", "r.code", "r.name",  "r.stage_code", "unit")
+                ->groupBy("sp.$group_By", "r.code", "r.name", "r.stage_code", "sp.stage_code", "unit")
                 ->get();
 
             foreach ($totalForDay as $item) {
@@ -242,7 +254,6 @@ class ShedualYieldController extends Controller
 
             ->where('sp.deparment_code', session('user')['production_code'])
             ->where('sp.active', 1)
-            ->whereNotNull('sp.resourceId')
             ->where('sp.stage_code', '<=', 7)
             // overlap yield time
             ->whereRaw('(y.start < ? AND y.end > ?)', [$endDateStr, $startDateStr])
@@ -251,7 +262,12 @@ class ShedualYieldController extends Controller
                 "sp.$group_By",
                 "r.code as room_code",
                 "r.name as room_name",
-                "r.stage_code",
+                // Một số lô đóng gói (ĐGSC-ĐGTC) được ghi nhận sản lượng thực tế mà
+                // không gán resourceId/phòng cụ thể (chỉ có actual_start/actual_end).
+                // Trước đây whereNotNull('sp.resourceId') + INNER JOIN room loại hẳn
+                // các lô này ra khỏi báo cáo, khiến "Sản Lượng" thấp hơn "Báo Cáo Ngày".
+                // Dùng COALESCE để vẫn tính đúng công đoạn cho các lô không có phòng.
+                DB::raw('COALESCE(r.stage_code, sp.stage_code) as stage_code'),
                 "r.order_by",
 
                 DB::raw('
@@ -281,6 +297,7 @@ class ShedualYieldController extends Controller
                 "r.code",
                 "r.name",
                 "r.stage_code",
+                "sp.stage_code",
                 "r.order_by",
                 "unit"
             )
@@ -332,7 +349,6 @@ class ShedualYieldController extends Controller
 
                 ->where('sp.deparment_code', session('user')['production_code'])
             ->where('sp.active', 1)
-                ->whereNotNull('sp.resourceId')
 
                 ->whereRaw('(y.start < ? AND y.end > ?)', [$dayEndStr, $dayStartStr])
 
@@ -340,7 +356,8 @@ class ShedualYieldController extends Controller
                     "sp.$group_By",
                     'r.code as room_code',
                     'r.name as room_name',
-                    'r.stage_code',
+                    // Fallback về stage_code của stage_plan khi lô không có resourceId/phòng
+                    DB::raw('COALESCE(r.stage_code, sp.stage_code) as stage_code'),
 
                     DB::raw('
                         CASE
@@ -369,6 +386,7 @@ class ShedualYieldController extends Controller
                     "r.code",
                     "r.name",
                     "r.stage_code",
+                    "sp.stage_code",
                     "unit"
                 )
                 ->get();
