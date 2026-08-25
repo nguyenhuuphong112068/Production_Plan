@@ -23,7 +23,7 @@ class WipCoverageController extends Controller
     }
 
     /**
-     * Dữ liệu cho cả bảng tóm tắt trong Lịch sản xuất lẫn trang chi tiết.
+     * Thống kê tồn theo từng công đoạn đích (Định hình, Bao phim, Đóng gói).
      * Mặc định đọc bản chốt gần nhất cho nhanh; truyền live=1 để tính lại tại chỗ.
      */
     public function view(Request $request)
@@ -33,16 +33,15 @@ class WipCoverageController extends Controller
         }
 
         $productionCode = session('user')['production_code'];
-        $thresholds = WipCoverageService::thresholdsFor($productionCode);
 
         if ($request->boolean('live')) {
-            $payload = $this->computeLive($productionCode, $thresholds);
+            $payload = $this->computeLive($productionCode);
         } else {
             $payload = $this->readSnapshot($productionCode);
 
             // Chưa từng chạy lệnh chốt thì tính tại chỗ để trang không trống trơn
             if ($payload === null) {
-                $payload = $this->computeLive($productionCode, $thresholds);
+                $payload = $this->computeLive($productionCode);
             }
         }
 
@@ -50,11 +49,54 @@ class WipCoverageController extends Controller
             'success'         => true,
             'production_code' => $productionCode,
             'group_names'     => WipCoverageService::GROUP_NAMES,
-            'thresholds'      => array_values(array_map(fn($t) => (array) $t, $thresholds)),
+            // Giới hạn trên/dưới cấu hình ở trang Chính sách sản lượng, để trang
+            // này tô được ngày nào vượt ngưỡng
+            'stock_limits'    => array_values(array_map(
+                fn($limit) => (array) $limit,
+                WipCoverageService::stockLimitsFor($productionCode)
+            )),
         ] + $payload);
     }
 
-    /** Danh sách mã bán thành phẩm của một nhóm công đoạn */
+    /**
+     * Danh sách lô cấu thành một con số cụ thể trên bảng ngày: tồn, nhập, xuất
+     * của một nhóm, hoặc sản lượng Pha chế nhập vào — luôn tính trực tiếp chứ
+     * không đọc bản chốt, vì bản chốt chỉ lưu số tổng hợp từng ngày chứ không
+     * lưu tới mức từng lô.
+     */
+    public function dayDetail(Request $request)
+    {
+        if (! $this->canView()) {
+            return response()->json(['success' => false, 'message' => 'Bạn không có quyền xem chức năng này.'], 403);
+        }
+
+        $request->validate([
+            'date'       => 'required|date_format:Y-m-d',
+            'group_code' => 'required|string|max:8',
+            'kind'       => 'required_unless:group_code,SUPPLY|nullable|string|in:stock,in,out',
+        ]);
+
+        $productionCode = session('user')['production_code'];
+        $kind = $request->group_code === WipCoverageService::SUPPLY ? 'supply' : $request->kind;
+
+        $result = $this->service->dayLots(
+            $productionCode,
+            Carbon::now(),
+            WipCoverageService::DEFAULT_HORIZON_DAYS,
+            $request->group_code,
+            $request->date,
+            $request->kind ?? 'stock'
+        );
+
+        return response()->json([
+            'success'    => true,
+            'date'       => $request->date,
+            'group_code' => $request->group_code,
+            'kind'       => $kind,
+        ] + $result);
+    }
+
+    /** Danh sách mã bán thành phẩm đang tồn của một nhóm đích */
     public function detail(Request $request)
     {
         if (! $this->canView()) {
@@ -62,15 +104,14 @@ class WipCoverageController extends Controller
         }
 
         $request->validate([
-            'stage_group_code' => 'required|string|max:4',
+            'group_code' => 'required|string|max:4',
         ]);
 
         $productionCode = session('user')['production_code'];
-        $groupCode = $request->stage_group_code;
 
         $snapshot = DB::table('wip_coverage_snapshots')
             ->where('production_code', $productionCode)
-            ->where('stage_group_code', $groupCode)
+            ->where('next_stage_group_code', $request->group_code)
             ->orderByDesc('snapshot_date')
             ->first();
 
@@ -78,16 +119,15 @@ class WipCoverageController extends Controller
             return response()->json(['success' => true, 'details' => []]);
         }
 
-        // Mã chiếm nhiều giờ máy của công đoạn sau nhất lên đầu
+        // Mã đang giữ nhiều hàng nhất lên đầu
         $details = DB::table('wip_coverage_snapshot_details')
             ->where('snapshot_id', $snapshot->id)
-            ->orderByRaw('load_hours IS NULL, load_hours DESC')
+            ->orderByDesc('stock_dvl')
             ->get()
             ->map(function ($row) {
                 $row->batches = json_decode($row->batches ?? '[]', true) ?: [];
                 $row->stock_dvl = (float) $row->stock_dvl;
-                $row->load_hours = $row->load_hours === null ? null : (float) $row->load_hours;
-                $row->days_of_cover = $row->days_of_cover === null ? null : (float) $row->days_of_cover;
+                $row->share_pct = $row->share_pct === null ? null : (float) $row->share_pct;
                 return $row;
             });
 
@@ -98,53 +138,17 @@ class WipCoverageController extends Controller
         ]);
     }
 
-    /** Xu hướng số ngày đáp ứng của 30 bản chốt gần nhất */
-    public function history(Request $request)
-    {
-        if (! $this->canView()) {
-            return response()->json(['success' => false, 'message' => 'Bạn không có quyền xem chức năng này.'], 403);
-        }
-
-        $productionCode = session('user')['production_code'];
-
-        $rows = DB::table('wip_coverage_snapshots')
-            ->where('production_code', $productionCode)
-            ->when($request->filled('stage_group_code'), fn($q) => $q->where('stage_group_code', $request->stage_group_code))
-            ->orderByDesc('snapshot_date')
-            ->limit(30 * count(WipCoverageService::SOURCE_GROUPS))
-            ->get(['snapshot_date', 'stage_group_code', 'days_of_cover', 'stock_dvl', 'status']);
-
-        // Gom theo ngày để vẽ nhiều đường trên cùng một trục thời gian
-        $byDate = [];
-        foreach ($rows->sortBy('snapshot_date') as $row) {
-            $date = $row->snapshot_date;
-            $byDate[$date]['date'] = $date;
-            $byDate[$date][$row->stage_group_code] = $row->days_of_cover === null ? null : (float) $row->days_of_cover;
-        }
-
-        return response()->json([
-            'success' => true,
-            'history' => array_values($byDate),
-        ]);
-    }
-
     /** Tính lại tại thời điểm hiện tại, không ghi vào bảng chốt */
-    private function computeLive(string $productionCode, array $thresholds): array
+    private function computeLive(string $productionCode): array
     {
-        $horizon = collect($thresholds)
-            ->map(fn($t) => (int) ($t->horizon_days ?? WipCoverageService::DEFAULT_HORIZON_DAYS))
-            ->max() ?: WipCoverageService::DEFAULT_HORIZON_DAYS;
-
-        $result = $this->service->compute($productionCode, Carbon::now(), $horizon);
+        $result = $this->service->compute(
+            $productionCode,
+            Carbon::now(),
+            WipCoverageService::DEFAULT_HORIZON_DAYS
+        );
 
         $groups = [];
         foreach ($result['groups'] as $group) {
-            $group['status'] = WipCoverageService::resolveStatus(
-                $group['days_of_cover'],
-                $thresholds[$group['stage_group_code']] ?? null,
-                $group['has_demand']
-            );
-
             // Bảng tóm tắt không cần danh sách lô, cắt bớt cho nhẹ đường truyền
             $group['details'] = array_slice($group['details'], 0, 20);
             foreach ($group['details'] as &$detail) {
@@ -160,10 +164,11 @@ class WipCoverageController extends Controller
             'snapshot_at'  => $result['snapshot_at'],
             'horizon_days' => $result['horizon_days'],
             'groups'       => $groups,
+            'supply'       => $result['supply'],
         ];
     }
 
-    /** Đọc bản chốt gần nhất. Trạng thái đã được lệnh chạy nền gán sẵn theo ngưỡng. */
+    /** Đọc bản chốt gần nhất và dựng lại đúng hình dạng payload của bản tính trực tiếp */
     private function readSnapshot(string $productionCode): ?array
     {
         $latestDate = DB::table('wip_coverage_snapshots')
@@ -183,41 +188,38 @@ class WipCoverageController extends Controller
             return null;
         }
 
-        // Giữ đúng thứ tự công đoạn thay vì thứ tự chữ cái
-        $order = array_flip(WipCoverageService::SOURCE_GROUPS);
+        // Giữ đúng thứ tự Định hình -> Bao phim -> Đóng gói, nhóm chưa rõ công
+        // đoạn sau xuống cuối
+        $order = array_flip(WipCoverageService::NEXT_GROUPS);
 
         $groups = $rows
-            ->sortBy(fn($row) => $order[$row->stage_group_code] ?? 99)
+            ->sortBy(fn($row) => $order[$row->next_stage_group_code] ?? 99)
             ->map(function ($row) {
                 $series = json_decode($row->daily_series ?? '[]', true) ?: [];
-                $demandTotal = array_sum(array_column($series, 'out_dvl'));
-                $stock = (float) $row->stock_dvl;
-                $loadHours = (float) ($row->load_hours ?? 0);
+
+                $inTotal  = array_sum(array_column($series, 'in_dvl'));
+                $outTotal = array_sum(array_column($series, 'out_dvl'));
+                $stock    = (float) $row->stock_dvl;
 
                 return [
-                    'stage_group_code'      => $row->stage_group_code,
-                    'stage_group_name'      => WipCoverageService::GROUP_NAMES[$row->stage_group_code] ?? $row->stage_group_code,
-                    'next_stage_group_code' => $row->next_stage_group_code,
-                    'next_stage_group_name' => WipCoverageService::GROUP_NAMES[$row->next_stage_group_code] ?? null,
-                    'stock_dvl'             => $stock,
-                    'stock_lots'            => (int) $row->stock_lots,
-                    'orphan_lots'           => (int) $row->orphan_lots,
-                    'days_of_cover'         => $row->days_of_cover === null ? null : (float) $row->days_of_cover,
-                    'first_shortage_date'   => $row->first_shortage_date,
-                    'lowest_stock_dvl'      => $row->lowest_stock_dvl === null ? null : (float) $row->lowest_stock_dvl,
-                    'lowest_stock_date'     => $row->lowest_stock_date,
-                    'max_product_days'      => $row->top_product_days === null ? null : (float) $row->top_product_days,
-                    'max_product_code'      => $row->top_product_code,
-                    'status'                => $row->status,
-                    'horizon_days'          => (int) $row->horizon_days,
-                    'demand_total_dvl'      => round($demandTotal, 2),
-                    'load_hours'            => $loadHours,
-                    'capacity_basis'        => json_decode($row->capacity_basis ?? '[]', true) ?: [],
-                    'has_demand'            => $loadHours > 0,
-                    'is_empty'              => $stock <= 0 && $loadHours <= 0,
-                    'scheduled_demand_pct'  => $stock > 0 ? round($demandTotal / $stock * 100, 1) : null,
-                    'daily_series'          => $series,
-                    'details'               => [],
+                    'group_code'          => $row->next_stage_group_code,
+                    'group_name'          => WipCoverageService::groupName($row->next_stage_group_code),
+                    'stock_dvl'           => $stock,
+                    'stock_lots'          => (int) $row->stock_lots,
+                    'first_shortage_date' => $row->first_shortage_date,
+                    'lowest_stock_dvl'    => $row->lowest_stock_dvl === null ? null : (float) $row->lowest_stock_dvl,
+                    'lowest_stock_date'   => $row->lowest_stock_date,
+                    'highest_stock_dvl'   => $row->highest_stock_dvl === null ? null : (float) $row->highest_stock_dvl,
+                    'highest_stock_date'  => $row->highest_stock_date,
+                    'avg_stock_dvl'       => $row->avg_stock_dvl === null ? null : (float) $row->avg_stock_dvl,
+                    'in_total_dvl'        => round($inTotal, 2),
+                    'out_total_dvl'       => round($outTotal, 2),
+                    'is_empty'            => $stock <= 0 && $inTotal <= 0 && $outTotal <= 0,
+                    'top_product_code'    => $row->top_product_code,
+                    'top_product_dvl'     => $row->top_product_dvl === null ? null : (float) $row->top_product_dvl,
+                    'horizon_days'        => (int) $row->horizon_days,
+                    'daily_series'        => $series,
+                    'details'             => [],
                 ];
             })
             ->values()
@@ -228,6 +230,8 @@ class WipCoverageController extends Controller
             'snapshot_at'  => $rows->first()->snapshot_at,
             'horizon_days' => (int) $rows->first()->horizon_days,
             'groups'       => $groups,
+            // Chuỗi Pha chế giống nhau trên mọi dòng của cùng ngày chốt
+            'supply'       => json_decode($rows->first()->supply_series ?? '[]', true) ?: [],
         ];
     }
 

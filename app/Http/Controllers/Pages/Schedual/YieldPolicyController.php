@@ -63,7 +63,7 @@ class YieldPolicyController extends Controller
             'totalWorkingDays'=> $totalWorkingDays,
             'totalOffDays'    => $totalOffDays,
             'productionName'  => session('user')['production_name'] ?? $productionCode,
-            'wipThresholds'   => $this->wipThresholdsForView($productionCode),
+            'wipStockLimits'  => $this->wipStockLimitsForView($productionCode),
             'wipGroupNames'   => WipCoverageService::GROUP_NAMES,
         ]);
     }
@@ -246,44 +246,43 @@ class YieldPolicyController extends Controller
     }
 
     /**
-     * Lưu ngưỡng cảnh báo tồn bán thành phẩm của phân xưởng
+     * Lưu giới hạn trên/dưới mức tồn bán thành phẩm của một công đoạn
      */
-    public function storeWipThreshold(Request $request)
+    public function storeWipStockLimit(Request $request)
     {
         if (! user_has_permission(session('user')['userId'], 'set_yield_policy', 'boolean')) {
             return response()->json(['success' => false, 'message' => 'Bạn không có quyền cài đặt chính sách sản lượng.'], 403);
         }
 
         $request->validate([
-            'stage_group_code' => 'required|string|in:' . implode(',', WipCoverageService::SOURCE_GROUPS),
-            'critical_days'    => 'nullable|numeric|min:0|max:999',
-            'warn_days'        => 'nullable|numeric|min:0|max:999',
-            'horizon_days'     => 'nullable|integer|min:1|max:180',
+            'stage_group_code' => 'required|string|in:' . implode(',', WipCoverageService::NEXT_GROUPS),
+            'min_stock_dvl'    => 'nullable|numeric|min:0',
+            'max_stock_dvl'    => 'nullable|numeric|min:0',
         ]);
 
-        $critical = $request->critical_days === null || $request->critical_days === '' ? null : (float) $request->critical_days;
-        $warn     = $request->warn_days === null || $request->warn_days === '' ? null : (float) $request->warn_days;
+        $min = $request->min_stock_dvl === null || $request->min_stock_dvl === '' ? null : (float) $request->min_stock_dvl;
+        $max = $request->max_stock_dvl === null || $request->max_stock_dvl === '' ? null : (float) $request->max_stock_dvl;
 
-        // Ngưỡng nguy cấp phải thấp hơn ngưỡng cảnh báo, nếu không màu sẽ vô nghĩa
-        if ($critical !== null && $warn !== null && $critical > $warn) {
+        // Giới hạn dưới phải thấp hơn giới hạn trên, nếu không thì ngày nào cũng
+        // vừa thiếu vừa ứ, tô màu xong không đọc ra điều gì
+        if ($min !== null && $max !== null && $min > $max) {
             return response()->json([
                 'success' => false,
-                'message' => 'Ngưỡng nguy cấp phải nhỏ hơn hoặc bằng ngưỡng cảnh báo.',
+                'message' => 'Giới hạn dưới phải nhỏ hơn hoặc bằng giới hạn trên.',
             ], 422);
         }
 
         $productionCode = session('user')['production_code'];
         $user           = session('user')['fullName'] ?? session('user')['userName'] ?? 'System';
 
-        DB::table('wip_coverage_thresholds')->updateOrInsert(
+        DB::table('wip_stock_limits')->updateOrInsert(
             [
                 'production_code'  => $productionCode,
                 'stage_group_code' => $request->stage_group_code,
             ],
             [
-                'critical_days' => $critical,
-                'warn_days'     => $warn,
-                'horizon_days'  => (int) ($request->horizon_days ?: WipCoverageService::DEFAULT_HORIZON_DAYS),
+                'min_stock_dvl' => $min,
+                'max_stock_dvl' => $max,
                 'is_active'     => 1,
                 'updated_by'    => $user,
                 'created_by'    => $user,
@@ -294,16 +293,17 @@ class YieldPolicyController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Đã lưu ngưỡng cảnh báo tồn ' . (WipCoverageService::GROUP_NAMES[$request->stage_group_code] ?? ''),
+            'message' => 'Đã lưu giới hạn tồn chờ ' . (WipCoverageService::GROUP_NAMES[$request->stage_group_code] ?? ''),
         ]);
     }
 
     /**
-     * Chỉ hiện các nhóm công đoạn mà phân xưởng thực sự có, kèm giá trị mặc định
+     * Chỉ hiện các công đoạn mà phân xưởng thực sự có, kèm giá trị đã lưu.
+     * Công đoạn không có trong quy trình thì cấu hình giới hạn cũng vô nghĩa.
      */
-    private function wipThresholdsForView(string $productionCode): array
+    private function wipStockLimitsForView(string $productionCode): array
     {
-        $existingGroups = DB::table('stage_plan')
+        $existingStages = DB::table('stage_plan')
             ->where('deparment_code', $productionCode)
             ->where('active', 1)
             ->distinct()
@@ -311,17 +311,17 @@ class YieldPolicyController extends Controller
             ->map(fn($code) => (int) $code)
             ->all();
 
-        $thresholds = WipCoverageService::thresholdsFor($productionCode);
+        $limits = WipCoverageService::stockLimitsFor($productionCode);
 
         $result = [];
-        foreach (WipCoverageService::SOURCE_GROUPS as $groupCode) {
+        foreach (WipCoverageService::NEXT_GROUPS as $groupCode) {
             $stages = WipCoverageService::STAGE_GROUPS[$groupCode];
 
-            if (empty(array_intersect($stages, $existingGroups))) {
+            if (empty(array_intersect($stages, $existingStages))) {
                 continue;
             }
 
-            $result[$groupCode] = $thresholds[$groupCode];
+            $result[$groupCode] = $limits[$groupCode];
         }
 
         return $result;

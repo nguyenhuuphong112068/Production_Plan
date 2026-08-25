@@ -6,8 +6,17 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Tính tồn bán thành phẩm giữa các công đoạn và số ngày mà lượng tồn đó
- * đáp ứng được cho công đoạn kế tiếp, dựa trên lịch lý thuyết đã sắp.
+ * Thống kê tồn bán thành phẩm lý thuyết đang chờ để bước vào công đoạn kế
+ * tiếp, dựa trên lịch đã sắp.
+ *
+ * Tồn được gom theo CÔNG ĐOẠN ĐÍCH — Định hình, Bao phim, Đóng gói — chứ
+ * không theo công đoạn nguồn. Một lô đang chờ Đóng gói thì tính vào tổng
+ * "chờ Đóng gói" bất kể nó xuất phát từ Pha chế, Định hình hay Bao phim,
+ * vì đó chính là câu hỏi người dùng quan tâm: công đoạn tiếp theo còn bao
+ * nhiêu để chạy.
+ *
+ * Đích của mỗi lô tự hiện ra từ dữ liệu qua bộ ba stage_plan.code,
+ * predecessor_code và nextcessor_code, không khai cứng danh sách luồng.
  *
  * Lưu ý hiệu năng quan trọng: stage_plan.code và stage_plan.nextcessor_code
  * là quan hệ cha con nhưng phép tự nối bảng qua chúng rất tốn kém khi bảng lớn.
@@ -16,16 +25,22 @@ use Illuminate\Support\Facades\DB;
  */
 class WipCoverageService
 {
-    /** Nhóm công đoạn giữ tồn, theo đúng thứ tự sản xuất */
+    /** Nhóm công đoạn, theo đúng thứ tự sản xuất */
     public const STAGE_GROUPS = [
         'PC' => [3, 4],   // Pha chế + Trộn hoàn tất, đầu ra lấy ở công đoạn lớn nhất có thật
         'DH' => [5],      // Định hình
         'BP' => [6],      // Bao phim
-        'DG' => [7],      // Đóng gói, chỉ tiêu thụ chứ không sinh tồn
+        'DG' => [7],      // Đóng gói, chỉ nhận hàng chứ không sinh tồn
     ];
 
-    /** Các nhóm thực sự sinh ra tồn bán thành phẩm */
+    /** Các nhóm thực sự sinh ra tồn bán thành phẩm, đóng vai trò công đoạn nguồn */
     public const SOURCE_GROUPS = ['PC', 'DH', 'BP'];
+
+    /**
+     * Ba công đoạn đích mà người dùng quan tâm: tồn đang chờ để bước vào đâu.
+     * Đây cũng là thứ tự hiển thị trên biểu đồ và bảng.
+     */
+    public const NEXT_GROUPS = ['DH', 'BP', 'DG'];
 
     public const GROUP_NAMES = [
         'PC' => 'Pha chế',
@@ -34,20 +49,33 @@ class WipCoverageService
         'DG' => 'Đóng gói',
     ];
 
+    /** Mã nhóm cho lô chưa lần ra được công đoạn kế tiếp */
+    public const NO_NEXT = 'NA';
+
+    /** Mã giả cho nguồn vào Pha chế, dùng khi tra lô theo cột "Pha chế nhập vào" */
+    public const SUPPLY = 'SUPPLY';
+
+    /** Tên hiển thị theo mã công đoạn, dùng cho modal xem lô */
+    private const STAGE_NAMES = [
+        3 => 'Pha chế',
+        4 => 'Trộn hoàn tất',
+        5 => 'Định hình',
+        6 => 'Bao phim',
+        7 => 'Đóng gói',
+    ];
+
     public const DEFAULT_HORIZON_DAYS = 30;
 
     /** Giờ bắt đầu ngày công của nhà máy */
     public const DAY_START_HOUR = 6;
-
-    /** Số ngày lịch sử dùng để đo nhịp chạy thực tế của mỗi công đoạn */
-    public const CAPACITY_WINDOW_DAYS = 90;
 
     /**
      * @return array{
      *     production_code: string,
      *     snapshot_at: string,
      *     horizon_days: int,
-     *     groups: array<int, array<string, mixed>>
+     *     groups: array<int, array<string, mixed>>,
+     *     supply: array<int, array<string, mixed>>
      * }
      */
     public function compute(string $productionCode, Carbon $at, int $horizonDays = self::DEFAULT_HORIZON_DAYS): array
@@ -56,59 +84,23 @@ class WipCoverageService
         $horizonDays = max(1, min(180, $horizonDays));
 
         $rows = $this->loadStagePlans($productionCode, $at, $horizonDays);
-        $byCode = $this->buildCodeLookup($rows, $productionCode);
-        $capacity = $this->loadCapacity($productionCode, $at);
+        $lookup = $this->buildLookups($rows);
 
         $days = $this->buildDayWindows($at, $horizonDays);
 
-        // Gom các dòng theo lô một lần rồi dùng chung cho mọi nhóm
+        // Gom các dòng theo lô một lần rồi dùng chung cho mọi nhóm đích
         $byPlanMaster = [];
         foreach ($rows as $row) {
             $byPlanMaster[$row->plan_master_id][] = $row;
         }
 
-        // Bước 1: dựng sổ nhập xuất của tất cả các nhóm TRƯỚC khi tính số ngày.
-        //
-        // Phải làm hai lượt vì một công đoạn có thể được nhiều kho nuôi cùng lúc:
-        // Đóng gói nhận hàng từ cả Bao phim, Định hình (hàng không bao phim) lẫn
-        // Pha chế (hàng không định hình). Nếu tính riêng từng nhóm thì nhóm nào
-        // cũng tưởng mình được dùng trọn công suất Đóng gói, ra số sai hẳn.
-        $ledgers = [];
-        $tallies = [];
-        foreach (self::SOURCE_GROUPS as $groupCode) {
-            $built = $this->buildLedger($groupCode, $byPlanMaster, $byCode, $capacity);
-
-            // Phân xưởng không có công đoạn này thì không hiển thị thẻ nào cả
-            if ($built === null) {
-                continue;
-            }
-
-            $ledgers[$groupCode] = $built['ledger'];
-            $tallies[$groupCode] = $built['next_tally'];
-        }
-
-        // Bước 2: chia nhịp chạy của từng công đoạn tiêu thụ cho các kho nuôi nó
-        $series = $this->buildSeries($days, $ledgers, $capacity);
-
-        // Con số trên thẻ phải đo tại ĐÚNG mốc chốt, không lấy điểm đầu của chuỗi.
-        // Lệnh chạy nền chốt lúc 06:00 nên hai mốc trùng nhau, nhưng khi người dùng
-        // bấm tính lại giữa ngày thì mốc chốt là bây giờ còn điểm đầu chuỗi vẫn là
-        // 06:00 sáng nay, lấy nhầm sẽ ra thẻ ghi tồn bằng 0 mà vẫn đáp ứng mấy ngày.
-        $coverNow = $this->coverByCapacity($ledgers, $at->format('Y-m-d H:i:s'), $capacity);
+        $ledgers = $this->buildLedgers($byPlanMaster, $lookup);
+        $series  = $this->buildSeries($days, $ledgers);
+        $supply  = $this->buildSupplySeries($days, $byPlanMaster);
 
         $groups = [];
-        foreach ($ledgers as $groupCode => $ledger) {
-            $groups[] = $this->assembleGroup(
-                $groupCode,
-                $ledger,
-                $tallies[$groupCode],
-                $at,
-                $days,
-                $horizonDays,
-                $capacity,
-                $series[$groupCode],
-                $coverNow[$groupCode]
-            );
+        foreach ($ledgers as $groupCode => $lots) {
+            $groups[] = $this->assembleGroup($groupCode, $lots, $at, $days, $horizonDays, $series[$groupCode]);
         }
 
         return [
@@ -116,14 +108,202 @@ class WipCoverageService
             'snapshot_at'     => $at->format('Y-m-d H:i:s'),
             'horizon_days'    => $horizonDays,
             'groups'          => $groups,
+            'supply'          => $supply,
         ];
+    }
+
+    /** Tên hiển thị của một nhóm đích, kể cả nhóm chưa rõ công đoạn sau */
+    public static function groupName(string $code): string
+    {
+        if ($code === self::NO_NEXT) {
+            return 'Chưa rõ công đoạn sau';
+        }
+
+        return self::GROUP_NAMES[$code] ?? $code;
+    }
+
+    /**
+     * Danh sách lô cấu thành một con số cụ thể trên bảng ngày: bấm vào tồn,
+     * nhập, xuất của một nhóm, hoặc sản lượng Pha chế nhập vào của một ngày,
+     * là xem được ngay lô nào gộp lại thành số đó.
+     *
+     * @param string $groupCode DH | BP | DG | NA | SUPPLY
+     * @param string $kind      stock | in | out — bỏ qua khi groupCode = SUPPLY
+     * @return array{rows: array, total_dvl: float, total_kg: ?float}
+     */
+    public function dayLots(
+        string $productionCode,
+        Carbon $at,
+        int $horizonDays,
+        string $groupCode,
+        string $date,
+        string $kind
+    ): array {
+        $at = $at->copy();
+        $horizonDays = max(1, min(180, $horizonDays));
+
+        $rows = $this->loadStagePlans($productionCode, $at, $horizonDays);
+        $lookup = $this->buildLookups($rows);
+
+        $byPlanMaster = [];
+        foreach ($rows as $row) {
+            $byPlanMaster[$row->plan_master_id][] = $row;
+        }
+
+        $dayStart = Carbon::parse($date)->setTime(self::DAY_START_HOUR, 0, 0);
+        $from = $dayStart->format('Y-m-d H:i:s');
+        $to   = $dayStart->copy()->addDay()->format('Y-m-d H:i:s');
+
+        if ($groupCode === self::SUPPLY) {
+            return $this->supplyLotsOfDay($byPlanMaster, $from, $to);
+        }
+
+        $ledgers = $this->buildLedgers($byPlanMaster, $lookup);
+
+        return $this->lotsOfDay($ledgers[$groupCode] ?? [], $from, $to, $kind);
+    }
+
+    /** Lô cấu thành tồn / nhập / xuất của MỘT nhóm trong MỘT ngày */
+    private function lotsOfDay(array $lots, string $from, string $to, string $kind): array
+    {
+        $rows = [];
+        $total = 0.0;
+
+        foreach ($lots as $lot) {
+            if ($kind === 'stock') {
+                $qty = $this->lotStockAt($lot, $from);
+                if ($qty <= 0) {
+                    continue;
+                }
+                $rows[] = $this->lotRow($lot, $qty, $this->nextMomentOf($lot, $from));
+                $total += $qty;
+                continue;
+            }
+
+            if ($kind === 'in') {
+                // Tồn chỉ tăng đúng lúc lô nhập kho, không bao giờ tăng lại sau đó,
+                // nên chênh lệch dương giữa hai đầu ngày chính là lô mới nhập trong
+                // ngày đó — không cần tra riêng cột entry.
+                $delta = $this->lotStockAt($lot, $to) - $this->lotStockAt($lot, $from);
+                if ($delta <= 1e-9) {
+                    continue;
+                }
+                $rows[] = $this->lotRow($lot, $delta, $this->nextMomentOf($lot, $to));
+                $total += $delta;
+                continue;
+            }
+
+            if ($kind === 'out') {
+                // Xuất theo TỪNG đợt rút, không gộp: một lô đóng gói một phần có thể
+                // xuất cho nhiều lô con ở nhiều mốc khác nhau trong cùng một ngày.
+                foreach ($lot['exits'] as $exit) {
+                    if ($exit['start'] < $from || $exit['start'] >= $to) {
+                        continue;
+                    }
+                    $qty = $lot['qty_dvl'] * $exit['weight'];
+                    if ($qty <= 1e-9) {
+                        continue;
+                    }
+                    $rows[] = $this->lotRow($lot, $qty, $exit['start']);
+                    $total += $qty;
+                }
+            }
+        }
+
+        usort($rows, fn($a, $b) => $b['qty_dvl'] <=> $a['qty_dvl']);
+
+        return ['rows' => $rows, 'total_dvl' => round($total, 2), 'total_kg' => null];
+    }
+
+    /** Lô Pha chế xuất trong MỘT ngày, không quy về nhóm đích nào — đó là nguồn chung */
+    private function supplyLotsOfDay(array $byPlanMaster, string $from, string $to): array
+    {
+        $stageCodes = self::STAGE_GROUPS['PC'];
+
+        $rows = [];
+        $totalDvl = 0.0;
+        $totalKg = 0.0;
+
+        foreach ($byPlanMaster as $planRows) {
+            $outRow = $this->outputRowOfGroup($planRows, $stageCodes);
+            if ($outRow === null) {
+                continue;
+            }
+
+            $moment = self::stageMoment($outRow);
+            if ($moment === null || $moment < $from || $moment >= $to) {
+                continue;
+            }
+
+            $dvl = $this->toDvl($outRow);
+            if ($dvl <= 0) {
+                continue;
+            }
+
+            $kg = $this->rawYield($outRow);
+
+            $rows[] = [
+                'intermediate_code' => $outRow->intermediate_code ?? null,
+                'product_name'      => $outRow->product_name ?? null,
+                'batch'             => $outRow->batch ?? null,
+                'stage_code'        => (int) $outRow->stage_code,
+                'stage_name'        => self::STAGE_NAMES[(int) $outRow->stage_code] ?? null,
+                'prev_moment'       => $moment,
+                // Một mẻ Pha chế có thể tách đi nhiều hướng khác nhau (có lô lên
+                // Định hình, có lô đi thẳng Đóng gói), không quy về một mốc duy nhất
+                'next_moment'       => null,
+                'qty_dvl'           => round($dvl, 2),
+                'qty_kg'            => round($kg, 2),
+                'unit'              => $outRow->unit_batch_qty ?? null,
+            ];
+
+            $totalDvl += $dvl;
+            $totalKg  += $kg;
+        }
+
+        usort($rows, fn($a, $b) => $b['qty_dvl'] <=> $a['qty_dvl']);
+
+        return ['rows' => $rows, 'total_dvl' => round($totalDvl, 2), 'total_kg' => round($totalKg, 2)];
+    }
+
+    /** Dòng hiển thị chuẩn hoá cho modal xem lô, dùng chung cho tồn/nhập/xuất */
+    private function lotRow(array $lot, float $qty, ?string $nextMoment): array
+    {
+        return [
+            'intermediate_code' => $lot['intermediate_code'],
+            'product_name'      => $lot['product_name'],
+            'batch'             => $lot['batch'],
+            'stage_code'        => $lot['stage_code'],
+            'stage_name'        => self::STAGE_NAMES[$lot['stage_code']] ?? null,
+            'prev_moment'       => $lot['entry'],
+            'next_moment'       => $nextMoment,
+            'qty_dvl'           => round($qty, 2),
+            'qty_kg'            => null,
+            'unit'              => $lot['unit'],
+        ];
+    }
+
+    /** Mốc rút hàng gần nhất kể từ một thời điểm, để biết lô này còn hẹn công đoạn sau lúc nào */
+    private function nextMomentOf(array $lot, string $from): ?string
+    {
+        $next = null;
+        foreach ($lot['exits'] as $exit) {
+            if ($exit['start'] < $from) {
+                continue;   // đã xảy ra trước mốc này rồi, không còn là "sắp tới"
+            }
+            if ($next === null || $exit['start'] < $next) {
+                $next = $exit['start'];
+            }
+        }
+
+        return $next;
     }
 
     /**
      * Một truy vấn phẳng duy nhất. Không nối stage_plan với chính nó.
      *
      * Phạm vi thời gian: lấy rộng về quá khứ để không bỏ sót lô đã bắt đầu từ lâu
-     * mà công đoạn sau vẫn chưa chạy, và lấy tới hết khoảng dự báo cho phía cầu.
+     * mà công đoạn sau vẫn chưa chạy, và lấy tới hết khoảng dự báo cho phía sau.
      */
     private function loadStagePlans(string $productionCode, Carbon $at, int $horizonDays)
     {
@@ -156,6 +336,10 @@ class WipCoverageService
                 'sp.start',
                 'sp.end',
                 'sp.finished',
+                // Mốc chạy thật, dùng để vá các dòng đã hoàn thành mà mất lịch
+                'sp.actual_start',
+                'sp.actual_end',
+                'sp.finished_date',
                 'sp.Theoretical_yields as theoretical_yields',
                 'sp.yields',
                 'pm.batch',
@@ -171,20 +355,30 @@ class WipCoverageService
     }
 
     /**
-     * Bảng tra code -> DANH SÁCH dòng.
+     * Hai bảng tra dùng để đi từ một công đoạn sang công đoạn kế tiếp.
      *
-     * stage_plan.code KHÔNG duy nhất: lô đóng gói một phần sinh nhiều dòng công đoạn 7
-     * dùng chung một code nhưng khác plan_master_id, mỗi dòng mang percent_parkaging
-     * riêng (xem ProductionPlanController quanh dòng 2261). Nếu tra bằng keyBy('code')
-     * thì chỉ giữ được một dòng và tính thiếu nhu cầu.
+     * by_code: code -> DANH SÁCH dòng. stage_plan.code KHÔNG duy nhất: lô đóng gói
+     * một phần sinh nhiều dòng công đoạn 7 dùng chung một code nhưng khác
+     * plan_master_id, mỗi dòng mang percent_parkaging riêng (xem
+     * ProductionPlanController quanh dòng 2261). Nếu tra bằng keyBy('code') thì chỉ
+     * giữ được một dòng và tính thiếu lượng xuất.
+     *
+     * by_predecessor: predecessor_code -> DANH SÁCH dòng, dùng khi nextcessor_code
+     * bỏ trống. Hai cột này khai cùng một quan hệ theo hai chiều, dòng nào thiếu
+     * chiều xuôi thì vẫn còn chiều ngược để lần ra công đoạn sau.
      *
      * Công đoạn kế tiếp cũng có thể nằm ở phân xưởng khác nên phải nạp bù các code
      * còn thiếu mà không lọc theo deparment_code.
+     *
+     * @return array{by_code: array, by_predecessor: array}
      */
-    private function buildCodeLookup($rows, string $productionCode): array
+    private function buildLookups($rows): array
     {
         $byCode = [];
+        $all = [];
+
         foreach ($rows as $row) {
+            $all[] = $row;
             if ($row->code !== null && $row->code !== '') {
                 $byCode[$row->code][] = $row;
             }
@@ -196,10 +390,6 @@ class WipCoverageService
             if ($next !== null && $next !== '' && ! isset($byCode[$next])) {
                 $missing[$next] = true;
             }
-        }
-
-        if ($missing === []) {
-            return $byCode;
         }
 
         foreach (array_chunk(array_keys($missing), 1000) as $chunk) {
@@ -219,6 +409,9 @@ class WipCoverageService
                     'sp.start',
                     'sp.end',
                     'sp.finished',
+                    'sp.actual_start',
+                    'sp.actual_end',
+                    'sp.finished_date',
                     'sp.Theoretical_yields as theoretical_yields',
                     'sp.yields',
                     'pm.percent_parkaging',
@@ -228,157 +421,49 @@ class WipCoverageService
                 ->get();
 
             foreach ($extra as $row) {
-                if (! isset($byCode[$row->code])) {
-                    $byCode[$row->code] = [];
-                }
+                $all[] = $row;
                 $byCode[$row->code][] = $row;
             }
         }
 
-        return $byCode;
+        $byPredecessor = [];
+        foreach ($all as $row) {
+            $prev = $row->predecessor_code ?? null;
+            if ($prev !== null && $prev !== '') {
+                $byPredecessor[$prev][] = $row;
+            }
+        }
+
+        return ['by_code' => $byCode, 'by_predecessor' => $byPredecessor];
     }
 
     /**
-     * Đổi chuỗi giờ dạng "HH:MM" của bảng quota về số giờ thập phân.
-     * Cột p_time/m_time là varchar chứ không phải số, so sánh số học trực tiếp
-     * sẽ ra 0 cho mọi giá trị dạng "02:00".
+     * Mốc mà một công đoạn chiếm chỗ trên trục thời gian.
+     *
+     * Đây là màn tồn LÝ THUYẾT nên lịch đã sắp vẫn là căn cứ chính. Nhưng rất
+     * nhiều dòng chạy xong lại bị xoá mất `start`: riêng Đóng gói của PXV1 có
+     * 340 dòng như vậy. Nếu chỉ nhìn `start` thì công đoạn sau coi như chưa bao
+     * giờ rút hàng, lô nằm lại trong kho vĩnh viễn — biểu đồ đang hiện cả tồn
+     * từ tháng 11 năm ngoái, gần 60% con số là hàng đã đóng gói xong từ lâu.
+     *
+     * Vì vậy dòng đã hoàn thành thì lấy mốc chạy thật: đó là sự thật chắc chắn
+     * hơn lịch, và cũng xử lý luôn vài dòng finished mà `start` còn nằm ở tương
+     * lai. Dòng chưa hoàn thành thì vẫn theo đúng lịch, chưa sắp lịch nghĩa là
+     * chưa diễn ra.
      */
-    private static function hoursOf(?string $value): ?float
+    private static function stageMoment($row): ?string
     {
-        if ($value === null) {
+        if ((int) ($row->finished ?? 0) === 1) {
+            foreach (['actual_start', 'start', 'finished_date', 'actual_end'] as $field) {
+                if (! empty($row->$field)) {
+                    return $row->$field;
+                }
+            }
+
             return null;
         }
 
-        $value = trim($value);
-        if ($value === '') {
-            return null;
-        }
-
-        if (strpos($value, ':') !== false) {
-            $parts = explode(':', $value);
-            $hours = (float) $parts[0] + ((float) ($parts[1] ?? 0)) / 60;
-        } else {
-            $hours = (float) $value;
-        }
-
-        return $hours > 0 ? $hours : null;
-    }
-
-    /**
-     * Định mức giờ chạy mỗi lô và công suất thực tế của từng công đoạn.
-     *
-     * Tử số là định mức: quota.m_time cho biết một lô chiếm bao nhiêu giờ máy ở
-     * công đoạn đó. Mẫu số là công suất: đo nhịp chạy thật của cả công đoạn trong
-     * CAPACITY_WINDOW_DAYS ngày gần nhất, tính bằng giờ máy mỗi ngày.
-     *
-     * Không lấy "số phòng × 24 giờ" làm công suất vì không phòng nào chạy liên tục
-     * suốt ngày; con số đó sẽ báo động giả. Nhịp chạy đo được phản ánh đúng tốc độ
-     * mà công đoạn sau thực sự rút hàng ra khỏi kho.
-     *
-     * @return array{hours: array, median: array, rate: array, rooms: array, days: int}
-     */
-    private function loadCapacity(string $productionCode, Carbon $at): array
-    {
-        $stages = [3, 4, 5, 6, 7];
-
-        // Định mức giờ máy mỗi lô. Công đoạn 7 tra theo mã thành phẩm, còn lại
-        // tra theo mã bán thành phẩm.
-        $hours = [];
-        $pool = [];
-
-        $quotas = DB::table('quota')
-            ->where('deparment_code', $productionCode)
-            ->where('active', 1)
-            ->whereIn('stage_code', $stages)
-            ->get(['stage_code', 'intermediate_code', 'finished_product_code', 'm_time']);
-
-        foreach ($quotas as $quota) {
-            $value = self::hoursOf($quota->m_time);
-            if ($value === null) {
-                continue;
-            }
-
-            $stage = (int) $quota->stage_code;
-            $key = $stage >= 7 ? $quota->finished_product_code : $quota->intermediate_code;
-
-            if ($key === null || $key === '' || $key === 'NA') {
-                continue;
-            }
-
-            $hours[$stage][$key][] = $value;
-            $pool[$stage][] = $value;
-        }
-
-        // Một mã có thể khai nhiều phòng với giờ khác nhau, lấy trung vị
-        foreach ($hours as $stage => $byKey) {
-            foreach ($byKey as $key => $values) {
-                $hours[$stage][$key] = self::median($values);
-            }
-        }
-
-        $median = [];
-        foreach ($pool as $stage => $values) {
-            $median[$stage] = self::median($values);
-        }
-
-        // Nhịp chạy thật: tổng giờ máy đã xếp chia cho số ngày của cửa sổ đo
-        $windowDays = self::CAPACITY_WINDOW_DAYS;
-        $from = $at->copy()->subDays($windowDays)->format('Y-m-d H:i:s');
-        $to   = $at->copy()->format('Y-m-d H:i:s');
-
-        $usage = DB::table('stage_plan as sp')
-            ->join('plan_master as pm', 'sp.plan_master_id', '=', 'pm.id')
-            ->join('plan_list as pl', 'pm.plan_list_id', '=', 'pl.id')
-            ->where('sp.active', 1)
-            ->where('pm.active', 1)
-            ->where('pm.cancel', 0)
-            ->where('pl.type', 1)
-            ->where('sp.deparment_code', $productionCode)
-            ->whereIn('sp.stage_code', $stages)
-            ->whereBetween('sp.start', [$from, $to])
-            ->selectRaw('sp.stage_code, SUM(TIMESTAMPDIFF(MINUTE, sp.start, sp.end)) / 60 as hours, COUNT(*) as lots')
-            ->groupBy('sp.stage_code')
-            ->get();
-
-        $rate = [];
-        $lots = [];
-        foreach ($usage as $row) {
-            $stage = (int) $row->stage_code;
-            $rate[$stage] = round(((float) $row->hours) / $windowDays, 2);
-            $lots[$stage] = (int) $row->lots;
-        }
-
-        $rooms = DB::table('room')
-            ->where('deparment_code', $productionCode)
-            ->where('active', 1)
-            ->where('only_maintenance', 0)
-            ->whereIn('stage_code', $stages)
-            ->selectRaw('stage_code, COUNT(*) as n')
-            ->groupBy('stage_code')
-            ->pluck('n', 'stage_code')
-            ->all();
-
-        return [
-            'hours'  => $hours,
-            'median' => $median,
-            'rate'   => $rate,
-            'lots'   => $lots,
-            'rooms'  => $rooms,
-            'days'   => $windowDays,
-        ];
-    }
-
-    private static function median(array $values): float
-    {
-        sort($values);
-        $n = count($values);
-        if ($n === 0) {
-            return 0.0;
-        }
-
-        $mid = intdiv($n, 2);
-
-        return $n % 2 === 1 ? $values[$mid] : ($values[$mid - 1] + $values[$mid]) / 2;
+        return empty($row->start) ? null : $row->start;
     }
 
     /** Các mốc ngày công 06:00 -> 06:00 kể từ mốc chốt */
@@ -405,152 +490,257 @@ class WipCoverageService
     }
 
     /**
-     * Sổ nhập xuất của một nhóm công đoạn: mỗi lô vào kho lúc nào, bị rút ra lúc
-     * nào và chiếm bao nhiêu giờ máy ở công đoạn sau.
+     * Sổ nhập xuất của TỪNG NHÓM ĐÍCH: mỗi lô vào kho lúc nào và bị công đoạn
+     * sau rút ra lúc nào.
      *
-     * Trả về null nếu phân xưởng không có công đoạn nào thuộc nhóm này.
+     * Với mỗi lô, đi theo chuỗi công đoạn cho tới khi ra khỏi nhóm hiện tại;
+     * nhóm chạm tới đầu tiên chính là công đoạn mà lô này đang CHỜ để bước vào,
+     * và lô được cộng thẳng vào sổ của nhóm đó — bất kể nó xuất phát từ Pha chế,
+     * Định hình hay Bao phim. Nhờ vậy "chờ Đóng gói" luôn là MỘT con số duy
+     * nhất, gộp cả hàng đi đủ tuần tự lẫn hàng bỏ qua Bao phim hoặc Định hình.
      *
-     * @return array{ledger: array, next_tally: array}|null
+     * @return array<string, array> [group_code => danh sách lô]
      */
-    private function buildLedger(
-        string $groupCode,
-        array $byPlanMaster,
-        array $byCode,
-        array $capacity
-    ): ?array {
-        $stageCodes = self::STAGE_GROUPS[$groupCode];
+    private function buildLedgers(array $byPlanMaster, array $lookup): array
+    {
+        $ledgers = [];
 
-        $groupExists = false;
-        $nextGroupTally = [];
+        foreach (self::SOURCE_GROUPS as $sourceCode) {
+            $stageCodes = self::STAGE_GROUPS[$sourceCode];
 
-        // Hồ sơ nhập/xuất của từng lô, dùng để tính lại tồn tại BẤT KỲ mốc thời gian nào
-        $ledger = [];
+            foreach ($byPlanMaster as $planRows) {
+                $outRow = $this->outputRowOfGroup($planRows, $stageCodes);
+                if ($outRow === null) {
+                    continue;
+                }
 
+                $qtyDvl = $this->toDvl($outRow);
+                if ($qtyDvl <= 0) {
+                    continue;
+                }
+
+                $successors = $this->nextGroupRows($outRow, $lookup, $sourceCode);
+
+                $nextGroup = $successors === []
+                    ? null
+                    : $this->groupOfStage((int) $successors[0]->stage_code);
+
+                $entry = self::stageMoment($outRow);
+
+                // Thời điểm lô này nhập kho, và các thời điểm từng phần bị rút ra
+                $exits = [];
+                foreach ($successors as $successor) {
+                    $moment = self::stageMoment($successor);
+
+                    // Đã chạy xong nhưng không còn mốc nào để lần ra thời điểm:
+                    // hàng chắc chắn đã bị rút, chỉ là không biết lúc nào. Cho rút
+                    // ngay khi nhập để nó khỏi đọng lại thành tồn ma, thay vì bỏ
+                    // qua và tính lô này còn nguyên trong kho mãi mãi.
+                    if ($moment === null && (int) ($successor->finished ?? 0) === 1) {
+                        $moment = $entry;
+                    }
+
+                    if ($moment === null) {
+                        continue;   // chưa sắp lịch và chưa chạy, hàng vẫn còn chờ
+                    }
+
+                    $exits[] = [
+                        'start'  => $moment,
+                        'weight' => $this->successorWeight($successors, $successor),
+                    ];
+                }
+
+                // Mọi lô con phía sau đều đã chạy xong thì lô này chắc chắn không
+                // còn gì để chờ. Nhưng percent_parkaging làm tròn 4 chữ số nên
+                // cộng lại thường ra 0,9999 chứ không tròn 1; để nguyên thì mỗi lô
+                // đóng gói một phần đọng lại một mẩu tí xíu, gom cả trăm lô lại
+                // thành một dãy tồn ma kéo dài từ năm ngoái. Đã biết chắc hàng đi
+                // hết thì chuẩn hoá cho tổng đúng bằng 1.
+                $allConsumed = $successors !== []
+                    && count($exits) === count($successors)
+                    && ! array_filter($successors, fn($s) => (int) ($s->finished ?? 0) !== 1);
+
+                if ($allConsumed) {
+                    $sum = array_sum(array_column($exits, 'weight'));
+                    if ($sum > 0) {
+                        foreach ($exits as $i => $exit) {
+                            $exits[$i]['weight'] = $exit['weight'] / $sum;
+                        }
+                    }
+                }
+
+                $groupCode = $nextGroup ?? self::NO_NEXT;
+
+                $ledgers[$groupCode][] = [
+                    'plan_master_id'    => $outRow->plan_master_id,
+                    'batch'             => $outRow->batch ?? null,
+                    'intermediate_code' => $outRow->intermediate_code ?? null,
+                    'product_name'      => $outRow->product_name ?? null,
+                    'unit'              => $outRow->unit_batch_qty ?? null,
+                    'stage_code'        => (int) $outRow->stage_code,   // công đoạn hiện đang giữ lô, tức nguồn
+                    'qty_dvl'           => $qtyDvl,
+                    'entry'             => $entry,   // null nghĩa là chưa sắp lịch và chưa chạy, không bao giờ nhập kho
+                    'exits'             => $exits,
+                ];
+            }
+        }
+
+        return $this->sortGroups($ledgers);
+    }
+
+    /**
+     * Sản lượng Pha chế nhập vào dây chuyền mỗi ngày.
+     *
+     * Pha chế là nguồn duy nhất cấp bán thành phẩm cho toàn bộ công đoạn sau,
+     * nên đặt cạnh đường tồn mới đọc được quan hệ nhân quả: đổ vào nhiều mà tồn
+     * vẫn tụt nghĩa là phía sau chạy vượt nguồn, còn tồn dâng lên đều đặn là dấu
+     * hiệu nghẽn ở phía sau chứ không phải Pha chế làm ít.
+     *
+     * Trả cả Kg lẫn đơn vị liều: Pha chế cân theo Kg còn cả trang tính theo viên,
+     * thiếu một trong hai thì hoặc không đối chiếu được với phiếu cân, hoặc không
+     * so được với các cột tồn bên cạnh.
+     *
+     * Mốc tính là lúc công đoạn Pha chế bắt đầu, đúng bằng lúc lô nhập kho ở các
+     * nhóm phía sau, nên cột này và cột "Nhập" luôn kể cùng một câu chuyện.
+     */
+    private function buildSupplySeries(array $days, array $byPlanMaster): array
+    {
+        $stageCodes = self::STAGE_GROUPS['PC'];
+
+        $lots = [];
         foreach ($byPlanMaster as $planRows) {
             $outRow = $this->outputRowOfGroup($planRows, $stageCodes);
             if ($outRow === null) {
                 continue;
             }
 
-            $groupExists = true;
+            $moment = self::stageMoment($outRow);
+            if ($moment === null) {
+                continue;   // chưa sắp lịch và chưa chạy
+            }
 
-            $successors = $this->nextGroupRows($outRow, $byCode, $groupCode);
-            $qtyDvl = $this->toDvl($outRow);
-
-            if ($qtyDvl <= 0) {
+            $dvl = $this->toDvl($outRow);
+            if ($dvl <= 0) {
                 continue;
             }
 
-            // Thời điểm lô này nhập kho, và các thời điểm từng phần bị rút ra
-            $exits = [];
-            foreach ($successors as $successor) {
-                if ($successor->start === null) {
-                    continue;
-                }
-                $exits[] = [
-                    'start'  => $successor->start,
-                    'weight' => $this->successorWeight($successors, $successor),
-                ];
-            }
-
-            $ledger[] = [
-                'plan_master_id'    => $outRow->plan_master_id,
-                'batch'             => $outRow->batch ?? null,
-                'intermediate_code' => $outRow->intermediate_code ?? null,
-                'product_name'      => $outRow->product_name ?? null,
-                'unit'              => $outRow->unit_batch_qty ?? null,
-                'stage_code'        => (int) $outRow->stage_code,
-                'qty_dvl'          => $qtyDvl,
-                'entry'            => $outRow->start,   // null nghĩa là chưa sắp lịch, không bao giờ nhập kho
-                'exits'            => $exits,
-                'orphan'           => $successors === [],
-                // Số giờ máy mà lô này sẽ chiếm ở công đoạn sau, tách theo công đoạn.
-                // Tính cho cả phần chưa sắp lịch, vì công việc vẫn phải làm.
-                'load'             => $this->consumerLoad($successors, $capacity),
+            $lots[] = [
+                'at'  => $moment,
+                'kg'  => $this->rawYield($outRow),
+                'dvl' => $dvl,
             ];
+        }
 
-            if ($successors !== []) {
-                $nextGroup = $this->groupOfStage((int) $successors[0]->stage_code);
-                $nextGroupTally[$nextGroup] = ($nextGroupTally[$nextGroup] ?? 0) + 1;
+        $series = [];
+        foreach ($days as $day) {
+            $from = $day['start']->format('Y-m-d H:i:s');
+            $to   = $day['end']->format('Y-m-d H:i:s');
+
+            $kg = 0.0;
+            $dvl = 0.0;
+            $count = 0;
+
+            foreach ($lots as $lot) {
+                if ($lot['at'] >= $from && $lot['at'] < $to) {
+                    $kg  += $lot['kg'];
+                    $dvl += $lot['dvl'];
+                    $count++;
+                }
             }
+
+            $series[] = [
+                'date'       => $day['date'],
+                'output_kg'  => round($kg, 2),
+                'output_dvl' => round($dvl, 2),
+                'lots'       => $count,
+            ];
         }
 
-        if (! $groupExists) {
-            return null;
+        return $series;
+    }
+
+    /**
+     * Giới hạn trên/dưới của mức tồn từng công đoạn, cấu hình ở trang Chính sách
+     * sản lượng. Công đoạn chưa cấu hình thì trả về hai đầu rỗng, nghĩa là không
+     * đối chiếu chứ không phải giới hạn bằng 0.
+     *
+     * @return array<string, object>
+     */
+    public static function stockLimitsFor(string $productionCode): array
+    {
+        $rows = DB::table('wip_stock_limits')
+            ->where('production_code', $productionCode)
+            ->where('is_active', 1)
+            ->get()
+            ->keyBy('stage_group_code');
+
+        $result = [];
+        foreach (self::NEXT_GROUPS as $groupCode) {
+            $row = $rows[$groupCode] ?? null;
+
+            $result[$groupCode] = (object) [
+                'production_code'  => $productionCode,
+                'stage_group_code' => $groupCode,
+                'min_stock_dvl'    => $row && $row->min_stock_dvl !== null ? (float) $row->min_stock_dvl : null,
+                'max_stock_dvl'    => $row && $row->max_stock_dvl !== null ? (float) $row->max_stock_dvl : null,
+            ];
         }
 
-        return ['ledger' => $ledger, 'next_tally' => $nextGroupTally];
+        return $result;
+    }
+
+    /** Xếp DH, BP, DG theo đúng thứ tự dây chuyền; nhóm chưa rõ công đoạn sau xuống cuối */
+    private function sortGroups(array $ledgers): array
+    {
+        $order = array_flip(self::NEXT_GROUPS);
+
+        uksort($ledgers, fn($a, $b) => ($order[$a] ?? 99) <=> ($order[$b] ?? 99));
+
+        return $ledgers;
     }
 
     /** Ráp kết quả của một nhóm từ sổ nhập xuất và chuỗi biến thiên đã tính sẵn */
     private function assembleGroup(
         string $groupCode,
-        array $ledger,
-        array $nextGroupTally,
+        array $lots,
         Carbon $at,
         array $days,
         int $horizonDays,
-        array $capacity,
-        array $series,
-        array $coverNow
+        array $series
     ): array {
         $atStr = $at->format('Y-m-d H:i:s');
 
         // Tồn ngay tại mốc chốt
-        $now = $this->stockAt($ledger, $atStr);
+        $now = $this->stockAt($lots, $atStr);
         $stock = $now['lots'];
         $stockTotal = $now['total'];
-        $orphanLots = $now['orphans'];
 
-        $cover = $this->coverFromSeries($series);
-
-        // Nhịp mà nhóm này thực sự được hưởng ở từng công đoạn tiêu thụ, tại mốc chốt
-        $allocated = $coverNow['rate_by_stage'];
-        $groupRate = (float) array_sum($allocated);
-
-        $details = $this->buildDetails($stock, $ledger, $days, $atStr, $groupRate);
-
-        // Nhịp đã chia chỉ cần ở mức nhóm, bỏ khỏi từng điểm cho nhẹ đường truyền
-        foreach ($series as $i => $point) {
-            unset($series[$i]['rate_by_stage']);
-        }
+        $stats = $this->statsFromSeries($series);
+        $details = $this->buildDetails($stock, $lots, $days, $stockTotal);
 
         $topProduct = $details[0] ?? null;
 
-        arsort($nextGroupTally);
-        $nextGroupCode = $nextGroupTally === [] ? null : array_key_first($nextGroupTally);
-
         return [
-            'stage_group_code'      => $groupCode,
-            'stage_group_name'      => self::GROUP_NAMES[$groupCode],
-            'next_stage_group_code' => $nextGroupCode,
-            'next_stage_group_name' => $nextGroupCode ? self::GROUP_NAMES[$nextGroupCode] : null,
-            'stock_dvl'             => round($stockTotal, 2),
-            'stock_lots'            => count($stock),
-            'orphan_lots'           => $orphanLots,
-            'days_of_cover'         => $coverNow['days'],
-            'first_shortage_date'   => $cover['shortage_date'],
-            'lowest_stock_dvl'      => $cover['lowest'],
-            'lowest_stock_date'     => $cover['lowest_date'],
-            'demand_total_dvl'      => $cover['demand_total'],
-            // Có công đoạn sau để nuôi hay không. Khác với "đã sắp lịch cho công
-            // đoạn sau", vì tải vẫn tính cho cả phần chưa sắp lịch.
-            'has_demand'            => $coverNow['hours'] > 0,
-            // Nhóm có trong quy trình của phân xưởng nhưng hiện không có gì để cảnh báo
-            'is_empty'              => $stockTotal <= 0 && $coverNow['hours'] <= 0,
-            // Phần tồn đã có lịch tiêu thụ cho công đoạn sau. Thấp nghĩa là lịch còn
-            // trống chứ không phải hàng đứng yên, dùng để nhắc sắp lịch xa hơn.
-            'scheduled_demand_pct'  => $stockTotal > 0
-                ? round($cover['demand_total'] / $stockTotal * 100, 1)
-                : null,
-            // Cơ sở tính số ngày đáp ứng, đưa lên giao diện để đối chiếu được
-            'load_hours'            => $coverNow['hours'],
-            'capacity_basis'        => $this->capacityBasis($capacity, $allocated),
-            'max_product_days'      => $topProduct['days_of_cover'] ?? null,
-            'max_product_code'      => $topProduct['intermediate_code'] ?? null,
-            'horizon_days'          => $horizonDays,
-            'daily_series'          => $series,
-            'details'               => $details,
+            'group_code'           => $groupCode,
+            'group_name'           => self::groupName($groupCode),
+            'stock_dvl'            => round($stockTotal, 2),
+            'stock_lots'           => count($stock),
+            'first_shortage_date'  => $stats['shortage_date'],
+            'lowest_stock_dvl'     => $stats['lowest'],
+            'lowest_stock_date'    => $stats['lowest_date'],
+            'highest_stock_dvl'    => $stats['highest'],
+            'highest_stock_date'   => $stats['highest_date'],
+            'avg_stock_dvl'        => $stats['average'],
+            'in_total_dvl'         => $stats['in_total'],
+            'out_total_dvl'        => $stats['out_total'],
+            // Nhóm có trong quy trình nhưng hiện không giữ hàng và cũng không có
+            // đợt nhập xuất nào trong kỳ
+            'is_empty'             => $stockTotal <= 0 && $stats['in_total'] <= 0 && $stats['out_total'] <= 0,
+            'top_product_code'     => $topProduct['intermediate_code'] ?? null,
+            'top_product_dvl'      => $topProduct['stock_dvl'] ?? null,
+            'horizon_days'         => $horizonDays,
+            'daily_series'         => $series,
+            'details'              => $details,
         ];
     }
 
@@ -571,8 +761,9 @@ class WipCoverageService
     }
 
     /**
-     * Đi theo nextcessor_code cho tới khi ra khỏi nhóm hiện tại.
-     * Sản phẩm không bao phim thì từ Định hình sẽ nhảy thẳng sang Đóng gói.
+     * Đi theo chuỗi công đoạn cho tới khi ra khỏi nhóm hiện tại.
+     * Sản phẩm không bao phim thì từ Định hình sẽ nhảy thẳng sang Đóng gói, đó
+     * chính là lúc lô này được tính vào "chờ Đóng gói" thay vì "chờ Bao phim".
      *
      * Trả về MẢNG vì một code có thể ứng với nhiều dòng: lô đóng gói một phần
      * tách thành nhiều lô con dùng chung code, mỗi lô con có khung giờ và
@@ -580,30 +771,76 @@ class WipCoverageService
      *
      * @return array danh sách dòng công đoạn kế tiếp, rỗng nếu không tìm được
      */
-    private function nextGroupRows($row, array $byCode, string $groupCode): array
+    private function nextGroupRows($row, array $lookup, string $groupCode): array
     {
         $stageCodes = self::STAGE_GROUPS[$groupCode];
         $cursor = $row;
-        $guard = 0;
+        $seen = [];
 
-        while ($guard++ < 12) {
-            $nextCode = $cursor->nextcessor_code ?? null;
-            if ($nextCode === null || $nextCode === '' || empty($byCode[$nextCode])) {
+        // Chuỗi dài nhất có thật chỉ 5 công đoạn, 12 vòng là dư sức; chặn ở đây
+        // để dữ liệu khai vòng tròn không treo cả trang
+        for ($guard = 0; $guard < 12; $guard++) {
+            $candidates = $this->childRowsOf($cursor, $lookup);
+            if ($candidates === []) {
                 return [];
             }
 
-            $candidates = $byCode[$nextCode];
-
+            // Các dòng cùng một bước luôn cùng công đoạn nên xét dòng đầu là đủ
             if (! in_array((int) $candidates[0]->stage_code, $stageCodes, true)) {
                 return $candidates;
             }
 
-            // Còn trong cùng nhóm thì đi tiếp. Các dòng cùng code luôn cùng công đoạn
-            // nên lấy dòng đầu làm con trỏ là đủ.
+            $key = $candidates[0]->id ?? spl_object_hash($candidates[0]);
+            if (isset($seen[$key])) {
+                return [];
+            }
+            $seen[$key] = true;
+
             $cursor = $candidates[0];
         }
 
         return [];
+    }
+
+    /**
+     * Các dòng công đoạn ngay sau một dòng cho trước.
+     *
+     * Ưu tiên nextcessor_code vì đó là chiều khai chính. Dòng nào bỏ trống cột
+     * này thì tra ngược bằng predecessor_code, và chỉ nhận công đoạn gần nhất về
+     * phía sau để không nhảy cóc qua một công đoạn khi lô khai nhiều cấp.
+     */
+    private function childRowsOf($row, array $lookup): array
+    {
+        $nextCode = $row->nextcessor_code ?? null;
+        if ($nextCode !== null && $nextCode !== '' && ! empty($lookup['by_code'][$nextCode])) {
+            return $lookup['by_code'][$nextCode];
+        }
+
+        $code = $row->code ?? null;
+        if ($code === null || $code === '' || empty($lookup['by_predecessor'][$code])) {
+            return [];
+        }
+
+        $stage = (int) $row->stage_code;
+        $nearest = null;
+        foreach ($lookup['by_predecessor'][$code] as $child) {
+            $childStage = (int) $child->stage_code;
+            if ($childStage <= $stage) {
+                continue;   // dòng tự trỏ về mình hoặc khai ngược chiều
+            }
+            if ($nearest === null || $childStage < $nearest) {
+                $nearest = $childStage;
+            }
+        }
+
+        if ($nearest === null) {
+            return [];
+        }
+
+        return array_values(array_filter(
+            $lookup['by_predecessor'][$code],
+            fn($child) => (int) $child->stage_code === $nearest
+        ));
     }
 
     /**
@@ -624,162 +861,6 @@ class WipCoverageService
         return 1.0 / count($successors);
     }
 
-    /**
-     * Số giờ máy mà một lô sẽ chiếm ở công đoạn sau, tách theo công đoạn.
-     *
-     * Lô đóng gói một phần tách thành nhiều lô con, mỗi lô con chiếm giờ máy theo
-     * đúng tỉ lệ của nó. Mã nào chưa khai định mức thì lấy trung vị của công đoạn
-     * đó thay vì bỏ qua, để không tính thiếu tải.
-     *
-     * @return array<int, float> [stage_code => giờ máy]
-     */
-    private function consumerLoad(array $successors, array $capacity): array
-    {
-        $load = [];
-
-        foreach ($successors as $successor) {
-            $stage = (int) $successor->stage_code;
-
-            $key = $stage >= 7
-                ? ($successor->finished_product_code ?? null)
-                : ($successor->intermediate_code ?? null);
-
-            $hours = $capacity['hours'][$stage][$key] ?? null;
-            if ($hours === null) {
-                $hours = $capacity['median'][$stage] ?? null;
-            }
-            if ($hours === null || $hours <= 0) {
-                continue;
-            }
-
-            $load[$stage] = ($load[$stage] ?? 0.0)
-                + $hours * $this->successorWeight($successors, $successor);
-        }
-
-        return $load;
-    }
-
-    /**
-     * Giờ máy mà phần tồn còn lại của một sổ đặt lên từng công đoạn tiêu thụ.
-     *
-     * @return array<int, float> [stage_code => giờ máy]
-     */
-    private function loadHoursAt(array $ledger, string $at): array
-    {
-        $hoursByStage = [];
-
-        foreach ($ledger as $lot) {
-            if ($lot['load'] === [] || $lot['qty_dvl'] <= 0) {
-                continue;
-            }
-
-            $remaining = $this->lotStockAt($lot, $at);
-            if ($remaining <= 0) {
-                continue;
-            }
-
-            $fraction = $remaining / $lot['qty_dvl'];
-
-            foreach ($lot['load'] as $stage => $hours) {
-                $hoursByStage[$stage] = ($hoursByStage[$stage] ?? 0.0) + $hours * $fraction;
-            }
-        }
-
-        return $hoursByStage;
-    }
-
-    /**
-     * Số ngày đáp ứng của TẤT CẢ các nhóm tại một mốc thời gian.
-     *
-     * Một công đoạn thường được nhiều kho nuôi cùng lúc: Đóng gói nhận hàng từ Bao
-     * phim, từ Định hình với sản phẩm không bao phim, và từ Pha chế với sản phẩm
-     * không định hình. Ba kho đó cùng chia nhau một dây chuyền Đóng gói, nên nhịp
-     * chạy của công đoạn được chia cho các kho theo đúng tỉ lệ giờ máy mà mỗi kho
-     * đang gửi tới. Nếu bỏ qua bước chia này, kho nào cũng tưởng mình dùng trọn
-     * công suất và nhánh phụ nhỏ xíu sẽ kéo con số xuống vô lý.
-     *
-     * @param array<string, array> $ledgers
-     * @return array<string, array{days: ?float, hours: float, by_stage: array, rate_by_stage: array}>
-     */
-    private function coverByCapacity(array $ledgers, string $at, array $capacity): array
-    {
-        $hoursByGroup = [];
-        $totalByStage = [];
-
-        foreach ($ledgers as $groupCode => $ledger) {
-            $hoursByGroup[$groupCode] = $this->loadHoursAt($ledger, $at);
-
-            foreach ($hoursByGroup[$groupCode] as $stage => $hours) {
-                $totalByStage[$stage] = ($totalByStage[$stage] ?? 0.0) + $hours;
-            }
-        }
-
-        $result = [];
-
-        foreach ($hoursByGroup as $groupCode => $hoursByStage) {
-            $totalHours = 0.0;
-            $totalRate = 0.0;
-            $byStage = [];
-            $rateByStage = [];
-            $unknownRate = false;
-
-            foreach ($hoursByStage as $stage => $hours) {
-                $totalHours += $hours;
-
-                $rate = $capacity['rate'][$stage] ?? 0.0;
-                if ($rate <= 0 || ($totalByStage[$stage] ?? 0) <= 0) {
-                    // Công đoạn chưa từng chạy trong cửa sổ đo thì không suy ra nhịp được
-                    $byStage[$stage] = ['hours' => round($hours, 1), 'rate' => null, 'days' => null];
-                    $unknownRate = true;
-                    continue;
-                }
-
-                $share = $rate * $hours / $totalByStage[$stage];
-                $totalRate += $share;
-                $rateByStage[$stage] = round($share, 2);
-
-                $byStage[$stage] = [
-                    'hours' => round($hours, 1),
-                    'rate'  => round($share, 2),
-                    'days'  => round($hours / $share, 2),
-                ];
-            }
-
-            // Kho rút cạn qua nhiều công đoạn cùng lúc nên cộng nhịp của chúng lại
-            $result[$groupCode] = [
-                'days'          => ($totalRate > 0 && ! $unknownRate) ? round($totalHours / $totalRate, 2) : null,
-                'hours'         => round($totalHours, 1),
-                'by_stage'      => $byStage,
-                'rate_by_stage' => $rateByStage,
-            ];
-        }
-
-        return $result;
-    }
-
-    /** Nhịp chạy và số phòng của các công đoạn tiêu thụ mà nhóm này nuôi */
-    private function capacityBasis(array $capacity, array $allocated): array
-    {
-        $basis = [];
-
-        foreach ($allocated as $stage => $share) {
-            $basis[] = [
-                'stage_code'     => $stage,
-                'stage_group'    => $this->groupOfStage($stage),
-                'rooms'          => $capacity['rooms'][$stage] ?? 0,
-                // Nhịp của cả công đoạn, và phần mà riêng kho này được hưởng
-                'hours_per_day'  => $capacity['rate'][$stage] ?? null,
-                'share_per_day'  => $share,
-                'lots_measured'  => $capacity['lots'][$stage] ?? 0,
-                'window_days'    => $capacity['days'],
-            ];
-        }
-
-        usort($basis, fn($a, $b) => $a['stage_code'] <=> $b['stage_code']);
-
-        return $basis;
-    }
-
     private function groupOfStage(int $stageCode): ?string
     {
         foreach (self::STAGE_GROUPS as $code => $stages) {
@@ -792,17 +873,28 @@ class WipCoverageService
     }
 
     /**
-     * Quy sản lượng về đơn vị liều.
-     * Công đoạn tới Trộn hoàn tất tính bằng Kg nên phải nhân hệ số batch_qty/batch_size;
-     * từ Định hình trở đi vốn đã là đơn vị liều.
+     * Sản lượng thô của một dòng, theo đúng đơn vị gốc của công đoạn đó.
+     * Chạy xong rồi thì lấy số thực tế, chưa chạy thì lấy số lý thuyết.
      */
-    private function toDvl($row): float
+    private function rawYield($row): float
     {
         $raw = (float) ($row->theoretical_yields ?? 0);
 
         if ((int) ($row->finished ?? 0) === 1 && (float) ($row->yields ?? 0) > 0) {
             $raw = (float) $row->yields;
         }
+
+        return $raw > 0 ? $raw : 0.0;
+    }
+
+    /**
+     * Quy sản lượng về đơn vị liều.
+     * Công đoạn tới Trộn hoàn tất tính bằng Kg nên phải nhân hệ số batch_qty/batch_size;
+     * từ Định hình trở đi vốn đã là đơn vị liều.
+     */
+    private function toDvl($row): float
+    {
+        $raw = $this->rawYield($row);
 
         if ($raw <= 0) {
             return 0.0;
@@ -829,16 +921,15 @@ class WipCoverageService
      * phần đã bị các lô con phía sau rút ra. Nhờ xét lại cả hai chiều nên hàm này
      * phản ánh đúng cả hàng mới nhập lẫn hàng đã xuất, chứ không chỉ trừ dần.
      *
-     * @return array{total: float, count: int, orphans: int, lots: array}
+     * @return array{total: float, count: int, lots: array}
      */
-    private function stockAt(array $ledger, string $at): array
+    private function stockAt(array $lots, string $at): array
     {
         $total = 0.0;
         $count = 0;
-        $orphans = 0;
-        $lots = [];
+        $result = [];
 
-        foreach ($ledger as $lot) {
+        foreach ($lots as $lot) {
             $qty = $this->lotStockAt($lot, $at);
             if ($qty <= 0) {
                 continue;
@@ -847,11 +938,7 @@ class WipCoverageService
             $total += $qty;
             $count++;
 
-            if ($lot['orphan']) {
-                $orphans++;
-            }
-
-            $lots[] = [
+            $result[] = [
                 'plan_master_id'    => $lot['plan_master_id'],
                 'batch'             => $lot['batch'],
                 'intermediate_code' => $lot['intermediate_code'],
@@ -863,7 +950,7 @@ class WipCoverageService
             ];
         }
 
-        return ['total' => $total, 'count' => $count, 'orphans' => $orphans, 'lots' => $lots];
+        return ['total' => $total, 'count' => $count, 'lots' => $result];
     }
 
     /**
@@ -888,15 +975,25 @@ class WipCoverageService
             }
         }
 
-        return $lot['qty_dvl'] * max(0.0, 1.0 - $consumed);
+        $remaining = 1.0 - $consumed;
+
+        // Cộng dồn số thực không bao giờ ra đúng 1,0 nên lô đã rút hết vẫn còn
+        // sót một phần cỡ 1e-16; nhân với lô cả triệu liều thì phần sót đó vẫn
+        // lớn hơn 0 và lô tiếp tục bị đếm là đang chờ. Ngưỡng dưới đây thấp hơn
+        // mọi tỉ lệ chia thật (nhỏ nhất trong dữ liệu là 1,35%) nên không thể
+        // nuốt nhầm một phần tồn có ý nghĩa.
+        if ($remaining < 1e-9) {
+            return 0.0;
+        }
+
+        return $lot['qty_dvl'] * $remaining;
     }
 
     /**
      * Biến thiên tồn kho: tính LẠI tồn tại 06:00 của từng ngày theo lịch đã sắp,
-     * kèm lượng nhập và xuất trong ngày đó, và số ngày mà lượng tồn tại chính mốc
-     * đó còn đáp ứng được cho công đoạn sau.
+     * kèm lượng nhập và xuất trong ngày đó.
      */
-    private function buildSeries(array $days, array $ledgers, array $capacity): array
+    private function buildSeries(array $days, array $ledgers): array
     {
         $series = array_fill_keys(array_keys($ledgers), []);
 
@@ -904,15 +1001,7 @@ class WipCoverageService
             $from = $day['start']->format('Y-m-d H:i:s');
             $to   = $day['end']->format('Y-m-d H:i:s');
 
-            // Đứng ở đúng mốc đó, tồn còn nuôi công đoạn sau được bao lâu.
-            //
-            // Mẫu số là công suất công đoạn sau chứ không phải lịch đã sắp. Nếu lấy
-            // lịch làm mẫu số thì càng về cuối khoảng dự báo càng ít ngày để trừ,
-            // ngày nào cũng ra "còn dư" bất kể tồn bao nhiêu; mà lịch thường mới sắp
-            // được hai tuần nên phần sau gần như không có nhu cầu nào để trừ.
-            $cover = $this->coverByCapacity($ledgers, $from, $capacity);
-
-            foreach ($ledgers as $groupCode => $ledger) {
+            foreach ($ledgers as $groupCode => $lots) {
                 // Nhập và xuất phải tính theo ĐÚNG mốc mà tồn thay đổi, tức thời điểm
                 // công đoạn bắt đầu, chứ không chia đều theo khung giờ chạy. Nếu chia
                 // đều thì cột nhập trừ xuất sẽ không giải thích được bước nhảy của
@@ -920,7 +1009,7 @@ class WipCoverageService
                 $in = 0.0;
                 $out = 0.0;
 
-                foreach ($ledger as $lot) {
+                foreach ($lots as $lot) {
                     $delta = $this->lotStockAt($lot, $to) - $this->lotStockAt($lot, $from);
 
                     if ($delta > 0) {
@@ -930,17 +1019,14 @@ class WipCoverageService
                     }
                 }
 
-                $snapshot = $this->stockAt($ledger, $from);
+                $snapshot = $this->stockAt($lots, $from);
 
                 $series[$groupCode][] = [
-                    'date'          => $day['date'],
-                    'stock_dvl'     => round($snapshot['total'], 2),
-                    'stock_lots'    => $snapshot['count'],
-                    'in_dvl'        => round($in, 2),
-                    'out_dvl'       => round($out, 2),
-                    'days_of_cover' => $cover[$groupCode]['days'],
-                    'load_hours'    => $cover[$groupCode]['hours'],
-                    'rate_by_stage' => $cover[$groupCode]['rate_by_stage'],
+                    'date'       => $day['date'],
+                    'stock_dvl'  => round($snapshot['total'], 2),
+                    'stock_lots' => $snapshot['count'],
+                    'in_dvl'     => round($in, 2),
+                    'out_dvl'    => round($out, 2),
                 ];
             }
         }
@@ -949,34 +1035,51 @@ class WipCoverageService
     }
 
     /**
-     * Tổng hợp từ chuỗi biến thiên: tổng lượng đã sắp lịch xuất, ngày tồn chạm
-     * đáy, và ngày đầu tiên tồn cạn hẳn trong khoảng dự báo.
+     * Tổng hợp từ chuỗi biến thiên: tổng nhập, tổng xuất, mức tồn cao nhất,
+     * thấp nhất, trung bình, và ngày đầu tiên tồn cạn hẳn trong khoảng dự báo.
      */
-    private function coverFromSeries(array $series): array
+    private function statsFromSeries(array $series): array
     {
+        $empty = [
+            'shortage_date' => null,
+            'in_total'      => 0.0,
+            'out_total'     => 0.0,
+            'lowest'        => null,
+            'lowest_date'   => null,
+            'highest'       => null,
+            'highest_date'  => null,
+            'average'       => null,
+        ];
+
         if ($series === []) {
-            return [
-                'shortage_date' => null, 'demand_total' => 0.0,
-                'lowest' => null, 'lowest_date' => null,
-            ];
+            return $empty;
         }
 
-        $demandTotal = 0.0;
-        foreach ($series as $point) {
-            $demandTotal += (float) $point['out_dvl'];
-        }
+        $inTotal = 0.0;
+        $outTotal = 0.0;
+        $sum = 0.0;
 
-        // Ngày mà tồn xuống thấp nhất, và ngày đầu tiên tồn cạn hẳn
         $lowest = null;
         $lowestDate = null;
+        $highest = null;
+        $highestDate = null;
         $shortageDate = null;
 
         foreach ($series as $point) {
             $value = (float) $point['stock_dvl'];
 
+            $inTotal  += (float) $point['in_dvl'];
+            $outTotal += (float) $point['out_dvl'];
+            $sum      += $value;
+
             if ($lowest === null || $value < $lowest) {
                 $lowest = $value;
                 $lowestDate = $point['date'];
+            }
+
+            if ($highest === null || $value > $highest) {
+                $highest = $value;
+                $highestDate = $point['date'];
             }
 
             if ($shortageDate === null && $value <= 0) {
@@ -986,21 +1089,23 @@ class WipCoverageService
 
         return [
             'shortage_date' => $shortageDate,
-            'demand_total'  => round($demandTotal, 2),
+            'in_total'      => round($inTotal, 2),
+            'out_total'     => round($outTotal, 2),
             'lowest'        => $lowest === null ? null : round($lowest, 2),
             'lowest_date'   => $lowestDate,
+            'highest'       => $highest === null ? null : round($highest, 2),
+            'highest_date'  => $highestDate,
+            'average'       => round($sum / count($series), 2),
         ];
     }
 
     /**
-     * Lặp lại phép tính nhưng gom theo mã bán thành phẩm.
-     *
-     * Ở cấp mã, con số ngày mang nghĩa khác cấp nhóm: nó là phần TẢI mà riêng mã
-     * này đặt lên công đoạn sau, quy ra ngày. Cộng tải của mọi mã thì đúng bằng số
-     * ngày đáp ứng của cả nhóm, nên mã nào đứng đầu bảng là mã đang chiếm chỗ nhiều
-     * nhất chứ không phải mã sắp cạn.
+     * Lặp lại phép tính nhưng gom theo mã bán thành phẩm, để biết mã nào đang
+     * chiếm chỗ trong kho và còn lịch xuất tới đâu. Cột "Công đoạn" trong bảng
+     * lô con (stage_code) vẫn cho biết lô đó xuất phát từ đâu, dù tổng nhóm đã
+     * gộp mọi nguồn lại theo đích chung.
      */
-    private function buildDetails(array $stock, array $ledger, array $days, string $at, float $groupRate): array
+    private function buildDetails(array $stock, array $lots, array $days, float $groupTotal): array
     {
         $stockByCode = [];
         foreach ($stock as $lot) {
@@ -1029,9 +1134,9 @@ class WipCoverageService
 
         // Lượng xuất kho theo từng mã, tính cùng quy ước với chuỗi tổng: theo đúng
         // mốc công đoạn sau bắt đầu
-        $ledgerByCode = [];
-        foreach ($ledger as $lot) {
-            $ledgerByCode[$lot['intermediate_code'] ?? '(không rõ)'][] = $lot;
+        $lotsByCode = [];
+        foreach ($lots as $lot) {
+            $lotsByCode[$lot['intermediate_code'] ?? '(không rõ)'][] = $lot;
         }
 
         // Ngày mà mã này xuất kho lần cuối trong khoảng dự báo, để biết còn lịch
@@ -1043,7 +1148,7 @@ class WipCoverageService
                 $from = $day['start']->format('Y-m-d H:i:s');
                 $to   = $day['end']->format('Y-m-d H:i:s');
 
-                foreach ($ledgerByCode[$code] ?? [] as $lot) {
+                foreach ($lotsByCode[$code] ?? [] as $lot) {
                     if ($this->lotStockAt($lot, $to) - $this->lotStockAt($lot, $from) < 0) {
                         $lastOutDate = $day['date'];
                         break;
@@ -1051,78 +1156,21 @@ class WipCoverageService
                 }
             }
 
-            // Chia cho nhịp của CẢ nhóm chứ không phải nhịp riêng từng công đoạn,
-            // nhờ vậy cộng số ngày của mọi mã lại thì đúng bằng số ngày đáp ứng của
-            // cả nhóm, đọc được là "mã này chiếm bao nhiêu ngày trong số đó"
-            $hours = array_sum($this->loadHoursAt($ledgerByCode[$code] ?? [], $at));
-
             $details[] = [
-                'intermediate_code'   => $code,
-                'product_name'        => $entry['product_name'],
-                'unit'                => $entry['unit'],
-                'stock_dvl'           => round($entry['stock_dvl'], 2),
-                'stock_lots'          => $entry['stock_lots'],
-                'load_hours'          => round($hours, 1),
-                'days_of_cover'       => $groupRate > 0 ? round($hours / $groupRate, 2) : null,
-                'last_out_date'       => $lastOutDate,
-                'batches'             => $entry['batches'],
+                'intermediate_code' => $code,
+                'product_name'      => $entry['product_name'],
+                'unit'              => $entry['unit'],
+                'stock_dvl'         => round($entry['stock_dvl'], 2),
+                'stock_lots'        => $entry['stock_lots'],
+                'share_pct'         => $groupTotal > 0 ? round($entry['stock_dvl'] / $groupTotal * 100, 1) : null,
+                'last_out_date'     => $lastOutDate,
+                'batches'           => $entry['batches'],
             ];
         }
 
-        // Mã chiếm nhiều giờ máy của công đoạn sau nhất lên đầu
-        usort($details, fn($a, $b) => $b['load_hours'] <=> $a['load_hours']);
+        // Mã đang giữ nhiều hàng nhất lên đầu
+        usort($details, fn($a, $b) => $b['stock_dvl'] <=> $a['stock_dvl']);
 
         return $details;
-    }
-
-    /**
-     * Đối chiếu số ngày đáp ứng với ngưỡng đã cấu hình.
-     *
-     * $daysOfCover rỗng nghĩa là không quy ra ngày được: hoặc lô không có công đoạn
-     * sau nào, hoặc công đoạn sau chưa từng chạy trong cửa sổ đo nên không suy ra
-     * được nhịp. Cả hai đều là chuyện dữ liệu, không phải chuyện tồn kho, nên báo
-     * no_demand để người dùng đi kiểm tra chứ không tô màu xanh cho yên tâm hão.
-     */
-    public static function resolveStatus(?float $daysOfCover, ?object $threshold, bool $hasDemand = true): string
-    {
-        if ($daysOfCover === null) {
-            return $hasDemand ? 'ok' : 'no_demand';
-        }
-
-        $critical = $threshold->critical_days ?? 1;
-        $warn     = $threshold->warn_days ?? 3;
-
-        if ($critical !== null && $daysOfCover < (float) $critical) {
-            return 'critical';
-        }
-
-        if ($warn !== null && $daysOfCover < (float) $warn) {
-            return 'warn';
-        }
-
-        return 'ok';
-    }
-
-    /** Ngưỡng của một phân xưởng, tự bù giá trị mặc định cho nhóm chưa cấu hình */
-    public static function thresholdsFor(string $productionCode): array
-    {
-        $rows = DB::table('wip_coverage_thresholds')
-            ->where('production_code', $productionCode)
-            ->get()
-            ->keyBy('stage_group_code');
-
-        $result = [];
-        foreach (self::SOURCE_GROUPS as $groupCode) {
-            $result[$groupCode] = $rows[$groupCode] ?? (object) [
-                'production_code'  => $productionCode,
-                'stage_group_code' => $groupCode,
-                'critical_days'    => 1,
-                'warn_days'        => 3,
-                'horizon_days'     => self::DEFAULT_HORIZON_DAYS,
-                'is_active'        => 1,
-            ];
-        }
-
-        return $result;
     }
 }

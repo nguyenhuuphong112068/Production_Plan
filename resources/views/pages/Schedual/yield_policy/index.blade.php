@@ -755,71 +755,66 @@
                         </div>
                     @endif
 
-                    {{-- ── Ngưỡng cảnh báo tồn bán thành phẩm ─────────── --}}
-                    @if (!empty($wipThresholds))
+                    {{-- ── Giới hạn tồn bán thành phẩm giữa các công đoạn ─────────── --}}
+                    @if (!empty($wipStockLimits))
                         <hr class="yp-divider" style="margin-top:18px;">
 
                         <div class="yp-field-group" style="margin-bottom:6px;">
                             <label style="display:flex;align-items:center;gap:6px;">
                                 <i class="fas fa-boxes" style="color:#0e7490;font-size:.85rem;"></i>
-                                Ngưỡng cảnh báo tồn bán thành phẩm
+                                Giới hạn tồn bán thành phẩm
                             </label>
                             <div
                                 style="font-size:.76rem;color:#64748b;margin:4px 0 10px;padding:8px 10px;background:#f8fafc;border-radius:6px;border:1px solid #e2e8f0;line-height:1.6;">
-                                Số ngày mà lượng tồn của công đoạn trước còn nuôi được công đoạn sau.
-                                Dưới ngưỡng <strong style="color:#dc2626;">nguy cấp</strong> hoặc
-                                <strong style="color:#d97706;">cảnh báo</strong> thì lệnh chốt 6h sáng sẽ gửi thông báo.
+                                Lượng bán thành phẩm đang chờ để bước vào từng công đoạn, tính theo
+                                <strong>đơn vị liều</strong>. Dưới giới hạn dưới là
+                                <strong style="color:#dc2626;">thiếu hàng</strong> cho công đoạn sau, trên giới hạn
+                                trên là <strong style="color:#d97706;">ứ hàng</strong> vì công đoạn sau không tiêu thụ
+                                kịp. Ngày vượt ngưỡng sẽ được tô màu ở trang
+                                <em>Tồn kho lý thuyết theo công đoạn</em>. Để trống nghĩa là không đối chiếu.
                             </div>
                         </div>
 
                         <div style="display:flex;flex-direction:column;gap:10px;">
-                            @foreach ($wipThresholds as $groupCode => $threshold)
+                            @foreach ($wipStockLimits as $groupCode => $limit)
                                 <div
                                     style="border:1px solid var(--yp-border);border-radius:8px;padding:10px 12px;background:#fbfdfe;">
                                     <div
                                         style="font-size:.82rem;font-weight:700;color:#0f172a;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
-                                        <span>Tồn sau {{ $wipGroupNames[$groupCode] ?? $groupCode }}</span>
+                                        <span>Tồn chờ {{ $wipGroupNames[$groupCode] ?? $groupCode }}</span>
                                         <span style="font-size:.7rem;font-weight:500;color:#94a3b8;">{{ $groupCode }}</span>
                                     </div>
-                                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+                                    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">
                                         <div>
                                             <div style="font-size:.7rem;color:#dc2626;font-weight:600;margin-bottom:3px;">
-                                                Nguy cấp &lt;</div>
-                                            <input type="number" step="0.5" min="0"
-                                                class="wip-th" data-group="{{ $groupCode }}" data-field="critical_days"
-                                                value="{{ $threshold->critical_days }}"
+                                                Giới hạn dưới</div>
+                                            <input type="number" step="1000" min="0" placeholder="—"
+                                                class="wip-lim" data-group="{{ $groupCode }}" data-field="min_stock_dvl"
+                                                value="{{ $limit->min_stock_dvl !== null ? (int) $limit->min_stock_dvl : '' }}"
                                                 style="width:100%;border:1.5px solid var(--yp-border);border-radius:6px;padding:5px 8px;font-size:.85rem;font-weight:700;color:#dc2626;"
                                                 {{ !$can_set_yield_policy ? 'disabled' : '' }}>
                                         </div>
                                         <div>
                                             <div style="font-size:.7rem;color:#d97706;font-weight:600;margin-bottom:3px;">
-                                                Cảnh báo &lt;</div>
-                                            <input type="number" step="0.5" min="0"
-                                                class="wip-th" data-group="{{ $groupCode }}" data-field="warn_days"
-                                                value="{{ $threshold->warn_days }}"
+                                                Giới hạn trên</div>
+                                            <input type="number" step="1000" min="0" placeholder="—"
+                                                class="wip-lim" data-group="{{ $groupCode }}" data-field="max_stock_dvl"
+                                                value="{{ $limit->max_stock_dvl !== null ? (int) $limit->max_stock_dvl : '' }}"
                                                 style="width:100%;border:1.5px solid var(--yp-border);border-radius:6px;padding:5px 8px;font-size:.85rem;font-weight:700;color:#d97706;"
-                                                {{ !$can_set_yield_policy ? 'disabled' : '' }}>
-                                        </div>
-                                        <div>
-                                            <div style="font-size:.7rem;color:#64748b;font-weight:600;margin-bottom:3px;">
-                                                Dự báo (ngày)</div>
-                                            <input type="number" step="1" min="1" max="180"
-                                                class="wip-th" data-group="{{ $groupCode }}" data-field="horizon_days"
-                                                value="{{ $threshold->horizon_days }}"
-                                                style="width:100%;border:1.5px solid var(--yp-border);border-radius:6px;padding:5px 8px;font-size:.85rem;"
                                                 {{ !$can_set_yield_policy ? 'disabled' : '' }}>
                                         </div>
                                     </div>
                                     @if ($can_set_yield_policy)
                                         <button class="yp-btn" style="width:100%;margin-top:8px;font-size:.8rem;"
-                                            onclick="saveWipThreshold('{{ $groupCode }}')">
-                                            <i class="fas fa-save"></i> Lưu ngưỡng
+                                            onclick="saveWipStockLimit('{{ $groupCode }}')">
+                                            <i class="fas fa-save"></i> Lưu giới hạn
                                         </button>
                                     @endif
                                 </div>
                             @endforeach
                         </div>
                     @endif
+
                 </div>
 
                 {{-- Chart Card --}}
@@ -990,7 +985,7 @@
             const CSRF = '{{ csrf_token() }}';
             const ROUTE_STORE = '{{ route('pages.Schedual.yield_policy.store') }}';
             const ROUTE_DAILY = '{{ route('pages.Schedual.yield_policy.daily') }}';
-            const ROUTE_WIP_THRESHOLD = '{{ route('pages.Schedual.yield_policy.wip_threshold') }}';
+            const ROUTE_WIP_STOCK_LIMIT = '{{ route('pages.Schedual.yield_policy.wip_stock_limit') }}';
 
             // ──────────────────────────────────────────────────────
             // CHART
@@ -1192,23 +1187,23 @@
             }
 
             // ──────────────────────────────────────────────────────
-            // NGƯỠNG CẢNH BÁO TỒN BÁN THÀNH PHẨM
+            // GIỚI HẠN TỒN BÁN THÀNH PHẨM
             // ──────────────────────────────────────────────────────
-            function saveWipThreshold(groupCode) {
+            function saveWipStockLimit(groupCode) {
                 const read = (field) => {
-                    const el = document.querySelector(`.wip-th[data-group="${groupCode}"][data-field="${field}"]`);
+                    const el = document.querySelector(`.wip-lim[data-group="${groupCode}"][data-field="${field}"]`);
                     return el && el.value !== '' ? parseFloat(el.value) : null;
                 };
 
-                const critical = read('critical_days');
-                const warn = read('warn_days');
+                const min = read('min_stock_dvl');
+                const max = read('max_stock_dvl');
 
-                if (critical !== null && warn !== null && critical > warn) {
-                    showToast('Ngưỡng nguy cấp phải nhỏ hơn hoặc bằng ngưỡng cảnh báo.', 'error');
+                if (min !== null && max !== null && min > max) {
+                    showToast('Giới hạn dưới phải nhỏ hơn hoặc bằng giới hạn trên.', 'error');
                     return;
                 }
 
-                fetch(ROUTE_WIP_THRESHOLD, {
+                fetch(ROUTE_WIP_STOCK_LIMIT, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -1216,14 +1211,13 @@
                         },
                         body: JSON.stringify({
                             stage_group_code: groupCode,
-                            critical_days: critical,
-                            warn_days: warn,
-                            horizon_days: read('horizon_days'),
+                            min_stock_dvl: min,
+                            max_stock_dvl: max,
                             _token: CSRF,
                         }),
                     })
                     .then(r => r.json())
-                    .then(d => showToast(d.message || 'Lỗi lưu ngưỡng!', d.success ? 'success' : 'error'))
+                    .then(d => showToast(d.message || 'Lỗi lưu giới hạn!', d.success ? 'success' : 'error'))
                     .catch(() => showToast('Lỗi kết nối!', 'error'));
             }
 

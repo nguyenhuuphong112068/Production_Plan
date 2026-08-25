@@ -1,47 +1,45 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import {
-    BarChart,
+    ComposedChart,
     Bar,
-    LineChart,
     Line,
     XAxis,
     YAxis,
     CartesianGrid,
     Tooltip,
     Legend,
-    ReferenceLine,
     ResponsiveContainer,
 } from 'recharts';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 
 import {
-    statusOf,
     colorOfGroup,
     formatDvl,
     formatFull,
-    coverLabel,
-    coverSuffix,
-    capacityLabel,
-    flowLabel,
+    formatKg,
+    groupLabel,
+    limitStateOf,
+    SUPPLY_COLOR,
     formatDate,
     formatDateShort,
 } from '../Components/wipCoverageShared';
 
 const WipCoverage = () => {
-    const [groups, setGroups] = useState([]);
-    const [thresholds, setThresholds] = useState([]);
+    const [allGroups, setAllGroups] = useState([]);
+    const [supply, setSupply] = useState([]);
+    const [limits, setLimits] = useState({});
     const [meta, setMeta] = useState(null);
     const [selected, setSelected] = useState(null);
     const [details, setDetails] = useState([]);
-    const [history, setHistory] = useState([]);
     const [loading, setLoading] = useState(true);
     const [detailLoading, setDetailLoading] = useState(false);
     const [error, setError] = useState(null);
     const [expanded, setExpanded] = useState(null);
     const [showFlows, setShowFlows] = useState(false);
 
+    // Cho phép mở thẳng vào một công đoạn từ nơi khác, ví dụ ?group=DG
     const initialGroup = useMemo(
         () => new URLSearchParams(window.location.search).get('group'),
         []
@@ -61,20 +59,26 @@ const WipCoverage = () => {
                     }
 
                     const list = (data.groups || []).filter((g) => !g.is_empty);
-                    setGroups(list);
-                    setThresholds(data.thresholds || []);
+                    setAllGroups(list);
+                    setSupply(data.supply || []);
+
+                    // Tra theo mã công đoạn cho nhanh khi tô từng ô của bảng
+                    const byGroup = {};
+                    (data.stock_limits || []).forEach((l) => {
+                        byGroup[l.stage_group_code] = l;
+                    });
+                    setLimits(byGroup);
+
                     setMeta({ snapshot_at: data.snapshot_at, source: data.source });
 
+                    const mainList = list.filter((g) => g.group_code !== 'NA');
+
                     setSelected((prev) => {
-                        if (prev && list.some((g) => g.stage_group_code === prev)) return prev;
-                        const wanted = list.find((g) => g.stage_group_code === initialGroup);
-                        if (wanted) return wanted.stage_group_code;
-                        const risky = list.filter((g) => g.days_of_cover !== null);
-                        if (risky.length > 0) {
-                            return risky.reduce((a, b) => (a.days_of_cover <= b.days_of_cover ? a : b))
-                                .stage_group_code;
-                        }
-                        return list.length > 0 ? list[0].stage_group_code : null;
+                        if (prev && mainList.some((g) => g.group_code === prev)) return prev;
+                        if (mainList.some((g) => g.group_code === initialGroup)) return initialGroup;
+                        if (mainList.length === 0) return null;
+                        // Công đoạn đang chờ nhiều hàng nhất là công đoạn đáng xem trước
+                        return mainList.reduce((a, b) => (a.stock_dvl >= b.stock_dvl ? a : b)).group_code;
                     });
                 })
                 .catch((err) => {
@@ -100,22 +104,22 @@ const WipCoverage = () => {
         setExpanded(null);
 
         axios
-            .post('/Schedual/wip_coverage/detail', { stage_group_code: selected })
+            .post('/Schedual/wip_coverage/detail', { group_code: selected })
             .then(({ data }) => setDetails(data.success ? data.details || [] : []))
             .catch(() => setDetails([]))
             .finally(() => setDetailLoading(false));
-
-        axios
-            .post('/Schedual/wip_coverage/history', { stage_group_code: selected })
-            .then(({ data }) => setHistory(data.success ? data.history || [] : []))
-            .catch(() => setHistory([]));
     }, [selected]);
 
-    const current = groups.find((g) => g.stage_group_code === selected) || null;
+    // Ba công đoạn đích chính là trọng tâm của trang; lô chưa lần ra được công
+    // đoạn sau chỉ hiện như một dòng ghi chú, không đứng ngang hàng với chúng
+    const groups = useMemo(() => allGroups.filter((g) => g.group_code !== 'NA'), [allGroups]);
+    const naGroup = useMemo(() => allGroups.find((g) => g.group_code === 'NA') || null, [allGroups]);
+
+    const current = groups.find((g) => g.group_code === selected) || null;
 
     /**
-     * Gộp chuỗi của mọi nhóm về CÙNG một trục ngày, để nhìn được tồn của tất cả
-     * công đoạn tại từng mốc 06:00 mà không phải bấm qua lại từng thẻ.
+     * Gộp chuỗi của mọi công đoạn về CÙNG một trục ngày, để nhìn được tồn
+     * đang chờ cả ba công đoạn tại từng mốc 06:00 mà không phải bấm qua lại.
      */
     const byDate = useMemo(() => {
         const map = new Map();
@@ -124,59 +128,69 @@ const WipCoverage = () => {
             (g.daily_series || []).forEach((p) => {
                 if (!map.has(p.date)) map.set(p.date, { date: p.date, label: formatDateShort(p.date) });
                 const row = map.get(p.date);
-                const c = g.stage_group_code;
+                const c = g.group_code;
                 row[c] = Number(p.stock_dvl) || 0;
                 row[`${c}_in`] = Number(p.in_dvl) || 0;
                 row[`${c}_out`] = Number(p.out_dvl) || 0;
                 row[`${c}_lots`] = p.stock_lots;
-                row[`${c}_cover`] = p.days_of_cover;
             });
         });
 
-        return Array.from(map.values()).sort((a, b) => a.date.localeCompare(b.date));
-    }, [groups]);
+        // Nguồn vào Pha chế dùng chung trục ngày với các cột tồn, để đọc được
+        // ngay: hôm nào Pha chế đổ vào nhiều thì hôm sau tồn phía sau dâng lên
+        supply.forEach((p) => {
+            if (!map.has(p.date)) map.set(p.date, { date: p.date, label: formatDateShort(p.date) });
+            const row = map.get(p.date);
+            row.supply_dvl = Number(p.output_dvl) || 0;
+            row.supply_kg = Number(p.output_kg) || 0;
+            row.supply_lots = p.lots;
+        });
 
-    /**
-     * Số ngày đáp ứng có đơn vị khác hẳn lượng tồn nên phải vẽ ở biểu đồ riêng,
-     * không chồng lên cùng một trục.
-     */
-    const coverByDate = useMemo(
+        return Array.from(map.values()).sort((a, b) => a.date.localeCompare(b.date));
+    }, [groups, supply]);
+
+    // Tổng tồn chờ sản xuất của cả phân xưởng tại từng mốc, để thấy bức tranh chung
+    const totalByDate = useMemo(
         () =>
-            byDate.map((r) => {
-                const o = { date: r.date, label: r.label };
-                groups.forEach((g) => {
-                    const v = r[`${g.stage_group_code}_cover`];
-                    o[g.stage_group_code] = v === null || v === undefined ? null : v;
-                });
-                return o;
-            }),
+            byDate.map((row) =>
+                groups.reduce((sum, g) => sum + (Number(row[g.group_code]) || 0), 0)
+            ),
         [byDate, groups]
     );
 
-    // Chỉ vẽ được một vạch ngưỡng khi mọi nhóm đang hiển thị cùng chung một mức,
-    // ngược lại vạch sẽ gây hiểu nhầm là áp cho cả ba
-    const sharedWarnDays = useMemo(() => {
-        if (groups.length === 0 || thresholds.length === 0) return null;
-
-        const values = groups.map((g) => {
-            const t = thresholds.find((x) => x.stage_group_code === g.stage_group_code);
-            return t && t.warn_days !== null && t.warn_days !== undefined ? Number(t.warn_days) : null;
-        });
-
-        if (values.some((v) => v === null)) return null;
-        return values.every((v) => v === values[0]) ? values[0] : null;
-    }, [groups, thresholds]);
-
-    // Ngày tồn thấp nhất của từng nhóm, để tô dấu trong bảng
-    const lowestDates = useMemo(() => {
+    // Ngày tồn thấp nhất và cao nhất của từng công đoạn, để tô dấu trong bảng
+    const marks = useMemo(() => {
         const out = {};
         groups.forEach((g) => {
-            if (g.lowest_stock_date) out[g.stage_group_code] = g.lowest_stock_date;
+            out[g.group_code] = { low: g.lowest_stock_date, high: g.highest_stock_date };
         });
         return out;
     }, [groups]);
 
-    if (loading && groups.length === 0) {
+    // Tổng nguồn vào Pha chế trong đúng khoảng đang vẽ
+    const supplyTotal = useMemo(() => {
+        const dvl = supply.reduce((s, p) => s + (Number(p.output_dvl) || 0), 0);
+        const kg = supply.reduce((s, p) => s + (Number(p.output_kg) || 0), 0);
+        const lots = supply.reduce((s, p) => s + (Number(p.lots) || 0), 0);
+        // Ngày nghỉ không có mẻ nào, chia cho tổng số ngày sẽ ra một con số không
+        // giống bất kỳ ngày chạy thật nào, nên bình quân tính trên ngày CÓ mẻ
+        const activeDays = supply.filter((p) => (Number(p.output_dvl) || 0) > 0).length;
+
+        return { dvl, kg, lots, activeDays, avgDvl: activeDays > 0 ? dvl / activeDays : 0 };
+    }, [supply]);
+
+    // Số ngày vượt giới hạn của từng công đoạn, đếm trên chính khoảng đang vẽ
+    const breaches = useMemo(() => {
+        const out = {};
+        groups.forEach((g) => {
+            out[g.group_code] = (g.daily_series || []).filter(
+                (p) => limitStateOf(p.stock_dvl, limits[g.group_code]) !== null
+            ).length;
+        });
+        return out;
+    }, [groups, limits]);
+
+    if (loading && allGroups.length === 0) {
         return <div style={styles.state}>Đang tải dữ liệu tồn bán thành phẩm…</div>;
     }
 
@@ -187,7 +201,7 @@ const WipCoverage = () => {
     if (groups.length === 0) {
         return (
             <div style={styles.state}>
-                Phân xưởng này chưa có công đoạn nào sinh ra tồn bán thành phẩm.
+                Phân xưởng này chưa có tồn bán thành phẩm nào đang chờ Định hình, Bao phim hay Đóng gói.
             </div>
         );
     }
@@ -198,9 +212,10 @@ const WipCoverage = () => {
                 <div>
                     <h2 style={styles.h1}>Tồn kho lý thuyết theo công đoạn</h2>
                     <p style={styles.lede}>
-                        Lượng bán thành phẩm chờ giữa hai công đoạn, tính lại tại 06:00 từng ngày theo
-                        lịch lý thuyết đã sắp. Số ngày đáp ứng tính theo định mức giờ máy và nhịp chạy
-                        của công đoạn sau, nên không phụ thuộc việc lịch đã sắp tới đâu.
+                        Lượng bán thành phẩm đang chờ để bước vào Định hình, Bao phim hoặc Đóng gói,
+                        tính lại tại 06:00 từng ngày theo lịch lý thuyết đã sắp. Mỗi công đoạn đích là
+                        MỘT tổng duy nhất, gộp mọi nguồn đổ vào nó — ví dụ tồn chờ Đóng gói cộng cả
+                        hàng đi đủ tuần tự qua Bao phim lẫn hàng bỏ qua Bao phim hoặc Định hình.
                     </p>
                 </div>
                 <div style={styles.headerRight}>
@@ -217,71 +232,15 @@ const WipCoverage = () => {
                 </div>
             </div>
 
-            {/* Tóm tắt hiện trạng, bấm để chọn nhóm xem chi tiết bên dưới */}
-            <div style={styles.cards}>
-                {groups.map((g) => {
-                    const st = statusOf(g.status);
-                    const active = g.stage_group_code === selected;
-                    const hue = colorOfGroup(g.stage_group_code);
-
-                    return (
-                        <button
-                            type="button"
-                            key={g.stage_group_code}
-                            onClick={() => setSelected(g.stage_group_code)}
-                            style={{
-                                ...styles.card,
-                                borderColor: active ? hue : '#e2e8f0',
-                                boxShadow: active ? `0 0 0 2px ${hue}22` : 'none',
-                            }}
-                        >
-                            <span style={{ ...styles.stripe, background: hue }} />
-                            <div style={styles.flow}>{flowLabel(g)}</div>
-
-                            <div style={styles.numRow}>
-                                <span style={{ ...styles.num, color: st.color }}>{coverLabel(g)}</span>
-                                <span style={styles.unit}>{coverSuffix(g)}</span>
-                            </div>
-
-                            <div style={{ ...styles.pill, background: st.bg, color: st.color }}>{st.label}</div>
-
-                            <div style={styles.sub}>
-                                <span>{formatDvl(g.stock_dvl)} ĐVL</span>
-                                <span style={styles.dot}>|</span>
-                                <span>{g.stock_lots} lô</span>
-                                <span style={styles.dot}>|</span>
-                                <span>
-                                    {Number(g.load_hours || 0).toLocaleString('vi-VN', {
-                                        maximumFractionDigits: 0,
-                                    })}{' '}
-                                    giờ máy
-                                </span>
-                            </div>
-
-                            {/* Cách ra con số: giờ máy chia cho nhịp chạy công đoạn sau */}
-                            {capacityLabel(g.capacity_basis) && (
-                                <div style={styles.basis}>{capacityLabel(g.capacity_basis)}</div>
-                            )}
-                        </button>
-                    );
-                })}
-            </div>
-
-            <p style={styles.method}>
-                Số ngày đáp ứng = giờ máy mà lượng tồn chiếm ở công đoạn sau theo định mức
-                (<code style={styles.code}>quota.m_time</code>) chia cho nhịp chạy thực tế của công đoạn
-                đó, đo trên 90 ngày gần nhất. Công đoạn được nhiều kho cùng nuôi thì nhịp được chia
-                theo tỉ lệ giờ máy mỗi kho gửi tới.
-            </p>
-
-            {/* ── Phần chính: tồn của MỌI công đoạn theo từng ngày ── */}
+            {/* ── Phần chính: tồn đang chờ MỖI công đoạn theo từng ngày ── */}
             <div style={styles.box}>
                 <div style={styles.boxHead}>
                     <div>
-                        <h3 style={styles.h3}>Tồn từng công đoạn theo ngày</h3>
+                        <h3 style={styles.h3}>Tồn chờ từng công đoạn theo ngày</h3>
                         <p style={styles.cap}>
-                            Mỗi nhóm cột là mức tồn lúc 06:00 của ngày đó. Cột cao dần nghĩa là công đoạn
-                            trước sản xuất nhanh hơn công đoạn sau tiêu thụ.
+                            Mỗi nhóm cột là mức tồn lúc 06:00 của ngày đó. Cột cao dần nghĩa là các công
+                            đoạn trước sản xuất nhanh hơn công đoạn này tiêu thụ. Đường xanh là sản lượng
+                            Pha chế đổ vào dây chuyền — nguồn cấp duy nhất cho mọi công đoạn sau.
                         </p>
                     </div>
                     <label style={styles.toggle}>
@@ -294,12 +253,12 @@ const WipCoverage = () => {
                     </label>
                 </div>
 
-                {/* 30 ngày x 3 cột: giữ bề rộng tối thiểu để cột không bị bóp dẹt,
+                {/* 30 ngày x 3 công đoạn: giữ bề rộng tối thiểu để cột không bị bóp dẹt,
                     màn hẹp thì cuộn ngang trong khung riêng chứ không tràn cả trang. */}
                 <div style={styles.chartScroll}>
-                  <div style={{ minWidth: Math.max(720, byDate.length * 44), height: 330 }}>
+                  <div style={{ minWidth: Math.max(720, byDate.length * 44), height: 340 }}>
                     <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={byDate} margin={{ top: 8, right: 16, left: 4, bottom: 4 }} barGap={2}>
+                        <ComposedChart data={byDate} margin={{ top: 8, right: 16, left: 4, bottom: 4 }} barGap={2}>
                             <CartesianGrid stroke="#eef2f4" vertical={false} />
                             <XAxis
                                 dataKey="label"
@@ -326,15 +285,18 @@ const WipCoverage = () => {
                                 content={({ active, payload, label }) => {
                                     if (!active || !payload || payload.length === 0) return null;
                                     const d = payload[0].payload;
+                                    const total = groups.reduce(
+                                        (sum, g) => sum + (Number(d[g.group_code]) || 0),
+                                        0
+                                    );
                                     return (
                                         <div style={styles.tooltip}>
                                             <div style={{ fontWeight: 700, marginBottom: 5 }}>
                                                 {label} lúc 06:00
                                             </div>
                                             {groups.map((g) => {
-                                                const c = g.stage_group_code;
+                                                const c = g.group_code;
                                                 if (d[c] === undefined) return null;
-                                                const cover = d[`${c}_cover`];
                                                 return (
                                                     <div key={c} style={styles.tipRow}>
                                                         <span
@@ -343,135 +305,126 @@ const WipCoverage = () => {
                                                                 background: colorOfGroup(c),
                                                             }}
                                                         />
-                                                        <span style={styles.tipName}>{g.stage_group_name}</span>
+                                                        <span style={styles.tipName}>{groupLabel(g)}</span>
                                                         <b>{formatFull(d[c])}</b>
                                                         <span style={styles.tipMuted}>
                                                             ({d[`${c}_lots`]} lô · +{formatDvl(d[`${c}_in`])} / −
                                                             {formatDvl(d[`${c}_out`])})
                                                         </span>
-                                                        <span style={styles.tipCover}>
-                                                            {cover === null || cover === undefined
-                                                                ? 'chưa quy ra ngày được'
-                                                                : `đáp ứng ${cover} ngày`}
-                                                        </span>
                                                     </div>
                                                 );
                                             })}
-                                        </div>
-                                    );
-                                }}
-                            />
-                            <Legend wrapperStyle={{ fontSize: 12 }} />
-                            {groups.map((g) => (
-                                <Bar
-                                    key={g.stage_group_code}
-                                    dataKey={g.stage_group_code}
-                                    name={g.stage_group_name}
-                                    fill={colorOfGroup(g.stage_group_code)}
-                                    radius={[4, 4, 0, 0]}
-                                    maxBarSize={18}
-                                />
-                            ))}
-                        </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-
-                {/* Biểu đồ thứ hai, cùng trục ngày: tồn của mỗi công đoạn tại mốc đó
-                    còn nuôi được công đoạn sau bao nhiêu ngày nữa. Tách riêng vì đơn
-                    vị là ngày, không cùng thang với ĐVL ở biểu đồ trên. */}
-                <div style={styles.subHead}>
-                    <h4 style={styles.h4}>Số ngày còn đáp ứng được</h4>
-                    <span style={styles.subCap}>
-                        Tính từ mốc 06:00 của ngày đó, giả định công đoạn trước ngừng cấp hàng và công
-                        đoạn sau chạy đúng nhịp thường ngày.
-                    </span>
-                </div>
-
-                <div style={styles.chartScroll}>
-                  <div style={{ minWidth: Math.max(720, byDate.length * 44), height: 210 }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={coverByDate} margin={{ top: 8, right: 16, left: 4, bottom: 4 }} barGap={2}>
-                            <CartesianGrid stroke="#eef2f4" vertical={false} />
-                            <XAxis
-                                dataKey="label"
-                                tick={{ fontSize: 11, fill: '#64748b' }}
-                                interval={0}
-                                angle={-45}
-                                textAnchor="end"
-                                height={48}
-                            />
-                            <YAxis
-                                tick={{ fontSize: 11, fill: '#64748b' }}
-                                width={62}
-                                allowDecimals={false}
-                                label={{
-                                    value: 'ngày',
-                                    angle: -90,
-                                    position: 'insideLeft',
-                                    fontSize: 11,
-                                    fill: '#94a3b8',
-                                }}
-                            />
-                            <Tooltip
-                                cursor={{ fill: '#0f172a', fillOpacity: 0.04 }}
-                                content={({ active, payload, label }) => {
-                                    if (!active || !payload || payload.length === 0) return null;
-                                    const d = payload[0].payload;
-                                    return (
-                                        <div style={styles.tooltip}>
-                                            <div style={{ fontWeight: 700, marginBottom: 5 }}>
-                                                {label} lúc 06:00
+                                            <div style={styles.tipTotal}>
+                                                Tổng cả phân xưởng <b>{formatFull(total)}</b> ĐVL
                                             </div>
-                                            {groups.map((g) => {
-                                                const c = g.stage_group_code;
-                                                if (d[c] === undefined) return null;
-                                                return (
-                                                    <div key={c} style={styles.tipRow}>
-                                                        <span
-                                                            style={{
-                                                                ...styles.tipDot,
-                                                                background: colorOfGroup(c),
-                                                            }}
-                                                        />
-                                                        <span style={styles.tipName}>
-                                                            {g.stage_group_name}
-                                                        </span>
-                                                        <b>{d[c] === null ? '—' : `${d[c]} ngày`}</b>
-                                                    </div>
-                                                );
-                                            })}
+                                            <div style={{ ...styles.tipRow, marginTop: 4 }}>
+                                                <span
+                                                    style={{ ...styles.tipDot, background: SUPPLY_COLOR }}
+                                                />
+                                                <span style={styles.tipName}>Pha chế nhập vào</span>
+                                                <b>{formatFull(d.supply_dvl)}</b>
+                                                <span style={styles.tipMuted}>
+                                                    ({formatKg(d.supply_kg)} Kg · {d.supply_lots || 0} lô)
+                                                </span>
+                                            </div>
                                         </div>
                                     );
                                 }}
                             />
                             <Legend wrapperStyle={{ fontSize: 12 }} />
-                            {sharedWarnDays !== null && (
-                                <ReferenceLine
-                                    y={sharedWarnDays}
-                                    stroke="#d97706"
-                                    strokeDasharray="4 3"
-                                    label={{
-                                        value: `Ngưỡng cảnh báo ${sharedWarnDays} ngày`,
-                                        fontSize: 10,
-                                        fill: '#d97706',
-                                        position: 'insideTopLeft',
-                                    }}
-                                />
-                            )}
                             {groups.map((g) => (
                                 <Bar
-                                    key={g.stage_group_code}
-                                    dataKey={g.stage_group_code}
-                                    name={g.stage_group_name}
-                                    fill={colorOfGroup(g.stage_group_code)}
+                                    key={g.group_code}
+                                    dataKey={g.group_code}
+                                    name={groupLabel(g)}
+                                    fill={colorOfGroup(g.group_code)}
                                     radius={[4, 4, 0, 0]}
-                                    maxBarSize={18}
+                                    maxBarSize={26}
                                 />
                             ))}
-                        </BarChart>
+                            {/* Vẽ dạng đường chứ không phải cột: đây là LƯỢNG CHẢY VÀO
+                                trong ngày, không phải mức tồn đứng như ba cột kia. */}
+                            <Line
+                                type="monotone"
+                                dataKey="supply_dvl"
+                                name="Pha chế nhập vào"
+                                stroke={SUPPLY_COLOR}
+                                strokeWidth={2}
+                                dot={{ r: 2.5 }}
+                                activeDot={{ r: 4 }}
+                            />
+                        </ComposedChart>
                     </ResponsiveContainer>
                   </div>
+                </div>
+
+                {/* Thống kê gọn của từng công đoạn trong đúng khoảng đang vẽ */}
+                <div style={styles.statList}>
+                    {groups.map((g) => (
+                        <div key={g.group_code} style={styles.statRow}>
+                            <span style={{ ...styles.statDot, background: colorOfGroup(g.group_code) }} />
+                            <span style={styles.statName}>{groupLabel(g)}</span>
+                            <span style={styles.statCell}>
+                                hiện tại <b>{formatFull(g.stock_dvl)}</b> ĐVL · {g.stock_lots} lô
+                            </span>
+                            <span style={styles.statCell}>
+                                thấp nhất <b>{formatDvl(g.lowest_stock_dvl)}</b>
+                                {g.lowest_stock_date ? ` (${formatDateShort(g.lowest_stock_date)})` : ''}
+                            </span>
+                            <span style={styles.statCell}>
+                                cao nhất <b>{formatDvl(g.highest_stock_dvl)}</b>
+                                {g.highest_stock_date ? ` (${formatDateShort(g.highest_stock_date)})` : ''}
+                            </span>
+                            <span style={styles.statCell}>
+                                trung bình <b>{formatDvl(g.avg_stock_dvl)}</b>
+                            </span>
+                            <span style={styles.statCell}>
+                                cả kỳ +{formatDvl(g.in_total_dvl)} / −{formatDvl(g.out_total_dvl)}
+                            </span>
+                            {(limits[g.group_code] &&
+                                (limits[g.group_code].min_stock_dvl !== null ||
+                                    limits[g.group_code].max_stock_dvl !== null)) && (
+                                <span style={styles.statLimit}>
+                                    giới hạn{' '}
+                                    {limits[g.group_code].min_stock_dvl !== null
+                                        ? formatDvl(limits[g.group_code].min_stock_dvl)
+                                        : '—'}
+                                    {' – '}
+                                    {limits[g.group_code].max_stock_dvl !== null
+                                        ? formatDvl(limits[g.group_code].max_stock_dvl)
+                                        : '—'}
+                                    {breaches[g.group_code] > 0 && (
+                                        <b style={{ marginLeft: 6, color: '#b45309' }}>
+                                            {breaches[g.group_code]} ngày vượt
+                                        </b>
+                                    )}
+                                </span>
+                            )}
+                        </div>
+                    ))}
+
+                    {/* Nguồn vào: đặt ngay dưới ba công đoạn để so được lượng đổ vào
+                        với lượng đang đọng lại */}
+                    <div style={{ ...styles.statRow, ...styles.statSupplyRow }}>
+                        <span style={{ ...styles.statDot, background: SUPPLY_COLOR }} />
+                        <span style={styles.statName}>Pha chế nhập vào</span>
+                        <span style={styles.statCell}>
+                            cả kỳ <b>{formatFull(supplyTotal.dvl)}</b> ĐVL ·{' '}
+                            <b>{formatKg(supplyTotal.kg)}</b> Kg · {supplyTotal.lots} lô
+                        </span>
+                        <span style={styles.statCell}>
+                            bình quân <b>{formatDvl(supplyTotal.avgDvl)}</b> / ngày
+                        </span>
+                        <span style={styles.statCell}>
+                            {supplyTotal.activeDays}/{supply.length} ngày có mẻ
+                        </span>
+                    </div>
+                    {naGroup && naGroup.stock_dvl > 0 && (
+                        <div style={styles.naNote}>
+                            {formatFull(naGroup.stock_dvl)} ĐVL ({naGroup.stock_lots} lô) chưa lần ra được
+                            công đoạn sau qua dữ liệu kế hoạch — chưa cộng vào ba công đoạn ở trên.
+                        </div>
+                    )}
                 </div>
 
                 {/* Bảng số: cùng dữ liệu với biểu đồ, đọc được con số chính xác từng ngày */}
@@ -479,61 +432,124 @@ const WipCoverage = () => {
                     <table style={styles.dayTable}>
                         <thead>
                             <tr>
-                                <th style={{ ...styles.th, ...styles.thSticky, textAlign: 'left' }} rowSpan={2}>
+                                <th style={{ ...styles.th, textAlign: 'left' }} rowSpan={2}>
                                     Ngày
+                                </th>
+                                <th
+                                    style={{
+                                        ...styles.th,
+                                        borderLeft: '1px solid #e2e8f0',
+                                        color: SUPPLY_COLOR,
+                                    }}
+                                    rowSpan={2}
+                                    title="Sản lượng Pha chế đổ vào dây chuyền trong ngày — nguồn cấp bán thành phẩm cho mọi công đoạn sau"
+                                >
+                                    Pha chế nhập vào
+                                    <div style={styles.thUnit}>ĐVL · Kg</div>
                                 </th>
                                 {groups.map((g) => (
                                     <th
-                                        key={g.stage_group_code}
-                                        colSpan={showFlows ? 4 : 2}
+                                        key={g.group_code}
+                                        colSpan={showFlows ? 3 : 1}
                                         style={{
                                             ...styles.th,
-                                            ...styles.thSticky,
                                             borderLeft: '1px solid #e2e8f0',
-                                            color: colorOfGroup(g.stage_group_code),
+                                            color: colorOfGroup(g.group_code),
                                         }}
+                                        title={groupLabel(g)}
                                     >
-                                        {g.stage_group_name}
+                                        {groupLabel(g)}
                                     </th>
                                 ))}
+                                <th style={{ ...styles.th, borderLeft: '1px solid #cbd5e1' }} rowSpan={2}>
+                                    Tổng
+                                </th>
                             </tr>
                             <tr>
                                 {groups.map((g) => (
-                                    <React.Fragment key={g.stage_group_code}>
+                                    <React.Fragment key={g.group_code}>
                                         <th style={{ ...styles.th2, borderLeft: '1px solid #e2e8f0' }}>Tồn</th>
                                         {showFlows && <th style={styles.th2}>Nhập</th>}
                                         {showFlows && <th style={styles.th2}>Xuất</th>}
-                                        <th style={styles.th2}>Đáp ứng</th>
                                     </React.Fragment>
                                 ))}
                             </tr>
                         </thead>
                         <tbody>
                             {byDate.map((row, idx) => (
-                                <tr
-                                    key={row.date}
-                                    style={idx === 0 ? styles.todayRow : undefined}
-                                >
+                                <tr key={row.date} style={idx === 0 ? styles.todayRow : undefined}>
                                     <td style={{ ...styles.td, textAlign: 'left', whiteSpace: 'nowrap' }}>
                                         {formatDate(row.date)}
                                         {idx === 0 && <span style={styles.todayTag}>hôm nay</span>}
                                     </td>
+                                    <td
+                                        style={{
+                                            ...styles.td,
+                                            borderLeft: '1px solid #e2e8f0',
+                                            color: row.supply_dvl > 0 ? SUPPLY_COLOR : '#cbd5e1',
+                                            fontWeight: row.supply_dvl > 0 ? 600 : 400,
+                                        }}
+                                        title={
+                                            row.supply_dvl > 0
+                                                ? `${formatFull(row.supply_dvl)} ĐVL · ${formatKg(
+                                                      row.supply_kg
+                                                  )} Kg · ${row.supply_lots} lô`
+                                                : 'Không có mẻ Pha chế nào trong ngày'
+                                        }
+                                    >
+                                        {row.supply_dvl > 0 ? (
+                                            <>
+                                                {formatFull(row.supply_dvl)}
+                                                <span style={styles.tdKg}>{formatKg(row.supply_kg)} Kg</span>
+                                            </>
+                                        ) : (
+                                            '—'
+                                        )}
+                                    </td>
                                     {groups.map((g) => {
-                                        const c = g.stage_group_code;
-                                        const isLow = lowestDates[c] === row.date;
+                                        const c = g.group_code;
+                                        const mark = marks[c] || {};
+                                        const isLow = mark.low === row.date;
+                                        const isHigh = mark.high === row.date;
+                                        // Vượt giới hạn tô bằng NỀN, còn đáy/đỉnh của kỳ tô
+                                        // bằng CHỮ, để hai thông tin không tranh nhau một ô
+                                        const breach = limitStateOf(row[c], limits[c]);
                                         return (
                                             <React.Fragment key={c}>
                                                 <td
                                                     style={{
                                                         ...styles.td,
                                                         borderLeft: '1px solid #e2e8f0',
-                                                        fontWeight: isLow ? 700 : 500,
-                                                        color: isLow ? '#dc2626' : '#0f172a',
+                                                        fontWeight: isLow || isHigh ? 700 : 500,
+                                                        color: isLow ? '#dc2626' : isHigh ? '#0d9488' : '#0f172a',
+                                                        background:
+                                                            breach === 'low'
+                                                                ? '#fee2e2'
+                                                                : breach === 'high'
+                                                                ? '#fef3c7'
+                                                                : undefined,
                                                     }}
-                                                    title={isLow ? 'Mức tồn thấp nhất trong kỳ' : undefined}
+                                                    title={
+                                                        breach === 'low'
+                                                            ? `Dưới giới hạn dưới (${formatFull(
+                                                                  limits[c].min_stock_dvl
+                                                              )} ĐVL) — thiếu hàng cho công đoạn sau`
+                                                            : breach === 'high'
+                                                            ? `Trên giới hạn trên (${formatFull(
+                                                                  limits[c].max_stock_dvl
+                                                              )} ĐVL) — ứ hàng, công đoạn sau không tiêu thụ kịp`
+                                                            : isLow
+                                                            ? 'Mức tồn thấp nhất trong kỳ'
+                                                            : isHigh
+                                                            ? 'Mức tồn cao nhất trong kỳ'
+                                                            : undefined
+                                                    }
                                                 >
                                                     {formatFull(row[c])}
                                                     {isLow && <span style={styles.lowTag}>thấp nhất</span>}
+                                                    {isHigh && !isLow && (
+                                                        <span style={styles.highTag}>cao nhất</span>
+                                                    )}
                                                 </td>
                                                 {showFlows && (
                                                     <td style={{ ...styles.td, color: '#0d9488' }}>
@@ -545,181 +561,183 @@ const WipCoverage = () => {
                                                         {row[`${c}_out`] > 0 ? `−${formatDvl(row[`${c}_out`])}` : '—'}
                                                     </td>
                                                 )}
-                                                <td style={{ ...styles.td, color: '#475569' }}>
-                                                    {row[`${c}_cover`] === null || row[`${c}_cover`] === undefined
-                                                        ? '—'
-                                                        : Number(row[`${c}_cover`]).toLocaleString('vi-VN', {
-                                                              maximumFractionDigits: 1,
-                                                          })}
-                                                </td>
                                             </React.Fragment>
                                         );
                                     })}
+                                    <td
+                                        style={{
+                                            ...styles.td,
+                                            borderLeft: '1px solid #cbd5e1',
+                                            fontWeight: 700,
+                                        }}
+                                    >
+                                        {formatFull(totalByDate[idx])}
+                                    </td>
                                 </tr>
                             ))}
                         </tbody>
                     </table>
                 </div>
+
+                {Object.keys(limits).some(
+                    (k) =>
+                        limits[k] &&
+                        (limits[k].min_stock_dvl !== null || limits[k].max_stock_dvl !== null)
+                ) ? (
+                    <div style={styles.tableNote}>
+                        <span style={{ ...styles.noteChip, background: '#fee2e2', color: '#dc2626' }}>
+                            dưới giới hạn
+                        </span>
+                        thiếu hàng cho công đoạn sau
+                        <span
+                            style={{
+                                ...styles.noteChip,
+                                background: '#fef3c7',
+                                color: '#b45309',
+                                marginLeft: 12,
+                            }}
+                        >
+                            trên giới hạn
+                        </span>
+                        ứ hàng, công đoạn sau không tiêu thụ kịp. Cài đặt ở trang Chính sách sản lượng.
+                    </div>
+                ) : (
+                    <div style={styles.tableNote}>
+                        Chưa cài giới hạn tồn cho công đoạn nào. Vào trang Chính sách sản lượng để đặt
+                        giới hạn trên/dưới, ngày vượt ngưỡng sẽ được tô màu ở bảng trên.
+                    </div>
+                )}
             </div>
 
             {current && (
-                <div style={styles.grid}>
-                    <div style={styles.box}>
-                        <h3 style={styles.h3}>Chi tiết theo mã bán thành phẩm — {flowLabel(current)}</h3>
-                        <p style={styles.cap}>
-                            Mã chiếm nhiều giờ máy của công đoạn sau nhất xếp lên đầu. Cột "Chiếm" là
-                            phần mà riêng mã đó góp vào{' '}
-                            {coverLabel(current)} ngày đáp ứng của cả nhóm, cộng các dòng lại thì đúng
-                            bằng con số tổng hợp.
-                        </p>
-
-                        <DataTable
-                            value={details}
-                            loading={detailLoading}
-                            size="small"
-                            stripedRows
-                            paginator
-                            rows={10}
-                            emptyMessage="Không có mã bán thành phẩm nào đang tồn."
-                            expandedRows={expanded}
-                            onRowToggle={(e) => setExpanded(e.data)}
-                            dataKey="intermediate_code"
-                            rowExpansionTemplate={(row) => (
-                                <div style={styles.expansion}>
-                                    <table style={styles.innerTable}>
-                                        <thead>
-                                            <tr>
-                                                <th style={styles.thSmall}>Số lô</th>
-                                                <th style={styles.thSmall}>Công đoạn</th>
-                                                <th style={styles.thSmall}>Bắt đầu</th>
-                                                <th style={{ ...styles.thSmall, textAlign: 'right' }}>
-                                                    Lượng (ĐVL)
-                                                </th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {(row.batches || []).map((b) => (
-                                                <tr key={b.plan_master_id}>
-                                                    <td style={styles.tdSmall}>{b.batch || '—'}</td>
-                                                    <td style={styles.tdSmall}>{b.stage_code}</td>
-                                                    <td style={styles.tdSmall}>{formatDate(b.start)}</td>
-                                                    <td style={{ ...styles.tdSmall, textAlign: 'right' }}>
-                                                        {formatFull(b.qty_dvl)}
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            )}
-                        >
-                            <Column expander style={{ width: 42 }} />
-                            <Column field="intermediate_code" header="Mã BTP" style={{ width: 130 }} />
-                            <Column field="product_name" header="Tên sản phẩm" />
-                            <Column
-                                header="Tồn"
-                                style={{ width: 130, textAlign: 'right' }}
-                                body={(row) => (
-                                    <span style={{ fontVariantNumeric: 'tabular-nums' }}>
-                                        {formatFull(row.stock_dvl)}{' '}
-                                        <span style={{ color: '#94a3b8', fontSize: 11 }}>
-                                            {row.unit || 'ĐVL'}
-                                        </span>
-                                    </span>
-                                )}
-                            />
-                            <Column field="stock_lots" header="Số lô" style={{ width: 70, textAlign: 'right' }} />
-                            <Column
-                                header="Giờ máy"
-                                style={{ width: 90, textAlign: 'right' }}
-                                body={(row) => (
-                                    <span style={{ fontVariantNumeric: 'tabular-nums' }}>
-                                        {Number(row.load_hours || 0).toLocaleString('vi-VN', {
-                                            maximumFractionDigits: 0,
-                                        })}
-                                    </span>
-                                )}
-                            />
-                            <Column
-                                header="Chiếm"
-                                style={{ width: 100, textAlign: 'right' }}
-                                body={(row) => (
-                                    <span
+                <div style={styles.box2}>
+                    <div style={styles.boxHead}>
+                        <div>
+                            <h3 style={styles.h3}>Chi tiết theo mã bán thành phẩm</h3>
+                            <p style={styles.cap}>
+                                Mã đang giữ nhiều hàng nhất xếp lên đầu. Bấm mũi tên để xem từng lô đang
+                                nằm chờ trong kho.
+                            </p>
+                        </div>
+                        {/* Chọn công đoạn cần xem, thay cho hàng thẻ tóm tắt trước đây */}
+                        <div style={styles.tabs}>
+                            {groups.map((g) => {
+                                const active = g.group_code === selected;
+                                const hue = colorOfGroup(g.group_code);
+                                return (
+                                    <button
+                                        type="button"
+                                        key={g.group_code}
+                                        onClick={() => setSelected(g.group_code)}
                                         style={{
-                                            background: '#f1f5f9',
-                                            color: '#334155',
-                                            borderRadius: 4,
-                                            padding: '2px 7px',
-                                            fontSize: 12,
-                                            fontWeight: 600,
-                                            fontVariantNumeric: 'tabular-nums',
+                                            ...styles.tab,
+                                            color: active ? '#fff' : hue,
+                                            background: active ? hue : '#fff',
+                                            borderColor: active ? hue : '#e2e8f0',
                                         }}
+                                        title={`${groupLabel(g)} — ${formatFull(g.stock_dvl)} ĐVL`}
                                     >
-                                        {row.days_of_cover === null
-                                            ? '—'
-                                            : `${Number(row.days_of_cover).toLocaleString('vi-VN', {
-                                                  maximumFractionDigits: 1,
-                                              })} ngày`}
-                                    </span>
-                                )}
-                            />
-                            <Column
-                                header="Xuất cuối"
-                                style={{ width: 100 }}
-                                body={(row) =>
-                                    row.last_out_date ? (
-                                        formatDate(row.last_out_date)
-                                    ) : (
+                                        {groupLabel(g)}
                                         <span
-                                            style={{ color: '#b45309', fontSize: 11.5 }}
-                                            title="Chưa sắp lịch cho công đoạn sau trong khoảng dự báo"
+                                            style={{
+                                                ...styles.tabQty,
+                                                color: active ? 'rgba(255,255,255,.85)' : '#94a3b8',
+                                            }}
                                         >
-                                            chưa sắp lịch
+                                            {formatDvl(g.stock_dvl)}
                                         </span>
-                                    )
-                                }
-                            />
-                        </DataTable>
+                                    </button>
+                                );
+                            })}
+                        </div>
                     </div>
 
-                    <div style={styles.box}>
-                        <h3 style={styles.h3}>Xu hướng số ngày đáp ứng</h3>
-                        <p style={styles.cap}>Theo các bản chốt 6h sáng đã lưu.</p>
-
-                        {history.length < 2 ? (
-                            <div style={styles.empty}>
-                                Cần ít nhất 2 bản chốt mới vẽ được xu hướng. Lệnh chạy tự động mỗi 6h sáng.
-                            </div>
-                        ) : (
-                            <div style={{ width: '100%', height: 240 }}>
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <LineChart data={history} margin={{ top: 8, right: 8, left: 4, bottom: 4 }}>
-                                        <CartesianGrid stroke="#eef2f4" vertical={false} />
-                                        <XAxis
-                                            dataKey="date"
-                                            tickFormatter={formatDateShort}
-                                            tick={{ fontSize: 11, fill: '#64748b' }}
-                                        />
-                                        <YAxis tick={{ fontSize: 11, fill: '#64748b' }} width={34} />
-                                        <Tooltip
-                                            labelFormatter={formatDate}
-                                            formatter={(v) => [`${v} ngày`, 'Đáp ứng']}
-                                            contentStyle={{ fontSize: 12, borderRadius: 6 }}
-                                        />
-                                        <Line
-                                            type="monotone"
-                                            dataKey={selected}
-                                            name={current.stage_group_name}
-                                            stroke={colorOfGroup(selected)}
-                                            strokeWidth={2}
-                                            dot={{ r: 3 }}
-                                            connectNulls
-                                        />
-                                    </LineChart>
-                                </ResponsiveContainer>
+                    <DataTable
+                        value={details}
+                        loading={detailLoading}
+                        size="small"
+                        stripedRows
+                        paginator
+                        rows={10}
+                        emptyMessage="Không có mã bán thành phẩm nào đang tồn."
+                        expandedRows={expanded}
+                        onRowToggle={(e) => setExpanded(e.data)}
+                        dataKey="intermediate_code"
+                        rowExpansionTemplate={(row) => (
+                            <div style={styles.expansion}>
+                                <table style={styles.innerTable}>
+                                    <thead>
+                                        <tr>
+                                            <th style={styles.thSmall}>Số lô</th>
+                                            <th style={styles.thSmall}>Công đoạn</th>
+                                            <th style={styles.thSmall}>Bắt đầu</th>
+                                            <th style={{ ...styles.thSmall, textAlign: 'right' }}>
+                                                Lượng (ĐVL)
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {(row.batches || []).map((b) => (
+                                            <tr key={b.plan_master_id}>
+                                                <td style={styles.tdSmall}>{b.batch || '—'}</td>
+                                                <td style={styles.tdSmall}>{b.stage_code}</td>
+                                                <td style={styles.tdSmall}>{formatDate(b.start)}</td>
+                                                <td style={{ ...styles.tdSmall, textAlign: 'right' }}>
+                                                    {formatFull(b.qty_dvl)}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
                             </div>
                         )}
-                    </div>
+                    >
+                        <Column expander style={{ width: 42 }} />
+                        <Column field="intermediate_code" header="Mã BTP" style={{ width: 130 }} />
+                        <Column field="product_name" header="Tên sản phẩm" />
+                        <Column
+                            header="Tồn"
+                            style={{ width: 150, textAlign: 'right' }}
+                            body={(row) => (
+                                <span style={{ fontVariantNumeric: 'tabular-nums' }}>
+                                    {formatFull(row.stock_dvl)}{' '}
+                                    <span style={{ color: '#94a3b8', fontSize: 11 }}>
+                                        {row.unit || 'ĐVL'}
+                                    </span>
+                                </span>
+                            )}
+                        />
+                        <Column field="stock_lots" header="Số lô" style={{ width: 70, textAlign: 'right' }} />
+                        <Column
+                            header="Tỉ trọng"
+                            style={{ width: 110, textAlign: 'right' }}
+                            body={(row) => (
+                                <span style={styles.sharePill}>
+                                    {row.share_pct === null || row.share_pct === undefined
+                                        ? '—'
+                                        : `${Number(row.share_pct).toLocaleString('vi-VN', {
+                                              maximumFractionDigits: 1,
+                                          })}%`}
+                                </span>
+                            )}
+                        />
+                        <Column
+                            header="Xuất cuối"
+                            style={{ width: 110 }}
+                            body={(row) =>
+                                row.last_out_date ? (
+                                    formatDate(row.last_out_date)
+                                ) : (
+                                    <span
+                                        style={{ color: '#b45309', fontSize: 11.5 }}
+                                        title="Chưa sắp lịch cho công đoạn sau trong khoảng dự báo"
+                                    >
+                                        chưa sắp lịch
+                                    </span>
+                                )
+                            }
+                        />
+                    </DataTable>
                 </div>
             )}
         </div>
@@ -748,7 +766,7 @@ const styles = {
     },
     headerRight: { display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' },
     h1: { fontSize: 20, fontWeight: 700, margin: 0 },
-    lede: { margin: '4px 0 0', color: '#64748b', fontSize: 13.5, maxWidth: '70ch' },
+    lede: { margin: '4px 0 0', color: '#64748b', fontSize: 13.5, maxWidth: '78ch' },
     stamp: { fontSize: 12.5, color: '#64748b', fontVariantNumeric: 'tabular-nums' },
     btn: {
         fontSize: 12.5,
@@ -760,80 +778,15 @@ const styles = {
         padding: '6px 12px',
         cursor: 'pointer',
     },
-    cards: { display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 14 },
-    card: {
-        position: 'relative',
-        flex: '1 1 240px',
-        minWidth: 220,
-        textAlign: 'left',
+
+    box: { border: '1px solid #e2e8f0', borderRadius: 8, background: '#fff', padding: 14 },
+    box2: {
         border: '1px solid #e2e8f0',
         borderRadius: 8,
         background: '#fff',
-        padding: '11px 13px 11px 16px',
-        cursor: 'pointer',
-        overflow: 'hidden',
-        font: 'inherit',
-    },
-    stripe: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 4 },
-    flow: {
-        fontSize: 10.5,
-        fontWeight: 700,
-        letterSpacing: '.08em',
-        textTransform: 'uppercase',
-        color: '#64748b',
-    },
-    numRow: { display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 4 },
-    num: { fontSize: 28, fontWeight: 700, lineHeight: 1, fontVariantNumeric: 'tabular-nums' },
-    unit: { fontSize: 12.5, color: '#475569' },
-    pill: {
-        display: 'inline-block',
-        marginTop: 6,
-        fontSize: 10,
-        fontWeight: 700,
-        letterSpacing: '.05em',
-        textTransform: 'uppercase',
-        borderRadius: 999,
-        padding: '2px 8px',
-    },
-    sub: {
-        marginTop: 6,
-        fontSize: 11.5,
-        color: '#64748b',
-        display: 'flex',
-        gap: 7,
-        flexWrap: 'wrap',
-        fontVariantNumeric: 'tabular-nums',
-    },
-    dot: { color: '#cbd5e1' },
-    basis: {
-        marginTop: 5,
-        paddingTop: 5,
-        borderTop: '1px dashed #e2e8f0',
-        fontSize: 10.5,
-        color: '#94a3b8',
-        lineHeight: 1.4,
-    },
-    method: {
-        margin: '0 0 14px',
-        fontSize: 12,
-        color: '#64748b',
-        lineHeight: 1.55,
-        maxWidth: '95ch',
-    },
-    code: {
-        background: '#f1f5f9',
-        borderRadius: 3,
-        padding: '0 4px',
-        fontSize: 11.5,
-        color: '#334155',
-    },
-    grid: {
-        display: 'grid',
-        gridTemplateColumns: 'minmax(0, 1.6fr) minmax(0, 1fr)',
-        gap: 14,
+        padding: 14,
         marginTop: 14,
     },
-    box: { border: '1px solid #e2e8f0', borderRadius: 8, background: '#fff', padding: 14 },
     boxHead: {
         display: 'flex',
         justifyContent: 'space-between',
@@ -859,9 +812,67 @@ const styles = {
         color: '#334155',
     },
     cap: { margin: '3px 0 12px', fontSize: 12.5, color: '#64748b' },
-    empty: { padding: '40px 12px', textAlign: 'center', color: '#94a3b8', fontSize: 12.5 },
 
     chartScroll: { width: '100%', overflowX: 'auto', overflowY: 'hidden' },
+
+    statList: {
+        marginTop: 12,
+        paddingTop: 10,
+        borderTop: '1px dashed #e2e8f0',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 5,
+    },
+    statRow: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+        flexWrap: 'wrap',
+        fontSize: 12,
+        color: '#64748b',
+        fontVariantNumeric: 'tabular-nums',
+    },
+    statDot: { width: 9, height: 9, borderRadius: 2, flex: 'none' },
+    statName: { minWidth: 120, fontWeight: 600, color: '#334155' },
+    statCell: { whiteSpace: 'nowrap' },
+    statLimit: {
+        whiteSpace: 'nowrap',
+        color: '#475569',
+        background: '#f1f5f9',
+        borderRadius: 3,
+        padding: '1px 7px',
+    },
+    statSupplyRow: {
+        marginTop: 3,
+        paddingTop: 7,
+        borderTop: '1px dashed #e2e8f0',
+    },
+    naNote: {
+        marginTop: 4,
+        fontSize: 11.5,
+        color: '#b45309',
+        background: '#fef3c7',
+        borderRadius: 5,
+        padding: '5px 9px',
+    },
+
+    tabs: { display: 'flex', gap: 6, flexWrap: 'wrap' },
+    tab: {
+        display: 'flex',
+        alignItems: 'baseline',
+        gap: 6,
+        border: '1px solid #e2e8f0',
+        borderRadius: 999,
+        padding: '4px 11px',
+        fontSize: 12,
+        fontWeight: 700,
+        cursor: 'pointer',
+        font: 'inherit',
+        fontVariantNumeric: 'tabular-nums',
+        whiteSpace: 'nowrap',
+    },
+    tabQty: { fontSize: 11, fontWeight: 500 },
+
     tableWrap: {
         marginTop: 14,
         maxHeight: 360,
@@ -889,7 +900,6 @@ const styles = {
         borderBottom: '1px solid #e2e8f0',
         whiteSpace: 'nowrap',
     },
-    thSticky: {},
     th2: {
         position: 'sticky',
         top: 28,
@@ -903,12 +913,20 @@ const styles = {
         borderBottom: '1px solid #e2e8f0',
         whiteSpace: 'nowrap',
     },
+    thUnit: {
+        fontSize: 9.5,
+        fontWeight: 500,
+        color: '#94a3b8',
+        letterSpacing: 0,
+        marginTop: 1,
+    },
     td: {
         padding: '6px 10px',
         textAlign: 'right',
         borderBottom: '1px solid #f1f5f9',
         whiteSpace: 'nowrap',
     },
+    tdKg: { marginLeft: 6, fontSize: 10.5, fontWeight: 400, color: '#94a3b8' },
     todayRow: { background: '#f0fdfa' },
     todayTag: {
         marginLeft: 6,
@@ -929,6 +947,31 @@ const styles = {
         borderRadius: 3,
         padding: '1px 5px',
     },
+    highTag: {
+        marginLeft: 5,
+        fontSize: 9.5,
+        fontWeight: 700,
+        color: '#0d9488',
+        background: '#ccfbf1',
+        borderRadius: 3,
+        padding: '1px 5px',
+    },
+
+    tableNote: {
+        marginTop: 8,
+        fontSize: 11.5,
+        color: '#64748b',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 5,
+        flexWrap: 'wrap',
+    },
+    noteChip: {
+        borderRadius: 3,
+        padding: '1px 7px',
+        fontSize: 10.5,
+        fontWeight: 700,
+    },
 
     tooltip: {
         background: '#fff',
@@ -941,19 +984,25 @@ const styles = {
     },
     tipRow: { display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 },
     tipDot: { width: 9, height: 9, borderRadius: 2, flex: 'none' },
-    tipName: { minWidth: 68, color: '#475569' },
+    tipName: { minWidth: 100, color: '#475569' },
     tipMuted: { color: '#94a3b8', fontSize: 11 },
-    tipCover: { marginLeft: 'auto', paddingLeft: 10, color: '#334155', fontSize: 11, whiteSpace: 'nowrap' },
-    subHead: { display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', margin: '16px 0 6px' },
-    h4: {
-        margin: 0,
-        fontSize: 11,
-        fontWeight: 700,
-        letterSpacing: '.09em',
-        textTransform: 'uppercase',
+    tipTotal: {
+        marginTop: 6,
+        paddingTop: 5,
+        borderTop: '1px solid #f1f5f9',
         color: '#334155',
+        fontSize: 11.5,
     },
-    subCap: { fontSize: 12, color: '#64748b' },
+
+    sharePill: {
+        background: '#f1f5f9',
+        color: '#334155',
+        borderRadius: 4,
+        padding: '2px 7px',
+        fontSize: 12,
+        fontWeight: 600,
+        fontVariantNumeric: 'tabular-nums',
+    },
 
     expansion: { padding: '8px 12px', background: '#f8fafc' },
     innerTable: { width: '100%', borderCollapse: 'collapse', fontSize: 12 },

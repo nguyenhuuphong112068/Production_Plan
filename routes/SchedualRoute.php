@@ -179,7 +179,7 @@ Route::prefix('/Schedual')
                                 Route::post('store',  'store')->name('store');
                                 Route::post('daily',  'storeDaily')->name('daily');
                                 Route::post('check',  'checkYieldPolicy')->name('check');
-                                Route::post('wip_threshold', 'storeWipThreshold')->name('wip_threshold');
+                                Route::post('wip_stock_limit', 'storeWipStockLimit')->name('wip_stock_limit');
                         });
 
                 Route::prefix('/wip_coverage')
@@ -189,7 +189,7 @@ Route::prefix('/Schedual')
                                 Route::get('',        'index')->name('index');
                                 Route::post('view',   'view')->name('view');
                                 Route::post('detail', 'detail')->name('detail');
-                                Route::post('history', 'history')->name('history');
+                                Route::post('day_detail', 'dayDetail')->name('day_detail');
                         });
 
                 Route::prefix('/audit')
