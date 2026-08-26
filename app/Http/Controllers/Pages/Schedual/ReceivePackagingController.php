@@ -139,6 +139,18 @@ class ReceivePackagingController extends Controller
         $name  = $request->name;
         $value = $request->updateValue;
 
+        if ($name == 'receive_packaging_date') {
+            $plan = DB::table('stage_plan')->where('id', $id)->first(['received']);
+            if ($plan && $plan->received == 1) {
+                return response()->json(['error' => 'Đã xác nhận nhận bao bì, không thể sửa ngày.'], 422);
+            }
+        } elseif ($name == 'receive_second_packaging_date') {
+            $plan = DB::table('stage_plan')->where('id', $id)->first(['received_second_packaging']);
+            if ($plan && $plan->received_second_packaging == 1) {
+                return response()->json(['error' => 'Đã xác nhận nhận bao bì cấp 2, không thể sửa ngày.'], 422);
+            }
+        }
+
         DB::table('stage_plan')
             ->where('id', $id)
             ->update([$name => $value]);

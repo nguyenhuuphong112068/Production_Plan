@@ -940,6 +940,8 @@ class MaintenanceSchedualController extends SchedualController
                     $endClearning = $startClearning->copy()->addMinutes($dur);
                 }
 
+                $receiveDateStr = $receiveDate->toDateString();
+
                 if ($isTI && ! empty($codes)) {
                     // 1. Cập nhật các bản ghi gốc (cả thời gian và resourceId)
                     DB::table('stage_plan')
@@ -950,8 +952,8 @@ class MaintenanceSchedualController extends SchedualController
                             'start_clearning' => $startClearning,
                             'end_clearning' => $endClearning,
                             'resourceId' => $change['resourceId'],
-                            'receive_packaging_date' => $receiveDate,
-                            'receive_second_packaging_date' => $receiveDate,
+                            'receive_packaging_date' => DB::raw("CASE WHEN received = 0 AND stage_code = 7 THEN '$receiveDateStr' ELSE receive_packaging_date END"),
+                            'receive_second_packaging_date' => DB::raw("CASE WHEN received_second_packaging = 0 AND stage_code = 7 THEN '$receiveDateStr' ELSE receive_second_packaging_date END"),
                             'schedualed_by' => session('user')['fullName'],
                             'schedualed_at' => now(),
                         ]);
@@ -971,8 +973,8 @@ class MaintenanceSchedualController extends SchedualController
                                 'start_clearning' => $startClearning,
                                 'end_clearning' => $endClearning,
                                 // KHÔNG thay đổi resourceId cho các bản ghi liên đới
-                                'receive_packaging_date' => $receiveDate,
-                                'receive_second_packaging_date' => $receiveDate,
+                                'receive_packaging_date' => DB::raw("CASE WHEN received = 0 AND stage_code = 7 THEN '$receiveDateStr' ELSE receive_packaging_date END"),
+                                'receive_second_packaging_date' => DB::raw("CASE WHEN received_second_packaging = 0 AND stage_code = 7 THEN '$receiveDateStr' ELSE receive_second_packaging_date END"),
                                 'schedualed_by' => session('user')['fullName'],
                                 'schedualed_at' => now(),
                             ]);
@@ -988,8 +990,8 @@ class MaintenanceSchedualController extends SchedualController
                             'start_clearning' => $startClearning,
                             'end_clearning' => $endClearning,
                             'resourceId' => $change['resourceId'],
-                            'receive_packaging_date' => $receiveDate,
-                            'receive_second_packaging_date' => $receiveDate,
+                            'receive_packaging_date' => DB::raw("CASE WHEN received = 0 AND stage_code = 7 THEN '$receiveDateStr' ELSE receive_packaging_date END"),
+                            'receive_second_packaging_date' => DB::raw("CASE WHEN received_second_packaging = 0 AND stage_code = 7 THEN '$receiveDateStr' ELSE receive_second_packaging_date END"),
                             'schedualed_by' => session('user')['fullName'],
                             'schedualed_at' => now(),
                         ]);

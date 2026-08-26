@@ -2257,7 +2257,6 @@ class SchedualController extends Controller
                 |--------------------------------------------------------------------------
                 */
                 $offDays = DB::table('off_days')
-                    ->whereDate('off_date', '<=', $current_start)
                     ->pluck('off_date')
                     ->toArray();
 
@@ -2340,9 +2339,9 @@ class SchedualController extends Controller
                         ->where('stage_plan_id', $product['id'])
                         ->max('version') ?? 0;
 
-                    if ($product['stage_code'] !== 9) {
-                        $this->syncPackagingDate($product['id'], $receiveDate, 0, 'SchedualController.store');
-                        $this->syncPackagingDate($product['id'], $receiveDate, 1, 'SchedualController.store');
+                    if ((int) $product['stage_code'] === 7) {
+                        $this->syncPackagingDate($product['id'], $receiveDateStr, 0, 'SchedualController.store');
+                        $this->syncPackagingDate($product['id'], $receiveDateStr, 1, 'SchedualController.store');
                     }
 
                     $update_row = DB::table('stage_plan')->where('id', $product['id'])->first();
@@ -2965,7 +2964,6 @@ class SchedualController extends Controller
         //Log::info($request->all());
         //return;
         $offDays = DB::table('off_days')
-            ->whereDate('off_date', '>=', now())
             ->pluck('off_date')
             ->toArray();
 
@@ -3153,10 +3151,19 @@ class SchedualController extends Controller
                             $newStart = $currentStart->copy();
                             $newEnd = $newStart->copy()->addSeconds($duration);
 
+                            // Tính riêng ngày nhận bao bì dựa trên start thực tế của từng lô
+                            $evReceiveDate = Carbon::parse($newStart)->subDay();
+                            while (in_array($evReceiveDate->toDateString(), $offDays)) {
+                                $evReceiveDate->subDay();
+                            }
+                            $evReceiveDateStr = $evReceiveDate->toDateString();
+
                             $evUpdateData = $updateData;
                             $evUpdateData['start'] = $newStart;
                             $evUpdateData['end'] = $newEnd;
                             $evUpdateData['resourceId'] = $change['resourceId'];
+                            $evUpdateData['receive_packaging_date'] = DB::raw("CASE WHEN received = 0 AND stage_code = 7 THEN '$evReceiveDateStr' ELSE receive_packaging_date END");
+                            $evUpdateData['receive_second_packaging_date'] = DB::raw("CASE WHEN received_second_packaging = 0 AND stage_code = 7 THEN '$evReceiveDateStr' ELSE receive_second_packaging_date END");
 
                             if ($campaignDurations[$i]['clean'] !== null) {
                                 $evUpdateData['start_clearning'] = $newEnd;
@@ -3216,6 +3223,15 @@ class SchedualController extends Controller
                             }
                         }
 
+                        // Tính lại ngày nhận bao bì chính xác theo start của lô
+                        $singleReceiveDate = Carbon::parse($updateData['start'])->subDay();
+                        while (in_array($singleReceiveDate->toDateString(), $offDays)) {
+                            $singleReceiveDate->subDay();
+                        }
+                        $singleReceiveDateStr = $singleReceiveDate->toDateString();
+                        $updateData['receive_packaging_date'] = DB::raw("CASE WHEN received = 0 AND stage_code = 7 THEN '$singleReceiveDateStr' ELSE receive_packaging_date END");
+                        $updateData['receive_second_packaging_date'] = DB::raw("CASE WHEN received_second_packaging = 0 AND stage_code = 7 THEN '$singleReceiveDateStr' ELSE receive_second_packaging_date END");
+
                         DB::table('stage_plan')
                             ->whereIn('id', $idsArray)
                             ->update($updateData);
@@ -3259,8 +3275,16 @@ class SchedualController extends Controller
 
                         if ($update_row && $update_row->submit == 1) {
 
-                            $this->syncPackagingDate($sid, $receiveDate, 0, 'SchedualController.multiStore');
-                            $this->syncPackagingDate($sid, $receiveDate, 1, 'SchedualController.multiStore');
+                            if ($update_row->start && (int) $update_row->stage_code === 7) {
+                                $rowReceiveDate = Carbon::parse($update_row->start)->subDay();
+                                while (in_array($rowReceiveDate->toDateString(), $offDays)) {
+                                    $rowReceiveDate->subDay();
+                                }
+                                $rowReceiveDateStr = $rowReceiveDate->toDateString();
+
+                                $this->syncPackagingDate($sid, $rowReceiveDateStr, 0, 'SchedualController.multiStore');
+                                $this->syncPackagingDate($sid, $rowReceiveDateStr, 1, 'SchedualController.multiStore');
+                            }
 
                             try {
                                 DB::table('stage_plan_history')
@@ -3502,6 +3526,8 @@ class SchedualController extends Controller
                             'schedualed_by' => session('user')['fullName'],
                             'schedualed_at' => now(),
                             'submit' => 0,
+                            'receive_packaging_date' => DB::raw("CASE WHEN received = 0 THEN NULL ELSE receive_packaging_date END"),
+                            'receive_second_packaging_date' => DB::raw("CASE WHEN received_second_packaging = 0 THEN NULL ELSE receive_second_packaging_date END"),
                         ]);
                 } else {
 
@@ -3526,6 +3552,8 @@ class SchedualController extends Controller
                             'schedualed_by' => session('user')['fullName'],
                             'schedualed_at' => now(),
                             'submit' => 0,
+                            'receive_packaging_date' => DB::raw("CASE WHEN received = 0 THEN NULL ELSE receive_packaging_date END"),
+                            'receive_second_packaging_date' => DB::raw("CASE WHEN received_second_packaging = 0 THEN NULL ELSE receive_second_packaging_date END"),
                         ]);
                 }
             }
@@ -5882,8 +5910,11 @@ class SchedualController extends Controller
             // nếu muốn log cả cleaning vào room_schedule thì thêm block này:
             if ($submit == 1) {
 
-                $this->syncPackagingDate($stageId, $receiveDate, 0, 'SchedualController.update');
-                $this->syncPackagingDate($stageId, $receiveDate, 1, 'SchedualController.update');
+                $plan_stage_code = DB::table('stage_plan')->where('id', $stageId)->value('stage_code');
+                if ((int) $plan_stage_code === 7) {
+                    $this->syncPackagingDate($stageId, $receiveDate, 0, 'SchedualController.update');
+                    $this->syncPackagingDate($stageId, $receiveDate, 1, 'SchedualController.update');
+                }
 
                 $update_row = DB::table('stage_plan')->where('id', $stageId)->first();
                 if ($update_row) {

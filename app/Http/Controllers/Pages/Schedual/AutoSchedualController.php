@@ -2255,8 +2255,8 @@ class AutoSchedualController extends Controller
                     'scheduling_direction' => $direction,
                     'AHU_group' => $AHU_group ?? null,
                     'schedualed_at' => now(),
-                    'receive_packaging_date' => DB::raw("CASE WHEN received = 0 THEN '$receiveDate' ELSE receive_packaging_date END"),
-                    'receive_second_packaging_date' => DB::raw("CASE WHEN received_second_packaging = 0 THEN '$receiveDate' ELSE receive_second_packaging_date END"),
+                    'receive_packaging_date' => DB::raw("CASE WHEN received = 0 AND stage_code = 7 THEN '$receiveDate' ELSE receive_packaging_date END"),
+                    'receive_second_packaging_date' => DB::raw("CASE WHEN received_second_packaging = 0 AND stage_code = 7 THEN '$receiveDate' ELSE receive_second_packaging_date END"),
                 ]);
 
             $submit = DB::table('stage_plan')->where('id', $stageId)->value('submit');
@@ -2264,8 +2264,11 @@ class AutoSchedualController extends Controller
             // nếu muốn log cả cleaning vào room_schedule thì thêm block này:
             if ($submit == 1) {
 
-                $this->syncPackagingDate($stageId, $receiveDate, 0, 'AutoSchedualController.commitSimulatedSchedule');
-                $this->syncPackagingDate($stageId, $receiveDate, 1, 'AutoSchedualController.commitSimulatedSchedule');
+                $plan_stage_code = DB::table('stage_plan')->where('id', $stageId)->value('stage_code');
+                if ((int) $plan_stage_code === 7) {
+                    $this->syncPackagingDate($stageId, $receiveDate, 0, 'AutoSchedualController.commitSimulatedSchedule');
+                    $this->syncPackagingDate($stageId, $receiveDate, 1, 'AutoSchedualController.commitSimulatedSchedule');
+                }
 
                 DB::table('stage_plan_history')
                     ->insert([

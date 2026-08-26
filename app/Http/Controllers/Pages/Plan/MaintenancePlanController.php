@@ -795,14 +795,15 @@ class MaintenancePlanController extends Controller
                                         }
 
                                         // Cập nhật stage_plan
+                                        $receiveDateStr = $receiveDate->toDateString();
                                         DB::table('stage_plan')
                                                 ->whereIn('id', $realIds)
                                                 ->update([
                                                         'start' => $change['start'],
                                                         'end' => $change['end'],
                                                         'resourceId' => $change['resourceId'],
-                                                        'receive_packaging_date' => $receiveDate,
-                                                        'receive_second_packaging_date' => $receiveDate,
+                                                        'receive_packaging_date' => DB::raw("CASE WHEN received = 0 AND stage_code = 7 THEN '$receiveDateStr' ELSE receive_packaging_date END"),
+                                                        'receive_second_packaging_date' => DB::raw("CASE WHEN received_second_packaging = 0 AND stage_code = 7 THEN '$receiveDateStr' ELSE receive_second_packaging_date END"),
                                                         'schedualed_by' => session('user')['fullName'],
                                                         'schedualed_at' => now(),
                                                 ]);

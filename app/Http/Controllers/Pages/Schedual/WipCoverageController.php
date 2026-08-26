@@ -115,8 +115,16 @@ class WipCoverageController extends Controller
             ->orderByDesc('snapshot_date')
             ->first();
 
+        // Chưa từng chạy lệnh chốt, hoặc vừa đổi cấu trúc nên bản chốt cũ đã bị
+        // xoá, thì tính tại chỗ đúng như view() vẫn làm. Thiếu nhánh này thì bảng
+        // tổng có số (vì view() tự tính) mà bảng chi tiết lại trống trơn, người
+        // dùng nhìn vào tưởng mất dữ liệu.
         if (! $snapshot) {
-            return response()->json(['success' => true, 'details' => []]);
+            return response()->json([
+                'success'       => true,
+                'snapshot_date' => null,
+                'details'       => $this->liveDetails($productionCode, $request->group_code),
+            ]);
         }
 
         // Mã đang giữ nhiều hàng nhất lên đầu
@@ -136,6 +144,28 @@ class WipCoverageController extends Controller
             'snapshot_date' => $snapshot->snapshot_date,
             'details'       => $details,
         ]);
+    }
+
+    /**
+     * Danh sách mã của một nhóm, tính tại chỗ khi chưa có bản chốt.
+     * Gọi thẳng compute() chứ không qua computeLive() vì bảng chi tiết cần cả
+     * danh sách lô trong 'batches', thứ mà computeLive() cắt bớt cho nhẹ.
+     */
+    private function liveDetails(string $productionCode, string $groupCode): array
+    {
+        $result = $this->service->compute(
+            $productionCode,
+            Carbon::now(),
+            WipCoverageService::DEFAULT_HORIZON_DAYS
+        );
+
+        foreach ($result['groups'] as $group) {
+            if ($group['group_code'] === $groupCode) {
+                return $group['details'];
+            }
+        }
+
+        return [];
     }
 
     /** Tính lại tại thời điểm hiện tại, không ghi vào bảng chốt */
