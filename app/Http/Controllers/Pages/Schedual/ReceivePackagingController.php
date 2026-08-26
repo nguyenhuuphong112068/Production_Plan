@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Log;
 
 class ReceivePackagingController extends Controller
 {
+
     public function list(Request $request)
     {
         //dd ($request->all());
