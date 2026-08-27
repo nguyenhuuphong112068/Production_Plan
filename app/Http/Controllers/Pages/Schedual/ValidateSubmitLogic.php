@@ -1,4 +1,13 @@
-﻿    public function validateSubmit(Request $request)
+<?php
+
+namespace App\Http\Controllers\Pages\Schedual;
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+
+trait ValidateSubmitLogic
+{
+    public function validateSubmit(Request $request)
     {
         $submitType = $request->input('submit_type', 'production');
         $production = session('user.production_code');
@@ -48,7 +57,7 @@
             ->where('stage_code', 7)
             ->where('finished', 1)
             ->pluck('plan_master_id')->toArray();
-            
+
         $planMasterIdsToProcess = array_diff($planMasterIds, $completedStage7);
 
         if (empty($planMasterIdsToProcess)) {
@@ -57,7 +66,7 @@
 
         // 2. Fetch full details for these plan_master_ids using similar logic to getEvents
         $room_code = DB::table('room')->where('deparment_code', $production)->pluck('code', 'id');
-        
+
         $maxFinishedStage = DB::table('stage_plan')
             ->where('finished', 1)
             ->select('plan_master_id', DB::raw('MAX(stage_code) as max_finished_stage'))
@@ -95,19 +104,85 @@
                     product_name.name as product_name,
                     COALESCE(plan_master.actual_batch, plan_master.batch) as batch_name
                 "),
-                'plan_master.expected_date',
                 'blister_mold.code as blister_mold_code',
-                'plan_master.predecessor_code'
+
+                // Các cột colorEvent() cần để chấm màu vi phạm. Thiếu cột nào thì check tương ứng
+                // sẽ im lặng bỏ qua (empty()) hoặc bắn Undefined property làm hỏng cả endpoint.
+                'plan_master.expected_date',
+                'plan_master.is_val',
+                'plan_master.after_weigth_date',
+                'plan_master.after_parkaging_date',
+                'plan_master.expired_material_date',
+                'plan_master.allow_weight_before_date',
+                'plan_master.preperation_before_date',
+                'plan_master.blending_before_date',
+                'plan_master.forming_before_date',
+                'plan_master.coating_before_date',
+                'plan_master.parkaging_before_date',
+                'plan_master.expired_packing_date',
+
+                DB::raw('
+                                CASE
+                                WHEN sp.stage_code = 1 THEN
+                                        CASE WHEN intermediate_category.quarantine_time_unit = 1
+                                        THEN intermediate_category.quarantine_weight * 24
+                                        ELSE intermediate_category.quarantine_weight END
+                                WHEN sp.stage_code = 2 THEN
+                                        CASE WHEN intermediate_category.quarantine_time_unit = 1
+                                        THEN 45 * 24
+                                        ELSE 45 END
+                                WHEN sp.stage_code = 3 THEN
+                                        CASE WHEN intermediate_category.quarantine_time_unit = 1
+                                        THEN intermediate_category.quarantine_preparing * 24
+                                        ELSE intermediate_category.quarantine_preparing END
+                                WHEN sp.stage_code = 4 THEN
+                                        CASE WHEN intermediate_category.quarantine_time_unit = 1
+                                        THEN intermediate_category.quarantine_blending * 24
+                                        ELSE intermediate_category.quarantine_blending END
+                                WHEN sp.stage_code = 5 THEN
+                                        CASE WHEN intermediate_category.quarantine_time_unit = 1
+                                        THEN intermediate_category.quarantine_forming * 24
+                                        ELSE intermediate_category.quarantine_forming END
+                                WHEN sp.stage_code = 6 THEN
+                                        CASE WHEN intermediate_category.quarantine_time_unit = 1
+                                        THEN intermediate_category.quarantine_coating * 24
+                                        ELSE intermediate_category.quarantine_coating END
+                                ELSE 0
+                                END as quarantine_time_limit_hour'),
+                DB::raw('CASE WHEN intermediate_category.quarantine_time_unit = 1
+                                        THEN intermediate_category.quarantine_blending * 24
+                                        ELSE intermediate_category.quarantine_blending END as quarantine_blending_hour')
             )
+            ->orderBy('sp.plan_master_id', 'asc')
             ->orderBy('sp.stage_code', 'asc')
             ->get();
 
-        $errors = [];
-        $errorColors = ['#920000ff', '#e54a4aff', '#4d4b4bff'];
+        // Các lô PC+THT làm chung phòng PC: hạn biệt trữ sau PC được chấm theo quarantine_blending
+        $this->loadMergedPcThtPlanMasters($planMasterIdsToProcess);
 
-        foreach ($plans as $i => $plan) {
-            // Only check unsubmitted events in the future
-            if ($plan->submit == 0 && $plan->start >= $now) {
+        $errors = [];
+        // Chỉ những màu thực sự chặn submit. Lỗi khuôn (#ffd500ff: thiếu / sai / trùng khuôn)
+        // là cảnh báo: vẫn hiện màu + sọc trên lịch nhưng không ngăn submit.
+        $errorColors = [
+            '#920000ff' => 'Cảnh Báo Ngày Đáp Ứng NL/BB',
+            '#e54a4aff' => 'Không Đáp Ứng Ngày Cần Hàng Theo Kế Hoạch',
+            '#4d4b4bff' => 'Lỗi Cân Nguyên Liệu',
+        ];
+
+        // colorEvent() tra công đoạn 7 / predecessor / successor bằng firstWhere() trên tập truyền
+        // vào, nên phải gom nhóm theo lô như getEvents. Để chung cả tập thì hạn KCS của lô này sẽ
+        // bị đem so với công đoạn 7 của lô khác.
+        foreach ($plans->groupBy('plan_master_id') as $groupedPlans) {
+
+            $groupedPlans = $groupedPlans->values();
+
+            for ($i = 0, $n = $groupedPlans->count(); $i < $n; $i++) {
+
+                $plan = $groupedPlans[$i];
+
+                // Only check unsubmitted events in the future
+                if ($plan->submit != 0 || $plan->start < $now) continue;
+
                 if ($submitType === 'production' && $plan->stage_code == 8) continue;
                 if (in_array($submitType, $maintenanceTypes)) {
                     if ($plan->stage_code != 8) continue;
@@ -119,36 +194,24 @@
                     if (!$matchType) continue;
                 }
 
-                list($color_event, $textColor, $subtitle, $violation_colors, $mold_warning, $mold_code) = $this->colorEvent($plan, $plans, $i, $room_code);
-                
-                $hasError = false;
-                $reason = 'Lỗi không xác định';
-                $bg = '';
+                list($color_event, $textColor, $subtitle, $violation_colors, $mold_warning, $mold_code) = $this->colorEvent($plan, $groupedPlans, $i, $room_code);
 
-                // Gộp color_event (màu nền chính) và các violation_colors lại để kiểm tra
-                $allColors = array_merge([$color_event], $violation_colors);
-                
-                foreach ($allColors as $c) {
-                    if (in_array(strtolower($c), $errorColors)) {
-                        $hasError = true;
-                        $bg = strtolower($c);
-                        if ($bg === '#920000ff') {
-                            $reason = 'Cảnh Báo Ngày Đáp Ứng NL/BB';
-                        } elseif ($bg === '#e54a4aff') {
-                            $reason = 'Không Đáp Ứng Ngày Cần Hàng Theo Kế Hoạch / Thiếu Khuôn';
-                        } elseif ($bg === '#4d4b4bff') {
-                            $reason = 'Lỗi Cân Nguyên Liệu';
-                        }
-                        break;
-                    }
-                }
+                // Gộp color_event (màu nền chính) và các violation_colors: một lô có thể vi phạm
+                // nhiều thứ cùng lúc (vd Thiếu Khuôn + trễ hạn KCS) nên phải giữ đủ, không break sớm.
+                $allColors = array_map('strtolower', array_merge([$color_event], $violation_colors));
+                $matchedColors = array_values(array_unique(array_filter(
+                    $allColors,
+                    fn($c) => isset($errorColors[$c])
+                )));
 
-                if ($hasError) {
+                if ($matchedColors) {
                     $errors[] = [
+                        'plan_id' => $plan->id,
                         'title' => $plan->title,
                         'start' => $plan->start,
-                        'backgroundColor' => $bg,
-                        'reason' => $reason
+                        'backgroundColor' => $matchedColors[0],
+                        'colors' => $matchedColors,
+                        'reason' => $subtitle ?: implode(' | ', array_map(fn($c) => $errorColors[$c], $matchedColors))
                     ];
                 }
             }
@@ -156,3 +219,4 @@
 
         return response()->json(['errors' => $errors]);
     }
+}

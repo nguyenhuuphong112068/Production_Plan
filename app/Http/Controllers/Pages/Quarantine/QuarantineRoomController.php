@@ -31,14 +31,36 @@ class QuarantineRoomController extends Controller
 
         $results = [];
 
+        // stage_plan.code không duy nhất: lô tách nhiều quy cách đóng gói
+        // (percent_parkaging < 1) sinh nhiều dòng công đoạn 7 dùng chung một code.
+        // Nối thẳng vào stage_plan sẽ nhân bản dòng công đoạn trước và cộng dư
+        // Theoretical_yields đúng bằng số quy cách. Gom trước theo code để phép
+        // nối thành 1:1, lấy mốc bắt đầu sớm nhất - hàng rời tồn khi quy cách
+        // đóng gói đầu tiên bắt đầu tiêu thụ nó.
+        $nextStage = DB::table('stage_plan')
+            ->select('code', 'deparment_code', DB::raw('MIN(start) as start'))
+            ->groupBy('code', 'deparment_code');
+
         $stages = DB::table('stage_plan as t')
-            ->leftJoin('stage_plan as t2', function ($join) {
+            ->leftJoinSub($nextStage, 't2', function ($join) {
                 $join->on('t2.code', '=', 't.nextcessor_code');
             })
             ->leftJoin('finished_product_category as fc', 't.product_caterogy_id', '=', 'fc.id')
             ->whereNotNull('t.start')
             ->where('t.active', 1)
-            ->where('t.finished', 0)
+            // Tồn của một công đoạn gồm 2 nhóm: lô chưa hoàn thành công đoạn đó
+            // (finished = 0), và lô đã hoàn thành nhưng công đoạn sau còn nằm ở
+            // tương lai - tức hàng đang thực sự nằm biệt trữ chờ chuyển.
+            // Lô finished = 1 mà công đoạn sau chưa hề có lịch (t2.start NULL)
+            // là rác lịch sử: nó thoả điều kiện thời gian bên dưới vĩnh viễn,
+            // không loại thì tồn sẽ phình vô hạn theo thời gian.
+            ->where(function ($q) {
+                $q->where('t.finished', 0)
+                    ->orWhere(function ($sub) {
+                        $sub->where('t.finished', 1)
+                            ->whereNotNull('t2.start');
+                    });
+            })
             ->where('t.deparment_code', session('user')['production_code'])
             ->where('t2.deparment_code', session('user')['production_code'])
             ->select(

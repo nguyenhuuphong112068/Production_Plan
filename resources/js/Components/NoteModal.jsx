@@ -4,18 +4,21 @@ export default function NoteModal({ show, setShow }) {
   const handleClose = () => setShow(false);
   const handleShow = () => setShow(true);
 
+  // Lô vi phạm nhiều thứ cùng lúc: màu nặng nhất làm nền sự kiện, các vi phạm còn lại
+  // hiện thành dãy sọc dọc ở cạnh phải. Thứ tự ưu tiên nằm ở $severityOrder trong colorEvent().
   const legends = [
     { color: "#46f905ff", label: "Lô Thương Mại - Đáp Ứng Ngày Cần Hàng" },
     { color: "#40E0D0", label: "Lô Thẩm Định - Đáp Ứng Ngày Cần Hàng" },
     { color: "#e4e405e2", label: "Lô Thẩm Định Vệ Sinh" },
     { color: "#bda124ff", label: "Quá Hạn Biệt Trữ" },
-    { color: "#ffd500ff", label: "Thiếu Khuôn/Trung Khuôn" },
+    { color: "#ffd500ff", label: "Thiếu Khuôn / Sai Khuôn / Trùng Khuôn (cảnh báo, không chặn submit)" },
+    { color: "#e67e22", label: "Sai Thiết Bị Nguồn NL (cảnh báo, không chặn submit)" },
     { color: "#f99e02ff", label: "Nguyên Liệu Hoặc Bao Bì Không Đáp Ứng Kế Hoạch" },
-    { color: "#e54a4aff", label: "Không Đáp Ứng Ngày Cần Hàng Theo Kế Hoạch" },
-    { color: "#920000ff", label: "Cảnh Báo Ngày Đáp Ứng NL/BB" },
+    { color: "#e54a4aff", label: "Không Đáp Ứng Ngày Cần Hàng Theo Kế Hoạch — CHẶN SUBMIT" },
+    { color: "#920000ff", label: "Cảnh Báo Ngày Đáp Ứng NL/BB — CHẶN SUBMIT" },
     { color: "#a1a2a2ff", label: "Vệ Sinh Phòng" },
     { color: "#eb0cb3ff", label: "Sự Kiện Khác Ngoài Kế Hoạch" },
-    { color: "#4d4b4bff", label: "Lịch Vi Phạm, Bắt Đầu Công Đoạn Sau < Kết Thúc Công Đoạn Trước" },
+    { color: "#4d4b4bff", label: "Lịch Vi Phạm, Bắt Đầu Công Đoạn Sau < Kết Thúc Công Đoạn Trước — CHẶN SUBMIT" },
     { color: "#002af9ff", label: "Lịch Sản Xuất/Bảo Trì/Hiệu Chuẩn Lý Thực Tế đã hoàn tất" },
     { color: "#8195f5ff", label: "Lịch Sản Xuất Lý Thuyết" },
     { color: "#003A4F", label: "Lịch Bảo Trì Thiết Bị " },

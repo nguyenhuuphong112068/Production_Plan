@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\Log;
 
 class SchedualController extends Controller
 {
+    use ValidateSubmitLogic;
+
     protected $roomAvailability = [];
     protected $moldSchedules = [];
 
@@ -215,6 +217,12 @@ class SchedualController extends Controller
     ];
 
     protected $processed_stage_code_Id = [];
+
+    // plan_master có công thức BTP khai cả PC (prepering) và THT (blending) nhưng không có
+    // công đoạn THT (stage_code = 4, active = 1) nào được xếp — PC và THT làm chung phòng của
+    // công đoạn PC. Với các lô này, BTP ra khỏi phòng PC thực chất là bán thành phẩm sau THT
+    // nên hạn biệt trữ sau PC được tính theo quarantine_blending thay vì quarantine_preparing.
+    protected $mergedPcThtPlanMasters = [];
 
     public function test()
     {
@@ -610,11 +618,18 @@ class SchedualController extends Controller
                                         THEN intermediate_category.quarantine_coating * 24
                                         ELSE intermediate_category.quarantine_coating END
                                 ELSE 0
-                                END as quarantine_time_limit_hour')
+                                END as quarantine_time_limit_hour'),
+
+                DB::raw('CASE WHEN intermediate_category.quarantine_time_unit = 1
+                                        THEN intermediate_category.quarantine_blending * 24
+                                        ELSE intermediate_category.quarantine_blending END as quarantine_blending_hour')
             )
             ->orderBy('sp.plan_master_id')
             ->orderBy('sp.stage_code')
             ->get();
+
+        // Các lô PC+THT làm chung phòng PC: hạn biệt trữ sau PC được chấm theo quarantine_blending
+        $this->loadMergedPcThtPlanMasters($event_plans->pluck('plan_master_id')->all());
 
         // 3️⃣ Ma trận cảnh báo nguồn NL: thiết bị được phép của từng lô, tải 1 lần cho cả vòng lặp
         $sourceWarningRules = $this->materialSourceWarningRules($event_plans, $production);
@@ -1247,6 +1262,41 @@ class SchedualController extends Controller
         return $rules;
     }
 
+    /**
+     * Nạp $this->mergedPcThtPlanMasters: các plan_master mà công thức BTP khai cả PC
+     * (intermediate_category.prepering = 1) lẫn THT (intermediate_category.blending = 1)
+     * nhưng KHÔNG có công đoạn THT (stage_code = 4) nào active = 1 — tức PC và THT làm
+     * chung một phòng của công đoạn PC. Với các lô này, hạn biệt trữ sau PC lấy theo
+     * quarantine_blending vì sản phẩm cuối cùng ra khỏi phòng PC là bán thành phẩm sau THT.
+     */
+    protected function loadMergedPcThtPlanMasters(array $planMasterIds)
+    {
+        $planMasterIds = array_values(array_filter(array_unique($planMasterIds)));
+
+        if (empty($planMasterIds)) {
+            $this->mergedPcThtPlanMasters = [];
+            return;
+        }
+
+        $this->mergedPcThtPlanMasters = DB::table('plan_master as pm')
+            ->join('plan_list as pl', 'pm.plan_list_id', '=', 'pl.id')
+            ->join('finished_product_category as fpc', 'pm.product_caterogy_id', '=', 'fpc.id')
+            ->join('intermediate_category as ic', 'fpc.intermediate_code', '=', 'ic.intermediate_code')
+            ->whereIn('pm.id', $planMasterIds)
+            ->where('pl.type', 1)
+            ->where('ic.prepering', 1)
+            ->where('ic.blending', 1)
+            ->whereNotExists(function ($q) {
+                $q->select(DB::raw(1))
+                    ->from('stage_plan as sp4')
+                    ->whereColumn('sp4.plan_master_id', 'pm.id')
+                    ->where('sp4.stage_code', 4)
+                    ->where('sp4.active', 1);
+            })
+            ->pluck('pm.id')
+            ->all();
+    }
+
     protected function colorEvent($plan, $plans, $i, $room_code, array $sourceWarningRules = [])
     {
 
@@ -1307,9 +1357,9 @@ class SchedualController extends Controller
                     }
                     if ($room && !empty($room->blister_type_code) && !empty($mold->blister_type_code) && !in_array($room->blister_type_code, $moldTypes)) {
                         $subtitles[] = "❌ Sai Khuôn: {$mold->code} không lắp được cho máy {$room->blister_type_code}";
-                        $color_event = '#e54a4aff'; // Đỏ báo lỗi
+                        $color_event = '#ffd500ff'; // Vàng: nhóm cảnh báo khuôn
                         $textColor = '#ffffff';
-                        $violation_colors[] = '#e54a4aff';
+                        $violation_colors[] = '#ffd500ff';
                         $mold_warning = "❌ Sai Khuôn: {$mold->code} / {$room->blister_type_code}";
                     } else {
                         $concurrentCount = DB::table('stage_plan')
@@ -1341,9 +1391,9 @@ class SchedualController extends Controller
                 $room = DB::table('room')->where('id', $plan->resourceId)->first();
                 if ($room && !empty($room->blister_type_code)) {
                     $subtitles[] = "❌ Thiếu Khuôn!";
-                    $color_event = '#e54a4aff'; // Đỏ báo lỗi
+                    $color_event = '#ffd500ff'; // Vàng: nhóm cảnh báo khuôn
                     $textColor = '#ffffff';
-                    $violation_colors[] = '#e54a4aff';
+                    $violation_colors[] = '#ffd500ff';
                     $mold_warning = "❌ Thiếu Khuôn!";
                 }
             }
@@ -1402,6 +1452,13 @@ class SchedualController extends Controller
                     ->diffInMinutes(Carbon::parse($plan->start), false);
 
                 $limitMinutes = $prev->quarantine_time_limit_hour * 60;
+
+                // PC và THT làm chung 1 phòng của công đoạn PC (công thức có cả PC & THT
+                // nhưng THT không xếp riêng): BTP ra khỏi phòng PC là bán thành phẩm sau
+                // THT nên hạn biệt trữ sau PC lấy theo quarantine_blending.
+                if ($prev->stage_code == 3 && in_array($plan->plan_master_id, $this->mergedPcThtPlanMasters)) {
+                    $limitMinutes = ($prev->quarantine_blending_hour ?? 0) * 60;
+                }
 
                 if ($limitMinutes > 0 && $diffMinutes > $limitMinutes) {
 
@@ -1486,12 +1543,6 @@ class SchedualController extends Controller
             }
         }
 
-        // Nếu có trùng khuôn thì đổi màu
-        if ($mold_warning) {
-            $color_event = '#ffd500ff';
-            $textColor = '#ffffff';
-        }
-
         $criticalChecks = [
             [1,  3,  'after_weigth_date',         '➡️ Ngày có đủ NL',  '>'],
             [1,  3,  'allow_weight_before_date',  '➡️ Ngày được phép cân',  '>'],
@@ -1549,7 +1600,36 @@ class SchedualController extends Controller
 
 
 
-        $violation_colors = array_unique($violation_colors);
+        /* 8️⃣ ƯU TIÊN MÀU
+         * Một lô có thể vi phạm nhiều thứ cùng lúc (vd Thiếu Khuôn + trễ hạn KCS). Trước đây màu nền
+         * là màu của check chạy sau cùng nên vi phạm nặng bị vi phạm nhẹ tô đè. Giờ màu nặng nhất
+         * làm nền, phần còn lại rơi xuống violation_colors để vẽ thành dãy sọc phía sau sự kiện.
+         * Đổi thứ tự mảng này là đổi luôn thứ tự ưu tiên hiển thị. Giá trị là textColor đi kèm.
+         */
+        $severityOrder = [
+            '#920000ff' => '#ffffff',   // Cảnh Báo Ngày Đáp Ứng NL/BB      (chặn submit)
+            '#4d4b4bff' => '#ffffff',   // Lỗi Cân NL / Sai Trình Tự CĐ     (chặn submit)
+            '#e54a4aff' => '#ffffff',   // Không Đáp Ứng Ngày Cần Hàng      (chặn submit)
+            '#e67e22'   => '#ffffff',   // Sai Thiết Bị Nguồn NL            (cảnh báo)
+            '#ffd500ff' => '#ffffff',   // Thiếu / Sai / Trùng Khuôn        (cảnh báo)
+            '#bda124ff' => '#ffffff',   // Quá Hạn Biệt Trữ                 (cảnh báo)
+            '#e4e405e2' => '#fb0101e2', // Lô Thẩm Định Vệ Sinh             (thông tin)
+        ];
+
+        $rank = array_flip(array_keys($severityOrder));
+
+        $ranked = array_values(array_unique(array_filter(
+            array_merge([$color_event], $violation_colors),
+            fn($color) => isset($rank[$color])
+        )));
+
+        if ($ranked) {
+            usort($ranked, fn($a, $b) => $rank[$a] <=> $rank[$b]);
+
+            $color_event = $ranked[0];
+            $textColor = $severityOrder[$color_event];
+            $violation_colors = array_slice($ranked, 1);
+        }
 
         $filtered_violation_colors = array_filter($violation_colors, function ($color) use ($color_event) {
             return $color !== $color_event;

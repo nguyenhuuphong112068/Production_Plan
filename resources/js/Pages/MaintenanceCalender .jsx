@@ -922,70 +922,10 @@ const MaintenanceCalender = () => {
       return;
     }
 
-    // 🟨 Tạo datalist từ state "reasons"
-    const htmlOptions = reasons
-      .map(r => `<option value="${r}">`)
-      .join("");
-
-    // 🟨 Swal datalist (select hoặc nhập)
-    const { value: reason } = await Swal.fire({
-      title: 'Chọn lý do thay đổi',
-      width: '800px',
-      html: `
-        <style>
-          #reasonInput {
-            width: 650px !important;   
-            max-width: 650px !important;
-          }
-        </style>
-
-      
-          <input list="reasonList" id="reasonInput" name="reason"
-                class="swal2-input"
-                placeholder="Chọn hoặc nhập lý do">
-          <datalist id="reasonList">
-            ${htmlOptions}
-          </datalist>
-
-
-          <div class="cfg-row">
-              <label class="mt-2 cfg-label" for="work-sunday">Lưu Lại Lý Do:</label>
-              <label class="switch">
-                <input id="saveReason" type="checkbox">
-                <span class="slider round"></span>
-                <span class="switch-labels">
-                  <span class="off">No</span>
-                  <span class="on">Yes</span>
-                </span>
-              </label>
-          </div>
-      
-      `,
-      focusConfirm: false,
-      showCancelButton: true,
-      confirmButtonText: 'Xác nhận lưu',
-      cancelButtonText: 'Hủy',
-      preConfirm: () => {
-        const formValues = {};
-
-        const reason = document.getElementById('reasonInput').value;
-
-        const saveReason = document.getElementById('saveReason');
-        formValues.saveReason = saveReason.checked;
-
-
-        if (!reason || reason.trim() === '') {
-          Swal.showValidationMessage('Bạn phải nhập hoặc chọn lý do!');
-          return false;
-        }
-        formValues.reason = reason;
-
-        return formValues;
-      }
-    });
-
-    // Nếu người dùng bấm “Hủy” thì dừng
-    if (!reason) return;
+    const reason = {
+      reason: 'Cập nhật ngày',
+      saveReason: false
+    };
 
     setSaving(true);
 

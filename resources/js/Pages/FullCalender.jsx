@@ -78,6 +78,23 @@ const calendarViews = {
  * ------------------------------------------------------------------------ */
 const SELECTED_CLASS = 'is-batch-selected';
 
+// Các màu chặn submit và ý nghĩa của chúng. Một lô có thể mang nhiều màu cùng lúc:
+// màu nền chính là vi phạm được chấm sau cùng, các vi phạm còn lại nằm ở violation_colors.
+// Giữ đồng bộ với $errorColors trong ValidateSubmitLogic.php và bảng chú thích ở NoteModal.
+const ERROR_REASONS = {
+  '#920000ff': 'Cảnh Báo Ngày Đáp Ứng NL/BB',
+  '#e54a4aff': 'Không Đáp Ứng Ngày Cần Hàng Theo Kế Hoạch',
+  '#4d4b4bff': 'Lỗi Cân Nguyên Liệu',
+};
+
+// Các màu chỉ mang tính cảnh báo, không chặn submit
+const WARNING_REASONS = {
+  '#ffd500ff': 'Lỗi Khuôn (Thiếu / Sai / Trùng)',
+  '#e67e22': 'Sai Thiết Bị Nguồn NL',
+  '#bda124ff': 'Quá Hạn Biệt Trữ',
+  '#e4e405e2': 'Lô Thẩm Định Vệ Sinh',
+};
+
 // Hằng số ngoài component: tránh tạo mảng/đối tượng mới mỗi lần render
 const SELECTO_TARGETS = ['.fc-event:not(.fc-bg-event):not(.fc-ngay-nghi)'];
 const SELECTO_TOGGLE_KEYS = ['shift'];
@@ -3930,122 +3947,10 @@ const ScheduleTest = () => {
       return;
     }
 
-    // 🟨 Kiểm tra xem có sự kiện nào có submit = 1 không
-    const hasSubmittedEvent = pendingChanges.some(c => c.submit == 1);
-    let reasonObj = {
+    const reasonObj = {
       reason: "Cập nhật ngày",
       saveReason: false
     };
-
-    if (hasSubmittedEvent) {
-      // 🟨 Tạo datalist từ state "reasons"
-      const htmlOptions = reasons
-        .map(r => `<option value="${String(r).replace(/"/g, '&quot;')}"></option>`)
-        .join("");
-
-      // 🟨 Swal datalist (select hoặc nhập)
-      const { value: swalResult } = await Swal.fire({
-        title: 'Chọn lý do thay đổi',
-        width: '560px',
-        html: `
-          <style>
-            .rm-wrap {
-              text-align: left;
-              padding: 4px 4px 0;
-              font-size: 14px;
-              color: #344054;
-            }
-            .rm-note {
-              display: flex;
-              align-items: flex-start;
-              gap: 8px;
-              background: #f0f7ff;
-              border: 1px solid #cfe4ff;
-              border-left: 3px solid #3085d6;
-              border-radius: 8px;
-              padding: 10px 12px;
-              margin-bottom: 16px;
-              font-size: 13px;
-              color: #1c4e80;
-              line-height: 1.45;
-            }
-            .rm-label {
-              display: block;
-              font-weight: 600;
-              margin-bottom: 6px;
-              color: #344054;
-            }
-            .rm-label .rm-req { color: #e03131; margin-left: 2px; }
-            .rm-field {
-              width: 100%;
-              box-sizing: border-box;
-              height: 44px;
-              margin: 0;
-              padding: 0 12px;
-              font-size: 14px;
-              color: #1f2937;
-              background: #fff;
-              border: 1px solid #d0d5dd;
-              border-radius: 8px;
-              outline: none;
-              transition: border-color .15s ease, box-shadow .15s ease;
-            }
-            .rm-field::placeholder { color: #98a2b3; }
-            .rm-field:hover { border-color: #b6bec9; }
-            .rm-field:focus {
-              border-color: #3085d6;
-              box-shadow: 0 0 0 3px rgba(48,133,214,.18);
-            }
-            .rm-hint {
-              margin-top: 8px;
-              font-size: 12.5px;
-              color: #667085;
-              line-height: 1.45;
-            }
-          </style>
-
-          <div class="rm-wrap">
-            <div class="rm-note">
-              <span>ℹ️</span>
-              <span>Có sự kiện đã trình duyệt bị thay đổi. Vui lòng nhập lý do — lý do sẽ được lưu lại vào danh sách dùng chung.</span>
-            </div>
-
-            <label class="rm-label" for="reasonInput">Lý do thay đổi<span class="rm-req">*</span></label>
-            <input list="reasonList" id="reasonInput" name="reason"
-                  class="rm-field" autocomplete="off"
-                  placeholder="Chọn hoặc nhập lý do thay đổi...">
-            <datalist id="reasonList">
-              ${htmlOptions}
-            </datalist>
-            <div class="rm-hint">Nhấn vào ô để xem danh sách lý do có sẵn, hoặc gõ lý do mới.</div>
-          </div>
-        `,
-        focusConfirm: false,
-        showCancelButton: true,
-        confirmButtonText: 'Xác nhận lưu',
-        cancelButtonText: 'Hủy',
-        didOpen: () => {
-          const el = document.getElementById('reasonInput');
-          if (el) el.focus();
-        },
-        preConfirm: () => {
-          const r = document.getElementById('reasonInput').value;
-
-          if (!r || r.trim() === '') {
-            Swal.showValidationMessage('Bạn phải nhập hoặc chọn lý do!');
-            return false;
-          }
-
-          // 🟨 Luôn lưu lại lý do (bắt buộc)
-          return { reason: r.trim(), saveReason: true };
-        }
-      });
-
-      // Nếu người dùng bấm “Hủy” thì dừng
-      if (!swalResult) return;
-
-      reasonObj = swalResult;
-    }
 
     setSaving(true);
 
@@ -4235,10 +4140,6 @@ const ScheduleTest = () => {
       }).join('')
       : '<div style="padding: 8px; color: #999; font-style: italic;">Chưa có lô nào được chọn</div>';
 
-    const htmlOptions = reasons
-      .map(r => `<option value="${r}">`)
-      .join("");
-
     Swal.fire({
       title: 'Cập nhật lịch sản xuất',
       width: '550px',
@@ -4270,18 +4171,6 @@ const ScheduleTest = () => {
             <select id="swal-resource" class="swal2-select" style="width: 100%; margin: 0; display: block;">
               ${roomOptions}
             </select>
-          </div>
-
-          <div id="swal-reason-container" style="margin-bottom: 15px; border: 1px solid #ffe066; border-radius: 8px; padding: 12px; background: #fffbe6; display: none;">
-            <label style="display: block; font-weight: bold; margin-bottom: 5px; color: #856404;">
-              <i>⚠</i> Lý do Thay đổi <span style="color:red;">*</span>
-            </label>
-            <input list="reasonListDrop" id="swal-reason" name="reason" class="swal2-input"
-              placeholder="Chọn hoặc nhập lý do thay đổi..."
-              style="width: 100%; margin: 0; border: 1px solid #ffc107; border-radius: 6px; font-size: 13px;" />
-            <datalist id="reasonListDrop">
-              ${htmlOptions}
-            </datalist>
           </div>
 
           <div style="margin-top: 10px; border: 1px solid #e0e0e0; border-radius: 8px; padding: 12px; background: #fafafa;">
@@ -4335,40 +4224,6 @@ const ScheduleTest = () => {
         const labelCampaign = document.getElementById('swal-label-campaign');
         const labelSelected = document.getElementById('swal-label-selected');
 
-        const checkReasonRequired = () => {
-          const api = calendarRef.current?.getApi();
-          const allEvents = api ? api.getEvents() : [];
-          const isCampaign = radioCampaign.checked;
-
-          let hasSubmit1 = false;
-          if (isCampaign) {
-            const campaignEvents = allEvents.filter(e =>
-              e.extendedProps.campaign_code === props.campaign_code &&
-              e.extendedProps.stage_code === props.stage_code
-            );
-            hasSubmit1 = campaignEvents.some(e => Number(e.extendedProps.submit) === 1);
-          } else {
-            const selEvents = selectedEventsRef.current || [];
-            hasSubmit1 = selEvents.some(sel => {
-              const ev = api?.getEventById(sel.id);
-              return ev && Number(ev.extendedProps.submit) === 1;
-            });
-          }
-
-          const reasonContainer = document.getElementById('swal-reason-container');
-          if (reasonContainer) {
-            if (hasSubmit1) {
-              reasonContainer.style.display = 'block';
-            } else {
-              reasonContainer.style.display = 'none';
-              const reasonTextarea = document.getElementById('swal-reason');
-              if (reasonTextarea) {
-                reasonTextarea.value = '';
-              }
-            }
-          }
-        };
-
         const updateRadioStyle = () => {
           if (radioCampaign.checked) {
             labelCampaign.style.background = '#e8f4fd';
@@ -4379,7 +4234,6 @@ const ScheduleTest = () => {
             labelSelected.style.background = '#e8f4fd';
             batchesContainer.style.display = 'block';
           }
-          checkReasonRequired();
         };
 
         radioCampaign.addEventListener('change', updateRadioStyle);
@@ -4397,18 +4251,8 @@ const ScheduleTest = () => {
         const newMTime = parseFloat(document.getElementById('swal-m-time').value) || 0;
         const pTime = parseFloat(document.getElementById('swal-p-time').value) || 0;
 
-        const reasonContainer = document.getElementById('swal-reason-container');
-        const isReasonRequired = reasonContainer && reasonContainer.style.display !== 'none';
-        const reason = document.getElementById('swal-reason')?.value?.trim();
-
         if (!start || !end || !resourceId) {
           Swal.showValidationMessage('Vui lòng nhập đầy đủ thông tin');
-          return false;
-        }
-
-        if (isReasonRequired && !reason) {
-          Swal.showValidationMessage('Vui lòng nhập Lý do Thay đổi!');
-          document.getElementById('swal-reason').focus();
           return false;
         }
 
@@ -4430,11 +4274,11 @@ const ScheduleTest = () => {
           }
         }
 
-        return { start, end, resourceId, updateCampaign, moveSelectedBatches, reason, newMTime, pTime };
+        return { start, end, resourceId, updateCampaign, moveSelectedBatches, newMTime, pTime };
       }
     }).then((result) => {
       if (result.isConfirmed) {
-        const { start, end, resourceId, updateCampaign, moveSelectedBatches, reason, newMTime, pTime } = result.value;
+        const { start, end, resourceId, updateCampaign, moveSelectedBatches, newMTime, pTime } = result.value;
         const api = calendarRef.current?.getApi();
         const eventToUpdate = api.getEventById(event.id);
         const { activeStart, activeEnd } = api.view;
@@ -4568,7 +4412,7 @@ const ScheduleTest = () => {
           changes: changes,
           startDate: toLocalISOString(activeStart),
           endDate: toLocalISOString(activeEnd),
-          reason: { reason: reason || 'Cập nhật qua modal' },
+          reason: { reason: 'Cập nhật qua modal' },
           newMTime: newMTime,
           pTime: pTime
         })
@@ -5910,31 +5754,47 @@ const ScheduleTest = () => {
 
     let checkResult = null;
     let validateResult = { errors: [] };
-    
-    try {
-      const [resYield, resValidate] = await Promise.all([
-        axios.post('/Schedual/yield_policy/check', { year: calYear, month: calMonth }),
-        axios.post('/Schedual/validate_submit', { submit_type: 'production' })
-      ]);
-      checkResult = resYield.data;
-      validateResult = resValidate.data;
-    } catch (err) {
-      console.warn('Lỗi kiểm tra submit:', err);
+    const checkFailures = [];
+
+    // allSettled chứ không phải Promise.all: gộp chung thì 1 API lỗi là nuốt luôn
+    // kết quả của API kia, và submit lọt qua mà không ai biết.
+    const [resYield, resValidate] = await Promise.allSettled([
+      axios.post('/Schedual/yield_policy/check', { year: calYear, month: calMonth }),
+      axios.post('/Schedual/validate_submit', { submit_type: 'production' })
+    ]);
+
+    if (resYield.status === 'fulfilled') {
+      checkResult = resYield.value.data;
+    } else {
+      checkFailures.push('Chính sách sản lượng');
+      console.warn('Lỗi kiểm tra chính sách sản lượng:', resYield.reason);
+    }
+
+    if (resValidate.status === 'fulfilled') {
+      validateResult = resValidate.value.data || { errors: [] };
+    } else {
+      checkFailures.push('Kiểm tra vi phạm lịch');
+      console.warn('Lỗi kiểm tra vi phạm lịch:', resValidate.reason);
     }
 
     Swal.close();
 
     // 🔹 1. BẮT ĐẦU CHẶN LỖI LỊCH NGHIÊM TRỌNG (Gộp Frontend & Backend)
-    const errorEvents = [...validateResult.errors];
+    const errorEvents = [...(validateResult.errors || [])];
     const allEvents = api?.getEvents() || [];
 
     allEvents.forEach(evt => {
       if (moment(evt.start).isBefore(moment())) return; // Bỏ qua các sự kiện trong quá khứ
       const bg = (evt.backgroundColor || '').toLowerCase();
-      const violations = evt.extendedProps?.violation_colors || [];
-      if (bg === '#920000ff' || bg === '#e54a4aff' || bg === '#4d4b4bff' || violations.includes('#4d4b4bff')) {
+      const violations = (evt.extendedProps?.violation_colors || []).map(c => (c || '').toLowerCase());
+      // Màu lỗi có thể nằm ở sọc vi phạm phụ chứ không riêng màu nền chính, và một lô có thể
+      // vi phạm nhiều thứ cùng lúc (vd Thiếu Khuôn + trễ hạn KCS) nên phải giữ đủ danh sách.
+      const errorColors = [...new Set([bg, ...violations].filter(c => ERROR_REASONS[c]))];
+      const errorColor = errorColors[0];
+      if (errorColor) {
         // Tránh trùng lặp nếu backend đã trả về
-        if (!errorEvents.some(e => e.title === evt.title && moment(e.start).isSame(evt.start))) {
+        const planId = evt.extendedProps?.plan_id;
+        if (!errorEvents.some(e => (planId && e.plan_id === planId) || (e.title === evt.title && moment(e.start).isSame(evt.start)))) {
           
           const stageMap = { 1: 'Cân', 2: 'Cân', 3: 'Pha Chế', 4: 'Trộn Hoàn Tất', 5: 'Dập Viên / Nang', 6: 'Bao Phim', 7: 'Đóng Gói' };
           const stageName = stageMap[evt.extendedProps?.stage_code] || 'Công đoạn ' + (evt.extendedProps?.stage_code || '');
@@ -5943,15 +5803,17 @@ const ScheduleTest = () => {
           
           let reason = evt.extendedProps?.subtitle || '';
           if (!reason) {
-            reason = bg === '#920000ff' ? 'Cảnh Báo Ngày Đáp Ứng NL/BB' : (bg === '#4d4b4bff' || violations.includes('#4d4b4bff') ? 'Lỗi Cân Nguyên Liệu' : 'Không Đáp Ứng Ngày Cần Hàng Theo Kế Hoạch / Thiếu Khuôn');
+            reason = errorColors.map(c => ERROR_REASONS[c]).join(' | ');
           } else {
             reason = reason.replace(/\n/g, '<br/>');
           }
 
           errorEvents.push({
+            plan_id: planId,
             title: fullTitle,
             start: evt.start,
-            backgroundColor: bg,
+            backgroundColor: errorColor,
+            colors: errorColors,
             reason: reason
           });
         }
@@ -5969,13 +5831,16 @@ const ScheduleTest = () => {
       if (hasEventErrors) {
         const rows = errorEvents.map(evt => {
           const bg = (evt.backgroundColor || '').toLowerCase();
+          const dots = (evt.colors?.length ? evt.colors : [bg])
+            .map(c => `<span title="${ERROR_REASONS[c] || ''}" style="display:inline-block; width:12px; height:12px; background-color:${String(c).substring(0, 7)}; border-radius:50%; margin-right:4px; vertical-align:middle;"></span>`)
+            .join('');
           const reason = evt.reason || 'Lỗi không xác định';
           const dateStr = evt.start ? moment(evt.start).format('DD/MM/YYYY') : '';
           return `<tr>
             <td style="padding:8px;border-bottom:1px solid #f1f5f9;text-align:left;color:#334155;">${evt.title}</td>
             <td style="padding:8px;border-bottom:1px solid #f1f5f9;text-align:center;color:#64748b;">${dateStr}</td>
             <td style="padding:8px;border-bottom:1px solid #f1f5f9;color:${bg.substring(0, 7)};font-weight:600;text-align:left;">
-              <span style="display:inline-block; width:12px; height:12px; background-color:${bg.substring(0, 7)}; border-radius:50%; margin-right:6px; vertical-align:middle;"></span>
+              <span style="margin-right:2px;">${dots}</span>
               ${reason}
             </td>
           </tr>`;
@@ -6072,6 +5937,12 @@ const ScheduleTest = () => {
 
     Swal.fire({
       title: 'Bạn muốn submit toàn bộ lịch đã sắp?',
+      html: checkFailures.length
+        ? `<div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;padding:10px 12px;color:#92400e;font-size:.9rem;text-align:left;">
+             <b>⚠️ Không chạy được: ${checkFailures.join(', ')}.</b><br/>
+             Lịch chưa được kiểm tra đầy đủ. Báo IT trước khi submit.
+           </div>`
+        : undefined,
       icon: 'warning',
       showCancelButton: true,
       confirmButtonText: 'Submit',
@@ -6277,16 +6148,20 @@ const ScheduleTest = () => {
     }
 
     let violationBars = '';
-    if (props.violation_colors && props.violation_colors.length > 0) {
+    const violationCount = props.violation_colors?.length || 0;
+    if (violationCount > 0) {
       violationBars = `
         <div style="position: absolute; top: 0; bottom: 0; right: 0; display: flex; flex-direction: row; opacity: 1; z-index: 1; overflow: hidden; border-top-right-radius: 3px; border-bottom-right-radius: 3px; box-shadow: -2px 0 5px rgba(0,0,0,0.5);">
-          ${props.violation_colors.map(c => `<div style="width: 4px; background-color: ${c}; height: 100%;"></div>`).join('')}
+          ${props.violation_colors.map(c => {
+        const label = ERROR_REASONS[String(c).toLowerCase()] || WARNING_REASONS[String(c).toLowerCase()] || '';
+        return `<div title="${label}" style="width: 4px; background-color: ${c}; height: 100%;"></div>`;
+      }).join('')}
         </div>
       `;
     }
 
     let html = `
-        <div class="relative group custom-event-content" data-event-id="${event.id}" style="${tankStyle}; padding-right: ${props.violation_colors?.length > 1 ? '6px' : '0'}; max-height: 60px; overflow: hidden;">
+        <div class="relative group custom-event-content" data-event-id="${event.id}" style="${tankStyle}; padding-right: ${violationCount > 0 ? violationCount * 4 + 2 : 0}px; max-height: 60px; overflow: hidden;">
           ${violationBars}
           <div style="font-size:${arg.eventFontSize || 12}px; ${isTank ? 'padding: 0px;' : ''} position: relative; z-index: 2;">
             
@@ -7568,7 +7443,30 @@ const ScheduleTest = () => {
             {hoverDetailData.props.status && <div><strong className="text-blue-700">Trạng thái:</strong> {hoverDetailData.props.status}</div>}
             {hoverDetailData.props.campaign_code && <div><strong className="text-blue-700">Mã Chiến dịch:</strong> <span className="text-red-600 font-bold">{hoverDetailData.props.campaign_code}</span></div>}
             {hoverDetailData.props.blister_mold_code && <div><strong className="text-blue-700">Khuôn:</strong> {hoverDetailData.props.blister_mold_code}</div>}
-            {hoverDetailData.props.mold_warning && <div className="text-red-600 font-bold mt-1">⚠️ {hoverDetailData.props.mold_warning}</div>}
+            {(() => {
+              // Liệt kê đủ mọi vi phạm của lô: màu nền là vi phạm nặng nhất, các màu còn lại
+              // chính là dãy sọc phía sau sự kiện. Nội dung chi tiết nằm ở subtitle bên dưới.
+              const bg = (hoverDetailData.event.backgroundColor || '').toLowerCase();
+              const stripes = (hoverDetailData.props.violation_colors || []).map(c => (c || '').toLowerCase());
+              const colors = [...new Set([bg, ...stripes])].filter(c => ERROR_REASONS[c] || WARNING_REASONS[c]);
+
+              if (!colors.length) return null;
+
+              return (
+                <div className="mt-1 pt-2 border-t border-gray-100 flex flex-col gap-1">
+                  <strong className="text-blue-700">Vi phạm ({colors.length}):</strong>
+                  {colors.map(c => (
+                    <div key={c} className="flex items-start gap-2">
+                      <span style={{ width: 12, height: 12, marginTop: 3, borderRadius: '50%', flex: 'none', backgroundColor: c.substring(0, 7), border: '1px solid rgba(0,0,0,.2)' }} />
+                      <span className={ERROR_REASONS[c] ? 'text-red-600 font-bold' : 'text-amber-600 font-semibold'}>
+                        {ERROR_REASONS[c] || WARNING_REASONS[c]}
+                        {ERROR_REASONS[c] ? ' — chặn submit' : ''}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
             {hoverDetailData.props.source_warning && <div className="text-orange-600 font-bold mt-1">⚠️ {hoverDetailData.props.source_warning}</div>}
             {hoverDetailData.props.source_reminder && <div className="text-amber-700 font-bold mt-1">🔔 Nhắc nhở: {hoverDetailData.props.source_reminder}</div>}
             {hoverDetailData.props.subtitle && <div className="text-amber-600 font-semibold mt-1 whitespace-pre-line">{hoverDetailData.props.subtitle}</div>}
