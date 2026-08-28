@@ -66,5 +66,6 @@ use Illuminate\Support\Facades\Route;
         ->name('pages.report.weekly_production_schedule.')
         ->group(function(){
             Route::get('','index')->name('index');
+            Route::post('confirmLead','confirmLead')->name('confirmLead');
         });
 ?>

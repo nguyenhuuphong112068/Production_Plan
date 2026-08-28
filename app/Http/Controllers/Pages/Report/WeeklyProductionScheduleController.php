@@ -3,12 +3,19 @@
 namespace App\Http\Controllers\Pages\Report;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Pages\AuditTrail\AuditTrialController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
 class WeeklyProductionScheduleController extends Controller
 {
+    /** Chức năng "Lead xác nhận lịch" chỉ áp dụng cho PX Viên 1 */
+    private const LEAD_CONFIRM_PRODUCTION_CODE = 'PXV1';
+
+    /** Nhóm user được phép bấm xác nhận */
+    private const LEAD_CONFIRM_USER_GROUPS = ['Leader', 'Admin'];
+
     public function index(Request $request)
     {
         $production_code = session('user')['production_code'];
@@ -100,6 +107,9 @@ class WeeklyProductionScheduleController extends Controller
                 'sp.end_clearning',
                 'sp.actual_start_clearning',
                 'sp.actual_end_clearning',
+                'sp.comfirm_of_lead',
+                'sp.comfirm_of_lead_by',
+                'sp.comfirm_of_lead_at',
                 'pn.name as product_name',
                 'pm.batch',
                 'pm.actual_batch'
@@ -228,7 +238,103 @@ class WeeklyProductionScheduleController extends Controller
             'groupedByRoom' => $groupedByRoom,
             'weekDays' => $weekDays,
             'selectedDate' => $selectedDate,
-            'displayWeek' => $displayWeek
+            'displayWeek' => $displayWeek,
+            // Xác nhận của Lead: chỉ áp dụng cho PX Viên 1
+            'leadConfirmEnabled' => $this->isLeadConfirmScope($production_code),
+            'canConfirmLead' => $this->canConfirmLead($production_code),
+        ]);
+    }
+
+    /**
+     * Chức năng xác nhận của Lead chỉ áp dụng cho PX Viên 1.
+     */
+    private function isLeadConfirmScope($production_code)
+    {
+        return $production_code === self::LEAD_CONFIRM_PRODUCTION_CODE;
+    }
+
+    /**
+     * Chỉ Lead (và Admin) của PX Viên 1 mới được bấm xác nhận;
+     * các user khác vẫn nhìn thấy dấu tick nhưng ở chế độ chỉ đọc.
+     */
+    private function canConfirmLead($production_code)
+    {
+        if (! $this->isLeadConfirmScope($production_code)) {
+            return false;
+        }
+
+        return in_array(session('user')['userGroup'] ?? '', self::LEAD_CONFIRM_USER_GROUPS, true);
+    }
+
+    /**
+     * Lead xác nhận / bỏ xác nhận sẽ thực hiện theo lịch do người sắp lịch đặt ra.
+     * Nhận 1 hoặc nhiều stage_plan_id để hỗ trợ cả xác nhận lẻ và xác nhận hàng loạt.
+     */
+    public function confirmLead(Request $request)
+    {
+        $production_code = session('user')['production_code'] ?? null;
+
+        if (! $this->canConfirmLead($production_code)) {
+            return response()->json(['message' => 'Bạn không có quyền xác nhận lịch sản xuất.'], 403);
+        }
+
+        // Nhận mảng ids[] hoặc chuỗi "1,2,3" (xác nhận hàng loạt gửi dạng chuỗi
+        // để không vướng giới hạn max_input_vars của PHP)
+        $rawIds = $request->input('ids', []);
+        if (is_string($rawIds)) {
+            $rawIds = explode(',', $rawIds);
+        }
+
+        $ids = array_values(array_unique(array_filter(
+            array_map('intval', (array) $rawIds)
+        )));
+
+        if (empty($ids)) {
+            return response()->json(['message' => 'Không có lịch nào để xác nhận.'], 422);
+        }
+
+        $confirmed = $request->boolean('confirmed');
+
+        // Chỉ cho phép thao tác trên lịch của chính xưởng đang đăng nhập và chưa hoàn thành
+        $targetIds = DB::table('stage_plan')
+            ->whereIn('id', $ids)
+            ->where('deparment_code', $production_code)
+            ->where('active', 1)
+            ->where('finished', 0)
+            ->pluck('id')
+            ->all();
+
+        if (empty($targetIds)) {
+            return response()->json(['message' => 'Lịch không hợp lệ hoặc đã hoàn thành, không thể xác nhận.'], 422);
+        }
+
+        $fullName = session('user')['fullName'] ?? 'NA';
+        $now = now();
+
+        DB::table('stage_plan')
+            ->whereIn('id', $targetIds)
+            ->update([
+                'comfirm_of_lead'    => $confirmed ? 1 : 0,
+                'comfirm_of_lead_by' => $confirmed ? $fullName : null,
+                'comfirm_of_lead_at' => $confirmed ? $now : null,
+            ]);
+
+        AuditTrialController::log(
+            $confirmed ? 'Lead Xác Nhận Lịch Tuần' : 'Lead Bỏ Xác Nhận Lịch Tuần',
+            'stage_plan',
+            count($targetIds) === 1 ? $targetIds[0] : 0,
+            'comfirm_of_lead=' . ($confirmed ? 0 : 1),
+            'comfirm_of_lead=' . ($confirmed ? 1 : 0)
+                . ' | ' . count($targetIds) . ' lịch'
+                . ' | ids: ' . implode(',', $targetIds)
+        );
+
+        return response()->json([
+            'ids'                => $targetIds,
+            'confirmed'          => $confirmed,
+            'comfirm_of_lead_by' => $confirmed ? $fullName : null,
+            'comfirm_of_lead_at' => $confirmed ? $now->format('d/m/Y H:i') : null,
+            'skipped'            => count($ids) - count($targetIds),
         ]);
     }
 

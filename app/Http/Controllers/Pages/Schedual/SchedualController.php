@@ -415,7 +415,7 @@ class SchedualController extends Controller
 
         $room_code = DB::table('room')->where('deparment_code', $production)->pluck('code', 'id');
 
-        $is_own_department = $production === session('user')['production_code'];
+        $is_own_department = $production === session('user')['department'];
 
         $has_permission_maintenance = $is_own_department || user_has_permission(session('user')['userId'], 'plan_maintenance_scheduler', 'boolean');
         $has_permission_production = $is_own_department || in_array(session('user')['userGroup'], ['Schedualer',  'Admin',  'Leader']);
