@@ -277,6 +277,33 @@
             box-shadow: 0 18px 25px -10px rgba(14, 165, 233, 0.6);
         }
 
+        /* App Version Watermark (Góc phải dưới màn hình) */
+        .app-version {
+            position: fixed;
+            bottom: 14px;
+            right: 18px;
+            z-index: 10;
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.45);
+            letter-spacing: 0.04em;
+            padding: 4px 10px;
+            border-radius: 6px;
+            background: rgba(15, 23, 42, 0.35);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            user-select: none;
+            cursor: default;
+            transition: all 0.25s ease;
+        }
+
+        .app-version:hover {
+            color: rgba(255, 255, 255, 0.85);
+            background: rgba(15, 23, 42, 0.55);
+            border-color: rgba(255, 255, 255, 0.18);
+        }
+
         /* Responsive */
         @media (max-width: 480px) {
             .login-card {
@@ -285,6 +312,13 @@
 
             .quick-menu {
                 gap: 12px;
+            }
+
+            .app-version {
+                bottom: 8px;
+                right: 12px;
+                font-size: 0.7rem;
+                padding: 3px 8px;
             }
         }
     </style>
@@ -312,8 +346,8 @@
                 @csrf
                 <div class="mb-4">
                     <label for="username" class="form-label">Tài khoản</label>
-                    <input type="text" name="username" class="form-control" placeholder="Nhập tên đăng nhập"
-                        required autofocus value="{{ old('username') }}">
+                    <input type="text" name="username" class="form-control" placeholder="Nhập tên đăng nhập" required
+                        autofocus value="{{ old('username') }}">
                 </div>
 
                 <div class="mb-3">
@@ -410,10 +444,10 @@
 
         <!-- Menu truy cập nhanh bên dưới form -->
         <div class="quick-menu">
-            <a href="/status" class="quick-btn">
+            {{-- <a href="/status" class="quick-btn">
                 <i class="bi bi-activity"></i>
                 <span>Trạng Thái<br>Thời Gian Thực</span>
-            </a>
+            </a> --}}
             <a href="{{ route('pages.assignment.production.public') }}" class="quick-btn">
                 <i class="bi bi-calendar4-week"></i>
                 <span>Phân Công<br>Sản Xuất</span>
@@ -423,6 +457,11 @@
                 <span>Phân Công<br>Bảo Trì</span>
             </a>
         </div>
+    </div>
+
+    <!-- Phiên bản hệ thống ở góc phải màn hình -->
+    <div class="app-version" title="Phiên bản hệ thống">
+        Version 1.0
     </div>
 
     <script src="{{ asset('js/bootstrap.bundle.min.js') }}"></script>
