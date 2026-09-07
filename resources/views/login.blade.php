@@ -280,28 +280,21 @@
         /* App Version Watermark (Góc phải dưới màn hình) */
         .app-version {
             position: fixed;
-            bottom: 14px;
-            right: 18px;
+            bottom: 12px;
+            right: 16px;
             z-index: 10;
             font-size: 0.75rem;
-            font-weight: 500;
-            color: rgba(255, 255, 255, 0.45);
-            letter-spacing: 0.04em;
-            padding: 4px 10px;
-            border-radius: 6px;
-            background: rgba(15, 23, 42, 0.35);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            backdrop-filter: blur(6px);
-            -webkit-backdrop-filter: blur(6px);
+            font-weight: 400;
+            color: rgba(255, 255, 255, 0.3);
+            letter-spacing: 0.05em;
             user-select: none;
+            pointer-events: auto;
             cursor: default;
-            transition: all 0.25s ease;
+            transition: color 0.3s ease;
         }
 
         .app-version:hover {
-            color: rgba(255, 255, 255, 0.85);
-            background: rgba(15, 23, 42, 0.55);
-            border-color: rgba(255, 255, 255, 0.18);
+            color: rgba(255, 255, 255, 0.6);
         }
 
         /* Responsive */
@@ -318,7 +311,6 @@
                 bottom: 8px;
                 right: 12px;
                 font-size: 0.7rem;
-                padding: 3px 8px;
             }
         }
     </style>
