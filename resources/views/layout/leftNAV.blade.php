@@ -25,14 +25,42 @@
 
         position: fixed;
         top: 0px;
-        left: -3px;
+        left: 0;
+
+        /* Cố định đúng bằng chiều rộng .main-sidebar của AdminLTE (250px).
+           Trước đây không set width -> phần tử fixed tự co giãn theo nội dung,
+           nên trên máy có scale màn hình / zoom / font khác nhau thì menu và
+           thanh cuộn bị tràn ra ngoài. */
+        width: 250px;
+        max-width: 250px;
+        box-sizing: border-box;
 
         height: 100vh;
         /* chiếm toàn bộ chiều cao trình duyệt */
+        overflow-x: hidden;
+        /* chặn tràn ngang trên mọi máy */
         overflow-y: auto;
         /* nếu menu dài vẫn có thể cuộn riêng */
+        scrollbar-gutter: stable;
+        /* luôn chừa chỗ cho thanh cuộn dọc -> layout không bị nhảy giữa các máy */
         z-index: 1000;
         /* nằm trên các phần khác */
+    }
+
+    /* Thanh cuộn mảnh, đồng nhất (Chrome/Edge) */
+    .sidebar::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .sidebar::-webkit-scrollbar-thumb {
+        background: rgba(0, 0, 0, .25);
+        border-radius: 3px;
+    }
+
+    /* Cho nhãn menu xuống dòng thay vì đẩy rộng sidebar gây tràn */
+    .sidebar .nav-sidebar .nav-link p {
+        white-space: normal;
+        overflow-wrap: break-word;
     }
 
     /* Để phần nội dung không bị che bởi sidebar */
@@ -60,7 +88,7 @@
     }
 </style>
 
-<aside class="main-sidebar sidebar-light-primary elevation-4" style="height: 100vh;";>
+<aside class="main-sidebar sidebar-light-primary elevation-4" style="height: 100vh; width: 250px;">
     <div class="sidebar">
         <!-- Brand Logo -->
         <a href="{{ route('pages.general.home') }}"
