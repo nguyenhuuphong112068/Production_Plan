@@ -15,12 +15,24 @@ Schedule::command('notify:validation-sampling')->dailyAt('08:00');
 // Chốt tồn bán thành phẩm đúng đầu ngày công 06:00
 Schedule::command('wip:snapshot-coverage')->dailyAt('06:00')->withoutOverlapping();
 
-// Đồng bộ danh sách nhân sự từ eO2 PMS.
+// Đồng bộ danh sách nhân sự từ eO2 PMS về `employees` + `employee_assignments`.
+//
 // Chạy nền vì máy chủ nguồn mất ~9.5s (PXTN) đến ~88s (PXV1) mỗi request —
-// không thể để trong luồng đăng nhập. Chạy trước giờ vào ca sáng, và lặp lại
-// giữa ngày để bắt các thay đổi nhân sự phát sinh.
-Schedule::command('employees:sync-roster')->dailyAt('05:00')->withoutOverlapping();
-Schedule::command('employees:sync-roster')->dailyAt('12:30')->withoutOverlapping();
+// không thể để trong luồng đăng nhập. Đặt 05:00, trước giờ vào ca sáng, để cả
+// ngày làm việc dùng chung một ảnh chụp nhân sự nhất quán.
+//
+// MỘT lượt mỗi ngày là đủ, và cố ý chỉ một: lượt này vừa thêm người mới vừa
+// VÔ HIỆU HOÁ người không còn trong roster eO2, nên chạy nhiều lần trong ngày
+// khiến số liệu đổi giữa chừng trong lúc người dùng đang xếp lịch.
+//
+// appendOutputTo: sự cố tháng 8/2026 (lịch không chạy suốt 3 tuần, bảng
+// `employees` đứng yên mà không ai hay) là do lượt đồng bộ không để lại dấu vết
+// nào khi nó KHÔNG chạy. File log riêng cho phép kiểm tra bằng một lệnh `tail`:
+// không thấy dòng của hôm nay nghĩa là cron đã chết.
+Schedule::command('employees:sync-roster')
+    ->dailyAt('05:00')
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/sync-roster.log'));
 
 // Nạp sẵn cache lịch trực cho trang Lịch công tác.
 //

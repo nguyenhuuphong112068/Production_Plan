@@ -28,11 +28,11 @@ class AuditTrialController extends Controller
         ]);
     }
 
-    public static function log($action, $table, $recordId, $old = null, $new = null)
+    public static function log($action, $table, $recordId, $old = null, $new = null, $userName = null)
     {
 
         DB::table('audittriallog')->insert([
-            'userName'     =>  session('user')['userName'] ?? 'NA',
+            'userName'     =>  $userName ?? (session('user')['userName'] ?? 'NA'),
             'action'      => $action,
             'table_Audit'       => $table,
             'record_Id_AuditTrial'    => $recordId,

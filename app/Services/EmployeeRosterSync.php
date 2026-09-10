@@ -47,9 +47,16 @@ class EmployeeRosterSync
      * Gọi API lấy danh sách nhân sự mới nhất rồi đồng bộ xuống DB.
      * Dùng cho command chạy nền — được phép chờ lâu.
      *
+     * Luôn hỏi danh sách của HÔM NAY, kể cả khi nơi gọi đang xem tháng khác:
+     * câu hỏi ở đây là "hiện giờ bộ phận này có những ai", không phải "tháng đó
+     * có những ai". Lấy theo tháng quá khứ sẽ vô hiệu hoá nhầm người mới vào.
+     *
+     * @param bool $fresh bỏ qua cache danh sách 6h (xem `ShiftApiService::roster`).
+     *        Command chạy nền để mặc định false vì nó vốn là nơi nạp cache đó;
+     *        thao tác do người dùng bấm thì phải bật.
      * @return array{synced:bool, employees:int, reason:?string}
      */
-    public function refresh(string $departmentCode, ?int $timeout = null): array
+    public function refresh(string $departmentCode, ?int $timeout = null, bool $fresh = false): array
     {
         $depId = self::DEPARTMENTS[$departmentCode] ?? null;
         if (!$depId) {
@@ -59,7 +66,7 @@ class EmployeeRosterSync
         $needWarehouse = $departmentCode === 'PXV1';
         $departments = $needWarehouse ? [$depId, self::WAREHOUSE_ID] : [$depId];
 
-        $rosters = $this->shiftApi->roster($departments, now(), $timeout);
+        $rosters = $this->shiftApi->roster($departments, now(), $timeout, $fresh);
 
         return $this->applyRosters($departmentCode, $depId, $rosters);
     }

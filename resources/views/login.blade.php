@@ -373,7 +373,7 @@
                 <div class="mb-3">
                     <label for="usernameChange" class="form-label">Tài khoản</label>
                     <input type="text" id="usernameChange" name="username" class="form-control"
-                        placeholder="Tên đăng nhập" required>
+                        placeholder="Tên đăng nhập" required value="{{ old('username') }}">
                 </div>
 
                 <div class="mb-3">

@@ -94,7 +94,10 @@ class UserController extends Controller
                         'deparment' => $request->deparment,
                         'groupName' => $request->groupName,
                         'mail' => $request->mail,
-                        'changePWdate' => today()->addDays(90),
+                        'changePWdate' => today()->addDays((int) config('security.password_expiry_days', 90)),
+                        'must_change_password' => 1, // Bắt buộc đổi mật khẩu ở lần đăng nhập đầu tiên
+                        'failed_attempts' => 0,
+                        'isLocked' => 0,
                         'prepareBy' => session('user')['fullName'] ?? 'Admin',
                         'created_at' => now(),
                 ]);

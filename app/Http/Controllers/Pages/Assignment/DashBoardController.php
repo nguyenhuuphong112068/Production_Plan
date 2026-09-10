@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
+use App\Services\EmployeeRosterSync;
 use App\Services\ShiftApiService;
 
 class DashBoardController extends Controller
@@ -57,15 +59,26 @@ class DashBoardController extends Controller
     }
 
     /**
-     * Nút "Đồng bộ lịch trực" trên Dashboard: nạp lại tháng đang xem của phân
-     * xưởng đang chọn, bỏ qua cache nóng.
+     * Nút "Đồng bộ dữ liệu e-o" trên Dashboard. Làm HAI việc, vì hai nguồn số
+     * liệu của trang này hoàn toàn tách rời nhau:
+     *
+     *   1. Lịch trực (ca, tăng ca, nghỉ phép) - nạp lại cache tháng đang xem.
+     *   2. Danh sách nhân sự - ghi xuống `employees` + `employee_assignments`.
+     *
+     * Trước đây nút chỉ làm việc (1). Hậu quả gặp thực tế 10/09/2026: nhân sự
+     * 23220 đã có trên eO2 và hiện đúng ở sidebar Tình Hình Nhân Sự (sidebar đọc
+     * thẳng API), nhưng Dashboard và trang định mức đọc từ DB nên không thấy -
+     * mà bấm nút bao nhiêu lần cũng vô ích vì nút không hề đụng tới DB. Người
+     * dùng đọc nhãn "Đồng bộ dữ liệu e-o" thì đương nhiên hiểu là đồng bộ MỌI
+     * dữ liệu e-office, nên nút phải làm đúng như tên gọi.
      *
      * Chỉ một phân xưởng, không phải cả 7, vì mỗi phân xưởng đã tốn 3-6 request
-     * nặng (~10-40s). Muốn nạp đủ cả 7 thì để `shifts:warm-cache` chạy nền lo -
-     * command đó có giãn nhịp và biết lùi lại khi eO2 trả 429, còn một HTTP
-     * request thì không đủ thời gian.
+     * nặng (~10-40s). Muốn nạp đủ cả 7 thì để `shifts:warm-cache` (lịch trực) và
+     * `employees:sync-roster` (nhân sự, 05:00) chạy nền lo - hai command đó có
+     * giãn nhịp và biết lùi lại khi eO2 trả 429, còn một HTTP request thì không
+     * đủ thời gian.
      */
-    public function warmCache(Request $request, ShiftApiService $shiftApi)
+    public function warmCache(Request $request, ShiftApiService $shiftApi, EmployeeRosterSync $rosterSync)
     {
         $code = (string) $request->input('production_code');
         $depId = self::DEPARTMENT_MAP[$code] ?? null;
@@ -93,16 +106,32 @@ class DashBoardController extends Controller
             ], 429);
         }
 
-        // PXV1 gộp thêm Kho nên tới 6 request; mặc định 30s của PHP không đủ.
-        @set_time_limit(180);
+        // PXV1 nặng nhất: 6 request cho lịch trực + 2 cho danh sách nhân sự, và
+        // riêng lượt danh sách của PXV1 đo được ~88s. Mặc định 30s của PHP không đủ.
+        @set_time_limit(300);
 
+        // --- 1. Lịch trực ---
         $shiftApi->forgetMonth($month, $year, $depId, $mergeWarehouse);
         $data = $shiftApi->monthlyByDayKey($month, $year, $depId, $mergeWarehouse);
 
         // `monthlyByDayKey` vẫn trả về mảng khi phải rơi về bản sao lưu 24h, nên
         // chỉ nhìn giá trị trả về sẽ báo thành công nhầm. Hỏi cache nóng mới
         // biết lượt này có thật sự lấy được số liệu mới hay không.
-        if (!$shiftApi->hasFreshMonth($month, $year, $depId, $mergeWarehouse)) {
+        $shiftFresh = $shiftApi->hasFreshMonth($month, $year, $depId, $mergeWarehouse);
+
+        // --- 2. Danh sách nhân sự ---
+        //
+        // Chạy SAU lịch trực và không được phép làm hỏng phần trên: nếu lịch
+        // trực đã nạp xong mà bước này ném lỗi thì công sức 40s vừa rồi mất
+        // trắng. Vì vậy `syncRoster` nuốt mọi Throwable và trả về trạng thái để
+        // báo riêng, thay vì để lỗi thoát ra ngoài.
+        //
+        // Chạy cả khi lịch trực thất bại: hai việc dùng endpoint khác nhau, hỏng
+        // cái này không có nghĩa cái kia cũng hỏng - và đây mới đúng là lúc
+        // người dùng cần bảng nhân sự được vá.
+        $roster = $this->syncRoster($code, $rosterSync);
+
+        if (!$shiftFresh) {
             $wait = $shiftApi->rateLimitedFor();
 
             return response()->json([
@@ -111,6 +140,7 @@ class DashBoardController extends Controller
                 'error' => $wait
                     ? "Đang tạm dừng gọi eO2 để tránh bị chặn. Thử lại sau khoảng {$wait}s."
                     : 'Máy chủ eO2 không trả dữ liệu. Xem storage/logs/laravel.log để biết chi tiết.',
+                'roster' => $roster,
             ], 503);
         }
 
@@ -119,7 +149,49 @@ class DashBoardController extends Controller
             'department' => $code,
             'month' => sprintf('%02d/%d', $month, $year),
             'employees' => count($data ?? []),
+            'roster' => $roster,
         ]);
+    }
+
+    /**
+     * Ghi danh sách nhân sự của một phân xưởng xuống `employees` +
+     * `employee_assignments`. Bọc kín lỗi để nút Đồng bộ không đổ vì bước này.
+     *
+     * `fresh: true` là bắt buộc: `roster()` có cache riêng 6 giờ, mà người dùng
+     * bấm nút chính vì nghi số liệu đang cũ. Trả lại đúng bản cache đang bị nghi
+     * ngờ thì nút không sửa được gì - đúng cái bẫy đã làm mất thời gian truy vết
+     * ngày 10/09/2026.
+     *
+     * @return array{synced:bool, employees:int, reason:?string}
+     */
+    private function syncRoster(string $code, EmployeeRosterSync $rosterSync): array
+    {
+        // `DEPARTMENT_MAP` ở trên rộng hơn `EmployeeRosterSync::DEPARTMENTS`:
+        // 'WH' (Kho) là bộ phận của eO2 chứ không phải phân xưởng có bảng phân
+        // công riêng, nên không có gì để đồng bộ. Bỏ qua trong im lặng thay vì
+        // báo lỗi - lịch trực của nó vẫn nạp bình thường ở bước 1.
+        if (!isset(EmployeeRosterSync::DEPARTMENTS[$code])) {
+            return [
+                'synced' => false,
+                'employees' => 0,
+                'reason' => "Phân xưởng {$code} không có danh sách nhân sự riêng để đồng bộ",
+            ];
+        }
+
+        try {
+            return $rosterSync->refresh(
+                $code,
+                (int) config('shiftapi.manual_sync_timeout', 180),
+                true
+            );
+        } catch (\Throwable $e) {
+            Log::warning('Dong bo nhan su tu nut Dashboard that bai', [
+                'department' => $code,
+                'error' => $e->getMessage(),
+            ]);
+
+            return ['synced' => false, 'employees' => 0, 'reason' => 'Lỗi: ' . $e->getMessage()];
+        }
     }
 
     /**

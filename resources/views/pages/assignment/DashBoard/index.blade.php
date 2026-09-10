@@ -80,9 +80,10 @@
                                         </button>
 
                                         <small class="text-muted ml-3">
-                                            Lấy lại lịch trực của phân xưởng đang chọn từ eO2 PMS. Chỉ dùng khi thấy số
-                                            liệu chưa đúng — bình thường hệ thống tự nạp lúc 00:00, 05:55, 12:00 và
-                                            16:00.
+                                            Lấy lại <b>lịch trực</b> và <b>danh sách nhân sự</b> của phân xưởng đang
+                                            chọn từ eO2 PMS. Dùng khi thấy số liệu chưa đúng hoặc thiếu người mới —
+                                            bình thường hệ thống tự nạp lịch trực lúc 00:00, 05:55, 12:00, 16:00 và
+                                            nhân sự lúc 05:00.
                                         </small>
                                     </div>
                                 </div>
@@ -462,11 +463,12 @@
         document.getElementById('type').addEventListener('change', loadData);
         document.getElementById('date').addEventListener('change', loadData);
 
-        // Nút Đồng bộ lịch trực: bỏ cache trên server rồi hỏi lại eO2 PMS.
+        // Nút Đồng bộ dữ liệu e-o: hỏi lại eO2 PMS cho CẢ lịch trực lẫn danh
+        // sách nhân sự (ghi thẳng xuống `employees` + `employee_assignments`).
         //
         // Cache nằm ở SERVER và dùng chung cho toàn hệ thống, nên một người bấm
-        // là mọi người cùng thấy số liệu mới. Đổi lại mỗi lượt là 3-6 request
-        // nặng, mất ~10-40s tuỳ phân xưởng (PXV1 lâu nhất vì gộp thêm Kho), nên
+        // là mọi người cùng thấy số liệu mới. Đổi lại mỗi lượt là 4-8 request
+        // nặng, mất ~15-90s tuỳ phân xưởng (PXV1 lâu nhất vì gộp thêm Kho), nên
         // nút bị khoá trong lúc chạy và backend còn khoá thêm 60s mỗi tháng.
         // Nút chỉ hiện với người có quyền `e-o_synchronization`. Không kiểm tra
         // null ở đây thì với người không có quyền, addEventListener sẽ ném lỗi và
@@ -484,7 +486,8 @@
 
             Swal.fire({
                 title: 'Đang lấy dữ liệu mới từ eO2 PMS',
-                html: 'Phân xưởng <b>' + productionCode + '</b> — có thể mất tới 40 giây.',
+                html: 'Phân xưởng <b>' + productionCode + '</b> — lịch trực và danh sách nhân sự.' +
+                    '<br><small class="text-muted">Có thể mất tới 90 giây, xin đừng đóng trang.</small>',
                 allowOutsideClick: false,
                 didOpen: () => Swal.showLoading()
             });
@@ -508,18 +511,42 @@
                     ok,
                     body
                 }) => {
+                    // Hai phần chạy độc lập nhau nên phải báo riêng: lịch trực
+                    // hỏng mà danh sách nhân sự vẫn ghi được là chuyện bình
+                    // thường, và ngược lại. Gộp chung một dòng "đã đồng bộ" sẽ
+                    // che mất đúng cái đang hỏng.
+                    //
+                    // body.roster vắng mặt khi gặp 429 (backend chặn ở khoá 60s,
+                    // trả về trước khi kịp đụng tới nhân sự) - khi đó không báo gì.
+                    const rosterOk = !!(body.roster && body.roster.synced);
+                    const rosterLine = !body.roster ? '' :
+                        (rosterOk ?
+                            '<br>Nhân sự: đã cập nhật <b>' + body.roster.employees + '</b> người vào DB.' :
+                            '<br><span style="color:#e6a23c">Nhân sự: chưa cập nhật — ' +
+                            (body.roster.reason || 'không rõ lý do') + '</span>');
+
                     if (!ok) {
                         // 429 = vừa có người đồng bộ, 503 = eO2 chặn hoặc không trả.
-                        Swal.fire('Chưa đồng bộ được', body.error || 'Lỗi không xác định', 'warning');
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Chưa đồng bộ được lịch trực',
+                            html: (body.error || 'Lỗi không xác định') + rosterLine
+                        });
+
+                        // Lịch trực hỏng nhưng nhân sự đã ghi được thì vẫn phải
+                        // nạp lại bảng, nếu không người dùng không thấy người mới.
+                        if (rosterOk) loadData();
                         return;
                     }
 
                     Swal.fire({
-                        icon: 'success',
+                        icon: rosterOk ? 'success' : 'warning',
                         title: 'Đã đồng bộ ' + body.department + ' tháng ' + body.month,
-                        text: body.employees + ' nhân sự',
-                        timer: 2500,
-                        showConfirmButton: false
+                        html: 'Lịch trực: <b>' + body.employees + '</b> nhân sự.' + rosterLine,
+                        // Phần nhân sự hỏng thì để hộp thoại đứng lại cho người
+                        // dùng kịp đọc lý do, thay vì tự tắt sau vài giây.
+                        timer: rosterOk ? 3500 : undefined,
+                        showConfirmButton: !rosterOk
                     });
 
                     // Nạp lại Dashboard để thấy ngay số liệu vừa lấy về.

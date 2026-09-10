@@ -171,11 +171,16 @@ class ShiftApiService
      *   - cache riêng với TTL dài (danh sách nhân sự rất ít đổi).
      *
      * @param  array $departments  danh sách mã bộ phận
+     * @param  bool  $fresh  bỏ qua cache 6h, bắt buộc hỏi lại eO2. Dành cho thao
+     *         tác do người dùng chủ động yêu cầu (nút Đồng bộ trên Dashboard):
+     *         người ta bấm chính vì nghi số liệu cũ, trả lại đúng bản cache đang
+     *         nghi ngờ thì nút thành vô dụng. Bản sao lưu vẫn được dùng nếu API
+     *         lỗi, nên bật cờ này không làm mất lưới an toàn.
      * @return array [department => [employeeCode => employeeName]]
      *               Bộ phận nào lỗi thì KHÔNG có mặt trong kết quả (khác với
      *               có mặt nhưng rỗng), để nơi gọi không vô hiệu hoá nhầm nhân sự.
      */
-    public function roster(array $departments, $date = null, ?int $timeout = null): array
+    public function roster(array $departments, $date = null, ?int $timeout = null, bool $fresh = false): array
     {
         $day = $date ? Carbon::parse($date)->startOfDay() : Carbon::now()->startOfDay();
         $dayKey = $day->format('Y-m-d');
@@ -189,7 +194,7 @@ class ShiftApiService
             $cacheKey = "shiftapi:roster:{$dayKey}:{$dept}";
             $backupKeys[$dept] = "shiftapi:roster_backup:{$dept}";
 
-            $cached = $this->cacheGet($cacheKey);
+            $cached = $fresh ? null : $this->cacheGet($cacheKey);
             if (is_array($cached)) {
                 $result[$dept] = $cached;
                 continue;
