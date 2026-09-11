@@ -241,12 +241,35 @@ class DashBoardController extends Controller
             $daysInPeriod = $startDate->diffInDays($endDate);
         }
 
+        // Ngày lịch của từng ô trong kỳ. Ngày công chạy 06:00 hôm nay -> 06:00
+        // hôm sau, nên ô thứ $d mang ngày lịch $startDate + $d ngày (giống hệt
+        // cách vòng lặp lấy ca trực bên dưới tính $dayStr).
+        $periodDates = [];
+        for ($d = 0; $d < $daysInPeriod; $d++) {
+            $periodDates[$d] = $startDate->copy()->addDays($d)->format('Y-m-d');
+        }
+        $lastDateOfPeriod = $periodDates[$daysInPeriod - 1];
+
         // 1. Get total personnel in department (and optional group)
+        //
+        // `employees.created_at` được coi là NGÀY VÀO LÀM: đây là thời điểm nhân
+        // sự xuất hiện trong danh sách của eO2 và được `employees:sync-roster`
+        // ghi xuống. Trước ngày đó người này chưa thuộc phân xưởng nên không
+        // được vào bất kỳ con số thống kê nào.
+        //
+        // Không lọc thì danh sách nhân sự là ảnh chụp "ai đang thuộc phân xưởng
+        // LÚC NÀY" và bị đem áp ngược cho mọi ngày quá khứ. Gặp thực tế
+        // 10/09/2026: nhân sự 23220 vừa được thêm đã hiện "Chưa xếp lịch" suốt
+        // từ 01/09 - những ngày cậu ta còn chưa vào công ty.
         $personnelQuery = DB::table('employees as e')
             ->where('e.active', 1)
             ->where(function ($q) {
                 $q->whereNull('e.resign')->orWhere('e.resign', 0);
             })
+            // So sánh ở mức NGÀY, không phải mốc thời gian: người được tạo lúc
+            // 14:19 ngày 10/09 vẫn phải được tính trọn ngày công 10/09 (bắt đầu
+            // từ 06:00 sáng hôm đó), nếu không sẽ hụt mất chính ngày vào làm.
+            ->whereRaw('DATE(e.created_at) <= ?', [$lastDateOfPeriod])
             ->join('employee_assignments as ea', 'e.id', '=', 'ea.employees_id')
             ->where('ea.production_code', $production_code)
             ->where('ea.active', 1);
@@ -256,8 +279,8 @@ class DashBoardController extends Controller
         }
 
         $personnelList = $personnelQuery
-            ->select('e.id', 'e.code', 'e.name', 'e.on_maternity_leave', 'e.on_long_leave', DB::raw('GROUP_CONCAT(DISTINCT ea.group_id SEPARATOR ",") as group_ids'))
-            ->groupBy('e.id', 'e.code', 'e.name', 'e.on_maternity_leave', 'e.on_long_leave')
+            ->select('e.id', 'e.code', 'e.name', 'e.on_maternity_leave', 'e.on_long_leave', DB::raw('DATE(e.created_at) as joined_on'), DB::raw('GROUP_CONCAT(DISTINCT ea.group_id SEPARATOR ",") as group_ids'))
+            ->groupBy('e.id', 'e.code', 'e.name', 'e.on_maternity_leave', 'e.on_long_leave', 'joined_on')
             ->get();
 
         $isENorQA = in_array($production_code, ['EN', 'QA']);
@@ -522,12 +545,34 @@ class DashBoardController extends Controller
 
         foreach ($employeeDailyHours as $empId => $dailyHours) {
             $empCode = $employees[$empId]->code;
+
+            // Ô đầu tiên trong kỳ mà người này đã vào làm. Kỳ nhiều ngày (tuần /
+            // tháng) có thể chứa cả quãng trước ngày vào làm — phần đó không
+            // được tính vào bất kỳ con số nào, kể cả mẫu số giờ trung bình.
+            //
+            // Tính ngay đầu vòng lặp để mọi con số phía dưới (tăng ca, phân
+            // loại theo ngày, giờ trung bình) cùng dùng một mốc.
+            $joinedOn = $employees[$empId]->joined_on ?? null;
+            $firstDay = 0;
+            if ($joinedOn) {
+                while ($firstDay < $daysInPeriod && $periodDates[$firstDay] < $joinedOn) {
+                    $firstDay++;
+                }
+            }
+            $daysEmployed = $daysInPeriod - $firstDay;
+
+            // Người vào làm sau kỳ đang xem đã bị loại từ câu truy vấn, nhưng
+            // vẫn chặn ở đây để tránh chia cho 0 nếu sau này ai đó nới bộ lọc.
+            if ($daysEmployed <= 0) {
+                continue;
+            }
+
             $empOT = round($employeeOvertimeHours[$empCode] ?? 0, 2);
             $stats_laps['total_ot_hours'] += $empOT;
             $stats_people['total_ot_hours'] += $empOT;
 
             if (isset($employeeDailyOT[$empCode])) {
-                for ($d = 0; $d < $daysInPeriod; $d++) {
+                for ($d = $firstDay; $d < $daysInPeriod; $d++) {
                     $otOfDay = $employeeDailyOT[$empCode][$d];
                     $stats_daily[$d]['total_ot_hours'] += $otOfDay;
 
@@ -556,7 +601,7 @@ class DashBoardController extends Controller
             }
 
             $totalHours = array_sum($dailyHours);
-            $avgHoursPerDay = $daysInPeriod > 0 ? ($totalHours / $daysInPeriod) : 0;
+            $avgHoursPerDay = $totalHours / $daysEmployed;
 
             $assignedDays = 0;
             $leaveDays = 0;
@@ -564,7 +609,7 @@ class DashBoardController extends Controller
             $isMaternity = !empty($employees[$empId]->on_maternity_leave);
             $isLongLeave = !empty($employees[$empId]->on_long_leave);
 
-            for ($d = 0; $d < $daysInPeriod; $d++) {
+            for ($d = $firstDay; $d < $daysInPeriod; $d++) {
                 $h = $dailyHours[$d];
                 if ($h == 0) {
                     if ($isMaternity) {
@@ -630,10 +675,18 @@ class DashBoardController extends Controller
                     $status = '> 8h';
                 }
             } else {
+                // Mẫu số là số ngày người này THỰC SỰ đã vào làm trong kỳ, không
+                // phải độ dài cả kỳ: người vào làm giữa tháng mà ghi "Đã xếp
+                // 5/30 ngày" thì đọc như đang bỏ bê, trong khi 5/5 mới là đúng.
+                $status = $daysEmployed < $daysInPeriod
+                    ? "Vào làm từ " . Carbon::parse($joinedOn)->format('d/m')
+                    : '';
+
                 if ($assignedDays == 0) {
-                    $status = $leaveDays == $daysInPeriod ? 'Nghỉ phép hết kỳ' : "Chưa xếp lịch ($leaveDays ngày phép)";
+                    $status = ($leaveDays == $daysEmployed ? 'Nghỉ phép hết kỳ' : "Chưa xếp lịch ($leaveDays ngày phép)")
+                        . ($status ? " — {$status}" : '');
                 } else {
-                    $status = "Đã xếp $assignedDays / $daysInPeriod ngày";
+                    $status = "Đã xếp $assignedDays / $daysEmployed ngày" . ($status ? " — {$status}" : '');
                 }
             }
 
