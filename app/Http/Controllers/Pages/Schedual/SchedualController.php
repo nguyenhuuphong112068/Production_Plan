@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Pages\Schedual;
 
 use App\Http\Controllers\Controller;
+use App\Support\LeadConfirmation;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -189,6 +190,27 @@ class SchedualController extends Controller
         return null;
     }
 
+    /**
+     * Trả về blister_mold_id của sự kiện đóng gói (stage 7) gần nhất trong phòng,
+     * tức bộ khuôn đang lắp trên máy ngay trước thời điểm $before.
+     * $before = null → lấy sự kiện ĐG mới nhất của phòng (dùng để sắp thứ tự ưu tiên khuôn).
+     * Không lọc theo `finished` vì khuôn vẫn nằm trên máy kể cả khi lô đã xong.
+     */
+    protected function getPreviousMoldInRoom($roomId, ?Carbon $before = null)
+    {
+        return DB::table('stage_plan')
+            ->where('stage_code', 7)
+            ->where('resourceId', $roomId)
+            ->where('active', 1)
+            ->whereNotNull('blister_mold_id')
+            ->whereNotNull('start')
+            ->when($before, function ($query) use ($before) {
+                return $query->where('start', '<', $before);
+            })
+            ->orderByDesc('start')
+            ->value('blister_mold_id');
+    }
+
     protected $order_by = 1;
 
     protected $selectedDates = [];
@@ -206,6 +228,12 @@ class SchedualController extends Controller
     protected $theory = 0;
 
     protected $prev_orderBy = false;
+
+    // Hạn chế xuống khuôn: ưu tiên phòng có sự kiện ĐG liền trước cùng mã khuôn
+    protected $limit_mold_change = true;
+
+    // Số giờ trễ tối đa chấp nhận được để giữ nguyên bộ khuôn
+    protected $mold_change_tolerance = 72;
 
     protected $stage_Name = [
         1 => 'Cân NL',
@@ -554,6 +582,9 @@ class SchedualController extends Controller
                 'sp.nextcessor_code',
                 'sp.immediately',
                 'sp.submit',
+                'sp.comfirm_of_lead',
+                'sp.comfirm_of_lead_by',
+                'sp.comfirm_of_lead_at',
                 'sp.accept_quarantine',
                 'sp.campaign_code',
                 'sp.schedualed_by',
@@ -671,6 +702,10 @@ class SchedualController extends Controller
                         'plan_master_id' => $plan->plan_master_id,
                         'stage_code' => $plan->stage_code,
                         'is_clearning' => false,
+                        // Lead đã xác nhận sẽ chạy đúng lịch này → hiện tick xanh trên Gantt
+                        'comfirm_of_lead' => $plan->comfirm_of_lead,
+                        'comfirm_of_lead_by' => $plan->comfirm_of_lead_by,
+                        'comfirm_of_lead_at' => $plan->comfirm_of_lead_at,
                         'finished' => $plan->finished,
                         'level' => $plan->level,
                         'process_code' => $plan->process_code,
@@ -748,6 +783,10 @@ class SchedualController extends Controller
                         'plan_master_id' => $plan->plan_master_id,
                         'stage_code' => $plan->stage_code,
                         'is_clearning' => false,
+                        // Lead đã xác nhận sẽ chạy đúng lịch này → hiện tick xanh trên Gantt
+                        'comfirm_of_lead' => $plan->comfirm_of_lead,
+                        'comfirm_of_lead_by' => $plan->comfirm_of_lead_by,
+                        'comfirm_of_lead_at' => $plan->comfirm_of_lead_at,
                         'status' => $plan->status,
                         'finished' => $plan->finished,
                         'level' => $plan->level,
@@ -781,6 +820,10 @@ class SchedualController extends Controller
                             'plan_master_id' => $plan->plan_master_id,
                             'stage_code' => $plan->stage_code,
                             'is_clearning' => false,
+                            // Lead đã xác nhận sẽ chạy đúng lịch này → hiện tick xanh trên Gantt
+                            'comfirm_of_lead' => $plan->comfirm_of_lead,
+                            'comfirm_of_lead_by' => $plan->comfirm_of_lead_by,
+                            'comfirm_of_lead_at' => $plan->comfirm_of_lead_at,
                             'status' => $plan->status,
                             'finished' => $plan->finished,
                             'level' => $plan->level,
@@ -842,6 +885,10 @@ class SchedualController extends Controller
                                 'plan_master_id' => $plan->plan_master_id,
                                 'stage_code' => $plan->stage_code,
                                 'is_clearning' => false,
+                                // Lead đã xác nhận sẽ chạy đúng lịch này → hiện tick xanh trên Gantt
+                                'comfirm_of_lead' => $plan->comfirm_of_lead,
+                                'comfirm_of_lead_by' => $plan->comfirm_of_lead_by,
+                                'comfirm_of_lead_at' => $plan->comfirm_of_lead_at,
                                 'status' => $plan->status,
                                 'finished' => $plan->finished,
                                 'level' => $plan->level,
@@ -901,6 +948,10 @@ class SchedualController extends Controller
                             'plan_master_id' => $plan->plan_master_id,
                             'stage_code' => $plan->stage_code,
                             'is_clearning' => false,
+                            // Lead đã xác nhận sẽ chạy đúng lịch này → hiện tick xanh trên Gantt
+                            'comfirm_of_lead' => $plan->comfirm_of_lead,
+                            'comfirm_of_lead_by' => $plan->comfirm_of_lead_by,
+                            'comfirm_of_lead_at' => $plan->comfirm_of_lead_at,
                             'status' => $plan->status,
                             'finished' => $plan->finished,
                             'level' => $plan->level,
@@ -960,6 +1011,10 @@ class SchedualController extends Controller
                                 'plan_master_id' => $plan->plan_master_id,
                                 'stage_code' => $plan->stage_code,
                                 'is_clearning' => false,
+                                // Lead đã xác nhận sẽ chạy đúng lịch này → hiện tick xanh trên Gantt
+                                'comfirm_of_lead' => $plan->comfirm_of_lead,
+                                'comfirm_of_lead_by' => $plan->comfirm_of_lead_by,
+                                'comfirm_of_lead_at' => $plan->comfirm_of_lead_at,
                                 'status' => $plan->status,
                                 'finished' => $plan->finished,
                                 'level' => $plan->level,
@@ -1052,6 +1107,9 @@ class SchedualController extends Controller
                 $first->end = $group->max('end');
 
                 if (! $first->is_clearning) {
+
+                    // Event gộp chỉ được coi là Lead đã xác nhận khi mọi lô trong nhóm đều đã xác nhận
+                    $first->comfirm_of_lead = (int) $group->min('comfirm_of_lead');
 
                     // Gom danh sách số lô (batch) - Ưu tiên actual_batch cho Finished/Theory
                     $batchField = ($isFinished || $isTheory) ? 'actual_batch' : 'batch_name';
@@ -2464,6 +2522,9 @@ class SchedualController extends Controller
                     ->whereNotIn('stage_code', [8, 9])
                     ->update(['submit' => 0]);
 
+                // Lịch đã đổi thì xác nhận cũ của Lead không còn giá trị
+                LeadConfirmation::reset($product['id']);
+
                 // Thời gian của lô kế tiếp đã được tính sẵn trong manualBatchTimes()
             }
 
@@ -2868,6 +2929,9 @@ class SchedualController extends Controller
                             'schedualed_at' => now(),
                         ]);
 
+                    // Lịch đã đổi thì xác nhận cũ của Lead không còn giá trị
+                    LeadConfirmation::reset($product['id']);
+
                     $submit = DB::table('stage_plan')->where('id', $product['id'])->value('submit');
 
                     if ($submit === 1) {
@@ -2953,6 +3017,9 @@ class SchedualController extends Controller
                             'schedualed_by' => session('user')['fullName'],
                             'schedualed_at' => now(),
                         ]);
+
+                    // Lịch đã đổi thì xác nhận cũ của Lead không còn giá trị
+                    LeadConfirmation::reset($product['id']);
 
                     $update_row = DB::table('stage_plan')->where('id', $product['id'])->first();
 
@@ -3409,6 +3476,9 @@ class SchedualController extends Controller
                             ->where('id', $sid)
                             ->where('stage_code', '!=', 8)
                             ->update(['submit' => 0]);
+
+                        // Lịch đã đổi thì xác nhận cũ của Lead không còn giá trị
+                        LeadConfirmation::reset($sid);
                     }
                 }
             }
@@ -3606,6 +3676,10 @@ class SchedualController extends Controller
                             'schedualed_by' => session('user')['fullName'],
                             'schedualed_at' => now(),
                             'submit' => 0,
+                            // Xoá lịch cũng là một thay đổi: gỡ xác nhận của Lead
+                            'comfirm_of_lead' => 0,
+                            'comfirm_of_lead_by' => null,
+                            'comfirm_of_lead_at' => null,
                             'receive_packaging_date' => DB::raw("CASE WHEN received = 0 THEN NULL ELSE receive_packaging_date END"),
                             'receive_second_packaging_date' => DB::raw("CASE WHEN received_second_packaging = 0 THEN NULL ELSE receive_second_packaging_date END"),
                         ]);
@@ -3632,6 +3706,10 @@ class SchedualController extends Controller
                             'schedualed_by' => session('user')['fullName'],
                             'schedualed_at' => now(),
                             'submit' => 0,
+                            // Xoá lịch cũng là một thay đổi: gỡ xác nhận của Lead
+                            'comfirm_of_lead' => 0,
+                            'comfirm_of_lead_by' => null,
+                            'comfirm_of_lead_at' => null,
                             'receive_packaging_date' => DB::raw("CASE WHEN received = 0 THEN NULL ELSE receive_packaging_date END"),
                             'receive_second_packaging_date' => DB::raw("CASE WHEN received_second_packaging = 0 THEN NULL ELSE receive_second_packaging_date END"),
                         ]);
@@ -3795,6 +3873,10 @@ class SchedualController extends Controller
                     'schedualed_by' => session('user')['fullName'],
                     'schedualed_at' => now(),
                     'submit' => 0,
+                    // Xoá lịch cũng là một thay đổi: gỡ xác nhận của Lead
+                    'comfirm_of_lead' => 0,
+                    'comfirm_of_lead_by' => null,
+                    'comfirm_of_lead_at' => null,
                 ]);
         } catch (\Exception  $e) {
 
@@ -5493,6 +5575,14 @@ class SchedualController extends Controller
 
             DB::beginTransaction();
 
+            // Lịch sắp bị ghi đè bằng bản sao lưu -> xác nhận của Lead phải được lấy lại
+            $restoredIds = DB::table('stage_plan as sp')
+                ->join('stage_plan_bkc as bkc', 'bkc.stage_plan_id', '=', 'sp.id')
+                ->where('sp.finished', 0)
+                ->where('sp.deparment_code', session('user.production_code'))
+                ->where('bkc.bkc_code', $bkcCode)
+                ->pluck('sp.id');
+
             $affected = DB::table('stage_plan as sp')
                 ->join('stage_plan_bkc as bkc', 'bkc.stage_plan_id', '=', 'sp.id')
                 ->where('sp.finished', 0)
@@ -5513,6 +5603,8 @@ class SchedualController extends Controller
                     'sp.first_in_campaign' => DB::raw('bkc.first_in_campaign'),
 
                 ]);
+
+            LeadConfirmation::reset($restoredIds);
 
             DB::commit();
 
@@ -6056,6 +6148,9 @@ class SchedualController extends Controller
                 ->where('id', $stageId)
                 ->whereNotIn('stage_code', [8, 9])
                 ->update(['submit' => 0]);
+
+            // Lịch đã đổi thì xác nhận cũ của Lead không còn giá trị
+            LeadConfirmation::reset($stageId);
         });
     }
 
@@ -6072,6 +6167,10 @@ class SchedualController extends Controller
         $this->reason = $request->reason ?? 'NA';
 
         $this->prev_orderBy = $request->prev_orderBy ?? false;
+
+        $this->limit_mold_change = filter_var($request->limit_mold_change ?? true, FILTER_VALIDATE_BOOLEAN);
+
+        $this->mold_change_tolerance = max(0, (float) ($request->mold_change_tolerance ?? 72));
 
         $this->loadOffDate('asc');
 
@@ -6228,6 +6327,8 @@ class SchedualController extends Controller
         $this->work_sunday = $request->work_sunday ?? false;
         $this->reason = $request->reason ?? 'NA';
         $this->prev_orderBy = $request->prev_orderBy ?? false;
+        $this->limit_mold_change = filter_var($request->limit_mold_change ?? true, FILTER_VALIDATE_BOOLEAN);
+        $this->mold_change_tolerance = max(0, (float) ($request->mold_change_tolerance ?? 72));
         $this->loadOffDate('asc');
 
         $today = Carbon::now()->toDateString();
@@ -7638,6 +7739,9 @@ class SchedualController extends Controller
         $bestStart = null;
         $bestMoldId = null;
 
+        // Toàn bộ phương án phòng khả thi, dùng cho tuỳ chọn "hạn chế xuống khuôn"
+        $moldCandidates = [];
+
         // tim phòng tối ưu
         $ratio = 1;
 
@@ -7685,6 +7789,19 @@ class SchedualController extends Controller
                 if (empty($filtered)) {
                     continue; // Phòng này không có khuôn lắp vừa → bỏ qua
                 }
+
+                // Hạn chế xuống khuôn: đẩy khuôn đang lắp sẵn của phòng lên đầu danh sách
+                // để checkMoldAvailability() chọn đúng khuôn đó nếu còn trống.
+                if ($this->limit_mold_change) {
+                    $mountedMold = $this->getPreviousMoldInRoom($room->room_id);
+
+                    if ($mountedMold) {
+                        usort($filtered, function ($a, $b) use ($mountedMold) {
+                            return ((int) $b->id === (int) $mountedMold) <=> ((int) $a->id === (int) $mountedMold);
+                        });
+                    }
+                }
+
                 $compatibleMolds = $filtered;
             }
             // Nếu SP chưa khai báo khuôn: $compatibleMolds = null → sắp lịch bình thường
@@ -7705,13 +7822,66 @@ class SchedualController extends Controller
             $candidateStart = is_array($candidate) ? $candidate['start'] : $candidate;
             $candidateMoldId = is_array($candidate) ? $candidate['mold_id'] : null;
 
-            if ($candidateStart !== null && ($bestStart === null || $candidateStart->lt($bestStart))) {
-                $bestRoom = $room->room_id;
-                $bestStart = $candidateStart;
-                $bestMoldId = $candidateMoldId;
-                $bestEnd = $bestStart->copy()->addMinutes($intervalTimeMinutes);
+            if ($candidateStart !== null) {
+
+                $moldCandidates[] = [
+                    'room' => $room->room_id,
+                    'start' => $candidateStart,
+                    'mold_id' => $candidateMoldId,
+                    'interval' => $intervalTimeMinutes,
+                    'c2' => $C2_time_minutes,
+                ];
+
+                if ($bestStart === null || $candidateStart->lt($bestStart)) {
+                    $bestRoom = $room->room_id;
+                    $bestStart = $candidateStart;
+                    $bestMoldId = $candidateMoldId;
+                    $bestEnd = $bestStart->copy()->addMinutes($intervalTimeMinutes);
+                    $start_clearning = $bestEnd->copy();
+                    $end_clearning = $bestStart->copy()->addMinutes($intervalTimeMinutes + $C2_time_minutes);
+                }
+            }
+        }
+
+        // ===== Hạn chế xuống khuôn =====
+        // Trong các phòng trống không trễ quá ngưỡng, chọn phòng sớm nhất mà sự kiện ĐG
+        // liền trước dùng đúng mã khuôn sẽ gán → không phải tháo/lắp lại khuôn.
+        if ($this->limit_mold_change && $stageCode == 7 && $bestStart !== null) {
+
+            $toleranceMinutes = (float) $this->mold_change_tolerance * 60;
+
+            $keepMoldPick = null;
+
+            foreach ($moldCandidates as $c) {
+
+                if (empty($c['mold_id'])) {
+                    continue;
+                }
+
+                // Trễ hơn phương án sớm nhất quá ngưỡng → bỏ, ưu tiên tiến độ
+                $delay = $bestStart->diffInMinutes($c['start'], false);
+
+                if ($delay > $toleranceMinutes) {
+                    continue;
+                }
+
+                $prevMold = $this->getPreviousMoldInRoom($c['room'], $c['start']);
+
+                if ($prevMold && (int) $prevMold === (int) $c['mold_id']) {
+
+                    if ($keepMoldPick === null || $c['start']->lt($keepMoldPick['start'])) {
+                        $keepMoldPick = $c;
+                    }
+                }
+            }
+
+            if ($keepMoldPick !== null) {
+                $bestRoom = $keepMoldPick['room'];
+                $bestStart = $keepMoldPick['start'];
+                $bestMoldId = $keepMoldPick['mold_id'];
+                $bestEnd = $bestStart->copy()->addMinutes($keepMoldPick['interval']);
                 $start_clearning = $bestEnd->copy();
-                $end_clearning = $bestStart->copy()->addMinutes($intervalTimeMinutes + $C2_time_minutes);
+                $end_clearning = $bestStart->copy()->addMinutes($keepMoldPick['interval'] + $keepMoldPick['c2']);
             }
         }
 
@@ -8130,6 +8300,9 @@ class SchedualController extends Controller
         $bestTotalMunites = 0;
         $bestCompatibleMolds = null;
 
+        // Toàn bộ phương án phòng khả thi, dùng cho tuỳ chọn "hạn chế xuống khuôn"
+        $moldCandidates = [];
+
         // tim phòng tối ưu
         $campaign_ratio = 1;
         if ($stageCode == 7) {
@@ -8177,6 +8350,19 @@ class SchedualController extends Controller
                 if (empty($filtered)) {
                     continue; // Phòng này không có khuôn lắp vừa → bỏ qua
                 }
+
+                // Hạn chế xuống khuôn: đẩy khuôn đang lắp sẵn của phòng lên đầu danh sách
+                // để checkMoldAvailability() chọn đúng khuôn đó nếu còn trống.
+                if ($this->limit_mold_change) {
+                    $mountedMold = $this->getPreviousMoldInRoom($room->room_id);
+
+                    if ($mountedMold) {
+                        usort($filtered, function ($a, $b) use ($mountedMold) {
+                            return ((int) $b->id === (int) $mountedMold) <=> ((int) $a->id === (int) $mountedMold);
+                        });
+                    }
+                }
+
                 $compatibleMolds = $filtered;
             }
             // Nếu SP chưa khai báo khuôn: $compatibleMolds = null → sắp lịch bình thường
@@ -8203,12 +8389,64 @@ class SchedualController extends Controller
             $candidateStart = is_array($candidate) ? $candidate['start'] : $candidate;
             $candidateMoldId = is_array($candidate) ? $candidate['mold_id'] : null;
 
-            if ($candidateStart !== null && ($bestStart === null || $candidateStart->lt($bestStart))) {
-                $bestRoom = $room;
-                $bestStart = $candidateStart;
-                $bestMoldId = $candidateMoldId;
-                $bestTotalMunites = $totalMunites;
-                $bestCompatibleMolds = $compatibleMolds;
+            if ($candidateStart !== null) {
+
+                $moldCandidates[] = [
+                    'room' => $room,
+                    'start' => $candidateStart,
+                    'mold_id' => $candidateMoldId,
+                    'total' => $totalMunites,
+                    'molds' => $compatibleMolds,
+                ];
+
+                if ($bestStart === null || $candidateStart->lt($bestStart)) {
+                    $bestRoom = $room;
+                    $bestStart = $candidateStart;
+                    $bestMoldId = $candidateMoldId;
+                    $bestTotalMunites = $totalMunites;
+                    $bestCompatibleMolds = $compatibleMolds;
+                }
+            }
+        }
+
+        // ===== Hạn chế xuống khuôn =====
+        // Trong các phòng trống không trễ quá ngưỡng, chọn phòng sớm nhất mà sự kiện ĐG
+        // liền trước dùng đúng mã khuôn sẽ gán → không phải tháo/lắp lại khuôn.
+        if ($this->limit_mold_change && $stageCode == 7 && $bestStart !== null) {
+
+            $toleranceMinutes = (float) $this->mold_change_tolerance * 60;
+
+            $keepMoldPick = null;
+
+            foreach ($moldCandidates as $c) {
+
+                if (empty($c['mold_id'])) {
+                    continue;
+                }
+
+                // Trễ hơn phương án sớm nhất quá ngưỡng → bỏ, ưu tiên tiến độ
+                $delay = $bestStart->diffInMinutes($c['start'], false);
+
+                if ($delay > $toleranceMinutes) {
+                    continue;
+                }
+
+                $prevMold = $this->getPreviousMoldInRoom($c['room']->room_id, $c['start']);
+
+                if ($prevMold && (int) $prevMold === (int) $c['mold_id']) {
+
+                    if ($keepMoldPick === null || $c['start']->lt($keepMoldPick['start'])) {
+                        $keepMoldPick = $c;
+                    }
+                }
+            }
+
+            if ($keepMoldPick !== null) {
+                $bestRoom = $keepMoldPick['room'];
+                $bestStart = $keepMoldPick['start'];
+                $bestMoldId = $keepMoldPick['mold_id'];
+                $bestTotalMunites = $keepMoldPick['total'];
+                $bestCompatibleMolds = $keepMoldPick['molds'];
             }
         }
 

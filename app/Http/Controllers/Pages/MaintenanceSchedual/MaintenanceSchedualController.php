@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Pages\MaintenanceSchedual;
 
 use App\Http\Controllers\Pages\Schedual\SchedualController;
+use App\Support\LeadConfirmation;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -1039,6 +1040,9 @@ class MaintenanceSchedualController extends SchedualController
                 //         }
                 //     }
                 // }
+
+                // Lịch đã đổi thì xác nhận cũ của Lead không còn giá trị
+                LeadConfirmation::reset($allAffectedIds);
 
                 // Ghi lịch sử cho từng thiết bị nếu đã submit (stage_plan_history)
                 foreach ($allAffectedIds as $id) {

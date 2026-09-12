@@ -55,7 +55,8 @@
                                 id="lead-total-count">{{ $leadTotalCount }}</span> lịch
                             @if ($canConfirmLead)
                                 <br><span style="font-size: 12px; font-style: italic;">
-                                    Tick chọn từng lịch rồi bấm "Xác Nhận" ở tiêu đề công đoạn
+                                    Tick chọn từng lịch rồi bấm "Xác Nhận" ở tiêu đề công đoạn.
+                                    Có thể giữ chuột và rê qua nhiều lịch để chọn nhanh.
                                 </span>
                             @endif
                         </div>
@@ -654,6 +655,17 @@
         box-shadow: 0 0 0 3px rgba(0, 58, 79, .18);
     }
 
+    /* Đang kéo chuột để quét chọn nhiều lịch: chặn bôi đen chữ khi rê qua */
+    body.lead-dragging,
+    body.lead-dragging * {
+        user-select: none !important;
+        -webkit-user-select: none !important;
+    }
+
+    body.lead-dragging .event-card {
+        cursor: pointer;
+    }
+
     .lead-confirm-busy {
         opacity: 0.4 !important;
         pointer-events: none;
@@ -1012,6 +1024,68 @@
                 .prop('checked', $me.prop('checked'));
             leadRefreshRoom($me.attr('data-room'));
             leadRefreshStage($me.attr('data-stage'));
+        });
+
+        // --- Kéo chuột để quét chọn nhanh nhiều lịch cùng lúc ---
+        // Bấm giữ chuột trái tại 1 ô tick rồi rê qua các ô khác: tất cả ô đi qua
+        // sẽ được đặt về cùng trạng thái với ô bấm đầu tiên (đang tắt -> bật, đang bật -> tắt).
+        //
+        // Lưu ý: với 1 cú bấm thường (không rê chuột đi đâu cả) thì để nguyên hành vi
+        // mặc định của checkbox xử lý (không can thiệp), tránh vừa tự đổi bằng JS vừa bị
+        // trình duyệt tự toggle lại theo click gốc, gây lật lại trạng thái vừa chọn.
+        // Chỉ khi phát hiện chuột thực sự di chuyển sang phần tử khác trong lúc giữ nút
+        // (sự kiện mouseenter ở nơi khác) mới coi là "đang kéo" và tự xử lý toàn bộ.
+        var leadDragging = false;
+        var leadDragMoved = false;
+        var leadDragValue = false;
+        var leadDragStartEl = null;
+
+        function leadSetCheck(el, value) {
+            var $el = $(el);
+            if ($el.prop('checked') !== value) {
+                $el.prop('checked', value).trigger('change');
+            }
+        }
+
+        function leadDragEnter(checkEl) {
+            if (!leadDragging) return;
+            if (!leadDragMoved) {
+                leadDragMoved = true;
+                $('body').addClass('lead-dragging');
+                // Chuột đã rời khỏi ô bắt đầu kéo nên click gốc sẽ không còn được trình
+                // duyệt bắn ra nữa (mousedown và mouseup khác phần tử) => tự áp trạng thái
+                // cho ô bắt đầu kéo ngay khi xác nhận đây là một thao tác kéo thật sự.
+                leadSetCheck(leadDragStartEl, leadDragValue);
+            }
+            leadSetCheck(checkEl, leadDragValue);
+        }
+
+        $(document).on('mousedown', '.lead-confirm-check', function(e) {
+            if (e.which !== 1) return; // chỉ xử lý chuột trái
+            leadDragging = true;
+            leadDragMoved = false;
+            leadDragValue = !this.checked;
+            leadDragStartEl = this;
+        });
+
+        // Rê qua thẻ lịch (không chỉ đúng ô tick nhỏ) cũng tính là quét chọn,
+        // để không cần rê chuột thật chính xác vào ô vuông tick.
+        $(document).on('mouseenter', '.event-card', function() {
+            if (!leadDragging) return;
+            var $check = $(this).find('.lead-confirm-check').first();
+            if ($check.length) leadDragEnter($check[0]);
+        });
+
+        $(document).on('mouseenter', '.lead-confirm-check', function() {
+            leadDragEnter(this);
+        });
+
+        $(document).on('mouseup', function() {
+            if (leadDragging) {
+                leadDragging = false;
+                leadDragMoved = false;
+                $('body').removeClass('lead-dragging');
+            }
         });
 
         // --- Chọn tất cả lịch của một phòng ---

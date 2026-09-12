@@ -4789,6 +4789,24 @@ const ScheduleTest = () => {
             </label>
           </div>
 
+          <div class="cfg-row">
+            <label class="cfg-label" for="limit_mold_change">Hạn chế xuống khuôn (ĐG):</label>
+            <label class="switch">
+              <input id="limit_mold_change" type="checkbox" checked>
+              <span class="slider round"></span>
+              <span class="switch-labels">
+                <span class="off">No</span>
+                <span class="on">Yes</span>
+              </span>
+            </label>
+          </div>
+
+          <div class="cfg-row" id="mold_tolerance_row">
+            <label class="cfg-label" for="mold_change_tolerance">Cho phép trễ tối đa để giữ khuôn (giờ):</label>
+            <input id="mold_change_tolerance" type="number" min="0" step="1" value="72"
+                   class="swal2-input cfg-input cfg-input--full" name="mold_change_tolerance">
+          </div>
+
         </div>
 
         <!-- Cột phải -->
@@ -5054,6 +5072,14 @@ const ScheduleTest = () => {
                 ? 'block'
                 : 'none';
           });
+        });
+
+        // Chỉ hiện ô ngưỡng trễ khi bật "hạn chế xuống khuôn"
+        const limitMoldEl = document.getElementById('limit_mold_change');
+        const toleranceRow = document.getElementById('mold_tolerance_row');
+
+        limitMoldEl?.addEventListener('change', () => {
+          toleranceRow.style.display = limitMoldEl.checked ? '' : 'none';
         });
 
 
@@ -5339,6 +5365,11 @@ const ScheduleTest = () => {
 
         const prev_orderBy = document.getElementById('prev_orderBy');
         formValues.prev_orderBy = prev_orderBy.checked;
+
+        const limitMoldChange = document.getElementById('limit_mold_change');
+        formValues.limit_mold_change = limitMoldChange?.checked ?? false;
+        formValues.mold_change_tolerance =
+          Number(document.getElementById('mold_change_tolerance')?.value ?? 72) || 0;
 
         const runType = document.querySelector('input[name="sortType"]:checked')?.value;
         formValues.runType = runType;
@@ -6747,6 +6778,12 @@ const ScheduleTest = () => {
           // Hiding/Showing cleaning events locally
           if (isCleaning) {
             classes.push('cleaning-event');
+          }
+
+          // Lead đã xác nhận sẽ chạy đúng lịch này -> tick xanh vắt qua góc trên bên phải
+          // (gắn vào chính khung sự kiện để tâm tick trùng đúng góc, xem calendar.css)
+          if (!isCleaning && Number(arg.event.extendedProps.comfirm_of_lead) === 1) {
+            classes.push('fc-event-lead-confirmed');
           }
 
           // Hiệu ứng bóng mờ màu vàng cho các thay đổi chưa lưu

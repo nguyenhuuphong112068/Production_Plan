@@ -420,6 +420,37 @@ input:checked + .slider:before {
 
 .fc-event-title-container, .fc-event-title { white-space: pre-wrap !important; }
 
+/* Tick xanh "Lead đã xác nhận sẽ chạy đúng lịch này" (cột stage_plan.comfirm_of_lead).
+   Vẽ bằng ::after trên chính khung sự kiện nên tâm tick trùng đúng góc trên bên phải
+   của sự kiện (3/4 diện tích tick nằm ngoài khung). Nội dung bên trong sự kiện có
+   overflow:hidden nên không đặt tick ở đó được. */
+.fc-event.fc-event-lead-confirmed {
+  overflow: visible;
+}
+
+.fc-event.fc-event-lead-confirmed::after {
+  content: "✓";
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  border-radius: 50%;
+  background: #ffffff;
+  color: #16a34a;
+  border: 1px solid #16a34a;
+  font-size: 10px;
+  font-weight: bold;
+  line-height: 1;
+  box-shadow: 0 0 2px rgba(0, 0, 0, .35);
+  pointer-events: none;
+  z-index: 30;
+}
+
 /* Ngăn ngừa sự kiện hover chập chờn khi di chuột qua lại giữa các element con của event */
 .custom-event-content * {
   pointer-events: none;

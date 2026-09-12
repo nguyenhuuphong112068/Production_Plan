@@ -4,18 +4,13 @@ namespace App\Http\Controllers\Pages\Report;
 
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Pages\AuditTrail\AuditTrialController;
+use App\Support\LeadConfirmation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
 class WeeklyProductionScheduleController extends Controller
 {
-    /** Chức năng "Lead xác nhận lịch" chỉ áp dụng cho PX Viên 1 */
-    private const LEAD_CONFIRM_PRODUCTION_CODE = 'PXV1';
-
-    /** Nhóm user được phép bấm xác nhận */
-    private const LEAD_CONFIRM_USER_GROUPS = ['Leader', 'Admin'];
-
     public function index(Request $request)
     {
         $production_code = session('user')['production_code'];
@@ -250,7 +245,7 @@ class WeeklyProductionScheduleController extends Controller
      */
     private function isLeadConfirmScope($production_code)
     {
-        return $production_code === self::LEAD_CONFIRM_PRODUCTION_CODE;
+        return LeadConfirmation::isScope($production_code);
     }
 
     /**
@@ -259,11 +254,7 @@ class WeeklyProductionScheduleController extends Controller
      */
     private function canConfirmLead($production_code)
     {
-        if (! $this->isLeadConfirmScope($production_code)) {
-            return false;
-        }
-
-        return in_array(session('user')['userGroup'] ?? '', self::LEAD_CONFIRM_USER_GROUPS, true);
+        return LeadConfirmation::canConfirm($production_code);
     }
 
     /**

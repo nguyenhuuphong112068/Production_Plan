@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Pages\Schedual;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
+use App\Support\LeadConfirmation;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use stdClass;
@@ -2258,6 +2259,9 @@ class AutoSchedualController extends Controller
                     'receive_packaging_date' => DB::raw("CASE WHEN received = 0 AND stage_code = 7 THEN '$receiveDate' ELSE receive_packaging_date END"),
                     'receive_second_packaging_date' => DB::raw("CASE WHEN received_second_packaging = 0 AND stage_code = 7 THEN '$receiveDate' ELSE receive_second_packaging_date END"),
                 ]);
+
+            // Lịch đã đổi thì xác nhận cũ của Lead không còn giá trị
+            LeadConfirmation::reset($stageId);
 
             $submit = DB::table('stage_plan')->where('id', $stageId)->value('submit');
 
