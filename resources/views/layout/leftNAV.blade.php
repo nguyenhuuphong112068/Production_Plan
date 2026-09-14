@@ -634,14 +634,15 @@
                                 <p>Chính Sách Sản Lượng</p>
                             </a>
                         </li>
-
-                        {{-- <li class="nav-item">
-                            <a href="{{ route('pages.Schedual.audit.index') }}" class="nav-link">
-                                <i class="far fa-circle nav-icon"></i>
-                                <p>Lịch Sử Thay Đổi Lịch</p>
-                            </a>
-                        </li>
-                        @if (user_has_permission(session('user')['userId'], 'layout_test', 'boolean'))
+                        @if (user_has_permission(session('user')['userId'], 'schedual_audit', 'boolean'))
+                            <li class="nav-item">
+                                <a href="{{ route('pages.Schedual.audit.index') }}" class="nav-link">
+                                    <i class="far fa-circle nav-icon"></i>
+                                    <p>Lịch Sử Thay Đổi Lịch</p>
+                                </a>
+                            </li>
+                        @endif
+                        {{-- @if (user_has_permission(session('user')['userId'], 'layout_test', 'boolean'))
                             <li class="nav-item">
                                 <a href="{{ route('pages.Schedual.audit.compare') }}" class="nav-link">
                                     <i class="far fa-circle nav-icon"></i>
