@@ -12,6 +12,7 @@ use App\Http\Controllers\Pages\Schedual\SchedualReportController;
 use App\Http\Controllers\Pages\Schedual\SchedualWarningController;
 use App\Http\Controllers\Pages\Schedual\SchedualStepController;
 use App\Http\Controllers\Pages\Schedual\SchedualViewController;
+use App\Http\Controllers\Pages\MaintenanceSchedual\MaintenanceAssessmentController;
 use App\Http\Controllers\Pages\MaintenanceSchedual\MaintenanceSchedualController;
 use App\Http\Controllers\Pages\Schedual\ShedualYieldController;
 use App\Http\Controllers\Pages\Schedual\YieldPolicyController;
@@ -114,6 +115,23 @@ Route::prefix('/MaintenanceSchedual')
                 Route::post('cancelSchedule', 'cancelSchedule')->name('cancelSchedule');
                 Route::put('confirmFinish', 'confirmFinish')->name('confirmFinish');
                 Route::put('approveMaintenance', 'approveMaintenance')->name('approveMaintenance');
+        });
+
+Route::get('/maintenance-assessment/{any?}', [MaintenanceAssessmentController::class, 'index'])
+        ->where('any', '.*')
+        ->middleware(CheckLogin::class)
+        ->name('pages.schedual.maintenance_assessment.index');
+
+Route::prefix('/MaintenanceAssessment')
+        ->controller(MaintenanceAssessmentController::class)
+        ->name('pages.schedual.maintenance_assessment.')
+        ->middleware(CheckLogin::class)
+        ->group(function () {
+                Route::get('employees', 'employees')->name('employees');
+                Route::get('detail', 'detail')->name('detail');
+                Route::put('store', 'store')->name('store');
+                Route::put('updateEmployees', 'updateEmployees')->name('updateEmployees');
+                Route::get('monthly', 'monthly')->name('monthly');
         });
 
 

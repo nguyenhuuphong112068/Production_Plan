@@ -14,6 +14,7 @@ import AssignmentCalender from './Pages/AssignmentCalender.jsx';
 import MaintenanceCalender from "./Pages/MaintenanceCalender .jsx";
 import AssignmentChart from "./Pages/AssignmentChart.jsx";
 import WipCoverage from "./Pages/WipCoverage.jsx";
+import MaintenanceAssessment from "./Pages/MaintenanceAssessment.jsx";
 
 
 createRoot(document.getElementById("root")).render(
@@ -23,6 +24,7 @@ createRoot(document.getElementById("root")).render(
       <Route path="/Schedual/wip_coverage" element={<WipCoverage />} />
       <Route path="/assignment" element={<AssignmentCalender />} />
       <Route path="/maintenance-calendar" element={<MaintenanceCalender />} />
+      <Route path="/maintenance-assessment" element={<MaintenanceAssessment />} />
       <Route path="/assignemnt/production/chart" element={<AssignmentChart />} />
     </Routes>
   </BrowserRouter>

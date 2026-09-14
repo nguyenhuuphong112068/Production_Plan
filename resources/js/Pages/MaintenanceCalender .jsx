@@ -71,6 +71,7 @@ const MaintenanceCalender = () => {
   const [loading, setLoading] = useState(false);
   const [authorization, setAuthorization] = useState(false);
   const [authorizationAccept, setAuthorizationAccept] = useState(false);
+  const [authorizationAssessment, setAuthorizationAssessment] = useState(false);
   const [showPersonnel, setShowPersonnel] = useState(false);
   const [heightResource, setHeightResource] = useState("1px");
   const [reasons, setReasons] = useState([]);
@@ -163,6 +164,7 @@ const MaintenanceCalender = () => {
 
         setAuthorization(isAuthorized);
         setAuthorizationAccept(data.authorization_accept);
+        setAuthorizationAssessment(!!data.authorization_assessment);
 
         setEvents(data.events);
         setResources(data.resources);
@@ -360,24 +362,21 @@ const MaintenanceCalender = () => {
   // Cleanup React roots safely
   useEffect(() => {
     return () => {
-      if (fontSizeRootRef.current) {
-        const { root, container, parent } = fontSizeRootRef.current;
+      // Phải xoá ref sau khi unmount, nếu không lần chạy effect kế tiếp (hot reload)
+      // sẽ render vào root đã bị unmount -> "Cannot update an unmounted root"
+      [fontSizeRootRef, searchRootRef].forEach(ref => {
+        if (!ref.current) return;
+
+        const { root, container, parent } = ref.current;
+        ref.current = null;
+
         setTimeout(() => {
           try { root.unmount(); } catch (e) { }
         }, 0);
         if (parent && parent.contains(container)) {
           parent.removeChild(container);
         }
-      }
-      if (searchRootRef.current) {
-        const { root, container, parent } = searchRootRef.current;
-        setTimeout(() => {
-          try { root.unmount(); } catch (e) { }
-        }, 0);
-        if (parent && parent.contains(container)) {
-          parent.removeChild(container);
-        }
-      }
+      });
     };
   }, []);
 
@@ -524,6 +523,7 @@ const MaintenanceCalender = () => {
       const isAuthorized = cleanData.authorization_scheduler;
       setAuthorization(isAuthorized);
       setAuthorizationAccept(cleanData.authorization_accept);
+      setAuthorizationAssessment(!!cleanData.authorization_assessment);
 
       setEvents(cleanData.events);
       setResources(cleanData.resources);
@@ -1013,6 +1013,283 @@ const MaintenanceCalender = () => {
       });
   };
 
+  // ===== Đánh giá công tác bảo trì - hiệu chuẩn =====
+  const employeesCacheRef = useRef(null);
+
+  const loadEmployees = async () => {
+    if (employeesCacheRef.current) return employeesCacheRef.current;
+    const { data } = await axios.get('/MaintenanceAssessment/employees');
+    employeesCacheRef.current = data.employees || [];
+    return employeesCacheRef.current;
+  };
+
+  const escapeHtml = (value) => String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+
+  const handleAssessmentClick = (event) => {
+    // Id sự kiện có dạng "12,13-maintenance" khi bảo trì gộp nhiều thiết bị
+    const stagePlanIds = String(event.id).split('-')[0].split(',').filter(Boolean);
+    if (stagePlanIds.length === 0) return;
+
+    return openAssessmentModal({ event, stagePlanIds });
+  };
+
+  // Đánh giá một công việc bảo trì không có trên lịch
+  const handleManualAssessment = () => openAssessmentModal({ event: null, stagePlanIds: [] });
+
+  const openAssessmentModal = async ({ event, stagePlanIds }) => {
+    const isManual = stagePlanIds.length === 0;
+
+    // Chỉ hiện popup chờ khi thật sự phải gọi server, tránh nó chồng lên modal chính
+    if (!employeesCacheRef.current || !isManual) {
+      Swal.fire({ title: 'Đang tải dữ liệu...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+    }
+
+    let employees = [];
+    let assessment = null;
+    try {
+      const [empList, detail] = await Promise.all([
+        loadEmployees(),
+        isManual
+          ? Promise.resolve(null)
+          : axios.get('/MaintenanceAssessment/detail', { params: { stage_plan_ids: stagePlanIds.join(',') } })
+      ]);
+      employees = empList;
+      assessment = detail?.data?.assessment ?? null;
+    } catch (err) {
+      Swal.fire('Lỗi', err.response?.data?.message || 'Không tải được dữ liệu đánh giá.', 'error');
+      return;
+    }
+
+    const selectedCodes = assessment?.employees_code || [];
+
+    const roomList = (resources || []).filter(res => !res.is_personnel_sub);
+    const roomLabel = (res) => `${res.code || res.title} - ${res.title}`;
+    const roomOptions = roomList
+      .map(res => `<option value="${escapeHtml(roomLabel(res))}"></option>`)
+      .join('');
+
+    const required = '<span style="color:#dc3545;"> *</span>';
+
+    const contextHtml = isManual
+      ? `
+          <div style="font-size:12px; color:#888; margin-bottom:10px;">Các mục có dấu <span style="color:#dc3545;">*</span> là bắt buộc.</div>
+
+          <div style="display:flex; gap:10px; margin-bottom:10px;">
+            <div style="flex:1;">
+              <label style="display:block; font-weight:bold; margin-bottom:4px;">Thời điểm thực hiện:${required}</label>
+              <input type="datetime-local" id="assess-date" value="${moment().format('YYYY-MM-DDTHH:mm')}"
+                style="width:100%; padding:6px 8px; border:1px solid #d9d9d9; border-radius:4px; font-size:13px;">
+            </div>
+            <div style="flex:1;">
+              <label style="display:block; font-weight:bold; margin-bottom:4px;">Loại công việc:${required}</label>
+              <select id="assess-type" style="width:100%; padding:6px 8px; border:1px solid #d9d9d9; border-radius:4px; font-size:13px;">
+                <option value="Bảo trì">Bảo trì</option>
+                <option value="Hiệu chuẩn">Hiệu chuẩn</option>
+                <option value="Tiện ích">Tiện ích</option>
+              </select>
+            </div>
+          </div>
+
+          <label style="display:block; font-weight:bold; margin-bottom:4px;">Phòng / Khu vực:${required}</label>
+          <input type="text" id="assess-room" list="assess-room-options" autocomplete="off"
+            placeholder="Chọn phòng có sẵn hoặc nhập khu vực tuỳ ý (VD: Kho NL, Hành lang tầng 2...)"
+            style="width:100%; padding:6px 8px; border:1px solid #d9d9d9; border-radius:4px; font-size:13px; margin-bottom:10px;">
+          <datalist id="assess-room-options">${roomOptions}</datalist>
+
+          <label style="display:block; font-weight:bold; margin-bottom:4px;">Thiết bị / Nội dung công việc:${required}</label>
+          <input type="text" id="assess-equipment" placeholder="VD: PDP-118 - Sửa máy bấm vỉ ngoài kế hoạch"
+            style="width:100%; padding:6px 8px; border:1px solid #d9d9d9; border-radius:4px; font-size:13px; margin-bottom:14px;">
+        `
+      : `
+          <div style="padding: 8px 10px; background: #f0f7ff; border-left: 3px solid #3085d6; border-radius: 4px; font-size: 13px; margin-bottom: 14px;">
+            ${event.title || ''}
+            <div style="color:#666; margin-top: 4px;">${moment(event.start).format('HH:mm DD/MM/YYYY')} ➝ ${moment(event.end).format('HH:mm DD/MM/YYYY')}</div>
+          </div>
+        `;
+
+    const employeeRows = employees.map(emp => `
+      <label class="assess-emp-row" data-search="${escapeHtml((emp.code + ' ' + emp.name).toLowerCase())}" data-dept="${escapeHtml((emp.departments || []).join(','))}">
+        <input type="checkbox" class="assess-emp-cb" value="${escapeHtml(emp.code)}" ${selectedCodes.includes(emp.code) ? 'checked' : ''}>
+        <span><b>${escapeHtml(emp.code)}</b> - ${escapeHtml(emp.name)}</span>
+        ${(emp.departments || []).map(d => `<span style="font-size:11px; background:#eef2ff; border:1px solid #c7d2fe; border-radius:8px; padding:0 6px;">${escapeHtml(d)}</span>`).join('')}
+      </label>
+    `).join('');
+
+    // Hiệu chuẩn do QA thực hiện, bảo trì / tiện ích do EN thực hiện
+    const defaultDept = String(event?.extendedProps?.code || '').toUpperCase().endsWith('_HC') ? 'QA' : 'EN';
+
+    const result = await Swal.fire({
+      title: isManual ? 'Đánh giá bảo trì ngoài kế hoạch' : 'Đánh giá công tác bảo trì - hiệu chuẩn',
+      width: '640px',
+      html: `
+        <div style="text-align: left;">
+          ${contextHtml}
+
+          <label style="display:block; font-weight:bold; margin-bottom:6px;">Mức độ hài lòng:${required}</label>
+          <div id="assess-stars" style="font-size: 34px; line-height: 1; color: #f5b301; user-select: none;">
+            ${[1, 2, 3, 4, 5].map(v => `<span class="assess-star" data-value="${v}" style="cursor:pointer; padding: 0 2px;">☆</span>`).join('')}
+            <span id="assess-star-text" style="font-size: 14px; color: #666; margin-left: 8px;"></span>
+          </div>
+
+          <label style="display:block; font-weight:bold; margin: 14px 0 6px;">Nhận xét:${isManual ? required : ''}</label>
+          <textarea id="assess-comment" rows="3" style="width:100%; padding:8px; border:1px solid #d9d9d9; border-radius:4px; font-size:13px;"
+            placeholder="Nhận xét về chất lượng lần bảo trì - hiệu chuẩn này...">${escapeHtml(assessment?.comment)}</textarea>
+
+          <label style="display:block; font-weight:bold; margin: 14px 0 6px;">Nhân viên thực hiện:</label>
+          <div id="assess-dept-filter" style="display:flex; gap:14px; margin-bottom:6px; font-size:13px;">
+            ${[['EN', 'Bảo trì (EN)'], ['QA', 'Hiệu chuẩn (QA)'], ['', 'Tất cả']].map(([value, label]) => `
+              <label style="display:flex; align-items:center; gap:5px; font-weight:normal; margin:0; cursor:pointer;">
+                <input type="radio" name="assess-dept" value="${value}" ${value === defaultDept ? 'checked' : ''}> ${label}
+              </label>
+            `).join('')}
+          </div>
+          <input type="text" id="assess-emp-search" placeholder="Tìm theo mã hoặc tên nhân viên..."
+            style="width:100%; padding:6px 8px; border:1px solid #d9d9d9; border-radius:4px; font-size:13px; margin-bottom:6px;">
+          <div id="assess-emp-list" style="max-height: 170px; overflow-y:auto; border:1px solid #e0e0e0; border-radius:4px; padding:4px; font-size:13px;">
+            ${employeeRows || '<div style="padding:8px; color:#999;">Không có nhân viên nào.</div>'}
+          </div>
+          <div id="assess-emp-count" style="font-size:12px; color:#666; margin-top:4px;"></div>
+
+          ${assessment ? `<div style="font-size:12px; color:#888; margin-top:10px;">Đánh giá bởi <b>${escapeHtml(assessment.updated_by || assessment.created_by)}</b> lúc ${moment(assessment.updated_at || assessment.created_at).format('HH:mm DD/MM/YYYY')}</div>` : ''}
+        </div>
+      `,
+      focusConfirm: false,
+      showCancelButton: true,
+      confirmButtonText: 'Lưu đánh giá',
+      cancelButtonText: 'Hủy',
+      didOpen: () => {
+        // Popup chờ trước đó có thể để lại trạng thái loading làm khoá nút Lưu
+        Swal.hideLoading();
+
+        let star = assessment?.star_rating || 0;
+        const starEls = Array.from(document.querySelectorAll('.assess-star'));
+        const starText = document.getElementById('assess-star-text');
+        const labels = ['', 'Rất không hài lòng', 'Không hài lòng', 'Bình thường', 'Hài lòng', 'Rất hài lòng'];
+
+        const paint = (value) => {
+          starEls.forEach(el => {
+            el.textContent = Number(el.dataset.value) <= value ? '★' : '☆';
+          });
+          starText.textContent = value ? `${value}/5 - ${labels[value]}` : '';
+        };
+
+        starEls.forEach(el => {
+          el.addEventListener('mouseenter', () => paint(Number(el.dataset.value)));
+          el.addEventListener('click', () => {
+            star = Number(el.dataset.value);
+            document.getElementById('assess-stars').dataset.value = star;
+            paint(star);
+          });
+        });
+        document.getElementById('assess-stars').addEventListener('mouseleave', () => paint(star));
+        document.getElementById('assess-stars').dataset.value = star;
+        paint(star);
+
+        const countEl = document.getElementById('assess-emp-count');
+        const searchInput = document.getElementById('assess-emp-search');
+        const empRows = Array.from(document.querySelectorAll('.assess-emp-row'));
+
+        const applyFilter = () => {
+          const dept = document.querySelector('input[name="assess-dept"]:checked')?.value || '';
+          const keyword = searchInput.value.trim().toLowerCase();
+          let shown = 0;
+
+          empRows.forEach(row => {
+            const checked = row.querySelector('.assess-emp-cb').checked;
+            const matchDept = !dept || (row.dataset.dept || '').split(',').includes(dept);
+            const matchKeyword = !keyword || row.dataset.search.includes(keyword);
+            // Người đã chọn luôn hiển thị để không bị bộ lọc che mất
+            const visible = checked || (matchDept && matchKeyword);
+            row.style.display = visible ? 'flex' : 'none';
+            if (visible) shown++;
+          });
+
+          const n = empRows.filter(row => row.querySelector('.assess-emp-cb').checked).length;
+          countEl.textContent = `${n ? `Đã chọn ${n} nhân viên` : 'Chưa chọn nhân viên'} · đang hiển thị ${shown}/${empRows.length}`;
+        };
+
+        document.getElementById('assess-emp-list').addEventListener('change', applyFilter);
+        document.getElementById('assess-dept-filter').addEventListener('change', applyFilter);
+        searchInput.addEventListener('input', applyFilter);
+
+        // Loại công việc quyết định bộ phận thực hiện nên đổi loại thì đổi luôn bộ lọc
+        const typeSelect = document.getElementById('assess-type');
+        if (typeSelect) {
+          typeSelect.addEventListener('change', () => {
+            const dept = typeSelect.value === 'Hiệu chuẩn' ? 'QA' : 'EN';
+            const radio = document.querySelector(`input[name="assess-dept"][value="${dept}"]`);
+            if (radio) radio.checked = true;
+            applyFilter();
+          });
+        }
+
+        applyFilter();
+      },
+      preConfirm: () => {
+        const star = Number(document.getElementById('assess-stars').dataset.value || 0);
+        if (!star) {
+          Swal.showValidationMessage('Vui lòng chọn số sao đánh giá.');
+          return false;
+        }
+
+        const payload = {
+          star_rating: star,
+          comment: document.getElementById('assess-comment').value.trim(),
+          employees_code: Array.from(document.querySelectorAll('.assess-emp-cb:checked')).map(cb => cb.value),
+        };
+
+        if (isManual) {
+          // Ô phòng nhận cả lựa chọn có sẵn lẫn khu vực tự nhập: khớp danh mục thì lưu id, không thì lưu chữ
+          const roomInput = document.getElementById('assess-room').value.trim();
+          const matchedRoom = roomList.find(res => [roomLabel(res), String(res.code ?? ''), String(res.title ?? '')]
+            .some(value => value.toLowerCase() === roomInput.toLowerCase()));
+
+          payload.assessment_date = document.getElementById('assess-date').value;
+          payload.room_id = matchedRoom ? matchedRoom.id : null;
+          payload.room_name = matchedRoom ? null : (roomInput || null);
+          payload.equipment_name = document.getElementById('assess-equipment').value.trim();
+          payload.type_name = document.getElementById('assess-type').value;
+
+          if (!payload.assessment_date) {
+            Swal.showValidationMessage('Vui lòng chọn thời điểm thực hiện.');
+            return false;
+          }
+          if (!payload.room_id && !payload.room_name) {
+            Swal.showValidationMessage('Vui lòng chọn hoặc nhập phòng / khu vực.');
+            return false;
+          }
+          if (!payload.equipment_name) {
+            Swal.showValidationMessage('Vui lòng nhập thiết bị / nội dung công việc.');
+            return false;
+          }
+          if (!payload.comment) {
+            Swal.showValidationMessage('Vui lòng nhập nhận xét.');
+            return false;
+          }
+        }
+
+        return payload;
+      }
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      const { data } = await axios.put('/MaintenanceAssessment/store', {
+        stage_plan_ids: stagePlanIds,
+        ...result.value
+      });
+
+      Swal.fire({ icon: 'success', title: data.message || 'Đã lưu đánh giá.', timer: 1500, showConfirmButton: false });
+    } catch (err) {
+      Swal.fire('Lỗi', err.response?.data?.message || 'Không lưu được đánh giá.', 'error');
+    }
+  };
+
   const handleEditEventClick = (event) => {
 
     if (!authorization) return;
@@ -1262,6 +1539,11 @@ const MaintenanceCalender = () => {
   /// Xử lý chọn 1 sự kiện -> selectedEvents
   const handleEventClick = (clickInfo) => {
     const event = clickInfo.event;
+
+    // Nút đánh giá đã có listener riêng trong eventDidMount, kể cả khi lịch đã hoàn thành
+    if (clickInfo.jsEvent && clickInfo.jsEvent.target.closest('.assess-single-event-btn')) {
+      return;
+    }
 
     // Chặn tất cả tương tác nếu lịch đã hoàn thành
     if (event.extendedProps.finished == 1) {
@@ -1704,12 +1986,24 @@ const MaintenanceCalender = () => {
 
     if (authorization && props.finished == 0 && props.tank == 0 && props.stage_code == 8) {
       html += `
-        <button 
+        <button
           class="edit-single-event-btn"
           data-event-id="${event.id}"
           title="Sửa nhanh"
         >
           ✏️
+        </button>
+      `;
+    }
+
+    if (authorizationAssessment && props.stage_code == 8 && !props.is_clearning) {
+      html += `
+        <button
+          class="assess-single-event-btn"
+          data-event-id="${event.id}"
+          title="Đánh giá công tác bảo trì - hiệu chuẩn"
+        >
+          ⭐
         </button>
       `;
     }
@@ -2009,7 +2303,7 @@ const MaintenanceCalender = () => {
         }}
         //hiddenTheory 
         headerToolbar={{
-          left: `customPre,myToday,customNext noteModal hiddenProduction togglePersonnel${authorization ? ' changeSchedualer unSelect confirmFinish Submit' : ''}${authorizationAccept ? ' approveMaintenance' : ''}`,
+          left: `customPre,myToday,customNext noteModal hiddenProduction togglePersonnel${authorizationAssessment ? ' newAssessment' : ''}${authorization ? ' changeSchedualer unSelect confirmFinish Submit' : ''}${authorizationAccept ? ' approveMaintenance' : ''}`,
           center: 'title',
           right: `fontSizeBox searchBox slotDuration customDay,customWeek,customMonth,customQuarter${authorization ? ' customList' : ''}` //customYear
         }}
@@ -2112,6 +2406,11 @@ const MaintenanceCalender = () => {
             click: toggleNoteModal,
             hint: 'Ẩn/ Hiện chú thích màu của lịch'
           },
+          newAssessment: {
+            text: '⭐',
+            click: handleManualAssessment,
+            hint: 'Tạo đánh giá cho công việc bảo trì - hiệu chuẩn không có trên lịch'
+          },
           hiddenProduction: {
             text: '🏭',
             click: toggleProductionEvents,
@@ -2201,6 +2500,15 @@ const MaintenanceCalender = () => {
           if (editBtn) {
             editBtn.addEventListener('click', (e) => {
               handleEditEventClick(info.event);
+            });
+          }
+
+          // Nút đánh giá công tác bảo trì (mở được cả với lịch đã hoàn thành)
+          const assessBtn = info.el.querySelector('.assess-single-event-btn');
+          if (assessBtn) {
+            assessBtn.addEventListener('click', (e) => {
+              e.stopPropagation();
+              handleAssessmentClick(info.event);
             });
           }
 

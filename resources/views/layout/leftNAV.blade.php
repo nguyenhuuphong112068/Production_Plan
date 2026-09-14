@@ -668,9 +668,9 @@
                 </li>
 
                 <li
-                    class="nav-item {{ str_contains(url()->current(), 'maintenance-weekly-report') || str_contains(url()->current(), 'maintenance-calendar') ? 'menu-open' : '' }}">
+                    class="nav-item {{ str_contains(url()->current(), 'maintenance-weekly-report') || str_contains(url()->current(), 'maintenance-calendar') || str_contains(url()->current(), 'maintenance-assessment') ? 'menu-open' : '' }}">
                     <a href="#"
-                        class="nav-link {{ str_contains(url()->current(), 'maintenance-weekly-report') || str_contains(url()->current(), 'maintenance-calendar') ? 'active' : '' }}">
+                        class="nav-link {{ str_contains(url()->current(), 'maintenance-weekly-report') || str_contains(url()->current(), 'maintenance-calendar') || str_contains(url()->current(), 'maintenance-assessment') ? 'active' : '' }}">
                         <i class="nav-icon fas fa-tools"></i>
                         <p>
                             Lịch HC-BT
@@ -693,6 +693,16 @@
                                 <p> Lịch HC-BT Tuần </p>
                             </a>
                         </li>
+
+                        @if (user_has_permission(session('user')['userId'], 'maintenance_assessment_view', 'boolean'))
+                            <li class="nav-item">
+                                <a href="/maintenance-assessment"
+                                    class="nav-link {{ str_contains(url()->current(), 'maintenance-assessment') ? 'active' : '' }}">
+                                    <i class="far fa-circle nav-icon"></i>
+                                    <p style="color: red;">Đánh Giá HC-BT</p>
+                                </a>
+                            </li>
+                        @endif
                     </ul>
                 </li>
 

@@ -120,6 +120,7 @@ class MaintenanceSchedualController extends SchedualController
             $authorization = session('user')['userGroup'];
             $authorization_scheduler = user_has_permission($UesrID, 'plan_maintenance_scheduler', 'boolean');
             $authorization_accept = user_has_permission($UesrID, 'plan_maintenance_accept', 'boolean');
+            $authorization_assessment = user_has_permission($UesrID, 'maintenance_assessment_create', 'boolean');
 
 
             return response()->json([
@@ -146,6 +147,7 @@ class MaintenanceSchedualController extends SchedualController
                 'currentPassword' => session('user')['passWord'] ?? '',
                 'authorization_accept' => $authorization_accept,
                 'authorization_scheduler' => $authorization_scheduler,
+                'authorization_assessment' => $authorization_assessment,
 
             ]);
         } catch (\Throwable $e) {
