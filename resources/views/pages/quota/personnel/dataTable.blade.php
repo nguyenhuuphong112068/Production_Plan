@@ -485,10 +485,13 @@
                                 @endforeach
                             </select>
                         </div>
-                        <div class="col-md-2">
-                            <a href="{{ url()->current() }}" class="btn btn-sm btn-secondary shadow-sm mb-0">
+                        <div class="col-md-auto d-flex align-items-end mt-2 mt-md-0">
+                            <a href="{{ url()->current() }}" class="btn btn-sm btn-secondary shadow-sm mr-2 mb-0">
                                 <i class="fas fa-undo"></i> Reset
                             </a>
+                            <button type="button" id="btn-export-excel" class="btn btn-sm btn-success shadow-sm mb-0">
+                                <i class="fas fa-file-excel mr-1"></i> Xuất Excel
+                            </button>
                         </div>
                     </div>
                 </form>
@@ -997,6 +1000,7 @@
 <script src="{{ asset('js/popper.min.js') }}"></script>
 <script src="{{ asset('js/bootstrap.min.js') }}"></script>
 <script src="{{ asset('js/sweetalert2.all.min.js') }}"></script>
+<script src="{{ asset('assets/plugins/local_cdn/xlsx.bundle.js') }}"></script>
 <script src="{{ asset('assets/vendor/select2/select2.min.js') }}"></script>
 
 
@@ -1969,6 +1973,337 @@
                     Swal.fire('Lỗi', 'Không thể cập nhật trạng thái!', 'error');
                 }
             });
+        });
+
+        // --- XỬ LÝ XUẤT FILE EXCEL DỮ LIỆU ĐỊNH MỨC NHÂN VIÊN ĐANG LỌC ---
+        $('#btn-export-excel').click(function() {
+            const $btn = $(this);
+            const originalHtml = $btn.html();
+            $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Đang xuất...');
+
+            setTimeout(function() {
+                try {
+                    const table = $('#data_table_personnel').DataTable();
+                    const filteredRows = table.rows({ search: 'applied' }).nodes();
+
+                    if (!filteredRows || filteredRows.length === 0) {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Không có dữ liệu',
+                            text: 'Không tìm thấy nhân viên nào phù hợp với bộ lọc hiện tại để xuất Excel!'
+                        });
+                        $btn.prop('disabled', false).html(originalHtml);
+                        return;
+                    }
+
+                    // Thu thập thông tin bộ lọc đang áp dụng
+                    const selectedGroupText = $('select[name="group_id"] option:selected').text().trim();
+                    const selectedRoomText = $('select[name="room_id"] option:selected').text().trim();
+                    const searchKey = (table.search() || '').trim();
+
+                    let filterSummaryParts = [];
+                    if ($('select[name="group_id"]').val()) filterSummaryParts.push("Tổ: " + selectedGroupText);
+                    if ($('select[name="room_id"]').val()) filterSummaryParts.push("Phòng: " + selectedRoomText);
+                    if (searchKey) filterSummaryParts.push("Tìm kiếm: \"" + searchKey + "\"");
+                    const filterSummary = filterSummaryParts.length > 0 ? filterSummaryParts.join(" | ") : "Tất cả nhân sự";
+
+                    const currentDep = "{{ $currentDepartment }}";
+                    const now = new Date();
+                    const exportTime = ('0' + now.getDate()).slice(-2) + '/' + ('0' + (now.getMonth() + 1)).slice(-2) + '/' + now.getFullYear() + ' ' + ('0' + now.getHours()).slice(-2) + ':' + ('0' + now.getMinutes()).slice(-2);
+
+                    // Thu thập dữ liệu nhân sự & định mức
+                    let empList = [];
+                    $(filteredRows).each(function() {
+                        const $tr = $(this);
+                        const empCode = $tr.find('td:nth-child(2)').text().trim();
+                        const empName = $tr.find('td:nth-child(3) .font-weight-bold').first().text().trim();
+
+                        const isMaternity = $tr.find('.toggle-maternity-leave').is(':checked');
+                        const isLongLeave = $tr.find('.toggle-long-leave').is(':checked');
+                        let leaveStatus = "Bình thường";
+                        if (isMaternity && isLongLeave) leaveStatus = "Nghỉ thai sản & Dài hạn";
+                        else if (isMaternity) leaveStatus = "Đang nghỉ thai sản";
+                        else if (isLongLeave) leaveStatus = "Đang nghỉ phép dài hạn";
+
+                        const workshop = $tr.find('td:nth-child(4)').text().trim();
+
+                        let groups = [];
+                        const $subRows = $tr.find('td:nth-child(5) > table > tbody > tr, td:nth-child(5) > table > tr');
+
+                        $subRows.each(function() {
+                            const $subRow = $(this);
+                            const $groupBadge = $subRow.find('.btn-toggle-group');
+                            const isOtherGroup = $subRow.find('.badge-secondary:contains("Khác")').length > 0;
+
+                            let groupName = '';
+                            let groupStatus = '';
+                            let groupUpdater = '';
+                            let groupDate = '';
+
+                            if ($groupBadge.length > 0) {
+                                groupName = $groupBadge.text().trim();
+                                groupStatus = $groupBadge.hasClass('active') ? 'Hoạt động' : 'Ngưng';
+                                const metaHtml = $subRow.find('.groups-list-container .assignment-meta').first().html() || '';
+                                const metaParts = metaHtml.split(/<br\s*[\/]?>/i);
+                                groupUpdater = $('<div>').html(metaParts[0] || '').text().trim();
+                                groupDate = $('<div>').html(metaParts[1] || '').text().trim();
+                            } else if (isOtherGroup) {
+                                groupName = 'Khác (Ngoài tổ đã chọn)';
+                                groupStatus = 'Hoạt động';
+                            } else {
+                                return; // Hàng dropdown hoặc rác
+                            }
+
+                            let rooms = [];
+                            const $roomRows = $subRow.find('.room-assignment-row');
+
+                            $roomRows.each(function() {
+                                const $roomRow = $(this);
+                                let roomDisp = $roomRow.find('.room-name-display').val() || $roomRow.find('.room-name-display').attr('value') || '';
+                                roomDisp = roomDisp.trim();
+                                if (roomDisp === '-- Phòng --') roomDisp = '';
+
+                                const level = $roomRow.find('.room-level-select option:selected').val() || $roomRow.find('.room-level-select').val() || '';
+                                const priority = $roomRow.find('.priority-badge').text().trim() || $roomRow.attr('data-priority') || '1';
+
+                                const hYear = $roomRow.find('.work-hours-badge .yearly').text().trim().replace(/[^0-9.]/g, '') || '0';
+                                const hTotal = $roomRow.find('.work-hours-badge .total').text().trim().replace(/[^0-9.]/g, '') || '0';
+
+                                const isInactive = $roomRow.hasClass('inactive') || $roomRow.attr('data-active') === '0';
+                                const roomStatus = isInactive ? 'Ngưng' : 'Hoạt động';
+
+                                const roomMetaHtml = $roomRow.find('.assignment-meta').html() || '';
+                                const roomMetaParts = roomMetaHtml.split(/<br\s*[\/]?>/i);
+                                const roomUpdater = $('<div>').html(roomMetaParts[0] || '').text().trim();
+                                const roomDate = $('<div>').html(roomMetaParts[1] || '').text().trim();
+
+                                rooms.push({
+                                    roomName: roomDisp || '(Chưa gán phòng)',
+                                    level: level,
+                                    priority: priority,
+                                    hoursYear: hYear + 'h',
+                                    hoursTotal: hTotal + 'h',
+                                    roomStatus: roomStatus,
+                                    roomUpdater: roomUpdater,
+                                    roomDate: roomDate
+                                });
+                            });
+
+                            if (rooms.length === 0) {
+                                rooms.push({
+                                    roomName: '(Chưa gán phòng)',
+                                    level: '',
+                                    priority: '',
+                                    hoursYear: '',
+                                    hoursTotal: '',
+                                    roomStatus: '',
+                                    roomUpdater: '',
+                                    roomDate: ''
+                                });
+                            }
+
+                            groups.push({
+                                groupName: groupName,
+                                groupStatus: groupStatus,
+                                groupUpdater: groupUpdater,
+                                groupDate: groupDate,
+                                rooms: rooms
+                            });
+                        });
+
+                        if (groups.length === 0) {
+                            groups.push({
+                                groupName: '(Chưa phân tổ)',
+                                groupStatus: '',
+                                groupUpdater: '',
+                                groupDate: '',
+                                rooms: [{
+                                    roomName: '',
+                                    level: '',
+                                    priority: '',
+                                    hoursYear: '',
+                                    hoursTotal: '',
+                                    roomStatus: '',
+                                    roomUpdater: '',
+                                    roomDate: ''
+                                }]
+                            });
+                        }
+
+                        empList.push({
+                            empCode: empCode,
+                            empName: empName,
+                            leaveStatus: leaveStatus,
+                            workshop: workshop,
+                            groups: groups
+                        });
+                    });
+
+                    // Xây dựng bảng HTML cho SheetJS
+                    let tableHtml = `
+                        <table border="1">
+                            <thead>
+                                <tr>
+                                    <th colspan="15" style="font-size: 16px; font-weight: bold; text-align: center; background-color: #1e88e5; color: #ffffff; height: 35px; vertical-align: middle;">
+                                        BẢNG ĐỊNH MỨC KỸ NĂNG NHÂN VIÊN - BỘ PHẬN: ${currentDep}
+                                    </th>
+                                </tr>
+                                <tr>
+                                    <th colspan="15" style="font-size: 11px; font-style: italic; text-align: left; background-color: #f1f8ff; height: 25px; vertical-align: middle;">
+                                        Thời gian xuất: ${exportTime} | Tổng số nhân sự: ${empList.length} người | Điều kiện lọc: ${filterSummary}
+                                    </th>
+                                </tr>
+                                <tr style="background-color: #e3f2fd; font-weight: bold; text-align: center; height: 28px;">
+                                    <th style="width: 45px;">STT</th>
+                                    <th style="width: 85px;">Mã NV</th>
+                                    <th style="width: 170px;">Tên Nhân Viên</th>
+                                    <th style="width: 130px;">Trạng Thái NV</th>
+                                    <th style="width: 90px;">Phân Xưởng</th>
+                                    <th style="width: 150px;">Tổ Công Tác</th>
+                                    <th style="width: 100px;">Trạng Thái Tổ</th>
+                                    <th style="width: 260px;">Phòng Được Phép Công Tác</th>
+                                    <th style="width: 80px;">Bậc Kỹ Năng</th>
+                                    <th style="width: 85px;">Giờ Năm Nay</th>
+                                    <th style="width: 85px;">Tổng Giờ</th>
+                                    <th style="width: 100px;">Trạng Thái Phòng</th>
+                                    <th style="width: 65px;">Ưu Tiên</th>
+                                    <th style="width: 140px;">Người Cập Nhật</th>
+                                    <th style="width: 95px;">Ngày Cập Nhật</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
+
+                    let stt = 1;
+                    empList.forEach(emp => {
+                        let totalEmpRows = 0;
+                        emp.groups.forEach(g => totalEmpRows += g.rooms.length);
+                        let isFirstRowOfEmp = true;
+
+                        emp.groups.forEach(group => {
+                            let groupRows = group.rooms.length;
+                            let isFirstRowOfGroup = true;
+
+                            group.rooms.forEach(room => {
+                                tableHtml += '<tr>';
+
+                                if (isFirstRowOfEmp) {
+                                    tableHtml += `
+                                        <td rowspan="${totalEmpRows}" style="text-align: center; vertical-align: middle;">${stt}</td>
+                                        <td rowspan="${totalEmpRows}" style="text-align: center; vertical-align: middle; mso-number-format:'\\@';">${emp.empCode}</td>
+                                        <td rowspan="${totalEmpRows}" style="vertical-align: middle; font-weight: bold;">${emp.empName}</td>
+                                        <td rowspan="${totalEmpRows}" style="text-align: center; vertical-align: middle;">${emp.leaveStatus}</td>
+                                        <td rowspan="${totalEmpRows}" style="text-align: center; vertical-align: middle;">${emp.workshop}</td>
+                                    `;
+                                    isFirstRowOfEmp = false;
+                                }
+
+                                if (isFirstRowOfGroup) {
+                                    tableHtml += `
+                                        <td rowspan="${groupRows}" style="vertical-align: middle;">${group.groupName}</td>
+                                        <td rowspan="${groupRows}" style="text-align: center; vertical-align: middle;">${group.groupStatus}</td>
+                                    `;
+                                    isFirstRowOfGroup = false;
+                                }
+
+                                tableHtml += `
+                                    <td style="vertical-align: middle;">${room.roomName}</td>
+                                    <td style="text-align: center; vertical-align: middle; font-weight: bold;">${room.level ? 'Bậc ' + room.level : ''}</td>
+                                    <td style="text-align: right; vertical-align: middle;">${room.hoursYear}</td>
+                                    <td style="text-align: right; vertical-align: middle;">${room.hoursTotal}</td>
+                                    <td style="text-align: center; vertical-align: middle;">${room.roomStatus}</td>
+                                    <td style="text-align: center; vertical-align: middle;">${room.priority}</td>
+                                    <td style="vertical-align: middle;">${room.roomUpdater || group.groupUpdater}</td>
+                                    <td style="text-align: center; vertical-align: middle;">${room.roomDate || group.groupDate}</td>
+                                </tr>`;
+                            });
+                        });
+                        stt++;
+                    });
+
+                    tableHtml += '</tbody></table>';
+
+                    const tempDiv = document.createElement('div');
+                    tempDiv.style.display = 'none';
+                    tempDiv.innerHTML = tableHtml;
+                    document.body.appendChild(tempDiv);
+
+                    try {
+                        const wb = XLSX.utils.table_to_book(tempDiv, { sheet: "Dinh_Muc_Nhan_Su" });
+                        const ws = wb.Sheets["Dinh_Muc_Nhan_Su"];
+
+                        if (ws) {
+                            ws['!cols'] = [
+                                { wpx: 40 },  // STT
+                                { wpx: 80 },  // Mã NV
+                                { wpx: 160 }, // Tên NV
+                                { wpx: 130 }, // Trạng Thái NV
+                                { wpx: 90 },  // Phân Xưởng
+                                { wpx: 150 }, // Tổ
+                                { wpx: 100 }, // Trạng Thái Tổ
+                                { wpx: 260 }, // Phòng
+                                { wpx: 75 },  // Bậc
+                                { wpx: 85 },  // Giờ Năm
+                                { wpx: 85 },  // Tổng Giờ
+                                { wpx: 110 }, // Trạng Thái Phòng
+                                { wpx: 65 },  // Ưu Tiên
+                                { wpx: 140 }, // Người Cập Nhật
+                                { wpx: 90 }   // Ngày Cập Nhật
+                            ];
+
+                            const range = XLSX.utils.decode_range(ws['!ref']);
+                            const thinBorder = {
+                                style: "thin",
+                                color: { rgb: "D3D3D3" }
+                            };
+                            const allBorders = {
+                                top: thinBorder,
+                                bottom: thinBorder,
+                                left: thinBorder,
+                                right: thinBorder
+                            };
+
+                            for (let R = range.s.r; R <= range.e.r; ++R) {
+                                for (let C = range.s.c; C <= range.e.c; ++C) {
+                                    const cellAddress = XLSX.utils.encode_cell({ c: C, r: R });
+                                    if (!ws[cellAddress]) {
+                                        ws[cellAddress] = { t: 's', v: '' };
+                                    }
+                                    if (!ws[cellAddress].s) ws[cellAddress].s = {};
+                                    if (R >= 2) {
+                                        ws[cellAddress].s.border = allBorders;
+                                    }
+                                }
+                            }
+                        }
+
+                        const dStr = now.getFullYear() + ('0' + (now.getMonth() + 1)).slice(-2) + ('0' + now.getDate()).slice(-2);
+                        const fileName = `Dinh_Muc_Nhan_Vien_${currentDep}_${dStr}.xlsx`;
+                        XLSX.writeFile(wb, fileName);
+
+                        Swal.mixin({
+                            toast: true,
+                            position: 'top-end',
+                            showConfirmButton: false,
+                            timer: 2500
+                        }).fire({
+                            icon: 'success',
+                            title: 'Xuất file Excel thành công!'
+                        });
+                    } finally {
+                        document.body.removeChild(tempDiv);
+                    }
+                } catch (err) {
+                    console.error("Lỗi xuất Excel:", err);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Lỗi',
+                        text: 'Không thể xuất file Excel: ' + (err.message || err)
+                    });
+                } finally {
+                    $btn.prop('disabled', false).html(originalHtml);
+                }
+            }, 50);
         });
 
     });

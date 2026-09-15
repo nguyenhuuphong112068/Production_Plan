@@ -1678,22 +1678,22 @@ const ScheduleTest = () => {
         if (updates.length > 0) {
           let newPending = [...pendingChanges];
           calendarApi.batchRendering(() => {
-            
-      // Build a map of all events combining DOM events and new updates for color evaluation
-      const eventMap = {};
-      calendarApi.getEvents().forEach(e => {
-        if (e.extendedProps?.code) {
-          eventMap[e.extendedProps.code] = { start: e.start, end: e.end, quarantine_time_limit_hour: e.extendedProps.quarantine_time_limit_hour };
-        }
-      });
-      updates.forEach(u => {
-        const ev = calendarApi.getEventById(u.id);
-        if (ev && ev.extendedProps?.code) {
-          eventMap[ev.extendedProps.code] = { start: u.start, end: u.end, quarantine_time_limit_hour: ev.extendedProps.quarantine_time_limit_hour };
-        }
-      });
 
-      updates.forEach(u => {
+            // Build a map of all events combining DOM events and new updates for color evaluation
+            const eventMap = {};
+            calendarApi.getEvents().forEach(e => {
+              if (e.extendedProps?.code) {
+                eventMap[e.extendedProps.code] = { start: e.start, end: e.end, quarantine_time_limit_hour: e.extendedProps.quarantine_time_limit_hour };
+              }
+            });
+            updates.forEach(u => {
+              const ev = calendarApi.getEventById(u.id);
+              if (ev && ev.extendedProps?.code) {
+                eventMap[ev.extendedProps.code] = { start: u.start, end: u.end, quarantine_time_limit_hour: ev.extendedProps.quarantine_time_limit_hour };
+              }
+            });
+
+            updates.forEach(u => {
               const ev = calendarApi.getEventById(u.id);
               if (ev) {
                 if (u.start && u.end) ev.setDates(u.start, u.end);
@@ -1857,22 +1857,22 @@ const ScheduleTest = () => {
     if (updates.length > 0) {
       let newPending = [...pendingChanges];
       calendarApi.batchRendering(() => {
-        
-      // Build a map of all events combining DOM events and new updates for color evaluation
-      const eventMap = {};
-      calendarApi.getEvents().forEach(e => {
-        if (e.extendedProps?.code) {
-          eventMap[e.extendedProps.code] = { start: e.start, end: e.end, quarantine_time_limit_hour: e.extendedProps.quarantine_time_limit_hour };
-        }
-      });
-      updates.forEach(u => {
-        const ev = calendarApi.getEventById(u.id);
-        if (ev && ev.extendedProps?.code) {
-          eventMap[ev.extendedProps.code] = { start: u.start, end: u.end, quarantine_time_limit_hour: ev.extendedProps.quarantine_time_limit_hour };
-        }
-      });
 
-      updates.forEach(u => {
+        // Build a map of all events combining DOM events and new updates for color evaluation
+        const eventMap = {};
+        calendarApi.getEvents().forEach(e => {
+          if (e.extendedProps?.code) {
+            eventMap[e.extendedProps.code] = { start: e.start, end: e.end, quarantine_time_limit_hour: e.extendedProps.quarantine_time_limit_hour };
+          }
+        });
+        updates.forEach(u => {
+          const ev = calendarApi.getEventById(u.id);
+          if (ev && ev.extendedProps?.code) {
+            eventMap[ev.extendedProps.code] = { start: u.start, end: u.end, quarantine_time_limit_hour: ev.extendedProps.quarantine_time_limit_hour };
+          }
+        });
+
+        updates.forEach(u => {
           const ev = calendarApi.getEventById(u.id);
           if (ev) {
             if (u.start && u.end) ev.setDates(u.start, u.end);
@@ -1913,12 +1913,12 @@ const ScheduleTest = () => {
   // ==========================================================================
   // SUA LOI CHONG CHAT SU KIEN
   // ==========================================================================
-  
+
   // ==========================================================================
   // SỬA LỖI CHỒNG CHẤT NHÓM SỰ KIỆN (RIGHT CLICK)
   // ==========================================================================
   const handleFixOverlaps = async (clickedEvent) => {
-    let targetEvents = selectedEvents.length > 0 ? 
+    let targetEvents = selectedEvents.length > 0 ?
       selectedEvents.map(e => allEvents.find(ev => String(ev.id) === String(e.id))).filter(Boolean) :
       [clickedEvent];
 
@@ -1935,7 +1935,7 @@ const ScheduleTest = () => {
 
     const calendarApi = calendarRef.current.getApi();
     const allEvents = calendarApi.getEvents().filter(e => e.display !== 'background' && !e.extendedProps?.is_personnel && !String(e.id).startsWith('personnel-'));
-    
+
     let groups = {};
     targetEvents.forEach(ev => {
       if (String(ev.id).endsWith('-cleaning')) return;
@@ -1965,7 +1965,7 @@ const ScheduleTest = () => {
 
     Object.keys(resGroups).forEach(resId => {
       let roomGroups = resGroups[resId];
-      
+
       // Sắp xếp các nhóm trong phòng: 
       // Uu tiên các sp cùng mã chiến dịch trước, nếu không thì theo tên, tiếp theo là theo thức tự. ở các nhóm thì nhóm nào có 1 sp bắt đầu trước thì sắp trước
       roomGroups.forEach(g => {
@@ -1984,14 +1984,14 @@ const ScheduleTest = () => {
         group.events.sort((a, b) => new Date(a.start) - new Date(b.start));
 
         let currentEarliestStart = new Date(group.events[0].start);
-        
+
         group.events.forEach((ev) => {
           const evId = String(ev.id);
           const duration = new Date(ev.end).getTime() - new Date(ev.start).getTime();
-          
-          const ignoreIds = allEvents.map(e => String(e.id)).filter(id => !updatedTimesById[id]); 
+
+          const ignoreIds = allEvents.map(e => String(e.id)).filter(id => !updatedTimesById[id]);
           const newSlot = findNextAvailableSlot(group.resId, duration, currentEarliestStart, allEvents, offRanges, ignoreIds, updatedTimesById);
-          
+
           updatedTimesById[evId] = { start: newSlot.start, end: newSlot.end };
           updates.push({ id: evId, start: newSlot.start, end: newSlot.end, resourceId: group.resId, clearWarnings: true });
 
@@ -2020,7 +2020,7 @@ const ScheduleTest = () => {
       const resId = ev.getResources()[0]?.id || ev.extendedProps?.resourceId;
       const start = new Date(ev.start);
       const end = new Date(ev.end);
-      
+
       for (const [updId, updTimes] of Object.entries(updatedTimesById)) {
         const updEv = allEvents.find(e => String(e.id) === updId);
         if (updEv && (updEv.getResources()[0]?.id || updEv.extendedProps?.resourceId) === resId) {
@@ -2041,11 +2041,11 @@ const ScheduleTest = () => {
 
       const resId = ev.getResources()[0]?.id || ev.extendedProps?.resourceId;
       const duration = new Date(ev.end).getTime() - new Date(ev.start).getTime();
-      
+
       let ignoreIds = allEvents.map(e => String(e.id)).filter(id => !updatedTimesById[id]);
-      const earliestStart = new Date(ev.start); 
+      const earliestStart = new Date(ev.start);
       const newSlot = findNextAvailableSlot(resId, duration, earliestStart, allEvents, offRanges, ignoreIds, updatedTimesById);
-      
+
       updatedTimesById[evId] = { start: newSlot.start, end: newSlot.end };
       updates.push({ id: evId, start: newSlot.start, end: newSlot.end, resourceId: resId, clearWarnings: true });
 
@@ -2066,36 +2066,36 @@ const ScheduleTest = () => {
 
         const oStart = new Date(otherEv.start);
         const oEnd = new Date(otherEv.end);
-        
+
         if (oStart < newSlot.end && oEnd > newSlot.start) {
           if (!pushQueue.find(e => String(e.id) === otherId)) {
             pushQueue.push(otherEv);
           }
         }
       });
-      
+
       pushQueue.sort((a, b) => new Date(a.start) - new Date(b.start));
     }
 
     if (updates.length > 0) {
       let newPending = [...pendingChanges];
       calendarApi.batchRendering(() => {
-        
-      // Build a map of all events combining DOM events and new updates for color evaluation
-      const eventMap = {};
-      calendarApi.getEvents().forEach(e => {
-        if (e.extendedProps?.code) {
-          eventMap[e.extendedProps.code] = { start: e.start, end: e.end, quarantine_time_limit_hour: e.extendedProps.quarantine_time_limit_hour };
-        }
-      });
-      updates.forEach(u => {
-        const ev = calendarApi.getEventById(u.id);
-        if (ev && ev.extendedProps?.code) {
-          eventMap[ev.extendedProps.code] = { start: u.start, end: u.end, quarantine_time_limit_hour: ev.extendedProps.quarantine_time_limit_hour };
-        }
-      });
 
-      updates.forEach(u => {
+        // Build a map of all events combining DOM events and new updates for color evaluation
+        const eventMap = {};
+        calendarApi.getEvents().forEach(e => {
+          if (e.extendedProps?.code) {
+            eventMap[e.extendedProps.code] = { start: e.start, end: e.end, quarantine_time_limit_hour: e.extendedProps.quarantine_time_limit_hour };
+          }
+        });
+        updates.forEach(u => {
+          const ev = calendarApi.getEventById(u.id);
+          if (ev && ev.extendedProps?.code) {
+            eventMap[ev.extendedProps.code] = { start: u.start, end: u.end, quarantine_time_limit_hour: ev.extendedProps.quarantine_time_limit_hour };
+          }
+        });
+
+        updates.forEach(u => {
           const ev = calendarApi.getEventById(u.id);
           if (ev) {
             if (u.start && u.end) ev.setDates(u.start, u.end);
@@ -2111,7 +2111,7 @@ const ScheduleTest = () => {
         });
       });
       setPendingChanges(newPending);
-      
+
       axios.post('/Schedual/updateBatchEvents', { updates })
         .then(res => {
           Swal.fire({ icon: 'success', title: 'Đã dồn lịch thành công', timer: 1500, showConfirmButton: false });
@@ -2221,7 +2221,7 @@ const ScheduleTest = () => {
         let matched = false;
         if (operator === '<') matched = left.isBefore(right);
         else if (operator === '>') matched = left.isAfter(right);
-        
+
         if (matched) {
           color_event = '#920000ff';
           textColor = '#ffffff';
@@ -2229,7 +2229,7 @@ const ScheduleTest = () => {
         }
       }
     });
-    
+
     violation_colors = [...new Set(violation_colors)].filter(c => c !== color_event);
     return { backgroundColor: color_event, textColor: textColor, violation_colors: violation_colors };
   };
@@ -2273,118 +2273,118 @@ const ScheduleTest = () => {
     const allEvents = calendarApi.getEvents().filter(e => e.display !== 'background' && !e.extendedProps?.is_personnel && !String(e.id).startsWith('personnel-'));
 
     const getDurationForEvent = (ev, roomId) => {
-        let q = quota.find(item => String(item.room_id) === String(roomId) && Number(item.stage_code) === Number(ev.extendedProps?.stage_code) && (
-            (ev.extendedProps?.process_code && String(item.process_code).startsWith(String(ev.extendedProps?.process_code))) ||
-            (ev.extendedProps?.intermediate_code && String(item.intermediate_code) === String(ev.extendedProps?.intermediate_code)) ||
-            (ev.extendedProps?.finished_product_code && String(item.finished_product_code) === String(ev.extendedProps?.finished_product_code))
-        ));
-        
-        if (q) {
-             let pTime = parseFloat(q.p_time) || 0;
-             let mTime = parseFloat(q.m_time) || 0;
-             
-             let ratio = 1;
-             if (ev.extendedProps?.percent_parkaging && (Number(ev.extendedProps?.stage_code) === 7 || Number(ev.extendedProps?.stage_code) === 1)) {
-                 ratio = parseFloat(ev.extendedProps.percent_parkaging);
-             }
-             pTime = pTime * ratio;
-             mTime = mTime * ratio;
+      let q = quota.find(item => String(item.room_id) === String(roomId) && Number(item.stage_code) === Number(ev.extendedProps?.stage_code) && (
+        (ev.extendedProps?.process_code && String(item.process_code).startsWith(String(ev.extendedProps?.process_code))) ||
+        (ev.extendedProps?.intermediate_code && String(item.intermediate_code) === String(ev.extendedProps?.intermediate_code)) ||
+        (ev.extendedProps?.finished_product_code && String(item.finished_product_code) === String(ev.extendedProps?.finished_product_code))
+      ));
 
-             let isFirst = ev.extendedProps?.first_in_campaign === 1 || ev.extendedProps?.title_clearning === "VS-II";
-             let durationHours = isFirst ? (pTime + mTime) : mTime;
-             return durationHours * 3600000;
+      if (q) {
+        let pTime = parseFloat(q.p_time) || 0;
+        let mTime = parseFloat(q.m_time) || 0;
+
+        let ratio = 1;
+        if (ev.extendedProps?.percent_parkaging && (Number(ev.extendedProps?.stage_code) === 7 || Number(ev.extendedProps?.stage_code) === 1)) {
+          ratio = parseFloat(ev.extendedProps.percent_parkaging);
         }
-        let currentDur = new Date(ev.end).getTime() - new Date(ev.start).getTime();
-        let start = new Date(ev.start);
-        let end = new Date(ev.end);
-        for (let off of offRanges) {
-            if (off.start < end && off.end > start) {
-                let overlapStart = new Date(Math.max(start.getTime(), off.start.getTime()));
-                let overlapEnd = new Date(Math.min(end.getTime(), off.end.getTime()));
-                if (overlapEnd > overlapStart) {
-                    currentDur -= (overlapEnd.getTime() - overlapStart.getTime());
-                }
-            }
+        pTime = pTime * ratio;
+        mTime = mTime * ratio;
+
+        let isFirst = ev.extendedProps?.first_in_campaign === 1 || ev.extendedProps?.title_clearning === "VS-II";
+        let durationHours = isFirst ? (pTime + mTime) : mTime;
+        return durationHours * 3600000;
+      }
+      let currentDur = new Date(ev.end).getTime() - new Date(ev.start).getTime();
+      let start = new Date(ev.start);
+      let end = new Date(ev.end);
+      for (let off of offRanges) {
+        if (off.start < end && off.end > start) {
+          let overlapStart = new Date(Math.max(start.getTime(), off.start.getTime()));
+          let overlapEnd = new Date(Math.min(end.getTime(), off.end.getTime()));
+          if (overlapEnd > overlapStart) {
+            currentDur -= (overlapEnd.getTime() - overlapStart.getTime());
+          }
         }
-        return currentDur;
+      }
+      return currentDur;
     };
 
     const getAllowedRooms = (ev) => {
-        let allowed = new Set();
-        const currentRoomId = ev.getResources()[0]?.id || ev.extendedProps?.resourceId || ev.resourceId;
-        if (currentRoomId) allowed.add(String(currentRoomId));
+      let allowed = new Set();
+      const currentRoomId = ev.getResources()[0]?.id || ev.extendedProps?.resourceId || ev.resourceId;
+      if (currentRoomId) allowed.add(String(currentRoomId));
 
-        let matches = quota.filter(item => Number(item.stage_code) === Number(ev.extendedProps?.stage_code) && (
-            (ev.extendedProps?.process_code && String(item.process_code).startsWith(String(ev.extendedProps?.process_code))) ||
-            (ev.extendedProps?.intermediate_code && String(item.intermediate_code) === String(ev.extendedProps?.intermediate_code)) ||
-            (ev.extendedProps?.finished_product_code && String(item.finished_product_code) === String(ev.extendedProps?.finished_product_code))
-        ));
-        for (let m of matches) {
-            allowed.add(String(m.room_id));
-        }
-        return Array.from(allowed);
+      let matches = quota.filter(item => Number(item.stage_code) === Number(ev.extendedProps?.stage_code) && (
+        (ev.extendedProps?.process_code && String(item.process_code).startsWith(String(ev.extendedProps?.process_code))) ||
+        (ev.extendedProps?.intermediate_code && String(item.intermediate_code) === String(ev.extendedProps?.intermediate_code)) ||
+        (ev.extendedProps?.finished_product_code && String(item.finished_product_code) === String(ev.extendedProps?.finished_product_code))
+      ));
+      for (let m of matches) {
+        allowed.add(String(m.room_id));
+      }
+      return Array.from(allowed);
     };
 
     // Loại máy của phòng: resource lấy từ FullCalendar để field phụ nằm trong extendedProps,
     // còn state `resources` (lấy thẳng từ API) thì field nằm ở cấp gốc.
     const getRoomBlisterType = (roomId) => {
-        let room = allEvents.find(e => e.getResources && String(e.getResources()[0]?.id) === String(roomId))?.getResources()[0]
-            || resources.find(r => String(r.id) === String(roomId));
-        return room?.extendedProps?.blister_type_code ?? room?.blister_type_code ?? null;
+      let room = allEvents.find(e => e.getResources && String(e.getResources()[0]?.id) === String(roomId))?.getResources()[0]
+        || resources.find(r => String(r.id) === String(roomId));
+      return room?.extendedProps?.blister_type_code ?? room?.blister_type_code ?? null;
     };
 
     // blister_type_code của khuôn có thể là số, chuỗi số hoặc chuỗi JSON dạng ["1","3"]
     const moldFitsRoomType = (mold, rType) => {
-        if (!rType) return true;
-        let raw = mold?.blister_type_code;
-        if (raw === null || raw === undefined || raw === '') return true;
-        let types = [];
-        if (Array.isArray(raw)) {
-            types = raw;
-        } else if (typeof raw === 'string' && raw.trim().startsWith('[')) {
-            try { types = JSON.parse(raw); } catch (e) { types = [raw]; }
-        } else {
-            types = [raw];
-        }
-        return types.map(String).includes(String(rType));
+      if (!rType) return true;
+      let raw = mold?.blister_type_code;
+      if (raw === null || raw === undefined || raw === '') return true;
+      let types = [];
+      if (Array.isArray(raw)) {
+        types = raw;
+      } else if (typeof raw === 'string' && raw.trim().startsWith('[')) {
+        try { types = JSON.parse(raw); } catch (e) { types = [raw]; }
+      } else {
+        types = [raw];
+      }
+      return types.map(String).includes(String(rType));
     };
 
     const getCompatibleMolds = (ev, roomId) => {
-        let catId = ev.extendedProps?.product_caterogy_id;
-        if (!catId) return [];
-        let rType = getRoomBlisterType(roomId);
+      let catId = ev.extendedProps?.product_caterogy_id;
+      if (!catId) return [];
+      let rType = getRoomBlisterType(roomId);
 
-        let moldIds = finishedProductMolds.filter(f => String(f.finished_product_category_id) === String(catId)).map(f => String(f.blister_mold_id));
-        let compatible = blisterMolds.filter(m => moldIds.includes(String(m.id)));
-        return compatible.filter(m => moldFitsRoomType(m, rType));
+      let moldIds = finishedProductMolds.filter(f => String(f.finished_product_category_id) === String(catId)).map(f => String(f.blister_mold_id));
+      let compatible = blisterMolds.filter(m => moldIds.includes(String(m.id)));
+      return compatible.filter(m => moldFitsRoomType(m, rType));
     };
 
     const isMoldAvailable = (moldId, tempStart, tempEnd, evId, currentUpdates, updatedTimes) => {
-        let mold = blisterMolds.find(m => String(m.id) === String(moldId));
-        if (!mold) return true; 
-        let amount = Number(mold.amount) || 0;
-        
-        let concurrent = 0;
-        for (let e of allEvents) {
-            if (String(e.id) === String(evId) || String(e.id).endsWith('-cleaning')) continue;
-            if (Number(e.extendedProps?.stage_code) === 7) {
-                 let eStart, eEnd;
-                 if (updatedTimes[e.id]) {
-                     eStart = new Date(updatedTimes[e.id].start);
-                     eEnd = new Date(updatedTimes[e.id].end);
-                 } else {
-                     eStart = new Date(e.start);
-                     eEnd = new Date(e.end);
-                 }
-                 let eMoldId = currentUpdates.find(u => String(u.id) === String(e.id))?.blister_mold_id || e.extendedProps?.blister_mold_id;
-                 if (String(eMoldId) === String(moldId)) {
-                     if (tempStart < eEnd && tempEnd > eStart) {
-                         concurrent++;
-                     }
-                 }
+      let mold = blisterMolds.find(m => String(m.id) === String(moldId));
+      if (!mold) return true;
+      let amount = Number(mold.amount) || 0;
+
+      let concurrent = 0;
+      for (let e of allEvents) {
+        if (String(e.id) === String(evId) || String(e.id).endsWith('-cleaning')) continue;
+        if (Number(e.extendedProps?.stage_code) === 7) {
+          let eStart, eEnd;
+          if (updatedTimes[e.id]) {
+            eStart = new Date(updatedTimes[e.id].start);
+            eEnd = new Date(updatedTimes[e.id].end);
+          } else {
+            eStart = new Date(e.start);
+            eEnd = new Date(e.end);
+          }
+          let eMoldId = currentUpdates.find(u => String(u.id) === String(e.id))?.blister_mold_id || e.extendedProps?.blister_mold_id;
+          if (String(eMoldId) === String(moldId)) {
+            if (tempStart < eEnd && tempEnd > eStart) {
+              concurrent++;
             }
+          }
         }
-        return concurrent < amount;
+      }
+      return concurrent < amount;
     };
 
     const campaignRoomMap = {}; // key: campaign_code_stage_code -> roomId
@@ -2510,7 +2510,7 @@ const ScheduleTest = () => {
         const evId = String(ev.id);
         const cleaningEv = allEvents.find(e => String(e.id) === evId.replace('-main', '-cleaning'));
         const myCode = ev.extendedProps.code;
-        
+
         let latestEnd = null;
         if (myCode) {
           const succEv = allEvents.find(e => String(e.extendedProps.predecessor_code) === String(myCode) && !String(e.id).endsWith('-cleaning'));
@@ -2529,7 +2529,7 @@ const ScheduleTest = () => {
 
         const unprocessed = [...chainIds].filter(id => id !== evId && !updatedTimesById[id]);
         const unprocessedCleaning = unprocessed.map(id => id.replace('-main', '-cleaning')).filter(cid => !updatedTimesById[cid]);
-        
+
         // TẤT CẢ các event (chưa bị khóa) không thuộc chuỗi hiện tại đang xét đều phải được né (tránh chồng lấn)
         // Vì vậy ignoreIds sẽ bao gồm các event chưa khóa TRONG CHUỖI NÀY
         // Bất kỳ event nào khác trên lịch chưa khóa mà không nằm trong ignoreIds sẽ ĐƯỢC CÓ COI LÀ CHƯỚNG NGẠI VẬT!
@@ -2542,8 +2542,8 @@ const ScheduleTest = () => {
         let ignoreIds = allUnprocessed; // Né mọi event đang bị khóa. Ignored mọi event chưa khóa.
         const stageCode = Number(ev.extendedProps?.stage_code);
         if (stageCode === 1 || stageCode === 2) {
-            // Cho phép chồng chất đối với công đoạn Cân/Cấp phát để đảm bảo không lỗi
-            ignoreIds = allEvents.map(e => String(e.id));
+          // Cho phép chồng chất đối với công đoạn Cân/Cấp phát để đảm bảo không lỗi
+          ignoreIds = allEvents.map(e => String(e.id));
         }
 
         let newSlot = findPreviousAvailableSlot(resourceId, duration, adjustedLatestEnd, allEvents, offRanges, ignoreIds, updatedTimesById);
@@ -2551,12 +2551,12 @@ const ScheduleTest = () => {
         // Ràng buộc Ngày NL: Không được kéo quá sát về quá khứ nếu vượt ngày NL
         const matDate = getMaterialStartDate(ev);
         if (matDate && newSlot.start < matDate) {
-           // Nếu bị lố quá ngày nguyên liệu, buộc phải forward cascade từ ngày NL
-           // Để đơn giản, ta tìm slot trống gần nhất sau ngày NL nhưng VẪN PHẢI kẹt trước adjustedLatestEnd (không đè lên successor)
-           // Tuy nhiên findNextAvailableSlot có thể vượt quá adjustedLatestEnd. 
-           // Tạm thời nếu chạm giới hạn NL, chúng ta giới hạn cứng tại matDate.
-           newSlot.start = matDate;
-           newSlot.end = new Date(matDate.getTime() + duration);
+          // Nếu bị lố quá ngày nguyên liệu, buộc phải forward cascade từ ngày NL
+          // Để đơn giản, ta tìm slot trống gần nhất sau ngày NL nhưng VẪN PHẢI kẹt trước adjustedLatestEnd (không đè lên successor)
+          // Tuy nhiên findNextAvailableSlot có thể vượt quá adjustedLatestEnd. 
+          // Tạm thời nếu chạm giới hạn NL, chúng ta giới hạn cứng tại matDate.
+          newSlot.start = matDate;
+          newSlot.end = new Date(matDate.getTime() + duration);
         }
 
         updatedTimesById[evId] = { start: newSlot.start, end: newSlot.end };
@@ -2574,13 +2574,13 @@ const ScheduleTest = () => {
     // Lọc lại các sản phẩm/chuỗi CHƯA CÓ ANCHOR (Không có Pha Chế, Không có Hoàn Thành)
     // Các chuỗi này sẽ lấy event đầu tiên (stage_code nhỏ nhất) làm gốc và bắt đầu Forward Cascade từ NOW
     const unanchoredFirstEvents = allEvents.filter(e => {
-        if (String(e.id).endsWith('-cleaning')) return false;
-        if (updatedTimesById[String(e.id)]) return false;
-        // Kiểm tra xem nó có predecessor không? Nếu KHÔNG có predecessor thì nó là sự kiện đầu tiên của chuỗi
-        const pCode = e.extendedProps?.predecessor_code;
-        if (!pCode) return true;
-        const hasPred = allEvents.some(p => String(p.extendedProps?.code) === String(pCode));
-        return !hasPred; // Nếu không có event predecessor nào trên lịch -> nó là khởi đầu
+      if (String(e.id).endsWith('-cleaning')) return false;
+      if (updatedTimesById[String(e.id)]) return false;
+      // Kiểm tra xem nó có predecessor không? Nếu KHÔNG có predecessor thì nó là sự kiện đầu tiên của chuỗi
+      const pCode = e.extendedProps?.predecessor_code;
+      if (!pCode) return true;
+      const hasPred = allEvents.some(p => String(p.extendedProps?.code) === String(pCode));
+      return !hasPred; // Nếu không có event predecessor nào trên lịch -> nó là khởi đầu
     });
 
     // 2. FORWARD CASCADE (Đẩy các successor và chuỗi tự do về phía tương lai vào các khoảng trống)
@@ -2592,14 +2592,14 @@ const ScheduleTest = () => {
       // Đối với unanchoredFirstEvents, ta Forward Cascade từ chính nó trước
       let chain = [];
       if (unanchoredFirstEvents.some(e => String(e.id) === String(anchor.id))) {
-          chain = [anchor, ...buildSuccChain(String(anchor.id))];
+        chain = [anchor, ...buildSuccChain(String(anchor.id))];
       } else {
-          const myCode = anchor.extendedProps.code;
-          if (!myCode) continue;
-          const succEv = allEvents.find(e => String(e.extendedProps.predecessor_code) === String(myCode) && !String(e.id).endsWith('-cleaning'));
-          if (!succEv) continue;
-          if (updatedTimesById[String(succEv.id)]) continue;
-          chain = buildSuccChain(String(succEv.id));
+        const myCode = anchor.extendedProps.code;
+        if (!myCode) continue;
+        const succEv = allEvents.find(e => String(e.extendedProps.predecessor_code) === String(myCode) && !String(e.id).endsWith('-cleaning'));
+        if (!succEv) continue;
+        if (updatedTimesById[String(succEv.id)]) continue;
+        chain = buildSuccChain(String(succEv.id));
       }
 
       if (chain.length === 0) continue;
@@ -2613,7 +2613,7 @@ const ScheduleTest = () => {
         const cleaningEv = allEvents.find(e => String(e.id) === evId.replace('-main', '-cleaning'));
         const predCode = ev.extendedProps.predecessor_code;
         let earliestStart = new Date(); // Mặc định không được xếp trong quá khứ
-        
+
         if (predCode) {
           const predEv = allEvents.find(e => String(e.extendedProps.code) === String(predCode) && !String(e.id).endsWith('-cleaning'));
           if (predEv) {
@@ -2642,27 +2642,27 @@ const ScheduleTest = () => {
 
         let newSlot = findNextAvailableSlot(resourceId, duration, earliestStart, allEvents, offRanges, ignoreIds, updatedTimesById);
         let moldId = ev.extendedProps?.blister_mold_id;
-             
+
         if (Number(ev.extendedProps?.stage_code) === 7) {
-            let compatibleMolds = getCompatibleMolds(ev, resourceId);
-            let foundMold = false;
-            
-            if (compatibleMolds && compatibleMolds.length > 0) {
-                let tries = 0;
-                while (!foundMold && tries < 200 && newSlot.start.getTime() < new Date("2050-01-01").getTime()) {
-                    for (let m of compatibleMolds) {
-                        if (isMoldAvailable(m.id, newSlot.start, newSlot.end, evId, updates, updatedTimesById)) {
-                            moldId = m.id;
-                            foundMold = true;
-                            break;
-                        }
-                    }
-                    if (foundMold) break;
-                    // jump ahead by 12 hours to speed up search and prevent freeze
-                    newSlot = findNextAvailableSlot(resourceId, duration, new Date(newSlot.start.getTime() + 12 * 3600000), allEvents, offRanges, ignoreIds, updatedTimesById);
-                    tries++;
+          let compatibleMolds = getCompatibleMolds(ev, resourceId);
+          let foundMold = false;
+
+          if (compatibleMolds && compatibleMolds.length > 0) {
+            let tries = 0;
+            while (!foundMold && tries < 200 && newSlot.start.getTime() < new Date("2050-01-01").getTime()) {
+              for (let m of compatibleMolds) {
+                if (isMoldAvailable(m.id, newSlot.start, newSlot.end, evId, updates, updatedTimesById)) {
+                  moldId = m.id;
+                  foundMold = true;
+                  break;
                 }
+              }
+              if (foundMold) break;
+              // jump ahead by 12 hours to speed up search and prevent freeze
+              newSlot = findNextAvailableSlot(resourceId, duration, new Date(newSlot.start.getTime() + 12 * 3600000), allEvents, offRanges, ignoreIds, updatedTimesById);
+              tries++;
             }
+          }
         }
 
         updatedTimesById[evId] = { start: newSlot.start, end: newSlot.end };
@@ -2681,22 +2681,22 @@ const ScheduleTest = () => {
     if (updates.length > 0) {
       let newPending = [...pendingChanges];
       calendarApi.batchRendering(() => {
-        
-      // Build a map of all events combining DOM events and new updates for color evaluation
-      const eventMap = {};
-      calendarApi.getEvents().forEach(e => {
-        if (e.extendedProps?.code) {
-          eventMap[e.extendedProps.code] = { start: e.start, end: e.end, quarantine_time_limit_hour: e.extendedProps.quarantine_time_limit_hour };
-        }
-      });
-      updates.forEach(u => {
-        const ev = calendarApi.getEventById(u.id);
-        if (ev && ev.extendedProps?.code) {
-          eventMap[ev.extendedProps.code] = { start: u.start, end: u.end, quarantine_time_limit_hour: ev.extendedProps.quarantine_time_limit_hour };
-        }
-      });
 
-      updates.forEach(u => {
+        // Build a map of all events combining DOM events and new updates for color evaluation
+        const eventMap = {};
+        calendarApi.getEvents().forEach(e => {
+          if (e.extendedProps?.code) {
+            eventMap[e.extendedProps.code] = { start: e.start, end: e.end, quarantine_time_limit_hour: e.extendedProps.quarantine_time_limit_hour };
+          }
+        });
+        updates.forEach(u => {
+          const ev = calendarApi.getEventById(u.id);
+          if (ev && ev.extendedProps?.code) {
+            eventMap[ev.extendedProps.code] = { start: u.start, end: u.end, quarantine_time_limit_hour: ev.extendedProps.quarantine_time_limit_hour };
+          }
+        });
+
+        updates.forEach(u => {
           const ev = calendarApi.getEventById(u.id);
           if (ev) {
             if (u.start && u.end) ev.setDates(u.start, u.end);
@@ -2728,7 +2728,7 @@ const ScheduleTest = () => {
         });
       });
       setPendingChanges(newPending);
-      
+
       // Khôi phục lại trạng thái frontend, không lưu lên server vội
       Swal.fire({
         icon: 'success',
@@ -2851,22 +2851,22 @@ const ScheduleTest = () => {
       let newPending = [...pendingChanges];
 
       calendarApi.batchRendering(() => {
-        
-      // Build a map of all events combining DOM events and new updates for color evaluation
-      const eventMap = {};
-      calendarApi.getEvents().forEach(e => {
-        if (e.extendedProps?.code) {
-          eventMap[e.extendedProps.code] = { start: e.start, end: e.end, quarantine_time_limit_hour: e.extendedProps.quarantine_time_limit_hour };
-        }
-      });
-      updates.forEach(u => {
-        const ev = calendarApi.getEventById(u.id);
-        if (ev && ev.extendedProps?.code) {
-          eventMap[ev.extendedProps.code] = { start: u.start, end: u.end, quarantine_time_limit_hour: ev.extendedProps.quarantine_time_limit_hour };
-        }
-      });
 
-      updates.forEach(u => {
+        // Build a map of all events combining DOM events and new updates for color evaluation
+        const eventMap = {};
+        calendarApi.getEvents().forEach(e => {
+          if (e.extendedProps?.code) {
+            eventMap[e.extendedProps.code] = { start: e.start, end: e.end, quarantine_time_limit_hour: e.extendedProps.quarantine_time_limit_hour };
+          }
+        });
+        updates.forEach(u => {
+          const ev = calendarApi.getEventById(u.id);
+          if (ev && ev.extendedProps?.code) {
+            eventMap[ev.extendedProps.code] = { start: u.start, end: u.end, quarantine_time_limit_hour: ev.extendedProps.quarantine_time_limit_hour };
+          }
+        });
+
+        updates.forEach(u => {
           const ev = calendarApi.getEventById(u.id);
           if (ev) {
             if (u.start && u.end) {
@@ -3187,39 +3187,39 @@ const ScheduleTest = () => {
 
           let moldId = conf.event._def.extendedProps.blister_mold_id;
           if (Number(conf.event._def.extendedProps.stage_code) === 7) {
-              let catId = conf.event._def.extendedProps.product_caterogy_id;
-              if (catId) {
-                  let compatible = getCompatibleMolds(conf.event, conf.resId);
+            let catId = conf.event._def.extendedProps.product_caterogy_id;
+            if (catId) {
+              let compatible = getCompatibleMolds(conf.event, conf.resId);
 
-                  let concurrentCount = (mId) => {
-                       let c = 0;
-                       for (let e of calendarApi.getEvents()) {
-                           if (String(e.id) === String(conf.event.id) || String(e.id).endsWith('-cleaning')) continue;
-                           if (Number(e.extendedProps?.stage_code) === 7 && String(e.extendedProps?.blister_mold_id) === String(mId)) {
-                               if (newStart < e.end && newEnd > e.start) c++;
-                           }
-                       }
-                       return c;
-                  };
-
-                  // Khuôn đang gán chỉ được giữ lại khi còn nằm trong định mức của SP,
-                  // lắp được cho máy của phòng đích và chưa quá số lượng khuôn.
-                  let keep = false;
-                  if (moldId) {
-                      let current = compatible.find(m => String(m.id) === String(moldId));
-                      keep = !!current && concurrentCount(moldId) < (Number(current.amount) || 0);
+              let concurrentCount = (mId) => {
+                let c = 0;
+                for (let e of calendarApi.getEvents()) {
+                  if (String(e.id) === String(conf.event.id) || String(e.id).endsWith('-cleaning')) continue;
+                  if (Number(e.extendedProps?.stage_code) === 7 && String(e.extendedProps?.blister_mold_id) === String(mId)) {
+                    if (newStart < e.end && newEnd > e.start) c++;
                   }
+                }
+                return c;
+              };
 
-                  if (!keep) {
-                      moldId = null;
-                      for (let m of compatible) {
-                          if (concurrentCount(m.id) < (Number(m.amount) || 0)) {
-                              moldId = m.id;
-                              break;
-                          }
-                      }
-                  }
+              // Khuôn đang gán chỉ được giữ lại khi còn nằm trong định mức của SP,
+              // lắp được cho máy của phòng đích và chưa quá số lượng khuôn.
+              let keep = false;
+              if (moldId) {
+                let current = compatible.find(m => String(m.id) === String(moldId));
+                keep = !!current && concurrentCount(moldId) < (Number(current.amount) || 0);
               }
+
+              if (!keep) {
+                moldId = null;
+                for (let m of compatible) {
+                  if (concurrentCount(m.id) < (Number(m.amount) || 0)) {
+                    moldId = m.id;
+                    break;
+                  }
+                }
+              }
+            }
           }
 
           return {
@@ -3948,7 +3948,7 @@ const ScheduleTest = () => {
     }
 
     const reasonObj = {
-      reason: "Cập nhật ngày",
+      reason: "Cập Nhật Lịch",
       saveReason: false
     };
 
@@ -4412,7 +4412,7 @@ const ScheduleTest = () => {
           changes: changes,
           startDate: toLocalISOString(activeStart),
           endDate: toLocalISOString(activeEnd),
-          reason: { reason: 'Cập nhật qua modal' },
+          reason: { reason: 'Cập Nhật Lịch' },
           newMTime: newMTime,
           pTime: pTime
         })
@@ -5826,12 +5826,12 @@ const ScheduleTest = () => {
         // Tránh trùng lặp nếu backend đã trả về
         const planId = evt.extendedProps?.plan_id;
         if (!errorEvents.some(e => (planId && e.plan_id === planId) || (e.title === evt.title && moment(e.start).isSame(evt.start)))) {
-          
+
           const stageMap = { 1: 'Cân', 2: 'Cân', 3: 'Pha Chế', 4: 'Trộn Hoàn Tất', 5: 'Dập Viên / Nang', 6: 'Bao Phim', 7: 'Đóng Gói' };
           const stageName = stageMap[evt.extendedProps?.stage_code] || 'Công đoạn ' + (evt.extendedProps?.stage_code || '');
           const roomName = evt.getResources && evt.getResources().length > 0 ? evt.getResources()[0].title : (evt.extendedProps?.resourceId || 'N/A');
           const fullTitle = `${evt.title} (${stageName} - ${roomName})`;
-          
+
           let reason = evt.extendedProps?.subtitle || '';
           if (!reason) {
             reason = errorColors.map(c => ERROR_REASONS[c]).join(' | ');
@@ -6760,144 +6760,144 @@ const ScheduleTest = () => {
       </div>
 
       <div ref={calendarBoxRef} className="schedule-calendar-box">
-      <MemoFullCalendar
-        __deps={calendarDeps}
-        schedulerLicenseKey="GPL-My-Project-Is-Open-Source"
-        ref={calendarRef}
-        height="100%"
-        plugins={calendarPlugins}
-        initialView="resourceTimelineMonth1d"
-        firstDay={1}
-        events={calendarEvents}
-        eventResourceEditable={true}
-        eventClassNames={(arg) => {
-          const classes = [];
-          const isCleaning = arg.event.extendedProps.is_clearning;
-          const pmId = arg.event.extendedProps.plan_master_id;
+        <MemoFullCalendar
+          __deps={calendarDeps}
+          schedulerLicenseKey="GPL-My-Project-Is-Open-Source"
+          ref={calendarRef}
+          height="100%"
+          plugins={calendarPlugins}
+          initialView="resourceTimelineMonth1d"
+          firstDay={1}
+          events={calendarEvents}
+          eventResourceEditable={true}
+          eventClassNames={(arg) => {
+            const classes = [];
+            const isCleaning = arg.event.extendedProps.is_clearning;
+            const pmId = arg.event.extendedProps.plan_master_id;
 
-          // Hiding/Showing cleaning events locally
-          if (isCleaning) {
-            classes.push('cleaning-event');
-          }
-
-          // Lead đã xác nhận sẽ chạy đúng lịch này -> tick xanh vắt qua góc trên bên phải
-          // (gắn vào chính khung sự kiện để tâm tick trùng đúng góc, xem calendar.css)
-          if (!isCleaning && Number(arg.event.extendedProps.comfirm_of_lead) === 1) {
-            classes.push('fc-event-lead-confirmed');
-          }
-
-          // Hiệu ứng bóng mờ màu vàng cho các thay đổi chưa lưu
-          if (pendingChanges && pendingChanges.some(p => String(p.id) === String(arg.event.id))) {
-            classes.push('fc-event-pending');
-          }
-
-          // Active Plan Master IDs focusing (logic from line 2956)
-          if (activePlanMasterIds.length > 0) {
-            if (activePlanMasterIds.includes(pmId)) {
-              classes.push('fc-event-focus');
-            } else {
-              classes.push('fc-event-hidden');
+            // Hiding/Showing cleaning events locally
+            if (isCleaning) {
+              classes.push('cleaning-event');
             }
-          }
 
-          return classes;
-        }}
-        resources={displayResources}
-        resourceAreaHeaderContent="Phòng Sản Xuất"
+            // Lead đã xác nhận sẽ chạy đúng lịch này -> tick xanh vắt qua góc trên bên phải
+            // (gắn vào chính khung sự kiện để tâm tick trùng đúng góc, xem calendar.css)
+            if (!isCleaning && Number(arg.event.extendedProps.comfirm_of_lead) === 1) {
+              classes.push('fc-event-lead-confirmed');
+            }
 
-        locale="vi"
-        resourceAreaWidth="250px"
-        expandRows={false}
+            // Hiệu ứng bóng mờ màu vàng cho các thay đổi chưa lưu
+            if (pendingChanges && pendingChanges.some(p => String(p.id) === String(arg.event.id))) {
+              classes.push('fc-event-pending');
+            }
 
-        eventsSet={(events) => {
-          const count = events.filter(e => (e.backgroundColor && e.backgroundColor.toLowerCase() === '#4d4b4bff') || (e.extendedProps?.violation_colors?.includes('#4d4b4bff'))).length;
-          setBlackViolationCount(prev => (prev === count ? prev : count));
-        }}
+            // Active Plan Master IDs focusing (logic from line 2956)
+            if (activePlanMasterIds.length > 0) {
+              if (activePlanMasterIds.includes(pmId)) {
+                classes.push('fc-event-focus');
+              } else {
+                classes.push('fc-event-hidden');
+              }
+            }
 
-        editable={true}
-        droppable={true}
-        selectable={true}
-        eventResizableFromStart={true}
-        eventDurationEditable={true}
+            return classes;
+          }}
+          resources={displayResources}
+          resourceAreaHeaderContent="Phòng Sản Xuất"
 
+          locale="vi"
+          resourceAreaWidth="250px"
+          expandRows={false}
 
-        eventClick={authorization ? ((info) => fcLatest.current.handleEventClick(info)) : false}
-        eventResize={authorization ? ((info) => fcLatest.current.handleEventChange(info)) : false}
-        eventResizeStart={() => fcLatest.current.takeSnapshot()}
-        eventDragStart={() => fcLatest.current.takeSnapshot()}
-        eventDrop={authorization ? ((info) => fcLatest.current.handleGroupEventDrop(
-          info,
-          selectedEventsRef.current,
-          fcLatest.current.toggleEventSelect,
-          fcLatest.current.handleEventChange
-        )) : false}
-        eventReceive={authorization ? ((info) => fcLatest.current.handleEventReceive(info)) : false}
-        eventMouseEnter={(info) => fcLatest.current.handleEventMouseEnter(info)}
-        eventMouseLeave={(info) => fcLatest.current.handleEventMouseLeave(info)}
-        dateClick={authorization ? ((info) => fcLatest.current.handleClear(info)) : false}
-        eventAllow={(dropInfo, draggedEvent) => fcLatest.current.finisedEvent(dropInfo, draggedEvent)}
+          eventsSet={(events) => {
+            const count = events.filter(e => (e.backgroundColor && e.backgroundColor.toLowerCase() === '#4d4b4bff') || (e.extendedProps?.violation_colors?.includes('#4d4b4bff'))).length;
+            setBlackViolationCount(prev => (prev === count ? prev : count));
+          }}
 
-        resourceGroupField="stage_name"
-        resourceOrder='order_by'
+          editable={true}
+          droppable={true}
+          selectable={true}
+          eventResizableFromStart={true}
+          eventDurationEditable={true}
 
 
-        resourceGroupLabelContent={(arg) => {
+          eventClick={authorization ? ((info) => fcLatest.current.handleEventClick(info)) : false}
+          eventResize={authorization ? ((info) => fcLatest.current.handleEventChange(info)) : false}
+          eventResizeStart={() => fcLatest.current.takeSnapshot()}
+          eventDragStart={() => fcLatest.current.takeSnapshot()}
+          eventDrop={authorization ? ((info) => fcLatest.current.handleGroupEventDrop(
+            info,
+            selectedEventsRef.current,
+            fcLatest.current.toggleEventSelect,
+            fcLatest.current.handleEventChange
+          )) : false}
+          eventReceive={authorization ? ((info) => fcLatest.current.handleEventReceive(info)) : false}
+          eventMouseEnter={(info) => fcLatest.current.handleEventMouseEnter(info)}
+          eventMouseLeave={(info) => fcLatest.current.handleEventMouseLeave(info)}
+          dateClick={authorization ? ((info) => fcLatest.current.handleClear(info)) : false}
+          eventAllow={(dropInfo, draggedEvent) => fcLatest.current.finisedEvent(dropInfo, draggedEvent)}
 
-          const stage_code = stageMap[arg.groupValue] || {};
-          const sumItem = sumBatchByStage.find(s => s.stage_code == stage_code)
-          const qty = sumItem ? formatNumberWithComma(sumItem.total_qty) : "0";
-          const unit = sumItem?.unit || "";
-          const yields = `${qty} ${unit}`.trim();
+          resourceGroupField="stage_name"
+          resourceOrder='order_by'
 
-          const highlight = selectedRows.some(row => row.stage_code == stage_code);
 
-          return (
-            <div style={{ fontWeight: "bold", color: highlight ? "red" : "black" }}>
-              {arg.groupValue + " :"}
-              <span style={{ marginLeft: "10px", color: "green" }}>
-                {yields}
-              </span>
-            </div>
-          );
+          resourceGroupLabelContent={(arg) => {
 
-        }}
+            const stage_code = stageMap[arg.groupValue] || {};
+            const sumItem = sumBatchByStage.find(s => s.stage_code == stage_code)
+            const qty = sumItem ? formatNumberWithComma(sumItem.total_qty) : "0";
+            const unit = sumItem?.unit || "";
+            const yields = `${qty} ${unit}`.trim();
 
-        // Phòng
-        resourceLabelContent={(arg) => {
-          const res = arg.resource.extendedProps;
+            const highlight = selectedRows.some(row => row.stage_code == stage_code);
 
-          if (res.is_personnel_sub) {
-            return {
-              html: `
+            return (
+              <div style={{ fontWeight: "bold", color: highlight ? "red" : "black" }}>
+                {arg.groupValue + " :"}
+                <span style={{ marginLeft: "10px", color: "green" }}>
+                  {yields}
+                </span>
+              </div>
+            );
+
+          }}
+
+          // Phòng
+          resourceLabelContent={(arg) => {
+            const res = arg.resource.extendedProps;
+
+            if (res.is_personnel_sub) {
+              return {
+                html: `
                 <div style="font-size: 11px; font-weight: bold; padding-left: 15px; color: #475569; line-height: 20px; display: flex; align-items: center; height: 20px;">
                   ${arg.resource.title}
                 </div>
               `
-            };
-          }
-
-          const busy = parseFloat(res.busy_hours) || 0;
-          const yields = parseFloat(res.yield) || 0;
-          const unit = res.unit || "";
-          const total = parseFloat(res.total_hours) || 1;
-          const efficiency = ((busy / total) * 100).toFixed(1);
-
-          const highlight = selectedRows.some(row => {
-            if (!row.permisson_room) return false;
-
-            if (Array.isArray(row.permisson_room)) {
-              return row.permisson_room.includes(res.code);
-            } else if (typeof row.permisson_room === "object") {
-              return Object.values(row.permisson_room).includes(res.code);
-            } else {
-              return row.permisson_room == arg.resource.id;
+              };
             }
-          });
 
-          const bgColor = highlight ? "#c6f7d0" : "transparent";
-          const busyWidth = ((busy / total) * 100).toFixed(1);
-          const heightResourcePx = heightResource || 40; // fallback nếu thiếu
-          const html = `
+            const busy = parseFloat(res.busy_hours) || 0;
+            const yields = parseFloat(res.yield) || 0;
+            const unit = res.unit || "";
+            const total = parseFloat(res.total_hours) || 1;
+            const efficiency = ((busy / total) * 100).toFixed(1);
+
+            const highlight = selectedRows.some(row => {
+              if (!row.permisson_room) return false;
+
+              if (Array.isArray(row.permisson_room)) {
+                return row.permisson_room.includes(res.code);
+              } else if (typeof row.permisson_room === "object") {
+                return Object.values(row.permisson_room).includes(res.code);
+              } else {
+                return row.permisson_room == arg.resource.id;
+              }
+            });
+
+            const bgColor = highlight ? "#c6f7d0" : "transparent";
+            const busyWidth = ((busy / total) * 100).toFixed(1);
+            const heightResourcePx = heightResource || 40; // fallback nếu thiếu
+            const html = `
             <div 
               style="
                 background-color:${bgColor};
@@ -7005,377 +7005,377 @@ const ScheduleTest = () => {
             </div>
           `;
 
-          return { html };
-        }}
+            return { html };
+          }}
 
-        resourceLabelDidMount={(info) => {
-          const handler = (e) => {
-            const target = e.target;
-            if (
-              target.tagName !== "INPUT" ||
-              target.type !== "checkbox" ||
-              !target.dataset.room
-            ) return;
+          resourceLabelDidMount={(info) => {
+            const handler = (e) => {
+              const target = e.target;
+              if (
+                target.tagName !== "INPUT" ||
+                target.type !== "checkbox" ||
+                !target.dataset.room
+              ) return;
 
-            const room = target.dataset.room;
-            const sheet = target.dataset.sheet;
-            const checked = target.checked;
+              const room = target.dataset.room;
+              const sheet = target.dataset.sheet;
+              const checked = target.checked;
 
-            axios.put('/Schedual/change_sheet', {
-              room_code: room,
-              sheet,
-              checked
-            })
-              .then(res => {
-                const updated = res.data.update;
-
-                setResources(prev =>
-                  (prev || []).map(r =>
-                    r.code !== room
-                      ? r
-                      : { ...r, ...updated }
-                  )
-                );
-
-                Swal.fire({
-                  icon: 'success',
-                  title: 'Hoàn Thành',
-                  timer: 600,
-                  showConfirmButton: false,
-                });
+              axios.put('/Schedual/change_sheet', {
+                room_code: room,
+                sheet,
+                checked
               })
-              .catch(err => {
-                Swal.fire({
-                  icon: 'error',
-                  title: 'Lỗi',
-                  timer: 1500,
-                  showConfirmButton: false,
+                .then(res => {
+                  const updated = res.data.update;
+
+                  setResources(prev =>
+                    (prev || []).map(r =>
+                      r.code !== room
+                        ? r
+                        : { ...r, ...updated }
+                    )
+                  );
+
+                  Swal.fire({
+                    icon: 'success',
+                    title: 'Hoàn Thành',
+                    timer: 600,
+                    showConfirmButton: false,
+                  });
+                })
+                .catch(err => {
+                  Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi',
+                    timer: 1500,
+                    showConfirmButton: false,
+                  });
+                  console.error(err);
                 });
-                console.error(err);
+            };
+
+            info.el.addEventListener("change", handler);
+
+            // ✅ cleanup để tránh leak
+            info.el._sheetHandler = handler;
+          }}
+
+          resourceLabelWillUnmount={(info) => {
+            if (info.el._sheetHandler) {
+              info.el.removeEventListener("change", info.el._sheetHandler);
+            }
+          }}
+
+          views={{
+            resourceTimelineDay: {
+              slotDuration: '00:15:00',
+              slotMinTime: '00:00:00',
+              slotMaxTime: '24:00:00',
+              buttonText: 'Ngày',
+              titleFormat: { year: 'numeric', month: 'short', day: 'numeric' },
+            },
+            resourceTimelineWeek: {
+              slotDuration: { days: 1 },
+              slotMinTime: '00:00:00',
+              slotMaxTime: '24:00:00',
+              buttonText: 'Tuần',
+              titleFormat: { year: 'numeric', month: 'short', day: 'numeric' },
+            },
+            resourceTimelineMonth: {
+              slotDuration: { days: 1 },
+              slotMinTime: '00:00:00',
+              slotMaxTime: '24:00:00',
+              buttonText: 'Tháng',
+              titleFormat: { year: 'numeric', month: 'short' },
+            },
+            resourceTimelineQuarter: {
+              slotDuration: { days: 1 },
+              duration: { months: 3 },
+              buttonText: 'Quý',
+              titleFormat: { year: 'numeric', month: 'short' },
+              type: 'resourceTimeline',
+            },
+            resourceTimelineYear: {
+              slotDuration: { days: 1 },
+              slotMinTime: '00:00:00',
+              slotMaxTime: '24:00:00',
+              buttonText: 'Năm',
+              titleFormat: { year: 'numeric' }
+            },
+            resourceTimelineWeek15: { type: 'resourceTimelineWeek', slotDuration: '00:15:00' },
+            resourceTimelineWeek1h: { type: 'resourceTimelineWeek', slotDuration: '01:00:00' },
+            resourceTimelineWeek4h: { type: 'resourceTimelineWeek', slotDuration: '04:00:00' },
+            resourceTimelineWeek1day: { type: 'resourceTimelineWeek', slotDuration: { days: 1 } },
+
+            resourceTimelineMonth1h: { type: 'resourceTimelineMonth', slotDuration: '01:00:00' },
+            resourceTimelineMonth4h: { type: 'resourceTimelineMonth', slotDuration: '04:00:00' },
+            resourceTimelineMonth1d: { type: 'resourceTimelineMonth', slotDuration: { days: 1 } },
+
+            resourceTimelineQuarter4h: { type: 'resourceTimelineQuarter', slotDuration: '04:00:00' },
+            resourceTimelineQuarter1d: { type: 'resourceTimelineQuarter', slotDuration: { days: 1 } },
+          }}
+
+          customButtons={{
+
+            undoFrontend: {
+              text: `Nháp (${undoStack.length})`,
+
+              click: (...args) => fcLatest.current.handleUndoFrontend(...args),
+              hint: 'Khôi phục thao tác kéo thả vừa rồi (Ctrl+Z)'
+            },
+
+            customNext: {
+              text: '⏵',
+              click: () => fcLatest.current.handleViewChange(null, 'next'),
+              hint: 'Tiến tới 1 khung thời gian'
+            },
+            customPre: {
+              text: '⏴',
+              click: () => fcLatest.current.handleViewChange(null, 'prev'),
+              hint: 'Lùi về 1 khung thời gian'
+            },
+
+            myToday: {
+              text: 'Hiện Tại',
+              click: () => fcLatest.current.handleViewChange(null, 'today'),
+              hint: 'Trờ về ngày hiện tại của khung thời gian đã chọn'
+            },
+
+            customList: {
+              text: 'KHSX',
+              click: (...args) => fcLatest.current.handleShowList(...args),
+              hint: 'Mở kế hoạch chờ sắp lịch'
+            },
+            toggleFullscreen: {
+              text: isFullscreen ? '🡸🡺' : '⛶',
+              click: () => setIsFullscreen(v => !v),
+              hint: isFullscreen
+                ? 'Thoát toàn màn hình (Alt+F hoặc Esc)'
+                : 'Xem toàn màn hình - ẩn thanh menu trên và trái (Alt+F)'
+            },
+            customDay: {
+              text: 'Ngày',
+              click: () => fcLatest.current.handleViewChange('resourceTimelineDay'),
+              hint: 'Thay đổi hiển thị lịch theo khung thời gian 1 ngày'
+
+            },
+            customWeek: {
+              text: 'Tuần',
+              click: () => fcLatest.current.handleViewChange('resourceTimelineWeek'),
+              hint: 'Thay đổi hiển thị lịch theo khung thời gian 1 tuần'
+            },
+            customMonth: {
+              text: 'Tháng',
+              click: () => fcLatest.current.handleViewChange('resourceTimelineMonth'),
+              hint: 'Thay đổi hiển thị lịch theo khung thời gian 1 tháng'
+            },
+            customQuarter: {
+              text: '3 Tháng',
+              click: () => fcLatest.current.handleViewChange('resourceTimelineQuarter'),
+              hint: 'Thay đổi hiển thị lịch theo khung thời gian 3 tháng'
+            },
+
+
+            noteModal: {
+              text: 'ℹ️',
+              click: (...args) => fcLatest.current.toggleNoteModal(...args),
+              hint: 'Ẩn/ Hiện chú thích màu của lịch'
+            },
+            hiddenClearning: {
+              text: isCleaningHidden ? '👀' : '🙈',
+              click: (...args) => fcLatest.current.toggleCleaningEvents(...args),
+              hint: 'Ẩn/ Hiện lịch vệ sinh'
+            },
+            historyToggle: {
+              text: showHistoryHover ? '⏳' : '📜',
+              click: (...args) => fcLatest.current.toggleHistoryHover(...args),
+              hint: 'Bật/Tắt chế độ hiển thị lịch sử thay đổi lịch khi hover chuột vào sự kiện'
+            },
+            cascadeToggle: {
+              text: isCascadeMode ? '⏳' : '🔀',
+              click: (...args) => fcLatest.current.toggleCascadeMode(...args),
+              hint: 'Bật/Tắt chế độ tịnh tiến tất cả các sự kiện phía sau trên cùng một Phòng sản xuất'
+            },
+
+            hiddenTheory: {
+              text: '🧭',
+              click: (...args) => fcLatest.current.toggleTheoryEvents(...args),
+              hint: 'Hiển thị lịch lý thuyết đôi với các lịch đã hoàn thành'
+            },
+
+
+            autoSchedualer: {
+              text: '🤖',
+              click: (...args) => fcLatest.current.handleAutoSchedualer(...args),
+              hint: 'Sắp lịch tự động'
+            },
+            deleteAllScheduale: {
+              text: '🗑️',
+              click: (...args) => fcLatest.current.handleDeleteAllScheduale(...args),
+              hint: 'Xóa lịch theo CĐ hoặc Line: chọn ngày bắt đầu xóa, chọn chế độ xóa, bấm Lưu'
+            },
+
+            changeSchedualer: {
+              text: '💾',
+              click: (...args) => fcLatest.current.handleSaveChanges(...args),
+              hint: 'Lưu thay đổi lịch: sau khi thay đổi lịch bấm 💾 hoặc Ctrl + S để lưu thay đổi'
+            },
+            unSelect: {
+              text: '🚫',
+              click: (...args) => fcLatest.current.handleDeleteScheduale(...args),
+              hint: 'Xóa lịch được chọn: Chọn các lịch cần xóa, sau đó bấm 🚫'
+            },
+
+            searchBox: {
+              text: '',
+              hint: 'Thay đổi font chữ'
+            },
+            fontSizeBox: {
+              text: '',
+              hint: 'Thay đổi font chữ'
+            },
+
+
+            slotDuration: {
+              text: 'Slot',
+              click: (...args) => fcLatest.current.toggleSlotDuration(...args),
+              hint: 'Tháy đổi độ chia thời gian tại khung tuần'
+            },
+
+            ShowBadge: {
+              text: showRenderBadge ? '❌' : '👁️',
+              click: () => setShowRenderBadge(v => !v),
+              hint: 'Xem các thông tin thêm như: lý do đổi màu lịch, mã chiến dịch'
+            },
+
+            Submit: {
+              text: '📤',
+              click: (...args) => fcLatest.current.handleSubmit(...args),
+              hint: 'Submit Lịch: Sau khi hoàn thành sắp lịch để các bộ phận khác có thể thấy bấm 📤'
+            },
+
+            AcceptQuarantine: {
+              text: '✅',
+              click: (...args) => fcLatest.current.handleAcceptQuanrantine(...args),
+              hint: 'Chấp nhận lô quá hạn biệt trữ: Chọn lịch cần chấp nhận sau đó bám nút ✅'
+            },
+
+            clearningValidation: {
+              text: '🚿',
+              click: (...args) => fcLatest.current.handleConfirmClearningValidation(...args),
+              hint: 'Xác Định Lịch Thẩm Định Vệ Sinh: Chọn lịch cần xác định sau đó bám nút 🚿'
+            },
+
+            Cleaninglevelchange: {
+              text: '🆚',
+              click: (...args) => fcLatest.current.handleCleaninglevelchange(...args),
+              hint: 'Thay đổi cấp vệ sinh: Chọn các lịch cần thay đổi, bấm nút 🆚 hộp thoại chọn cấp vệ sinh xuất hiện, chọn cấp vệ sinh cần thay đổi. Bấm Lưu'
+            },
+
+            togglePersonnel: {
+              text: showPersonnel ? '👥' : '👥',
+              click: () => setShowPersonnel(prev => !prev),
+              hint: 'Ẩn/Hiện phân công nhân sự tại từng phòng'
+            },
+
+            // autoFixPhaChe: {
+            //   text: '🧬',
+            //   click: handleAutoFixByPhaChe,
+            //   hint: 'Tự Động Sửa Lỗi Đen Theo Pha Chế: Cố định giai đoạn Pha Chế (3 & 4), tự động kéo/đẩy các công đoạn khác để không còn lỗi đen'
+            // },
+
+            detailToggle: {
+              text: showDetailHover ? '❌' : '🔍',
+              click: () => setShowDetailHover(v => !v),
+              hint: 'Bật/tắt chế độ hiển thị chi tiết lịch khi di chuột'
+            }
+          }}
+
+          headerToolbar={{
+            left: 'customPre,myToday,customNext noteModal hiddenClearning hiddenTheory cascadeToggle historyToggle detailToggle autoSchedualer deleteAllScheduale changeSchedualer unSelect ShowBadge AcceptQuarantine clearningValidation Cleaninglevelchange togglePersonnel',
+            center: 'title',
+            right: 'Submit fontSizeBox searchBox slotDuration customDay,customWeek,customMonth,customQuarter customList toggleFullscreen' //customYear
+          }}
+
+
+
+          eventDidMount={(info) => {
+            // Xử lý nút sửa nhanh đơn lẻ
+            const editBtn = info.el.querySelector('.edit-single-event-btn');
+            if (editBtn) {
+              editBtn.addEventListener('click', () => {
+                // e.stopPropagation(); // FullCalendar's eventClick might still trigger
+                fcLatest.current.handleEditEventClick(info.event);
               });
-          };
-
-          info.el.addEventListener("change", handler);
-
-          // ✅ cleanup để tránh leak
-          info.el._sheetHandler = handler;
-        }}
-
-        resourceLabelWillUnmount={(info) => {
-          if (info.el._sheetHandler) {
-            info.el.removeEventListener("change", info.el._sheetHandler);
-          }
-        }}
-
-        views={{
-          resourceTimelineDay: {
-            slotDuration: '00:15:00',
-            slotMinTime: '00:00:00',
-            slotMaxTime: '24:00:00',
-            buttonText: 'Ngày',
-            titleFormat: { year: 'numeric', month: 'short', day: 'numeric' },
-          },
-          resourceTimelineWeek: {
-            slotDuration: { days: 1 },
-            slotMinTime: '00:00:00',
-            slotMaxTime: '24:00:00',
-            buttonText: 'Tuần',
-            titleFormat: { year: 'numeric', month: 'short', day: 'numeric' },
-          },
-          resourceTimelineMonth: {
-            slotDuration: { days: 1 },
-            slotMinTime: '00:00:00',
-            slotMaxTime: '24:00:00',
-            buttonText: 'Tháng',
-            titleFormat: { year: 'numeric', month: 'short' },
-          },
-          resourceTimelineQuarter: {
-            slotDuration: { days: 1 },
-            duration: { months: 3 },
-            buttonText: 'Quý',
-            titleFormat: { year: 'numeric', month: 'short' },
-            type: 'resourceTimeline',
-          },
-          resourceTimelineYear: {
-            slotDuration: { days: 1 },
-            slotMinTime: '00:00:00',
-            slotMaxTime: '24:00:00',
-            buttonText: 'Năm',
-            titleFormat: { year: 'numeric' }
-          },
-          resourceTimelineWeek15: { type: 'resourceTimelineWeek', slotDuration: '00:15:00' },
-          resourceTimelineWeek1h: { type: 'resourceTimelineWeek', slotDuration: '01:00:00' },
-          resourceTimelineWeek4h: { type: 'resourceTimelineWeek', slotDuration: '04:00:00' },
-          resourceTimelineWeek1day: { type: 'resourceTimelineWeek', slotDuration: { days: 1 } },
-
-          resourceTimelineMonth1h: { type: 'resourceTimelineMonth', slotDuration: '01:00:00' },
-          resourceTimelineMonth4h: { type: 'resourceTimelineMonth', slotDuration: '04:00:00' },
-          resourceTimelineMonth1d: { type: 'resourceTimelineMonth', slotDuration: { days: 1 } },
-
-          resourceTimelineQuarter4h: { type: 'resourceTimelineQuarter', slotDuration: '04:00:00' },
-          resourceTimelineQuarter1d: { type: 'resourceTimelineQuarter', slotDuration: { days: 1 } },
-        }}
-
-        customButtons={{
-
-          undoFrontend: {
-            text: `Nháp (${undoStack.length})`,
-
-            click: (...args) => fcLatest.current.handleUndoFrontend(...args),
-            hint: 'Khôi phục thao tác kéo thả vừa rồi (Ctrl+Z)'
-          },
-
-          customNext: {
-            text: '⏵',
-            click: () => fcLatest.current.handleViewChange(null, 'next'),
-            hint: 'Tiến tới 1 khung thời gian'
-          },
-          customPre: {
-            text: '⏴',
-            click: () => fcLatest.current.handleViewChange(null, 'prev'),
-            hint: 'Lùi về 1 khung thời gian'
-          },
-
-          myToday: {
-            text: 'Hiện Tại',
-            click: () => fcLatest.current.handleViewChange(null, 'today'),
-            hint: 'Trờ về ngày hiện tại của khung thời gian đã chọn'
-          },
-
-          customList: {
-            text: 'KHSX',
-            click: (...args) => fcLatest.current.handleShowList(...args),
-            hint: 'Mở kế hoạch chờ sắp lịch'
-          },
-          toggleFullscreen: {
-            text: isFullscreen ? '🡸🡺' : '⛶',
-            click: () => setIsFullscreen(v => !v),
-            hint: isFullscreen
-              ? 'Thoát toàn màn hình (Alt+F hoặc Esc)'
-              : 'Xem toàn màn hình - ẩn thanh menu trên và trái (Alt+F)'
-          },
-          customDay: {
-            text: 'Ngày',
-            click: () => fcLatest.current.handleViewChange('resourceTimelineDay'),
-            hint: 'Thay đổi hiển thị lịch theo khung thời gian 1 ngày'
-
-          },
-          customWeek: {
-            text: 'Tuần',
-            click: () => fcLatest.current.handleViewChange('resourceTimelineWeek'),
-            hint: 'Thay đổi hiển thị lịch theo khung thời gian 1 tuần'
-          },
-          customMonth: {
-            text: 'Tháng',
-            click: () => fcLatest.current.handleViewChange('resourceTimelineMonth'),
-            hint: 'Thay đổi hiển thị lịch theo khung thời gian 1 tháng'
-          },
-          customQuarter: {
-            text: '3 Tháng',
-            click: () => fcLatest.current.handleViewChange('resourceTimelineQuarter'),
-            hint: 'Thay đổi hiển thị lịch theo khung thời gian 3 tháng'
-          },
-
-
-          noteModal: {
-            text: 'ℹ️',
-            click: (...args) => fcLatest.current.toggleNoteModal(...args),
-            hint: 'Ẩn/ Hiện chú thích màu của lịch'
-          },
-          hiddenClearning: {
-            text: isCleaningHidden ? '👀' : '🙈',
-            click: (...args) => fcLatest.current.toggleCleaningEvents(...args),
-            hint: 'Ẩn/ Hiện lịch vệ sinh'
-          },
-          historyToggle: {
-            text: showHistoryHover ? '⏳' : '📜',
-            click: (...args) => fcLatest.current.toggleHistoryHover(...args),
-            hint: 'Bật/Tắt chế độ hiển thị lịch sử thay đổi lịch khi hover chuột vào sự kiện'
-          },
-          cascadeToggle: {
-            text: isCascadeMode ? '⏳' : '🔀',
-            click: (...args) => fcLatest.current.toggleCascadeMode(...args),
-            hint: 'Bật/Tắt chế độ tịnh tiến tất cả các sự kiện phía sau trên cùng một Phòng sản xuất'
-          },
-
-          hiddenTheory: {
-            text: '🧭',
-            click: (...args) => fcLatest.current.toggleTheoryEvents(...args),
-            hint: 'Hiển thị lịch lý thuyết đôi với các lịch đã hoàn thành'
-          },
-
-
-          autoSchedualer: {
-            text: '🤖',
-            click: (...args) => fcLatest.current.handleAutoSchedualer(...args),
-            hint: 'Sắp lịch tự động'
-          },
-          deleteAllScheduale: {
-            text: '🗑️',
-            click: (...args) => fcLatest.current.handleDeleteAllScheduale(...args),
-            hint: 'Xóa lịch theo CĐ hoặc Line: chọn ngày bắt đầu xóa, chọn chế độ xóa, bấm Lưu'
-          },
-
-          changeSchedualer: {
-            text: '💾',
-            click: (...args) => fcLatest.current.handleSaveChanges(...args),
-            hint: 'Lưu thay đổi lịch: sau khi thay đổi lịch bấm 💾 hoặc Ctrl + S để lưu thay đổi'
-          },
-          unSelect: {
-            text: '🚫',
-            click: (...args) => fcLatest.current.handleDeleteScheduale(...args),
-            hint: 'Xóa lịch được chọn: Chọn các lịch cần xóa, sau đó bấm 🚫'
-          },
-
-          searchBox: {
-            text: '',
-            hint: 'Thay đổi font chữ'
-          },
-          fontSizeBox: {
-            text: '',
-            hint: 'Thay đổi font chữ'
-          },
-
-
-          slotDuration: {
-            text: 'Slot',
-            click: (...args) => fcLatest.current.toggleSlotDuration(...args),
-            hint: 'Tháy đổi độ chia thời gian tại khung tuần'
-          },
-
-          ShowBadge: {
-            text: showRenderBadge ? '❌' : '👁️',
-            click: () => setShowRenderBadge(v => !v),
-            hint: 'Xem các thông tin thêm như: lý do đổi màu lịch, mã chiến dịch'
-          },
-
-          Submit: {
-            text: '📤',
-            click: (...args) => fcLatest.current.handleSubmit(...args),
-            hint: 'Submit Lịch: Sau khi hoàn thành sắp lịch để các bộ phận khác có thể thấy bấm 📤'
-          },
-
-          AcceptQuarantine: {
-            text: '✅',
-            click: (...args) => fcLatest.current.handleAcceptQuanrantine(...args),
-            hint: 'Chấp nhận lô quá hạn biệt trữ: Chọn lịch cần chấp nhận sau đó bám nút ✅'
-          },
-
-          clearningValidation: {
-            text: '🚿',
-            click: (...args) => fcLatest.current.handleConfirmClearningValidation(...args),
-            hint: 'Xác Định Lịch Thẩm Định Vệ Sinh: Chọn lịch cần xác định sau đó bám nút 🚿'
-          },
-
-          Cleaninglevelchange: {
-            text: '🆚',
-            click: (...args) => fcLatest.current.handleCleaninglevelchange(...args),
-            hint: 'Thay đổi cấp vệ sinh: Chọn các lịch cần thay đổi, bấm nút 🆚 hộp thoại chọn cấp vệ sinh xuất hiện, chọn cấp vệ sinh cần thay đổi. Bấm Lưu'
-          },
-
-          togglePersonnel: {
-            text: showPersonnel ? '👥' : '👥',
-            click: () => setShowPersonnel(prev => !prev),
-            hint: 'Ẩn/Hiện phân công nhân sự tại từng phòng'
-          },
-
-          // autoFixPhaChe: {
-          //   text: '🧬',
-          //   click: handleAutoFixByPhaChe,
-          //   hint: 'Tự Động Sửa Lỗi Đen Theo Pha Chế: Cố định giai đoạn Pha Chế (3 & 4), tự động kéo/đẩy các công đoạn khác để không còn lỗi đen'
-          // },
-
-          detailToggle: {
-            text: showDetailHover ? '❌' : '🔍',
-            click: () => setShowDetailHover(v => !v),
-            hint: 'Bật/tắt chế độ hiển thị chi tiết lịch khi di chuột'
-          }
-        }}
-
-        headerToolbar={{
-          left: 'customPre,myToday,customNext noteModal hiddenClearning hiddenTheory cascadeToggle historyToggle detailToggle autoSchedualer deleteAllScheduale changeSchedualer unSelect ShowBadge AcceptQuarantine clearningValidation Cleaninglevelchange togglePersonnel',
-          center: 'title',
-          right: 'Submit fontSizeBox searchBox slotDuration customDay,customWeek,customMonth,customQuarter customList toggleFullscreen' //customYear
-        }}
-
-
-
-        eventDidMount={(info) => {
-          // Xử lý nút sửa nhanh đơn lẻ
-          const editBtn = info.el.querySelector('.edit-single-event-btn');
-          if (editBtn) {
-            editBtn.addEventListener('click', () => {
-              // e.stopPropagation(); // FullCalendar's eventClick might still trigger
-              fcLatest.current.handleEditEventClick(info.event);
-            });
-          }
-
-          // gắn data-event-id và data-plan_master_id để truy xuất nhanh
-          info.el.setAttribute("data-event-id", info.event.id);
-          info.el.setAttribute("data-stage_code", info.event.extendedProps.stage_code);
-          info.el.setAttribute("data-plan_master_id", info.event.extendedProps.plan_master_id);
-
-          // cho select evetn => pendingChanges
-          const isPending = pendingChanges.some(e => e.id === info.event.id);
-          if (isPending) {
-            info.el.style.border = '2px dashed orange';
-          }
-
-          // Lịch vẽ lại (đổi dữ liệu, đổi bộ lọc...) thì phần tử DOM là mới,
-          // phải gắn lại viền vàng cho những lô vẫn đang được chọn.
-          if ((selectedEventsRef.current || []).some(ev => String(ev.id) === String(info.event.id))) {
-            markEventSelected(info.el);
-          }
-
-          info.el.addEventListener('contextmenu', (e) => {
-            e.preventDefault();
-            // Náº¿u chÆ°a select gÃ¬ thÃ¬ hÃ¬nh nhÆ° event mÃ¬nh click pháº£i dÃ¹ng lÃ m target
-            setContextMenuInfo({
-              visible: true,
-              x: e.clientX,
-              y: e.clientY,
-              event: info.event
-            });
-          });
-
-          info.el.addEventListener("dblclick", (e) => {
-            e.stopPropagation();
-            if (!e.ctrlKey) {
-              fcLatest.current.handleEditEventClick(info.event);
-              return;
             }
 
-            const currentPm = info.event.extendedProps.plan_master_id;
+            // gắn data-event-id và data-plan_master_id để truy xuất nhanh
+            info.el.setAttribute("data-event-id", info.event.id);
+            info.el.setAttribute("data-stage_code", info.event.extendedProps.stage_code);
+            info.el.setAttribute("data-plan_master_id", info.event.extendedProps.plan_master_id);
 
-            setActivePlanMasterIds(prev => {
-              const currentSelected = selectedEventsRef.current || [];
-              // Nếu đã chọn nhiều sự kiện, lấy ALL plan_master_id từ chúng
-              if (currentSelected.length > 0) {
-                const uniquePms = [...new Set(currentSelected.map(ev => ev.plan_master_id))];
+            // cho select evetn => pendingChanges
+            const isPending = pendingChanges.some(e => e.id === info.event.id);
+            if (isPending) {
+              info.el.style.border = '2px dashed orange';
+            }
 
-                // Toggle: Nếu mảng hiện tại khớp hoàn toàn với uniquePms của nhóm vừa chọn -> reset
-                const isCurrentGroup = prev.length === uniquePms.length && uniquePms.every(id => prev.includes(id));
-                return isCurrentGroup ? [] : uniquePms;
-              }
+            // Lịch vẽ lại (đổi dữ liệu, đổi bộ lọc...) thì phần tử DOM là mới,
+            // phải gắn lại viền vàng cho những lô vẫn đang được chọn.
+            if ((selectedEventsRef.current || []).some(ev => String(ev.id) === String(info.event.id))) {
+              markEventSelected(info.el);
+            }
 
-              // Nếu không có selection, xử lý toggle cho riêng dòng click (tương tự logic cũ)
-              if (prev.length === 1 && prev[0] === currentPm) {
-                return [];
-              }
-              return [currentPm];
+            info.el.addEventListener('contextmenu', (e) => {
+              e.preventDefault();
+              // Náº¿u chÆ°a select gÃ¬ thÃ¬ hÃ¬nh nhÆ° event mÃ¬nh click pháº£i dÃ¹ng lÃ m target
+              setContextMenuInfo({
+                visible: true,
+                x: e.clientX,
+                y: e.clientY,
+                event: info.event
+              });
             });
-          });
-        }}
 
-        slotLaneDidMount={(info) => {
-          if (info.date < new Date()) {
-            info.el.style.backgroundColor = "rgba(0,0,0,0.05)";
-          }
-        }}
+            info.el.addEventListener("dblclick", (e) => {
+              e.stopPropagation();
+              if (!e.ctrlKey) {
+                fcLatest.current.handleEditEventClick(info.event);
+                return;
+              }
 
-        eventContent={EventContent}
+              const currentPm = info.event.extendedProps.plan_master_id;
 
-      />
+              setActivePlanMasterIds(prev => {
+                const currentSelected = selectedEventsRef.current || [];
+                // Nếu đã chọn nhiều sự kiện, lấy ALL plan_master_id từ chúng
+                if (currentSelected.length > 0) {
+                  const uniquePms = [...new Set(currentSelected.map(ev => ev.plan_master_id))];
+
+                  // Toggle: Nếu mảng hiện tại khớp hoàn toàn với uniquePms của nhóm vừa chọn -> reset
+                  const isCurrentGroup = prev.length === uniquePms.length && uniquePms.every(id => prev.includes(id));
+                  return isCurrentGroup ? [] : uniquePms;
+                }
+
+                // Nếu không có selection, xử lý toggle cho riêng dòng click (tương tự logic cũ)
+                if (prev.length === 1 && prev[0] === currentPm) {
+                  return [];
+                }
+                return [currentPm];
+              });
+            });
+          }}
+
+          slotLaneDidMount={(info) => {
+            if (info.date < new Date()) {
+              info.el.style.backgroundColor = "rgba(0,0,0,0.05)";
+            }
+          }}
+
+          eventContent={EventContent}
+
+        />
       </div>
       <NoteModal show={showNoteModal} setShow={setShowNoteModal} />
 

@@ -56,7 +56,8 @@ class MaintenanceAssignmentController extends Controller
             ->where('a.start', '<', $endDate)
             ->where('a.deparment_code', $dept_code)
             ->where('a.active', 1)
-            ->select('assignment_personnel.assignment_id', 'assignment_personnel.personnel_id', 'assignment_personnel.notification', 'assignment_personnel.start', 'assignment_personnel.end')
+            ->select('assignment_personnel.assignment_id', 'assignment_personnel.personnel_id', 'assignment_personnel.notification', 'assignment_personnel.start', 'assignment_personnel.end', 'assignment_personnel.display_order')
+            ->orderBy('assignment_personnel.display_order', 'asc')
             ->get()
             ->groupBy('assignment_id');
 
@@ -589,6 +590,7 @@ class MaintenanceAssignmentController extends Controller
                         'active'            => 1
                     ]);
 
+                    $displayOrder = 1;
                     foreach ($unique_p_data as $p) {
                         if (empty($p['personnel_id'])) continue;
 
@@ -608,7 +610,8 @@ class MaintenanceAssignmentController extends Controller
                             'notification' => $p['notification'] ?? null,
                             'operation_type' => $p['operation_type'] ?? 'thủ công',
                             'start' => $pStart,
-                            'end' => $pEnd
+                            'end' => $pEnd,
+                            'display_order' => $displayOrder++
                         ]);
                     }
                 }
@@ -815,6 +818,7 @@ class MaintenanceAssignmentController extends Controller
                         'active'            => 1
                     ]);
 
+                    $displayOrder = 1;
                     foreach ($validPersonnelList as $p) {
                         $pStart = $startDt;
                         $pEnd = $endDt;
@@ -833,7 +837,8 @@ class MaintenanceAssignmentController extends Controller
                             'notification' => $p['notification'] ?? null,
                             'operation_type' => 'nhân bản',
                             'start' => $pStart,
-                            'end' => $pEnd
+                            'end' => $pEnd,
+                            'display_order' => $displayOrder++
                         ]);
                     }
                 }
@@ -877,7 +882,8 @@ class MaintenanceAssignmentController extends Controller
             ->where('a.start', '<', $endDate)
             ->where('a.deparment_code', $dept_code)
             ->where('a.active', 1)
-            ->select('assignment_personnel.assignment_id', 'assignment_personnel.personnel_id', 'assignment_personnel.notification', 'assignment_personnel.start', 'assignment_personnel.end')
+            ->select('assignment_personnel.assignment_id', 'assignment_personnel.personnel_id', 'assignment_personnel.notification', 'assignment_personnel.start', 'assignment_personnel.end', 'assignment_personnel.display_order')
+            ->orderBy('assignment_personnel.display_order', 'asc')
             ->get()
             ->groupBy('assignment_id');
 

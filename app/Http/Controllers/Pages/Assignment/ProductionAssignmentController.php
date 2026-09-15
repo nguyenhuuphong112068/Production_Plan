@@ -1136,6 +1136,7 @@ class ProductionAssignmentController extends Controller
                         'active' => 1
                     ]);
 
+                    $displayOrder = 1;
                     foreach ($validPersonnelList as $p) {
                         $pStart = $startDt;
                         $pEnd = $endDt;
@@ -1154,7 +1155,8 @@ class ProductionAssignmentController extends Controller
                             'notification' => $p['notification'] ?? null,
                             'operation_type' => $p['operation_type'] ?? 'thủ công',
                             'start' => $pStart,
-                            'end' => $pEnd
+                            'end' => $pEnd,
+                            'display_order' => $displayOrder++
                         ]);
                     }
                 }
@@ -1449,8 +1451,20 @@ class ProductionAssignmentController extends Controller
         $reportData = $dailyReportController->yield_actual_detial($startDate, $endDate, 'resourceId', $production_code);
         $actualDetails = collect($reportData['actual_detail'])->groupBy('resourceId');
 
+        // Pre-fetch tất cả assignment_personnel sắp xếp theo display_order để bảo đảm thứ tự A, B, C, D khớp với web
+        $allAssignmentIds = $allAssignments->flatten()->pluck('id')->filter()->toArray();
+        $allPersonnelData = collect();
+        if (!empty($allAssignmentIds)) {
+            $allPersonnelData = DB::table('assignment_personnel')
+                ->whereIn('assignment_id', $allAssignmentIds)
+                ->select('assignment_id', 'personnel_id', 'notification', 'operation_type', 'start', 'end', 'display_order')
+                ->orderBy('display_order', 'asc')
+                ->get()
+                ->groupBy('assignment_id');
+        }
+
         // 6. Tổ chức lại dữ liệu
-        $tasks = $rooms->map(function ($room) use ($stagePlans, $allAssignments, $actualDetails, $startDate, $endDate) {
+        $tasks = $rooms->map(function ($room) use ($stagePlans, $allAssignments, $actualDetails, $startDate, $endDate, $allPersonnelData) {
             $plans = $stagePlans->get($room->id) ?? collect();
             $assignments = $allAssignments->get($room->id) ?? collect();
             $actuals = $actualDetails->get($room->id) ?? collect();
@@ -1520,9 +1534,7 @@ class ProductionAssignmentController extends Controller
             if ($theoryDisplay == '') $theoryDisplay = '<span class="text-muted italic">Không có lịch</span>';
 
             foreach ($assignments as $a) {
-                $a->personnel_data = DB::table('assignment_personnel')
-                    ->where('assignment_id', $a->id)
-                    ->select('personnel_id', 'notification', 'operation_type', 'start', 'end')->get();
+                $a->personnel_data = $allPersonnelData->get($a->id) ?? collect();
                 $a->start_time_display = $a->start ? Carbon::parse($a->start)->format('H:i') : null;
                 $a->end_time_display = $a->end ? Carbon::parse($a->end)->format('H:i') : null;
             }
@@ -1545,9 +1557,7 @@ class ProductionAssignmentController extends Controller
             foreach ($noRoomGroups as $spId => $groupAssignments) {
                 $hasLocal = false;
                 foreach ($groupAssignments as $a) {
-                    $a->personnel_data = DB::table('assignment_personnel')
-                        ->where('assignment_id', $a->id)
-                        ->select('personnel_id', 'notification', 'operation_type', 'start', 'end')->get();
+                    $a->personnel_data = $allPersonnelData->get($a->id) ?? collect();
                     $a->start_time_display = $a->start ? Carbon::parse($a->start)->format('H:i') : null;
                     $a->end_time_display = $a->end ? Carbon::parse($a->end)->format('H:i') : null;
 
@@ -2068,13 +2078,15 @@ class ProductionAssignmentController extends Controller
                 ]);
 
                 $unique_p_data = collect($p_data)->unique('personnel_id');
+                $displayOrder = 1;
                 foreach ($unique_p_data as $p) {
                     if (empty($p['personnel_id'])) continue;
                     DB::table('assignment_personnel')->insert([
                         'assignment_id' => $assignmentId,
                         'personnel_id' => $p['personnel_id'],
                         'notification' => $p['notification'] ?? null,
-                        'operation_type' => $p['operation_type'] ?? 'thủ công'
+                        'operation_type' => $p['operation_type'] ?? 'thủ công',
+                        'display_order' => $displayOrder++
                     ]);
                 }
             }
