@@ -399,15 +399,15 @@
                             </a>
                         </li>
 
-                        @if (user_has_permission(session('user')['userId'], 'personnel_assignment', 'boolean'))
-                            <li class="nav-item">
-                                <a href="{{ route('pages.quota.personnel.portal') }}"
-                                    class="nav-link {{ str_contains(url()->current(), 'personnel') ? 'active' : '' }}">
-                                    <i class="far fa-circle nav-icon text-info"></i>
-                                    <p>Danh Sách Nhân Viên</p>
-                                </a>
-                            </li>
-                        @endif
+                        {{-- @if (user_has_permission(session('user')['userId'], 'personnel_assignment', 'boolean')) --}}
+                        <li class="nav-item">
+                            <a href="{{ route('pages.quota.personnel.portal') }}"
+                                class="nav-link {{ str_contains(url()->current(), 'personnel') ? 'active' : '' }}">
+                                <i class="far fa-circle nav-icon text-info"></i>
+                                <p>Danh Sách Nhân Viên</p>
+                            </a>
+                        </li>
+                        {{-- @endif --}}
                     </ul>
                 </li>
 
