@@ -65,4 +65,81 @@ class AssignmentWeek
 
         return round(max(0, $minutes) / 60, 2);
     }
+
+    /**
+     * Lật bảng tuần từ trục "phòng" sang trục "nhân sự".
+     *
+     * Dùng lại đúng dữ liệu đã dựng cho bảng theo phòng (không truy vấn thêm):
+     * mỗi ca trong ô [phòng][ngày] được tách ra thành từng dòng của người làm ca đó,
+     * nên tổng giờ hai chế độ luôn khớp nhau.
+     *
+     * @param array      $cells   [rowKey][Y-m-d] => danh sách ca (mỗi ca có ->people)
+     * @param iterable   $rows    danh sách dòng phòng, cần row_key / code / name / group_code
+     * @return array{0: array, 1: array, 2: array} [personRows, personCells, personTotals]
+     */
+    public static function pivotByPersonnel(array $cells, $rows): array
+    {
+        // Tra cứu nhãn phòng theo row_key để gắn vào từng ca của nhân sự
+        $roomLabels = [];
+        $roomGroups = [];
+        foreach ($rows as $row) {
+            $roomLabels[$row->row_key] = trim(implode(' - ', array_filter([$row->code ?? null, $row->name ?? null])));
+            $roomGroups[$row->row_key] = $row->group_code ?? 'OTHER';
+        }
+
+        $personRows = [];
+        $personCells = [];
+        $personTotals = [];
+
+        foreach ($cells as $rowKey => $daysOfRow) {
+            foreach ($daysOfRow as $date => $shifts) {
+                foreach ($shifts as $shift) {
+                    foreach (($shift->people ?? []) as $person) {
+                        if (empty($person->id)) continue;
+
+                        $personKey = 'p' . $person->id;
+                        if (!isset($personRows[$personKey])) {
+                            $personRows[$personKey] = (object) [
+                                'row_key' => $personKey,
+                                'code' => $person->code ?: '',
+                                'name' => $person->name,
+                                'meta' => null,
+                                'group_code' => $roomGroups[$rowKey] ?? 'OTHER',
+                            ];
+                        }
+
+                        $personCells[$personKey][$date][] = (object) [
+                            'id' => $shift->id ?? null,
+                            'shift' => $shift->shift,
+                            'shift_name' => $shift->shift_name,
+                            'time' => $person->time,
+                            'hours' => $person->hours,
+                            'room_label' => $roomLabels[$rowKey] ?? '',
+                            'jobs' => $shift->jobs ?? [],
+                            'note' => $person->note ?? null,
+                            'operation_type' => $person->operation_type ?? null,
+                            'adjusted' => $person->adjusted ?? false,
+                        ];
+
+                        $personTotals[$personKey]['hours'] = ($personTotals[$personKey]['hours'] ?? 0) + $person->hours;
+                        $personTotals[$personKey]['shifts'] = ($personTotals[$personKey]['shifts'] ?? 0) + 1;
+                    }
+                }
+            }
+        }
+
+        // Sắp các ca trong cùng một ngày theo giờ bắt đầu, và xếp dòng theo tên
+        foreach ($personCells as $personKey => $daysOfPerson) {
+            foreach ($daysOfPerson as $date => $shifts) {
+                usort($shifts, fn($a, $b) => strcmp($a->time, $b->time));
+                $personCells[$personKey][$date] = $shifts;
+            }
+        }
+
+        uasort($personRows, function ($a, $b) {
+            return [$a->group_code, $a->name] <=> [$b->group_code, $b->name];
+        });
+
+        return [array_values($personRows), $personCells, $personTotals];
+    }
 }

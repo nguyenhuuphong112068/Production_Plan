@@ -585,6 +585,9 @@ class MaintenanceAssignmentController extends Controller
             ];
         }
 
+        // Bảng theo trục nhân sự: lật lại từ chính dữ liệu trên, không truy vấn thêm
+        [$personRows, $personCells, $personTotals] = AssignmentWeek::pivotByPersonnel($cells, $rowList);
+
         session()->put(['title' => 'LỊCH CÔNG TÁC BT-HC THEO TUẦN']);
 
         return view('pages.assignment.maintenance.weekly', [
@@ -592,6 +595,9 @@ class MaintenanceAssignmentController extends Controller
             'rows' => $rowList,
             'cells' => $cells,
             'rowTotals' => $rowTotals,
+            'personRows' => $personRows,
+            'personCells' => $personCells,
+            'personTotals' => $personTotals,
             'groupNames' => $groupNames,
             'groups' => $groups,
             'group_code' => $group_code,

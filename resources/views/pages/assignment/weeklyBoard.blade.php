@@ -222,6 +222,18 @@
         margin-bottom: 1px;
     }
 
+    /* Tên phòng hiển thị trong ô khi xem theo trục nhân sự */
+    .wk-room-tag {
+        display: inline-block;
+        background: #eef2f5;
+        color: #003A4F;
+        border-radius: 3px;
+        padding: 0 5px;
+        margin-top: 2px;
+        font-size: 0.72rem;
+        font-weight: 700;
+    }
+
     /* Nhân sự */
     .wk-person {
         display: flex;
@@ -343,6 +355,14 @@
     $groupDisabled = $groupDisabled ?? false;
     $exportTitle = $exportTitle ?? 'Lịch Công Tác Theo Tuần';
     $exportFilePrefix = $exportFilePrefix ?? 'Lich_Cong_Tac_Tuan';
+
+    // Trục dòng: phòng (mặc định) hoặc nhân sự. Chỉ render trục đang xem để
+    // trang không phình gấp đôi khi chọn "Tất cả" các tổ.
+    $axis = request('axis') === 'person' ? 'person' : 'room';
+    $isPersonAxis = $axis === 'person';
+    $boardRows = $isPersonAxis ? $personRows : $rows;
+    $boardCells = $isPersonAxis ? $personCells : $cells;
+    $boardTotals = $isPersonAxis ? $personTotals : $rowTotals;
 @endphp
 
 <div class="content-wrapper">
@@ -360,15 +380,23 @@
                     @endforeach
                 </select>
 
+                <span class="mr-2 font-weight-bold">Trục dòng:</span>
+                <select name="axis" class="form-control form-control-sm mr-3 shadow-sm"
+                    style="border: 2px solid #003A4F; width: 110px" onchange="this.form.submit()"
+                    title="Chọn dữ liệu hiển thị trên trục dòng">
+                    <option value="room" {{ $isPersonAxis ? '' : 'selected' }}>Phòng</option>
+                    <option value="person" {{ $isPersonAxis ? 'selected' : '' }}>Nhân sự</option>
+                </select>
+
                 <span class="mr-2 font-weight-bold">Tuần:</span>
-                <a href="{{ route($weeklyRoute) }}?group_code={{ $group_code }}&reportedDate={{ $prevWeek }}"
+                <a href="{{ route($weeklyRoute) }}?group_code={{ $group_code }}&axis={{ $axis }}&reportedDate={{ $prevWeek }}"
                     class="btn btn-sm btn-outline-secondary" title="Tuần trước"><i class="fas fa-chevron-left"></i></a>
                 <input type="date" name="reportedDate" value="{{ $anchorDate }}"
                     class="form-control form-control-sm shadow-sm mx-1" style="border: 2px solid #003A4F"
                     onchange="this.form.submit()">
-                <a href="{{ route($weeklyRoute) }}?group_code={{ $group_code }}&reportedDate={{ $nextWeek }}"
+                <a href="{{ route($weeklyRoute) }}?group_code={{ $group_code }}&axis={{ $axis }}&reportedDate={{ $nextWeek }}"
                     class="btn btn-sm btn-outline-secondary" title="Tuần sau"><i class="fas fa-chevron-right"></i></a>
-                <a href="{{ route($weeklyRoute) }}?group_code={{ $group_code }}"
+                <a href="{{ route($weeklyRoute) }}?group_code={{ $group_code }}&axis={{ $axis }}"
                     class="btn btn-sm btn-outline-primary ml-1">Tuần này</a>
 
                 <span class="badge badge-light border ml-3 py-1" style="font-size: 0.78rem;">
@@ -383,7 +411,8 @@
             <div class="d-flex align-items-center">
                 <input type="text" id="wk-search" class="form-control form-control-sm shadow-sm mr-2"
                     style="width: 190px; border: 2px solid #003A4F" placeholder="{{ $searchPlaceholder }}">
-                <div class="custom-control custom-checkbox mr-3">
+                {{-- Trục nhân sự chỉ gồm người đã có lịch nên không cần tuỳ chọn này --}}
+                <div class="custom-control custom-checkbox mr-3" {{ $isPersonAxis ? 'hidden' : '' }}>
                     <input type="checkbox" class="custom-control-input" id="wk-hide-empty" checked>
                     <label class="custom-control-label" for="wk-hide-empty"
                         style="font-size: 0.8rem;">{{ $hideEmptyLabel }}</label>
@@ -410,7 +439,9 @@
         <table class="wk-table">
             <thead>
                 <tr>
-                    <th class="wk-room-col">{{ $rowColTitle }}</th>
+                    <th class="wk-room-col">
+                        {{ $isPersonAxis ? 'Nhân Sự' : $rowColTitle }}
+                    </th>
                     @foreach ($days as $day)
                         <th class="wk-day-col {{ $day->is_today ? 'wk-day-today' : '' }}">
                             <div class="wk-day-name">{{ $day->label }}</div>
@@ -421,11 +452,11 @@
             </thead>
             <tbody>
                 @php $lastGroup = null; @endphp
-                @foreach ($rows as $row)
+                @foreach ($boardRows as $row)
                     @php
-                        $rowCells = $cells[$row->row_key] ?? [];
+                        $rowCells = $boardCells[$row->row_key] ?? [];
                         $hasData = !empty($rowCells);
-                        $totals = $rowTotals[$row->row_key] ?? ['hours' => 0, 'slots' => 0, 'shifts' => 0];
+                        $totals = $boardTotals[$row->row_key] ?? ['hours' => 0, 'slots' => 0, 'shifts' => 0];
                     @endphp
 
                     @if ($lastGroup !== $row->group_code)
@@ -441,15 +472,26 @@
 
                     <tr class="wk-row" data-has-data="{{ $hasData ? 1 : 0 }}">
                         <td class="wk-room-col">
-                            <div class="wk-room-code">{{ $row->code }}</div>
-                            <div class="wk-room-name">{{ $row->name }}</div>
-                            @if ($row->meta)
-                                <div class="wk-room-meta">{{ $row->meta }}</div>
+                            @if ($isPersonAxis)
+                                <div class="wk-room-name font-weight-bold" style="font-size: 0.8rem;">
+                                    {{ $row->name }}</div>
+                                @if ($row->code)
+                                    <div class="wk-room-meta">{{ $row->code }}</div>
+                                @endif
+                            @else
+                                <div class="wk-room-code">{{ $row->code }}</div>
+                                <div class="wk-room-name">{{ $row->name }}</div>
+                                @if ($row->meta)
+                                    <div class="wk-room-meta">{{ $row->meta }}</div>
+                                @endif
                             @endif
                             @if ($hasData)
                                 <div class="wk-row-total mt-1">
-                                    {{ $totals['shifts'] ?? 0 }} ca · {{ $totals['slots'] ?? 0 }} lượt ·
-                                    {{ number_format($totals['hours'] ?? 0, 1) }}h
+                                    {{ $totals['shifts'] ?? 0 }} ca
+                                    @if (!$isPersonAxis)
+                                        · {{ $totals['slots'] ?? 0 }} lượt
+                                    @endif
+                                    · {{ number_format($totals['hours'] ?? 0, 1) }}h
                                 </div>
                             @endif
                         </td>
@@ -464,11 +506,25 @@
                                             <span>
                                                 <span
                                                     class="wk-badge wk-badge-{{ $shiftClass($s->shift) }}">{{ $s->shift_name }}</span>
-                                                <span class="wk-shift-time ml-1">{{ $s->start }}-{{ $s->end }}</span>
+                                                @if ($isPersonAxis)
+                                                    <span
+                                                        class="wk-shift-time ml-1 {{ $s->adjusted ? 'text-warning' : '' }}">{{ $s->time }}</span>
+                                                @else
+                                                    <span
+                                                        class="wk-shift-time ml-1">{{ $s->start }}-{{ $s->end }}</span>
+                                                @endif
                                             </span>
-                                            <span class="wk-shift-sum">{{ $s->headcount }}ng ·
-                                                {{ number_format($s->hours, 1) }}h</span>
+                                            <span class="wk-shift-sum">
+                                                @if (!$isPersonAxis)
+                                                    {{ $s->headcount }}ng ·
+                                                @endif
+                                                {{ number_format($s->hours, 1) }}h
+                                            </span>
                                         </div>
+
+                                        @if ($isPersonAxis && $s->room_label)
+                                            <div class="wk-room-tag">{{ $s->room_label }}</div>
+                                        @endif
 
                                         @if (!empty($s->jobs))
                                             <div class="wk-jobs">
@@ -478,18 +534,24 @@
                                             </div>
                                         @endif
 
-                                        @foreach ($s->people as $p)
-                                            <div class="wk-person"
-                                                title="{{ $p->name }}{{ $p->code ? ' - ' . $p->code : '' }}{{ $p->note ? ' | ' . $p->note : '' }}">
-                                                <span class="wk-person-label">{{ $p->label }}</span>
-                                                <span class="wk-person-name">{{ $p->name }}</span>
-                                                <span
-                                                    class="wk-person-time {{ $p->adjusted ? 'adjusted' : '' }}">{{ $p->time }}</span>
-                                            </div>
-                                        @endforeach
+                                        @if ($isPersonAxis)
+                                            @if ($s->note)
+                                                <div class="wk-person text-success">{{ $s->note }}</div>
+                                            @endif
+                                        @else
+                                            @foreach ($s->people as $p)
+                                                <div class="wk-person"
+                                                    title="{{ $p->name }}{{ $p->code ? ' - ' . $p->code : '' }}{{ $p->note ? ' | ' . $p->note : '' }}">
+                                                    <span class="wk-person-label">{{ $p->label }}</span>
+                                                    <span class="wk-person-name">{{ $p->name }}</span>
+                                                    <span
+                                                        class="wk-person-time {{ $p->adjusted ? 'adjusted' : '' }}">{{ $p->time }}</span>
+                                                </div>
+                                            @endforeach
 
-                                        @if ($s->headcount === 0)
-                                            <div class="wk-person text-danger">Chưa gán nhân sự</div>
+                                            @if ($s->headcount === 0)
+                                                <div class="wk-person text-danger">Chưa gán nhân sự</div>
+                                            @endif
                                         @endif
                                     </div>
                                 @empty
@@ -531,8 +593,9 @@
             var keyword = inputSearch.value.trim().toLowerCase();
             var hideEmpty = chkHideEmpty.checked;
             var visibleRows = 0;
+            var tbody = document.querySelector('table.wk-table tbody');
 
-            document.querySelectorAll('tr.wk-row').forEach(function(tr) {
+            tbody.querySelectorAll('tr.wk-row').forEach(function(tr) {
                 var hasData = tr.dataset.hasData === '1';
                 var matched = true;
 
@@ -557,12 +620,13 @@
                 if (visible) visibleRows++;
             });
 
-            document.getElementById('wk-no-data').style.display = visibleRows ? 'none' : '';
+            var emptyRow = tbody.querySelector('tr[id^="wk-no-data"]');
+            if (emptyRow) emptyRow.style.display = visibleRows ? 'none' : '';
 
-            // Ẩn tiêu đề tổ nếu toàn bộ phòng bên dưới đã bị ẩn
+            // Ẩn tiêu đề tổ nếu toàn bộ dòng bên dưới đã bị ẩn
             var groupRow = null;
             var groupHasVisible = false;
-            document.querySelectorAll('tr.wk-group-row, tr.wk-row').forEach(function(tr) {
+            tbody.querySelectorAll('tr.wk-group-row, tr.wk-row').forEach(function(tr) {
                 if (tr.classList.contains('wk-group-row')) {
                     if (groupRow) groupRow.style.display = groupHasVisible ? '' : 'none';
                     groupRow = tr;
@@ -602,6 +666,10 @@
                 lines.push([cellText(badge), cellText(time), sum ? '(' + cellText(sum) + ')' : '']
                     .filter(Boolean).join(' '));
 
+                // Trục nhân sự: phòng là thông tin thay đổi theo từng ca
+                var roomTag = shift.querySelector('.wk-room-tag');
+                if (roomTag) lines.push('  ' + cellText(roomTag));
+
                 shift.querySelectorAll('.wk-jobs > div').forEach(function(job) {
                     lines.push('  ' + cellText(job));
                 });
@@ -636,11 +704,11 @@
             var aoa = [
                 ['{{ $exportTitle }}'],
                 ['Tổ: ' + groupLabel + '    Tuần: {{ \Carbon\Carbon::parse($weekStart)->format('d/m/Y') }} - {{ \Carbon\Carbon::parse($weekEnd)->format('d/m/Y') }}'],
-                ['{{ $rowColTitle }}'].concat(dayHeaders),
+                ['{{ $isPersonAxis ? 'Nhân Sự' : $rowColTitle }}'].concat(dayHeaders),
             ];
             var metaRows = 3;
 
-            document.querySelectorAll('tbody tr').forEach(function(tr) {
+            table.querySelectorAll('tbody tr').forEach(function(tr) {
                 if (tr.style.display === 'none' || tr.id === 'wk-no-data') return;
 
                 if (tr.classList.contains('wk-group-row')) {
@@ -769,7 +837,7 @@
 
             XLSX.utils.book_append_sheet(wb, ws, 'Lich_Tuan');
             var fileName =
-                '{{ $exportFilePrefix }}_{{ \Carbon\Carbon::parse($weekStart)->format('Ymd') }}_{{ \Carbon\Carbon::parse($weekEnd)->format('Ymd') }}.xlsx';
+                '{{ $exportFilePrefix }}{{ $isPersonAxis ? '_NhanSu' : '' }}_{{ \Carbon\Carbon::parse($weekStart)->format('Ymd') }}_{{ \Carbon\Carbon::parse($weekEnd)->format('Ymd') }}.xlsx';
             XLSX.writeFile(wb, fileName);
         });
     })();

@@ -735,6 +735,9 @@ class ProductionAssignmentController extends Controller
             ];
         }
 
+        // Bảng theo trục nhân sự: lật lại từ chính dữ liệu trên, không truy vấn thêm
+        [$personRows, $personCells, $personTotals] = AssignmentWeek::pivotByPersonnel($cells, $rowList);
+
         session()->put(['title' => 'LỊCH CÔNG TÁC THEO TUẦN']);
 
         return view('pages.assignment.production.weekly', [
@@ -742,6 +745,9 @@ class ProductionAssignmentController extends Controller
             'rows' => $rowList,
             'cells' => $cells,
             'rowTotals' => $rowTotals,
+            'personRows' => $personRows,
+            'personCells' => $personCells,
+            'personTotals' => $personTotals,
             'groupNames' => $groupNames,
             'groups' => $groups,
             'group_code' => $active_group_code,
