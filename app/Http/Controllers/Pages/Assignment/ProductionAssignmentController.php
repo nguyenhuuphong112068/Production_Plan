@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Http\Controllers\Pages\Report\DailyReportController;
+use App\Support\AssignmentWeek;
 use App\Support\WorkingDay;
 use Illuminate\Support\Facades\Log;
 use App\Services\ShiftApiService;
@@ -488,6 +489,269 @@ class ProductionAssignmentController extends Controller
             'hasOvertimeBaseline' => $hasOvertimeBaseline,
             'overtimeApprovedBy' => $overtimeApprovedBy,
             'overtimeApprovedAt' => $overtimeApprovedAt
+        ]);
+    }
+
+    /**
+     * Lịch công tác theo tuần (chỉ xem).
+     *
+     * Hiển thị cả 7 ngày công tác (Thứ 2 -> Chủ nhật) trên một bảng: mỗi dòng là
+     * một phòng/thiết bị, mỗi cột là một ngày; trong ô là các ca kèm thời gian
+     * công việc, danh sách nhân sự và giờ công của từng người.
+     *
+     * Ngày công tác chạy từ 06:00 hôm nay tới 06:00 hôm sau (App\Support\WorkingDay),
+     * nên ca đêm bắt đầu 22:00 ngày D vẫn nằm ở cột ngày D.
+     */
+    public function weekly(Request $request)
+    {
+        $production_code = session('user')['production_code'];
+        $user_group_name = session('user')['group_name'];
+
+        $anchorDate = $request->reportedDate ?? Carbon::now()->format('Y-m-d');
+        $weekStart = Carbon::parse($anchorDate)->startOfWeek(Carbon::MONDAY);
+        $weekEnd = $weekStart->copy()->addDays(6);
+
+        $rangeStart = WorkingDay::start($weekStart);
+        $rangeEnd = WorkingDay::end($weekEnd);
+
+        // Danh sách tổ: giữ nguyên bảng cứng như trang phân công theo ngày
+        $groups = collect([
+            1 => "Trung Tâm Cân",
+            3 => "Pha Chế",
+            4 => "Văn Phòng",
+            5 => "Định Hình",
+            6 => "Bao Phim",
+            7 => "ĐGSC",
+            8 => "ĐGTC",
+            9 => "VSCN + Kho BTP",
+            10 => "Mã Hoá BB"
+        ])->map(function ($name, $id) {
+            return (object) ['group_code' => $id, 'production_group' => $name];
+        })->values();
+
+        // Khóa bộ lọc tổ nếu user thuộc đúng một tổ
+        $isLocked = false;
+        $active_group_code = $request->group_code;
+        if ($user_group_name) {
+            $matchedGroup = $groups->first(function ($g) use ($user_group_name) {
+                return trim($g->production_group) == trim($user_group_name);
+            });
+            if ($matchedGroup) {
+                $active_group_code = $matchedGroup->group_code;
+                $isLocked = true;
+            }
+        }
+
+        // 1. Danh sách phòng của bộ phận (có lọc theo tổ)
+        $roomQuery = DB::table('room')
+            ->where('deparment_code', $production_code)
+            ->where('only_maintenance', 0);
+
+        if ($active_group_code) {
+            if ($active_group_code == 7 || $active_group_code == 8) {
+                $roomQuery->whereIn('group_code', [7, 8]);
+            } else {
+                $roomQuery->where('group_code', $active_group_code);
+            }
+        }
+
+        $rooms = $roomQuery->orderBy('group_code')->orderBy('order_by')->get();
+
+        // 2. Toàn bộ phân công trong tuần
+        $assignmentQuery = DB::table('assignments as a')
+            ->leftJoin('user_management as u', 'a.assigned_by', '=', 'u.userName')
+            ->where('a.deparment_code', $production_code)
+            ->where('a.active', 1)
+            ->where('a.start', '>=', $rangeStart)
+            ->where('a.start', '<', $rangeEnd)
+            ->select('a.*', 'u.fullname as assigner_name');
+
+        if ($active_group_code) {
+            if ($active_group_code == 7 || $active_group_code == 8) {
+                $assignmentQuery->whereIn('a.stage_groups_code', [7, 8]);
+            } else {
+                $assignmentQuery->where('a.stage_groups_code', $active_group_code);
+            }
+        }
+
+        $assignments = $assignmentQuery->orderBy('a.start')->get();
+
+        // 3. Nhân sự của các phân công đó (1 query, tránh N+1)
+        $personnelByAssignment = collect();
+        if ($assignments->isNotEmpty()) {
+            $personnelByAssignment = DB::table('assignment_personnel as ap')
+                ->leftJoin('employees as e', 'ap.personnel_id', '=', 'e.id')
+                ->whereIn('ap.assignment_id', $assignments->pluck('id')->all())
+                ->orderBy('ap.display_order', 'asc')
+                ->select(
+                    'ap.assignment_id',
+                    'ap.personnel_id',
+                    'ap.notification',
+                    'ap.operation_type',
+                    'ap.start',
+                    'ap.end',
+                    'ap.display_order',
+                    'e.name as personnel_name',
+                    'e.code as personnel_code'
+                )
+                ->get()
+                ->groupBy('assignment_id');
+        }
+
+        $shiftNames = ['1' => 'Ca 1', '2' => 'Ca 2', '3' => 'Ca 3', '4' => 'HC', '5' => 'Khác', '6' => 'Ca 4'];
+        $letters = range('A', 'Z');
+
+        // 4. Xếp phân công vào đúng ô [dòng][ngày công tác]
+        $cells = [];            // [rowKey][Y-m-d] => danh sách ca
+        $extraRows = [];        // các công tác không gắn phòng
+        $dayTotals = [];        // tổng theo ngày
+        $rowTotals = [];        // tổng theo dòng
+        $weekPeople = [];       // nhân sự khác nhau trong tuần
+
+        foreach ($assignments as $a) {
+            $workDay = WorkingDay::of($a->start);
+            if ($workDay < $weekStart->format('Y-m-d') || $workDay > $weekEnd->format('Y-m-d')) {
+                continue;
+            }
+
+            $rowKey = $a->room_id ? 'r' . $a->room_id : 'x' . md5($a->work_location ?: 'Công tác khác');
+            if (!$a->room_id && !isset($extraRows[$rowKey])) {
+                $extraRows[$rowKey] = (object) [
+                    'row_key' => $rowKey,
+                    'code' => 'NA',
+                    'name' => $a->work_location ?: 'Công tác khác',
+                    'meta' => null,
+                    'group_code' => 'OTHER',
+                ];
+            }
+
+            $people = [];
+            $cellHours = 0;
+            foreach (($personnelByAssignment->get($a->id) ?? collect()) as $i => $p) {
+                if (!$p->personnel_id) continue;
+
+                $pStart = $p->start ?: $a->start;
+                $pEnd = $p->end ?: $a->end;
+                $hours = $this->diffHours($pStart, $pEnd, $a->Sheet) ?? 0;
+                $cellHours += $hours;
+                $weekPeople[$p->personnel_id] = true;
+
+                $people[] = (object) [
+                    'label' => $letters[$i] ?? (string) ($i + 1),
+                    'id' => $p->personnel_id,
+                    'name' => $p->personnel_name ?: ('#' . $p->personnel_id),
+                    'code' => $p->personnel_code,
+                    'time' => Carbon::parse($pStart)->format('H:i') . '-' . Carbon::parse($pEnd)->format('H:i'),
+                    'hours' => $hours,
+                    'note' => $p->notification,
+                    'operation_type' => $p->operation_type,
+                    // Chỉ đánh dấu khi giờ của người này lệch khỏi giờ chung của ca
+                    'adjusted' => Carbon::parse($pStart)->format('H:i') !== Carbon::parse($a->start)->format('H:i')
+                        || Carbon::parse($pEnd)->format('H:i') !== Carbon::parse($a->end)->format('H:i'),
+                ];
+            }
+
+            $jobs = $this->splitJobDescription($a->Job_description);
+
+            $cells[$rowKey][$workDay][] = (object) [
+                'id' => $a->id,
+                'shift' => (string) $a->Sheet,
+                'shift_name' => $shiftNames[(string) $a->Sheet] ?? ('Ca ' . $a->Sheet),
+                'start' => Carbon::parse($a->start)->format('H:i'),
+                'end' => Carbon::parse($a->end)->format('H:i'),
+                'jobs' => $jobs,
+                'people' => $people,
+                'hours' => round($cellHours, 2),
+                'headcount' => count($people),
+                'assigner_name' => $a->assigner_name,
+                'off_stream' => (bool) $a->off_stream,
+                'is_scheduled' => !empty($a->stage_plan_id),
+            ];
+
+            $dayTotals[$workDay]['hours'] = ($dayTotals[$workDay]['hours'] ?? 0) + $cellHours;
+            $dayTotals[$workDay]['slots'] = ($dayTotals[$workDay]['slots'] ?? 0) + count($people);
+            foreach ($people as $pp) {
+                $dayTotals[$workDay]['people'][$pp->id] = true;
+            }
+
+            $rowTotals[$rowKey]['hours'] = ($rowTotals[$rowKey]['hours'] ?? 0) + $cellHours;
+            $rowTotals[$rowKey]['slots'] = ($rowTotals[$rowKey]['slots'] ?? 0) + count($people);
+            $rowTotals[$rowKey]['shifts'] = ($rowTotals[$rowKey]['shifts'] ?? 0) + 1;
+        }
+
+        // 5. Dựng danh sách dòng: phòng theo thứ tự cấu hình + công tác khác ở cuối
+        $rowList = $rooms->map(function ($room) {
+            return (object) [
+                'row_key' => 'r' . $room->id,
+                'code' => $room->code,
+                'name' => $room->name,
+                'meta' => $room->main_equiment_name,
+                'group_code' => $room->group_code,
+            ];
+        })->values();
+
+        // Phân công trỏ tới phòng nằm ngoài bộ lọc (VD phòng chỉ dùng cho bảo trì)
+        // vẫn phải hiện, nếu không dữ liệu sẽ bị rơi âm thầm.
+        $knownKeys = $rowList->pluck('row_key')->all();
+        $orphanIds = [];
+        foreach (array_keys($cells) as $key) {
+            if (str_starts_with($key, 'r') && !in_array($key, $knownKeys, true)) {
+                $orphanIds[] = (int) substr($key, 1);
+            }
+        }
+        if (!empty($orphanIds)) {
+            foreach (DB::table('room')->whereIn('id', $orphanIds)->orderBy('order_by')->get() as $room) {
+                $rowList->push((object) [
+                    'row_key' => 'r' . $room->id,
+                    'code' => $room->code,
+                    'name' => $room->name,
+                    'meta' => $room->main_equiment_name,
+                    'group_code' => 'OTHER',
+                ]);
+            }
+        }
+
+        foreach ($extraRows as $row) {
+            $rowList->push($row);
+        }
+
+        $groupNames = $groups->pluck('production_group', 'group_code')->all();
+        $groupNames['OTHER'] = 'Công tác khác (ngoài phòng)';
+
+        $dayNames = [1 => 'Thứ 2', 2 => 'Thứ 3', 3 => 'Thứ 4', 4 => 'Thứ 5', 5 => 'Thứ 6', 6 => 'Thứ 7', 0 => 'Chủ nhật'];
+        $days = [];
+        for ($i = 0; $i < 7; $i++) {
+            $d = $weekStart->copy()->addDays($i);
+            $key = $d->format('Y-m-d');
+            $days[] = (object) [
+                'date' => $key,
+                'label' => $dayNames[$d->dayOfWeek],
+                'short' => $d->format('d/m'),
+                'is_today' => $key === Carbon::today()->format('Y-m-d'),
+                'is_weekend' => in_array($d->dayOfWeek, [0, 6]),
+                'hours' => round($dayTotals[$key]['hours'] ?? 0, 2),
+                'slots' => $dayTotals[$key]['slots'] ?? 0,
+                'people' => count($dayTotals[$key]['people'] ?? []),
+            ];
+        }
+
+        session()->put(['title' => 'LỊCH CÔNG TÁC THEO TUẦN']);
+
+        return view('pages.assignment.production.weekly', [
+            'days' => $days,
+            'rows' => $rowList,
+            'cells' => $cells,
+            'rowTotals' => $rowTotals,
+            'groupNames' => $groupNames,
+            'groups' => $groups,
+            'group_code' => $active_group_code,
+            'isLocked' => $isLocked,
+            'weekStart' => $weekStart->format('Y-m-d'),
+            'weekEnd' => $weekEnd->format('Y-m-d'),
+            'anchorDate' => Carbon::parse($anchorDate)->format('Y-m-d'),
+            'production_code' => $production_code,
+            'totalPeople' => count($weekPeople),
+            'totalHours' => round(array_sum(array_column($dayTotals, 'hours')), 2),
         ]);
     }
 
@@ -1267,29 +1531,18 @@ class ProductionAssignmentController extends Controller
      * Số giờ công tác giữa 2 mốc, trừ nghỉ trưa 11:30-12:15 với các ca có nghỉ trưa (HC).
      * Áp dụng đúng quy tắc đang hiển thị trên slider ở giao diện.
      */
+    /**
+     * Job_description được nhập bằng contenteditable nên nội dung là HTML
+     * (<div>, <br>, &nbsp;...). Tách thành từng dòng công việc dạng text thuần.
+     */
+    private function splitJobDescription($html)
+    {
+        return AssignmentWeek::jobLines($html);
+    }
+
     private function diffHours($start, $end, $shift = null)
     {
-        if (!$start || !$end) return null;
-
-        $s = Carbon::parse($start);
-        $e = Carbon::parse($end);
-        if ($e < $s) $e = $e->copy()->addDay();
-
-        $minutes = $s->diffInMinutes($e);
-
-        // Ca 1, 2, 3, 6 chạy liên tục, không trừ nghỉ trưa
-        if (!in_array((string) $shift, ['1', '2', '3', '6'], true)) {
-            $lunchStart = $s->copy()->startOfDay()->addMinutes(11 * 60 + 30);
-            $lunchEnd = $s->copy()->startOfDay()->addMinutes(12 * 60 + 15);
-
-            $overlapStart = $s->greaterThan($lunchStart) ? $s : $lunchStart;
-            $overlapEnd = $e->lessThan($lunchEnd) ? $e : $lunchEnd;
-            if ($overlapStart < $overlapEnd) {
-                $minutes -= $overlapStart->diffInMinutes($overlapEnd);
-            }
-        }
-
-        return round(max(0, $minutes) / 60, 2);
+        return AssignmentWeek::hours($start, $end, $shift);
     }
 
     /**

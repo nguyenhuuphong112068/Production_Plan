@@ -22,6 +22,7 @@ Route::prefix('/assignemnt/production')
         Route::get('', 'index')->name('index');
         Route::post('store', 'store')->name('store');
         Route::post('clone-custom-task', 'cloneCustomTask')->name('clone_custom_task');
+        Route::get('weekly', 'weekly')->name('weekly');
         Route::get('shifts', 'getPersonnelShifts')->name('shifts');
         Route::post('approve-overtime', 'approveOvertime')->name('approve_overtime');
         Route::get('overtime-approval-history', 'overtimeApprovalHistory')->name('overtime_approval_history');
@@ -43,6 +44,7 @@ Route::prefix('/assignemnt/maintenance')
     ->group(function () {
         Route::get('/portal', 'portal')->name('portal');
         Route::get('', 'index')->name('index');
+        Route::get('weekly', 'weekly')->name('weekly');
         // Route cho các tác vụ khác nếu cần
         Route::get('shifts', 'getPersonnelShifts')->name('shifts');
         Route::post('update-has-assignment', 'updateHasAssignment')->name('update_has_assignment');

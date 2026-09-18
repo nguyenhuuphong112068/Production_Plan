@@ -696,13 +696,13 @@
                         </li>
 
                         @if (user_has_permission(session('user')['userId'], 'maintenance_assessment_view', 'boolean'))
-                            <li class="nav-item">
+                            {{-- <li class="nav-item">
                                 <a href="/maintenance-assessment"
                                     class="nav-link {{ str_contains(url()->current(), 'maintenance-assessment') ? 'active' : '' }}">
                                     <i class="far fa-circle nav-icon"></i>
                                     <p style="color: red;">Đánh Giá HC-BT</p>
                                 </a>
-                            </li>
+                            </li> --}}
                         @endif
                     </ul>
                 </li>
@@ -741,6 +741,14 @@
                                 </a>
                             </li>
 
+                            <li class="nav-item">
+                                <a href="{{ route('pages.assignment.production.weekly') }}"
+                                    class="nav-link {{ str_contains(url()->current(), 'assignemnt/production/weekly') ? 'active' : '' }}">
+                                    <i class="far fa-calendar-alt nav-icon"></i>
+                                    <p>Sản Xuất - Theo Tuần</p>
+                                </a>
+                            </li>
+
                             {{-- <li class="nav-item">
                                 <a href="{{ route('pages.assignment.production.portal') }}"
                                     class="nav-link {{ str_contains(url()->current(), 'assignment/production/portal') || str_contains(url()->current(), 'assignment/production/chart') ? 'active' : '' }}">
@@ -754,9 +762,17 @@
                             @if (user_has_permission(session('user')['userId'], 'maintenance_assignment', 'boolean')) --}}
                             <li class="nav-item">
                                 <a href="{{ route('pages.assignment.maintenance.portal') }}"
-                                    class="nav-link {{ str_contains(url()->current(), 'assignment/maintenance') ? 'active' : '' }}">
+                                    class="nav-link {{ str_contains(url()->current(), 'assignment/maintenance') && !str_contains(url()->current(), 'assignemnt/maintenance/weekly') ? 'active' : '' }}">
                                     <i class="far fa-circle nav-icon text-warning"></i>
                                     <p>Bảo trì/Hiệu Chuẩn</p>
+                                </a>
+                            </li>
+
+                            <li class="nav-item">
+                                <a href="{{ route('pages.assignment.maintenance.weekly') }}"
+                                    class="nav-link {{ str_contains(url()->current(), 'assignemnt/maintenance/weekly') ? 'active' : '' }}">
+                                    <i class="far fa-calendar-alt nav-icon text-warning"></i>
+                                    <p>BT-HC - Theo Tuần</p>
                                 </a>
                             </li>
                         </ul>

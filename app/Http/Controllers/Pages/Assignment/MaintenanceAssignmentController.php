@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use App\Support\AssignmentWeek;
 use App\Support\WorkingDay;
 use Illuminate\Support\Facades\Validator;
 use App\Services\ShiftApiService;
@@ -397,6 +398,207 @@ class MaintenanceAssignmentController extends Controller
             'canEdit'      => $canEdit,
             'currentGroup' => $currentGroup,
             'dbAssignments' => $dbAssignments,
+        ]);
+    }
+
+    /**
+     * Lịch công tác Bảo Trì/Hiệu Chuẩn theo tuần (chỉ xem).
+     *
+     * Cùng cơ chế với ProductionAssignmentController::weekly(): quét thẳng
+     * bảng assignments trong khoảng 7 ngày công tác, không lồng lại phần
+     * "gợi ý lý thuyết" của index() vì trang tuần chỉ để nhìn tổng quan.
+     * Dòng = phòng/thiết bị (hoặc work_location nếu không gắn phòng),
+     * cột = ngày; mỗi ô liệt kê các ca đã phân công kèm nhân sự + giờ công.
+     */
+    public function weekly(Request $request)
+    {
+        $anchorDate = $request->reportedDate ?? Carbon::now()->format('Y-m-d');
+        $weekStart = Carbon::parse($anchorDate)->startOfWeek(Carbon::MONDAY);
+        $weekEnd = $weekStart->copy()->addDays(6);
+
+        $rangeStart = WorkingDay::start($weekStart);
+        $rangeEnd = WorkingDay::end($weekEnd);
+
+        // Danh sách tổ: giống hệt portal() (EN_ALL + các tổ type=2, bỏ tổ 13)
+        $rawGroups = DB::table('stage_groups')->where('type', 2)->orderBy('id')->get();
+        $groups = collect([(object) ['code' => 'EN_ALL', 'name' => 'Kỹ thuật bảo trì']]);
+        foreach ($rawGroups as $g) {
+            if ($g->code == 13) continue;
+            $groups->push($g);
+        }
+
+        $group_code = $request->group_code ?: 'EN_ALL';
+        $dept_code = ($group_code == 20) ? 'QA' : 'EN';
+
+        // 1. Toàn bộ phân công trong tuần của bộ phận
+        $assignmentQuery = DB::table('assignments as a')
+            ->leftJoin('room as r', 'a.room_id', '=', 'r.id')
+            ->leftJoin('user_management as u', 'a.assigned_by', '=', 'u.userName')
+            ->where('a.deparment_code', $dept_code)
+            ->where('a.active', 1)
+            ->where('a.start', '>=', $rangeStart)
+            ->where('a.start', '<', $rangeEnd)
+            ->select(
+                'a.*',
+                'r.code as room_code',
+                'r.name as room_name',
+                'r.main_equiment_name',
+                'u.fullname as assigner_name'
+            );
+
+        if ($group_code && $group_code !== 'EN_ALL') {
+            if ($group_code == 12 || $group_code == 13) {
+                $assignmentQuery->whereIn('a.stage_groups_code', [12, 13]);
+            } else {
+                $assignmentQuery->where('a.stage_groups_code', $group_code);
+            }
+        }
+
+        $assignments = $assignmentQuery->orderBy('a.start')->get();
+
+        // 2. Nhân sự của các phân công đó (1 query, tránh N+1)
+        $personnelByAssignment = collect();
+        if ($assignments->isNotEmpty()) {
+            $personnelByAssignment = DB::table('assignment_personnel as ap')
+                ->leftJoin('employees as e', 'ap.personnel_id', '=', 'e.id')
+                ->whereIn('ap.assignment_id', $assignments->pluck('id')->all())
+                ->orderBy('ap.display_order', 'asc')
+                ->select(
+                    'ap.assignment_id',
+                    'ap.personnel_id',
+                    'ap.notification',
+                    'ap.operation_type',
+                    'ap.start',
+                    'ap.end',
+                    'ap.display_order',
+                    'e.name as personnel_name',
+                    'e.code as personnel_code'
+                )
+                ->get()
+                ->groupBy('assignment_id');
+        }
+
+        $shiftNames = ['1' => 'Ca 1', '2' => 'Ca 2', '3' => 'Ca 3', '4' => 'HC', '5' => 'Khác', '6' => 'Ca 4'];
+        $letters = range('A', 'Z');
+
+        // 3. Xếp phân công vào đúng ô [dòng][ngày công tác]
+        $cells = [];
+        $rowMeta = [];      // thông tin hiển thị của từng dòng (phòng / vị trí)
+        $rowTotals = [];
+        $dayTotals = [];
+        $weekPeople = [];
+
+        foreach ($assignments as $a) {
+            $workDay = WorkingDay::of($a->start);
+            if ($workDay < $weekStart->format('Y-m-d') || $workDay > $weekEnd->format('Y-m-d')) {
+                continue;
+            }
+
+            $rowKey = $a->room_id ? 'r' . $a->room_id : 'x' . md5($a->work_location ?: 'Công tác khác');
+            if (!isset($rowMeta[$rowKey])) {
+                $rowMeta[$rowKey] = (object) [
+                    'row_key' => $rowKey,
+                    'code' => $a->room_id ? ($a->room_code ?: '-') : 'NA',
+                    'name' => $a->room_id ? $a->room_name : ($a->work_location ?: 'Công tác khác'),
+                    'meta' => $a->room_id ? $a->main_equiment_name : null,
+                    'group_code' => $a->stage_groups_code ?: 'OTHER',
+                ];
+            }
+
+            $people = [];
+            $cellHours = 0;
+            foreach (($personnelByAssignment->get($a->id) ?? collect()) as $i => $p) {
+                if (!$p->personnel_id) continue;
+
+                $pStart = $p->start ?: $a->start;
+                $pEnd = $p->end ?: $a->end;
+                $hours = AssignmentWeek::hours($pStart, $pEnd, $a->Sheet) ?? 0;
+                $cellHours += $hours;
+                $weekPeople[$p->personnel_id] = true;
+
+                $people[] = (object) [
+                    'label' => $letters[$i] ?? (string) ($i + 1),
+                    'id' => $p->personnel_id,
+                    'name' => $p->personnel_name ?: ('#' . $p->personnel_id),
+                    'code' => $p->personnel_code,
+                    'time' => Carbon::parse($pStart)->format('H:i') . '-' . Carbon::parse($pEnd)->format('H:i'),
+                    'hours' => $hours,
+                    'note' => $p->notification,
+                    'operation_type' => $p->operation_type,
+                    'adjusted' => Carbon::parse($pStart)->format('H:i') !== Carbon::parse($a->start)->format('H:i')
+                        || Carbon::parse($pEnd)->format('H:i') !== Carbon::parse($a->end)->format('H:i'),
+                ];
+            }
+
+            $jobs = AssignmentWeek::jobLines($a->Job_description);
+
+            $cells[$rowKey][$workDay][] = (object) [
+                'id' => $a->id,
+                'shift' => (string) $a->Sheet,
+                'shift_name' => $shiftNames[(string) $a->Sheet] ?? ('Ca ' . $a->Sheet),
+                'start' => Carbon::parse($a->start)->format('H:i'),
+                'end' => Carbon::parse($a->end)->format('H:i'),
+                'jobs' => $jobs,
+                'people' => $people,
+                'hours' => round($cellHours, 2),
+                'headcount' => count($people),
+                'assigner_name' => $a->assigner_name,
+                'off_stream' => (bool) $a->off_stream,
+                'is_scheduled' => !empty($a->stage_plan_id),
+            ];
+
+            $dayTotals[$workDay]['hours'] = ($dayTotals[$workDay]['hours'] ?? 0) + $cellHours;
+            $dayTotals[$workDay]['slots'] = ($dayTotals[$workDay]['slots'] ?? 0) + count($people);
+            foreach ($people as $pp) {
+                $dayTotals[$workDay]['people'][$pp->id] = true;
+            }
+
+            $rowTotals[$rowKey]['hours'] = ($rowTotals[$rowKey]['hours'] ?? 0) + $cellHours;
+            $rowTotals[$rowKey]['slots'] = ($rowTotals[$rowKey]['slots'] ?? 0) + count($people);
+            $rowTotals[$rowKey]['shifts'] = ($rowTotals[$rowKey]['shifts'] ?? 0) + 1;
+        }
+
+        // 4. Danh sách dòng: chỉ những phòng/vị trí thực sự có phân công trong tuần
+        //    (không có danh mục thiết bị cố định như bên sản xuất)
+        $rowList = collect(array_values($rowMeta))
+            ->sortBy(fn($r) => $r->group_code . '|' . $r->name)
+            ->values();
+
+        $groupNames = collect($groups)->pluck('name', 'code')->all();
+        $groupNames['OTHER'] = 'Chưa gán tổ';
+
+        $dayNames = [1 => 'Thứ 2', 2 => 'Thứ 3', 3 => 'Thứ 4', 4 => 'Thứ 5', 5 => 'Thứ 6', 6 => 'Thứ 7', 0 => 'Chủ nhật'];
+        $days = [];
+        for ($i = 0; $i < 7; $i++) {
+            $d = $weekStart->copy()->addDays($i);
+            $key = $d->format('Y-m-d');
+            $days[] = (object) [
+                'date' => $key,
+                'label' => $dayNames[$d->dayOfWeek],
+                'short' => $d->format('d/m'),
+                'is_today' => $key === Carbon::today()->format('Y-m-d'),
+                'is_weekend' => in_array($d->dayOfWeek, [0, 6]),
+                'hours' => round($dayTotals[$key]['hours'] ?? 0, 2),
+                'slots' => $dayTotals[$key]['slots'] ?? 0,
+                'people' => count($dayTotals[$key]['people'] ?? []),
+            ];
+        }
+
+        session()->put(['title' => 'LỊCH CÔNG TÁC BT-HC THEO TUẦN']);
+
+        return view('pages.assignment.maintenance.weekly', [
+            'days' => $days,
+            'rows' => $rowList,
+            'cells' => $cells,
+            'rowTotals' => $rowTotals,
+            'groupNames' => $groupNames,
+            'groups' => $groups,
+            'group_code' => $group_code,
+            'weekStart' => $weekStart->format('Y-m-d'),
+            'weekEnd' => $weekEnd->format('Y-m-d'),
+            'anchorDate' => Carbon::parse($anchorDate)->format('Y-m-d'),
+            'totalPeople' => count($weekPeople),
+            'totalHours' => round(array_sum(array_column($dayTotals, 'hours')), 2),
         ]);
     }
 

@@ -500,6 +500,11 @@
                         <i class="fas fa-history"></i> Lịch sử duyệt TC
                     </button>
                 @endif
+                <a class="btn btn-sm btn-outline-primary shadow-sm ml-2"
+                    href="{{ route('pages.assignment.production.weekly') }}?group_code={{ $group_code }}&reportedDate={{ $reportedDate }}"
+                    title="Xem lịch công tác cả tuần">
+                    <i class="fas fa-calendar-week"></i> Xem theo tuần
+                </a>
                 <button class="btn btn-sm btn-secondary shadow-sm ml-2" id="btn-view-report"
                     title="Xem báo cáo tình hình nhân sự hiện tại">
                     <i class="fas fa-chart-bar"></i> Xem báo cáo
