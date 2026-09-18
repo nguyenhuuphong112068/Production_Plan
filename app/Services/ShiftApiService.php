@@ -24,6 +24,34 @@ use Illuminate\Support\Facades\Log;
  */
 class ShiftApiService
 {
+    /**
+     * Khoá cache giữ mốc thời gian được phép gọi eO2 trở lại sau khi bị trả 429.
+     *
+     * Nằm trong bảng `cache` nên MỌI tiến trình cùng thấy: đây là điểm mà
+     * `$rateLimitedFor` không làm được vì nó chết theo request.
+     */
+    private const BREAKER_KEY = 'shiftapi:blocked_until';
+
+    /**
+     * Số lần bị 429 liên tiếp, dùng để nhân đôi thời gian chờ. Nằm trong cache
+     * vì mỗi lần thử lại là một tiến trình khác nhau.
+     */
+    private const BREAKER_STREAK_KEY = 'shiftapi:blocked_streak';
+
+    /**
+     * Thời gian chờ khi eO2 KHÔNG gửi `Retry-After` (thực tế nó chưa bao giờ
+     * gửi), nhân đôi sau mỗi lần bị chặn liên tiếp: 60s, 120s, 240s, 480s.
+     *
+     * Đo thực tế 18/09/2026 - lý do phải nhân đôi thay vì giữ 60s: lượt 11:10:02
+     * chỉ 1 trong 6 endpoint bị 429, nhưng hai lượt thử lại sau đúng 60s
+     * (11:11:02 và 11:12:02) thì CẢ 6 đều 429. Tức 60s là quá ngắn và thử lại
+     * quá sớm làm eO2 gia hạn chặn - càng thử càng chặn nặng.
+     *
+     * Chặn trên 480s để `shifts:warm-cache` không ngủ quá lâu giữa hai lượt.
+     */
+    private const BREAKER_BASE_WAIT = 60;
+    private const BREAKER_MAX_WAIT = 480;
+
     /** Cache trong RAM cho vòng đời một request, tránh giải nén lại nhiều lần. */
     private array $memo = [];
 
@@ -416,11 +444,19 @@ class ShiftApiService
     /**
      * Giữ chỗ trong hạn ngạch dùng chung trước khi gọi eO2.
      *
-     * Bộ đếm chia theo cửa sổ thời gian cố định (mặc định 5 phút, khớp cửa sổ
-     * tính hạn mức của eO2). Khoá nằm trong bảng `cache` nên mọi tiến trình web
-     * và command đều cộng vào cùng một con số — đây là điểm mà
-     * `max_concurrency` không làm được vì nó chỉ có tác dụng nội bộ một tiến
-     * trình.
+     * Bộ đếm vẫn chia theo ô thời gian cố định (mặc định 5 phút, khớp cửa sổ
+     * tính hạn mức của eO2) nhưng được ĐỌC theo cửa sổ TRƯỢT: lưu lượng tính
+     * được là toàn bộ ô hiện tại cộng phần ô trước còn nằm trong 5 phút vừa qua.
+     *
+     * Đọc theo ô cố định là một lỗ hổng thật, không phải lo xa: 18 request lúc
+     * 10:04:59 rồi 18 request nữa lúc 10:05:00 đều "hợp lệ" vì sang ô mới bộ đếm
+     * về 0 — thành 36 request trong 2 giây, vượt xa mức ~24 request/5 phút mà
+     * eO2 chịu được (đo 18/08/2026). Đó chính là kiểu burst dẫn tới loạt 429 lúc
+     * 10:22:21 ngày 18/09/2026.
+     *
+     * Khoá nằm trong bảng `cache` nên mọi tiến trình web và command đều cộng vào
+     * cùng một con số — đây là điểm mà `max_concurrency` không làm được vì nó
+     * chỉ có tác dụng nội bộ một tiến trình.
      *
      * `Cache::increment` trên database store chạy trong transaction kèm
      * `lockForUpdate()` nên hai tiến trình không thể cùng giữ một chỗ.
@@ -435,20 +471,32 @@ class ShiftApiService
         }
 
         $window = max(1, (int) config('shiftapi.rate_window', 300));
-        $slot = intdiv(time(), $window);
+        $now = time();
+        $slot = intdiv($now, $window);
         $key = "shiftapi:quota:{$slot}";
 
         try {
-            // TTL dài hơn cửa sổ để bộ đếm không biến mất giữa chừng.
-            Cache::add($key, 0, $window + 60);
+            // TTL phải phủ TRỌN ô kế tiếp, vì suốt ô đó bộ đếm này còn được đọc
+            // với vai trò "ô trước". Đặt $window + 60 là không đủ: với cửa sổ
+            // 300s, bộ đếm chết ở giây thứ 60 của ô sau, `carriedOver` đọc ra 0
+            // và cửa sổ trượt âm thầm tụt về đúng cách đếm theo ô cố định vừa bỏ.
+            Cache::add($key, 0, 2 * $window + 60);
             $used = Cache::increment($key, $need);
+            $prevUsed = max(0, (int) Cache::get('shiftapi:quota:' . ($slot - 1), 0));
         } catch (\Throwable $e) {
             // Cache hỏng thì không được vì thế mà chặn luôn tính năng.
             Log::warning('Khong dat duoc han ngach Shift API: ' . $e->getMessage());
             return true;
         }
 
-        if ($used === false || $used <= $limit) {
+        if ($used === false) {
+            return true;
+        }
+
+        $used = (int) $used;
+        $effective = $used + $this->carriedOver($prevUsed, $window, $now);
+
+        if ($effective <= $limit) {
             return true;
         }
 
@@ -460,17 +508,56 @@ class ShiftApiService
             // Đếm dư một chút thì chỉ thận trọng hơn, không sao.
         }
 
-        $resetIn = max(1, ($slot + 1) * $window - time());
+        $resetIn = $this->quotaFreeIn(max(0, $used - $need), $prevUsed, $need, $limit, $window, $now);
         $this->rateLimitedFor = $resetIn;
 
         Log::warning('Tam dung goi Shift API do het han ngach noi bo', [
             'can' => $need,
+            'dang_dung' => $effective,
             'han_ngach' => $limit,
-            'cua_so' => $window . 's',
+            'cua_so' => $window . 's (truot)',
             'cho_lai' => $resetIn . 's',
         ]);
 
         return false;
+    }
+
+    /** Phần lưu lượng của ô trước còn nằm trong cửa sổ trượt tại thời điểm $at. */
+    private function carriedOver(int $prevUsed, int $window, int $at): int
+    {
+        $elapsed = $at - intdiv($at, $window) * $window;
+
+        return (int) round($prevUsed * (($window - $elapsed) / $window));
+    }
+
+    /**
+     * Sau bao nhiêu giây thì cửa sổ trượt còn đủ chỗ cho $need request.
+     *
+     * Dò từng giây thay vì giải công thức vì lưu lượng tính được KHÔNG giảm đơn
+     * điệu theo thời gian: ngay lúc sang ô mới, ô hiện tại trở thành "ô trước"
+     * và được tính TRỌN VẸN, nên có thời điểm chờ thêm lại tệ hơn. Chặn trên hai
+     * cửa sổ là lúc cả hai bộ đếm chắc chắn đã rời đi.
+     */
+    private function quotaFreeIn(int $curUsed, int $prevUsed, int $need, int $limit, int $window, int $now): int
+    {
+        $slot = intdiv($now, $window);
+
+        for ($wait = 1; $wait <= 2 * $window; $wait++) {
+            $at = $now + $wait;
+            $slotsAhead = intdiv($at, $window) - $slot;
+
+            if ($slotsAhead >= 2) {
+                return $wait;
+            }
+
+            [$cur, $prev] = $slotsAhead === 0 ? [$curUsed, $prevUsed] : [0, $curUsed];
+
+            if ($cur + $this->carriedOver($prev, $window, $at) + $need <= $limit) {
+                return $wait;
+            }
+        }
+
+        return 2 * $window;
     }
 
     /**
@@ -810,6 +897,21 @@ class ShiftApiService
         // không lẫn sang lượt này.
         $this->rateLimitedFor = null;
 
+        // Cầu dao: eO2 vừa trả 429 thì phải im lặng cho tới hết thời gian nó
+        // yêu cầu. Kiểm tra TRƯỚC cổng hạn ngạch để lượt bị chặn không tiêu chỗ
+        // của hạn ngạch - chỗ đó dành cho lúc eO2 mở lại thì hữu ích hơn.
+        $blockedFor = $this->breakerWait();
+        if ($blockedFor !== null) {
+            $this->rateLimitedFor = $blockedFor;
+
+            Log::warning('Bo qua goi Shift API vi eO2 dang chan', [
+                'so_request' => count($urls),
+                'cho_lai' => $blockedFor . 's',
+            ]);
+
+            return $result;
+        }
+
         // Cổng hạn ngạch dùng chung: chặn TRƯỚC khi mở kết nối. Đợi eO2 trả 429
         // rồi mới biết thì đã muộn - hạn mức đã bị tiêu và cả hệ thống bị chặn
         // tới hết cửa sổ. Tự dừng sớm thì luồng web rơi về bản sao lưu ngay lập
@@ -863,6 +965,10 @@ class ShiftApiService
             }
         } while ($running && $status === CURLM_OK);
 
+        $anyOk = false;
+        $explicitWait = 0;  // số giây eO2 nói rõ qua header `Retry-After`
+        $blindBlocks = 0;   // số lượt 429 mà eO2 không nói phải chờ bao lâu
+
         foreach ($handles as $key => $ch) {
             $body = curl_multi_getcontent($ch);
             $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -872,6 +978,7 @@ class ShiftApiService
                 $decoded = json_decode($body, true);
                 if (is_array($decoded)) {
                     $result[$key] = $decoded;
+                    $anyOk = true;
                 } else {
                     Log::warning('Shift API tra ve JSON khong hop le', ['url' => $urls[$key]]);
                 }
@@ -883,18 +990,18 @@ class ShiftApiService
                 // mà không xử lý. Thấy một loạt lượt nạp mất 0s là đã bị chặn,
                 // không phải mạng chậm.
                 //
-                // Ghi lại thời gian chờ để `shifts:warm-cache` lùi lại đúng mức
-                // máy chủ nguồn yêu cầu. Không có header thì mặc định 60s.
-                $wait = isset($retryAfter[$key]) && is_numeric($retryAfter[$key])
-                    ? max(1, (int) $retryAfter[$key])
-                    : 60;
-                $this->rateLimitedFor = max((int) $this->rateLimitedFor, $wait);
+                // Thời gian chờ tính SAU vòng lặp: cả mẻ chỉ ngắt cầu dao một
+                // lần, và mức chờ còn phụ thuộc số lần bị chặn liên tiếp.
+                if (isset($retryAfter[$key]) && is_numeric($retryAfter[$key])) {
+                    $explicitWait = max($explicitWait, max(1, (int) $retryAfter[$key]));
+                } else {
+                    $blindBlocks++;
+                }
 
                 Log::warning('Shift API bi chan do rate limit (429)', [
                     'url' => $urls[$key],
                     'max_concurrency' => $maxConn,
                     'retry_after' => $retryAfter[$key] ?? '(khong co header)',
-                    'cho_lai' => $wait . 's',
                 ]);
             } else {
                 Log::warning('Shift API loi', [
@@ -910,7 +1017,104 @@ class ShiftApiService
 
         curl_multi_close($multi);
 
+        // Ngắt cầu dao SAU khi đã đọc hết phản hồi: trong cùng một mẻ có thể vài
+        // request kịp trả 200, số đó vẫn phải được dùng.
+        if ($explicitWait > 0 || $blindBlocks > 0) {
+            $this->rateLimitedFor = $this->tripBreaker($explicitWait);
+        } elseif ($anyOk) {
+            // Có request đi qua được = eO2 đã mở lại, xoá chuỗi bị chặn để lần
+            // sau bắt đầu lại từ mức chờ thấp nhất. Chỉ tính khi thật sự có 200:
+            // một mẻ toàn timeout không chứng minh được điều gì.
+            $this->resetBreakerStreak();
+        }
+
         return $result;
+    }
+
+    /**
+     * Số giây còn lại của lệnh tạm dừng toàn hệ thống, null nếu đang được phép
+     * gọi eO2.
+     */
+    private function breakerWait(): ?int
+    {
+        try {
+            $until = Cache::get(self::BREAKER_KEY);
+        } catch (\Throwable $e) {
+            // Cache hỏng thì không được vì thế mà chặn luôn tính năng.
+            return null;
+        }
+
+        if (!is_numeric($until)) {
+            return null;
+        }
+
+        $remaining = (int) $until - time();
+
+        return $remaining > 0 ? $remaining : null;
+    }
+
+    /**
+     * Ghi lệnh tạm dừng cho MỌI tiến trình sau khi eO2 trả 429.
+     *
+     * Trước khi có cầu dao này, `$rateLimitedFor` chết theo request nên lượt gọi
+     * kế tiếp không hề biết eO2 đang chặn và vẫn bắn tiếp - xem loạt 7 request
+     * cùng một giây đều 429 lúc 10:22:21 ngày 18/09/2026. Bắn vào server đang
+     * chặn vừa vô ích vừa làm nó gia hạn chặn.
+     *
+     * @param int $explicitWait số giây eO2 yêu cầu qua header, 0 nếu nó không nói
+     * @return int số giây phải chờ, để nơi gọi báo lại cho người dùng
+     */
+    private function tripBreaker(int $explicitWait): int
+    {
+        // eO2 nói rõ phải chờ bao lâu thì tin nó, không tự nhân thêm.
+        $wait = $explicitWait > 0
+            ? $explicitWait
+            : min(self::BREAKER_MAX_WAIT, self::BREAKER_BASE_WAIT * (2 ** ($this->bumpBreakerStreak() - 1)));
+
+        $until = time() + $wait;
+
+        try {
+            // Không rút ngắn lệnh tạm dừng đang có hiệu lực dài hơn.
+            $current = Cache::get(self::BREAKER_KEY);
+            if (is_numeric($current) && (int) $current >= $until) {
+                return max(1, (int) $current - time());
+            }
+
+            Cache::put(self::BREAKER_KEY, $until, $wait + 60);
+        } catch (\Throwable $e) {
+            Log::warning('Khong ghi duoc lenh tam dung Shift API: ' . $e->getMessage());
+        }
+
+        return $wait;
+    }
+
+    /** Tăng số lần bị 429 liên tiếp và trả về giá trị mới (tối thiểu 1). */
+    private function bumpBreakerStreak(): int
+    {
+        // TTL dài hơn mức chờ tối đa, nếu không thì chuỗi bị chặn hết hạn giữa
+        // hai lần thử và backoff tụt về 60s - đúng cái nhịp đang bị eO2 chặn.
+        $ttl = self::BREAKER_MAX_WAIT + 300;
+
+        try {
+            Cache::add(self::BREAKER_STREAK_KEY, 0, $ttl);
+            $streak = Cache::increment(self::BREAKER_STREAK_KEY);
+            $streak = $streak === false ? 1 : max(1, (int) $streak);
+            // `increment` không làm mới TTL, phải ghi lại để chuỗi sống đủ lâu.
+            Cache::put(self::BREAKER_STREAK_KEY, $streak, $ttl);
+        } catch (\Throwable $e) {
+            return 1;
+        }
+
+        return $streak;
+    }
+
+    private function resetBreakerStreak(): void
+    {
+        try {
+            Cache::forget(self::BREAKER_STREAK_KEY);
+        } catch (\Throwable $e) {
+            // Chuỗi còn lại chỉ làm lần chặn sau chờ lâu hơn, không sao.
+        }
     }
 
     /**

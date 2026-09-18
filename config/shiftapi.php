@@ -40,16 +40,21 @@ return [
     /*
     | Số kết nối đồng thời tối đa tới server nguồn.
     |
-    | Mặc định 3 = vừa đúng bộ 3 endpoint của một tháng chạy cùng lúc. Đo thực
-    | tế: mỗi request tốn cố định ~9.5s bất kể cửa sổ ngày lớn hay nhỏ, nên chạy
-    | 3 cái song song rút từ ~19s xuống ~10s.
+    | Trước đây để 3 = vừa đúng bộ 3 endpoint của một tháng chạy cùng lúc (mỗi
+    | request tốn cố định ~9.5s nên 3 cái song song rút từ ~19s xuống ~10s).
+    |
+    | Hạ xuống 2 ngày 18/09/2026 vì nghi eO2 giới hạn SỐ KẾT NỐI ĐỒNG THỜI, chứ
+    | không chỉ giới hạn theo cửa sổ thời gian. Dấu hiệu: hai lượt 10:59:26 và
+    | 11:10:02 đều chỉ chết ĐÚNG MỘT endpoint và luôn là cái thứ 3 trong hàng
+    | (`overtime` bộ phận 15), trong khi hạn ngạch nội bộ còn trống nguyên và cả
+    | mẻ chỉ có 6 request - tức không phải do gửi quá nhiều, mà do gửi quá dày.
     |
     | KHÔNG nên tăng bừa: server nguồn có rate limit, dồn 6 request nặng
     | (PXV1 ~700KB/tháng) liên tục sẽ bị trả HTTP 429, khi đó hệ thống phải rơi
     | về bản sao lưu 24h (dữ liệu cũ). Thà chậm vài giây còn hơn hiển thị số liệu
     | cũ. Chỉ tăng khi đã xác nhận máy chủ eO2 chịu được.
     */
-    'max_concurrency' => env('SHIFT_API_MAX_CONCURRENCY', 3),
+    'max_concurrency' => env('SHIFT_API_MAX_CONCURRENCY', 2),
 
     /*
     |--------------------------------------------------------------------------
@@ -68,6 +73,12 @@ return [
     | hạn mức là 5 phút. Đặt 18/300s để chừa biên cho các luồng khác. Một lượt
     | `shifts:warm-cache` là 24 request nên sẽ trải qua 2 cửa sổ — command tự chờ
     | hết cửa sổ rồi chạy tiếp, không cần can thiệp tay.
+    |
+    | `rate_window` là ĐỘ DÀI cửa sổ, không phải mốc reset: bộ đếm được đọc theo
+    | cửa sổ TRƯỢT (trọn ô hiện tại + phần ô trước còn trong cửa sổ). Nếu reset
+    | cứng theo ô thì tại biên ô sẽ lọt 2× hạn mức — 18 request lúc 10:04:59 cộng
+    | 18 request lúc 10:05:00 là 36 request trong 2 giây, vượt xa mức eO2 chịu
+    | được và đó chính là nguyên nhân loạt 429 ngày 18/09/2026.
     |
     | Đặt rate_limit = 0 để tắt hẳn cơ chế này.
     */
