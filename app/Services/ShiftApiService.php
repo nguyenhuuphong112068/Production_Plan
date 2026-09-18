@@ -972,11 +972,12 @@ class ShiftApiService
 
         // Cắt thành nhiều mẻ nhỏ chạy lần lượt, có nghỉ giữa các mẻ.
         //
-        // KHÔNG phải để tránh 429 - đã thử, không tránh được (xem `max_batch`
-        // trong config). Mục đích là đảm bảo TIẾN TRIỂN: thứ tự URL của
-        // `loadMonthIndexes` là từng "ô" dữ liệu một, mỗi ô 3 endpoint, nên một
-        // mẻ 3 là trọn một ô và ghi được cache. Gộp cả 6 thì một cú 429 có thể
-        // làm khuyết mỗi ô một endpoint và không ô nào được ghi - mất trắng.
+        // eO2 chặn hai lời gọi liên tiếp tới CÙNG MỘT endpoint cách nhau dưới
+        // 60s, tính riêng từng api và không phân biệt `department`. Thứ tự URL
+        // của `loadMonthIndexes` là từng "ô" một, mỗi ô đúng `range` + `leave` +
+        // `overtime`, nên mẻ 3 = mỗi api một lần = không tự chặn mình; khoảng
+        // nghỉ phải > 60s vì mẻ sau gọi lại đúng 3 api đó. Xem `max_batch` trong
+        // config để biết số liệu đo được.
         $chunkSize = (int) config('shiftapi.max_batch', 3);
         $chunkSize = $chunkSize > 0 ? $chunkSize : count($urls); // 0 = tắt cắt mẻ
         $chunkPause = max(0, (int) config('shiftapi.batch_pause', 10));

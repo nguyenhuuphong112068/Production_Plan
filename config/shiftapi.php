@@ -64,28 +64,33 @@ return [
     | Cắt danh sách URL thành từng mẻ `max_batch` cái, chạy lần lượt, nghỉ
     | `batch_pause` giây giữa hai mẻ.
     |
-    | ĐỌC KỸ KẺO KỲ VỌNG SAI: việc cắt mẻ KHÔNG ngăn được HTTP 429. Đã thử và
-    | thất bại - lượt 11:53:40 ngày 18/09/2026 cắt 3+3 với 10s nghỉ mà request
-    | thứ 6 vẫn bị chặn, đúng như lượt gửi cả 6 một mẻ. Hôm đó eO2 chỉ cho qua
-    | khoảng 5 request rồi chặn, bất kể rải ra bao lâu (chặt hơn nhiều so với mức
-    | ~24 request/175s đo được 18/08/2026, nên rất có thể nó siết theo số lần đã
-    | bị chặn trong ngày).
+    | QUY TẮC CHẶN CỦA eO2: hai lời gọi liên tiếp tới CÙNG MỘT endpoint phải cách
+    | nhau hơn 60 giây. Giới hạn tính theo TỪNG API (`range`, `leave`, `overtime`
+    | riêng biệt), KHÔNG tính theo tổng số request và KHÔNG phân biệt `department`
+    | - `range?department=15` và `range?department=17` là cùng một api.
     |
-    | Giá trị thật của việc cắt mẻ là ĐẢM BẢO TIẾN TRIỂN. Thứ tự URL do
-    | `loadMonthIndexes` sinh ra là từng "ô" dữ liệu một, mỗi ô đúng 3 endpoint,
-    | nên mẻ 3 = TRỌN một ô = một lượt ghi cache. Gộp cả 6 vào một mẻ thì một cú
-    | 429 có thể làm khuyết mỗi ô một endpoint và KHÔNG ô nào được ghi - lượt đó
-    | mất trắng. Cắt mẻ thì mẻ đầu chắc chắn xong trọn một ô, lượt sau chỉ còn
-    | hỏi ô còn thiếu (xem `forgetMonthIfComplete`) và mẻ 3 request đó đi qua
-    | được: 11:33:19 nạp xong 556 nhân sự trong 17.4s.
+    | Vì vậy hai con số dưới đây phải đi cùng nhau:
     |
-    | Vì vậy ĐỪNG đổi `max_batch` thành số không chia hết cho 3 - nó phá vỡ đúng
-    | cái tính chất "một mẻ = một ô" khiến cơ chế này có ích.
+    |   - `max_batch = 3` để một mẻ đúng bằng một "ô" dữ liệu mà
+    |     `loadMonthIndexes` sinh ra, tức `range` + `leave` + `overtime` mỗi cái
+    |     ĐÚNG MỘT LẦN. Đổi sang số khác là phá vỡ tính chất này: mẻ 6 sẽ gọi
+    |     `range` hai lần cách nhau vài giây và chắc chắn bị chặn.
+    |   - `batch_pause = 70` (> 60s, có biên) vì mẻ sau gọi lại đúng 3 api đó.
+    |
+    | Số liệu 18/09/2026 khớp quy tắc này: mẻ 6 request (PXV1 gộp Kho, mỗi api bị
+    | gọi 2 lần trong ~30s) luôn bị chặn ở nửa sau, dù thử max_concurrency 3 rồi
+    | 2 rồi cắt 3+3 nghỉ 10s; còn lượt chỉ hỏi MỘT ô (mỗi api một lần) thì qua
+    | ngay - 11:33:19 và 11:57:46, ~15-17s, 556 nhân sự.
+    |
+    | Đổi lại một lượt làm mới đủ tháng PXV1 mất ~110s (20s + 70s nghỉ + 20s).
+    |
+    | LƯU Ý khi thêm luồng mới: `roster()` cũng gọi `range`, nên nó phải cách lần
+    | gọi `range` gần nhất hơn 60s, nếu không chính nó bị chặn.
     |
     | Đặt max_batch = 0 để tắt việc cắt mẻ (gửi tất cả trong một mẻ như trước).
     */
     'max_batch' => env('SHIFT_API_MAX_BATCH', 3),
-    'batch_pause' => env('SHIFT_API_BATCH_PAUSE', 10),
+    'batch_pause' => env('SHIFT_API_BATCH_PAUSE', 70),
 
     /*
     |--------------------------------------------------------------------------
