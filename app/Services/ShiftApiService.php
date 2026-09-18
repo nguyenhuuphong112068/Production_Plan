@@ -413,6 +413,53 @@ class ShiftApiService
     }
 
     /**
+     * Xoá cache nóng để nạp lại, NHƯNG chỉ khi tháng đó đang có đủ dữ liệu.
+     *
+     * Đây là điểm mà nút Đồng bộ và `shifts:warm-cache` phải giống nhau, nên
+     * quy tắc nằm ở đây thay vì viết lại ở hai nơi rồi lệch nhau.
+     *
+     * Vì sao không xoá khi đang khuyết: một tháng của PXV1 gồm 2 "ô" (bộ phận
+     * 15 và Kho 17) × 3 endpoint, mà eO2 chỉ cho qua khoảng 5 request một mẻ -
+     * đo 18/09/2026, cả lượt `max_concurrency` 3 và lượt hạ xuống 2 đều chỉ chết
+     * ĐÚNG MỘT endpoint trong 6. Ô nào đủ 3 endpoint thì đã được ghi cache nóng.
+     * Nếu lượt sau lại xoá sạch thì chính là ném đúng phần vừa lấy được rồi hỏi
+     * lại cả 6 - mẻ nào cũng đủ lớn để lại bị chặn, nên bấm mãi không bao giờ
+     * xong. Giữ phần đã có thì lượt sau chỉ còn hỏi 3 endpoint của ô còn thiếu,
+     * đủ nhỏ để đi qua.
+     *
+     * Đánh đổi: nếu tháng đang khuyết thì ô đã có sẽ không được làm mới ở lượt
+     * này. Nó tự sửa ở lượt kế tiếp - lúc đó tháng đã đủ nên lại được xoá sạch
+     * và nạp mới toàn bộ.
+     */
+    public function forgetMonthIfComplete(int $month, int $year, int $department, bool $mergeWarehouse = false): void
+    {
+        if ($this->hasFreshMonth($month, $year, $department, $mergeWarehouse)) {
+            $this->forgetMonth($month, $year, $department, $mergeWarehouse);
+            return;
+        }
+
+        // Không xoá cache, nhưng vẫn phải quên bản nhớ trong RAM để lượt này
+        // thực sự hỏi lại eO2 về ô còn thiếu.
+        $this->forgetMemo($month, $year, $department, $mergeWarehouse);
+    }
+
+    /**
+     * Quên bản nhớ trong RAM của một tháng, GIỮ NGUYÊN cache nóng.
+     *
+     * Dành cho lượt thử lại của `shifts:warm-cache`. `loadMonthIndexes` nhớ cả
+     * kết quả LỖI trong `$memo` để không gọi lại API đã hỏng nhiều lần trong
+     * cùng một request, nên nếu không xoá bản nhớ đó thì lượt thử lại không gọi
+     * gì cả. Khác `forgetMonth` ở chỗ không đụng cache nóng: ô nào đã nạp xong ở
+     * lượt trước vẫn được dùng lại, lượt này chỉ hỏi eO2 về ô còn thiếu.
+     */
+    public function forgetMemo(int $month, int $year, int $department, bool $mergeWarehouse = false): void
+    {
+        foreach ($this->monthSpecs($year, $month, $department, $mergeWarehouse) as $spec) {
+            unset($this->memo[$this->specKey($spec)]);
+        }
+    }
+
+    /**
      * Cache nóng của tháng này đã có ĐỦ chưa?
      *
      * `monthlyByDayKey` trả về mảng cả khi phải rơi về bản sao lưu 24h, nên chỉ
@@ -876,10 +923,11 @@ class ShiftApiService
     }
 
     /**
-     * Gọi song song nhiều endpoint bằng curl_multi.
+     * Gọi nhiều endpoint: chia thành các mẻ nhỏ, mỗi mẻ chạy song song.
      *
-     * Gọi tuần tự thì tổng thời gian của PXV1 (~60s + ~28s + ...) vượt xa giới
-     * hạn chấp nhận được; song song thì chỉ tốn bằng endpoint chậm nhất.
+     * Trong một mẻ thì song song, vì gọi tuần tự từng cái thì tổng thời gian của
+     * PXV1 (~60s + ~28s + ...) vượt xa giới hạn chấp nhận được. Nhưng KHÔNG dồn
+     * tất cả vào một mẻ: eO2 chặn theo số request của mẻ (xem `$chunkSize`).
      *
      * @param array<string,string> $urls [key => url]
      * @param int|null $timeoutOverride timeout riêng (giây) cho luồng không được
@@ -921,12 +969,72 @@ class ShiftApiService
         }
 
         $timeout = $timeoutOverride ?: (int) config('shiftapi.timeout', 90);
+
+        // Cắt thành nhiều mẻ nhỏ chạy lần lượt, có nghỉ giữa các mẻ.
+        //
+        // KHÔNG phải để tránh 429 - đã thử, không tránh được (xem `max_batch`
+        // trong config). Mục đích là đảm bảo TIẾN TRIỂN: thứ tự URL của
+        // `loadMonthIndexes` là từng "ô" dữ liệu một, mỗi ô 3 endpoint, nên một
+        // mẻ 3 là trọn một ô và ghi được cache. Gộp cả 6 thì một cú 429 có thể
+        // làm khuyết mỗi ô một endpoint và không ô nào được ghi - mất trắng.
+        $chunkSize = (int) config('shiftapi.max_batch', 3);
+        $chunkSize = $chunkSize > 0 ? $chunkSize : count($urls); // 0 = tắt cắt mẻ
+        $chunkPause = max(0, (int) config('shiftapi.batch_pause', 10));
+
+        $anyOk = false;
+        $explicitWait = 0;  // số giây eO2 nói rõ qua header `Retry-After`
+        $blindBlocks = 0;   // số lượt 429 mà eO2 không nói phải chờ bao lâu
+
+        foreach (array_chunk($urls, $chunkSize, true) as $i => $chunk) {
+            if ($i > 0 && $chunkPause > 0) {
+                sleep($chunkPause);
+            }
+
+            $batch = $this->fetchBatch($chunk, $timeout);
+
+            foreach ($batch['results'] as $key => $payload) {
+                $result[$key] = $payload;
+            }
+            $anyOk = $anyOk || $batch['anyOk'];
+            $explicitWait = max($explicitWait, $batch['explicitWait']);
+            $blindBlocks += $batch['blindBlocks'];
+
+            // Đã bị chặn thì dừng, không gửi những mẻ còn lại: chúng chắc chắn
+            // cũng bị từ chối và chỉ làm eO2 gia hạn chặn.
+            if ($batch['explicitWait'] > 0 || $batch['blindBlocks'] > 0) {
+                break;
+            }
+        }
+
+        // Ngắt cầu dao SAU khi đã đọc hết phản hồi: trong cùng một mẻ có thể vài
+        // request kịp trả 200, số đó vẫn phải được dùng.
+        if ($explicitWait > 0 || $blindBlocks > 0) {
+            $this->rateLimitedFor = $this->tripBreaker($explicitWait);
+        } elseif ($anyOk) {
+            // Có request đi qua được = eO2 đã mở lại, xoá chuỗi bị chặn để lần
+            // sau bắt đầu lại từ mức chờ thấp nhất. Chỉ tính khi thật sự có 200:
+            // một mẻ toàn timeout không chứng minh được điều gì.
+            $this->resetBreakerStreak();
+        }
+
+        return $result;
+    }
+
+    /**
+     * Gọi song song MỘT mẻ endpoint bằng curl_multi.
+     *
+     * @param array<string,string> $urls [key => url]
+     * @return array{results: array<string,array|null>, anyOk: bool, explicitWait: int, blindBlocks: int}
+     */
+    private function fetchBatch(array $urls, int $timeout): array
+    {
+        $result = array_fill_keys(array_keys($urls), null);
         $verify = (bool) config('shiftapi.verify_tls', false);
 
         $multi = curl_multi_init();
         // Xếp hàng hết mọi handle nhưng giới hạn số kết nối thực sự mở cùng lúc,
         // tránh dội quá nhiều request đồng thời vào máy chủ nguồn.
-        $maxConn = (int) config('shiftapi.max_concurrency', 3);
+        $maxConn = (int) config('shiftapi.max_concurrency', 2);
         if ($maxConn > 0) {
             curl_multi_setopt($multi, CURLMOPT_MAX_TOTAL_CONNECTIONS, $maxConn);
         }
@@ -1017,18 +1125,12 @@ class ShiftApiService
 
         curl_multi_close($multi);
 
-        // Ngắt cầu dao SAU khi đã đọc hết phản hồi: trong cùng một mẻ có thể vài
-        // request kịp trả 200, số đó vẫn phải được dùng.
-        if ($explicitWait > 0 || $blindBlocks > 0) {
-            $this->rateLimitedFor = $this->tripBreaker($explicitWait);
-        } elseif ($anyOk) {
-            // Có request đi qua được = eO2 đã mở lại, xoá chuỗi bị chặn để lần
-            // sau bắt đầu lại từ mức chờ thấp nhất. Chỉ tính khi thật sự có 200:
-            // một mẻ toàn timeout không chứng minh được điều gì.
-            $this->resetBreakerStreak();
-        }
-
-        return $result;
+        return [
+            'results' => $result,
+            'anyOk' => $anyOk,
+            'explicitWait' => $explicitWait,
+            'blindBlocks' => $blindBlocks,
+        ];
     }
 
     /**

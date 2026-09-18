@@ -111,7 +111,12 @@ class DashBoardController extends Controller
         @set_time_limit(300);
 
         // --- 1. Lịch trực ---
-        $shiftApi->forgetMonth($month, $year, $depId, $mergeWarehouse);
+        //
+        // `forgetMonthIfComplete` chứ không phải `forgetMonth`: lượt bấm trước
+        // có thể đã nạp xong một phần rồi bị eO2 chặn giữa đường, xoá sạch là
+        // ném đúng phần đó đi và hỏi lại cả 6 endpoint - mẻ nào cũng đủ lớn để
+        // lại bị chặn. Xem giải thích đầy đủ trong service.
+        $shiftApi->forgetMonthIfComplete($month, $year, $depId, $mergeWarehouse);
         $data = $shiftApi->monthlyByDayKey($month, $year, $depId, $mergeWarehouse);
 
         // `monthlyByDayKey` vẫn trả về mảng khi phải rơi về bản sao lưu 24h, nên

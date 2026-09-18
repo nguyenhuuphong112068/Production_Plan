@@ -114,8 +114,17 @@ class WarmShiftCache extends Command
 
             try {
                 // Bỏ cache nóng trước, nếu không thì lần chạy này chỉ đọc lại
-                // bản cũ và không có tác dụng làm mới.
-                $shiftApi->forgetMonth($month, $year, $depId, $mergeWarehouse);
+                // bản cũ và không có tác dụng làm mới. Nhưng chỉ bỏ khi tháng
+                // đang có ĐỦ dữ liệu: nếu đang khuyết vì lượt trước bị eO2 chặn
+                // giữa đường thì phải giữ phần đã nạp được, nếu không mỗi lượt
+                // lại hỏi cả 6 endpoint và lại bị chặn - xem giải thích trong
+                // `forgetMonthIfComplete`. Lần thử lại chỉ cần quên bản nhớ
+                // trong RAM, cache nóng đã bị xử lý ở lần thử đầu.
+                if ($attempt === 0) {
+                    $shiftApi->forgetMonthIfComplete($month, $year, $depId, $mergeWarehouse);
+                } else {
+                    $shiftApi->forgetMemo($month, $year, $depId, $mergeWarehouse);
+                }
                 $data = $shiftApi->monthlyByDayKey($month, $year, $depId, $mergeWarehouse);
             } catch (\Throwable $e) {
                 $this->error("  {$label}: lỗi - " . $e->getMessage());

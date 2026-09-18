@@ -58,6 +58,37 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Kích thước mẻ gọi eO2
+    |--------------------------------------------------------------------------
+    |
+    | Cắt danh sách URL thành từng mẻ `max_batch` cái, chạy lần lượt, nghỉ
+    | `batch_pause` giây giữa hai mẻ.
+    |
+    | ĐỌC KỸ KẺO KỲ VỌNG SAI: việc cắt mẻ KHÔNG ngăn được HTTP 429. Đã thử và
+    | thất bại - lượt 11:53:40 ngày 18/09/2026 cắt 3+3 với 10s nghỉ mà request
+    | thứ 6 vẫn bị chặn, đúng như lượt gửi cả 6 một mẻ. Hôm đó eO2 chỉ cho qua
+    | khoảng 5 request rồi chặn, bất kể rải ra bao lâu (chặt hơn nhiều so với mức
+    | ~24 request/175s đo được 18/08/2026, nên rất có thể nó siết theo số lần đã
+    | bị chặn trong ngày).
+    |
+    | Giá trị thật của việc cắt mẻ là ĐẢM BẢO TIẾN TRIỂN. Thứ tự URL do
+    | `loadMonthIndexes` sinh ra là từng "ô" dữ liệu một, mỗi ô đúng 3 endpoint,
+    | nên mẻ 3 = TRỌN một ô = một lượt ghi cache. Gộp cả 6 vào một mẻ thì một cú
+    | 429 có thể làm khuyết mỗi ô một endpoint và KHÔNG ô nào được ghi - lượt đó
+    | mất trắng. Cắt mẻ thì mẻ đầu chắc chắn xong trọn một ô, lượt sau chỉ còn
+    | hỏi ô còn thiếu (xem `forgetMonthIfComplete`) và mẻ 3 request đó đi qua
+    | được: 11:33:19 nạp xong 556 nhân sự trong 17.4s.
+    |
+    | Vì vậy ĐỪNG đổi `max_batch` thành số không chia hết cho 3 - nó phá vỡ đúng
+    | cái tính chất "một mẻ = một ô" khiến cơ chế này có ích.
+    |
+    | Đặt max_batch = 0 để tắt việc cắt mẻ (gửi tất cả trong một mẻ như trước).
+    */
+    'max_batch' => env('SHIFT_API_MAX_BATCH', 3),
+    'batch_pause' => env('SHIFT_API_BATCH_PAUSE', 10),
+
+    /*
+    |--------------------------------------------------------------------------
     | Hạn ngạch dùng chung tới eO2 PMS
     |--------------------------------------------------------------------------
     |
