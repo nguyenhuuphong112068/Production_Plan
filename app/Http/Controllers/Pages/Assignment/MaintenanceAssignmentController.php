@@ -80,7 +80,8 @@ class MaintenanceAssignmentController extends Controller
             ->leftJoin('quota_maintenance as qm', 'sp.product_caterogy_id', '=', 'qm.id')
             ->where('sp.stage_code', 8)
             ->where('sp.active', 1)
-            ->whereBetween('sp.start', [$startDate, $endDate]);
+            ->where('sp.start', '>=', $startDate)
+            ->where('sp.start', '<', $endDate);
 
         if ($group_code && $group_code !== 'EN_ALL') {
             $rawTasksQuery->where(function ($q) use ($group_code) {
@@ -1095,7 +1096,8 @@ class MaintenanceAssignmentController extends Controller
             ->leftJoin('quota_maintenance as qm', 'sp.product_caterogy_id', '=', 'qm.id')
             ->where('sp.stage_code', 8)
             ->where('sp.active', 1)
-            ->whereBetween('sp.start', [$startDate, $endDate]);
+            ->where('sp.start', '>=', $startDate)
+            ->where('sp.start', '<', $endDate);
 
         if ($group_code && $group_code !== 'EN_ALL') {
             $rawTasksQuery->where(function ($q) use ($group_code) {
