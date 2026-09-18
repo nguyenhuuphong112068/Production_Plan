@@ -228,6 +228,7 @@ Route::prefix('/Schedual')
                         ->group(function () {
                                 Route::get('', 'index')->name('index');
                                 Route::post('store', 'store')->name('store');
+                                Route::post('check_overlap', 'checkOverlap')->name('check_overlap');
                         });
 
                 Route::prefix('/quarantine_room')

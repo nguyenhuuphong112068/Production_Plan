@@ -533,11 +533,13 @@
                         </div>
                     </div>
                     <!-- Tab 4: Xem Xét Đổi Ngày NL/BB -->
-                    <div class="tab-pane fade" id="proposed-material" role="tabpanel" aria-labelledby="proposed-material-tab">
+                    <div class="tab-pane fade" id="proposed-material" role="tabpanel"
+                        aria-labelledby="proposed-material-tab">
                         <div class="card card-primary card-outline">
                             <div class="card-header">
                                 @if ($can_approve)
-                                    <button type="button" class="btn btn-sm btn-success" id="btn-accept-bulk-material">Chấp nhận
+                                    <button type="button" class="btn btn-sm btn-success"
+                                        id="btn-accept-bulk-material">Chấp nhận
                                         mục
                                         đã
                                         chọn</button>
@@ -609,13 +611,17 @@
                                                         $stageStr = '-';
                                                     }
                                                     $firstField = !empty($violations) ? array_keys($violations)[0] : '';
-                                                    $defaultDateStr = !empty($item->min_start) ? \Carbon\Carbon::parse($item->min_start)->format('Y-m-d') : '';
+                                                    $defaultDateStr = !empty($item->min_start)
+                                                        ? \Carbon\Carbon::parse($item->min_start)->format('Y-m-d')
+                                                        : '';
                                                 @endphp
                                                 <tr>
                                                     <td class="text-center">
                                                         @if ($can_approve)
                                                             <input type="checkbox" class="row-checkbox-proposed-material"
-                                                                value="{{ $item->id }}" data-field="{{ $firstField }}" data-date="{{ $defaultDateStr }}">
+                                                                value="{{ $item->id }}"
+                                                                data-field="{{ $firstField }}"
+                                                                data-date="{{ $defaultDateStr }}">
                                                         @endif
                                                     </td>
                                                     <td>{{ $item->finished_product_code }}</td>
@@ -1017,6 +1023,20 @@
                 badge.text(Math.max(0, currentCount));
             }
 
+            // Cộng thêm số ngày vào chuỗi ngày dạng 'YYYY-MM-DD', trả về cùng định dạng
+            function addDaysToDateStr(dateStr, days) {
+                if (!dateStr) return '';
+                let parts = dateStr.split('-');
+                if (parts.length !== 3) return dateStr;
+                let d = new Date(Date.UTC(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(
+                    parts[2], 10)));
+                d.setUTCDate(d.getUTCDate() + days);
+                let y = d.getUTCFullYear();
+                let m = String(d.getUTCMonth() + 1).padStart(2, '0');
+                let day = String(d.getUTCDate()).padStart(2, '0');
+                return `${y}-${m}-${day}`;
+            }
+
             // Logic Chấp nhận ngày cho Tab 3
             function submitAcceptDate(ids, date, rowDates) {
                 $.ajax({
@@ -1047,12 +1067,14 @@
             $('.btn-accept-single').on('click', function() {
                 let id = $(this).data('id');
                 let defaultDate = $(this).data('response-date');
+                // Mặc định: ngày đề nghị + 2 ngày nếu người dùng không chọn lại ngày khác
+                let prefillDate = addDaysToDateStr(defaultDate, 2);
 
                 Swal.fire({
                     title: 'Chấp nhận đổi ngày',
-                    html: '<label for="swal-input-date" class="form-label">Chọn ngày KCS mới:</label>' +
+                    html: '<label for="swal-input-date" class="form-label">Chọn ngày KCS mới (mặc định: ngày đáp ứng dự kiến + 2 ngày):</label>' +
                         '<input id="swal-input-date" class="form-control" type="date" value="' +
-                        defaultDate + '">',
+                        prefillDate + '">',
                     focusConfirm: false,
                     showCancelButton: true,
                     confirmButtonText: 'Lưu',
@@ -1063,7 +1085,7 @@
                 }).then((result) => {
                     if (result.isConfirmed) {
                         submitAcceptDate([id], result.value, {
-                            [id]: defaultDate
+                            [id]: prefillDate
                         });
                     }
                 });
@@ -1075,7 +1097,8 @@
                 $('.row-checkbox-proposed:checked').each(function() {
                     let id = $(this).val();
                     ids.push(id);
-                    rowDates[id] = $(this).data('response-date');
+                    // Mặc định: ngày đề nghị + 2 ngày nếu để trống không chọn ngày khác
+                    rowDates[id] = addDaysToDateStr($(this).data('response-date'), 2);
                 });
 
                 if (ids.length === 0) {
@@ -1086,7 +1109,7 @@
                 Swal.fire({
                     title: 'Chấp nhận đổi ngày hàng loạt',
                     html: '<p>Đang áp dụng cho <b>' + ids.length + '</b> mục.</p>' +
-                        '<label for="swal-input-date-bulk" class="form-label">Chọn ngày KCS mới chung (Để trống sẽ lấy Ngày Đáp Ứng của từng mục):</label>' +
+                        '<label for="swal-input-date-bulk" class="form-label">Chọn ngày KCS mới chung (Để trống sẽ lấy Ngày Đáp Ứng của từng mục + 2 ngày):</label>' +
                         '<input id="swal-input-date-bulk" class="form-control" type="date">',
                     focusConfirm: false,
                     showCancelButton: true,
@@ -1227,12 +1250,14 @@
                     },
                     success: function(res) {
                         if (res.success) {
-                            Swal.fire('Thành công', 'Đã cập nhật ngày thành công!', 'success').then(() => {
-                                let ids = items.map(function(item) {
-                                    return item.id;
+                            Swal.fire('Thành công', 'Đã cập nhật ngày thành công!', 'success').then(
+                                () => {
+                                    let ids = items.map(function(item) {
+                                        return item.id;
+                                    });
+                                    removeRowsAndUpdateUI('table_proposed_material',
+                                        'proposed-material-tab', ids);
                                 });
-                                removeRowsAndUpdateUI('table_proposed_material', 'proposed-material-tab', ids);
-                            });
                         } else {
                             Swal.fire('Lỗi', res.message || 'Có lỗi xảy ra', 'error');
                         }
@@ -1331,7 +1356,11 @@
                     let id = $(this).val();
                     let field = $(this).data('field');
                     let defaultDate = $(this).data('date');
-                    items.push({ id: id, field: field, date: defaultDate });
+                    items.push({
+                        id: id,
+                        field: field,
+                        date: defaultDate
+                    });
                 });
 
                 if (items.length === 0) {
@@ -1560,7 +1589,3 @@
         });
     </script>
 @endsection
-
-
-
-

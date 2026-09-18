@@ -162,6 +162,65 @@ class SchedualFinisedController extends Controller
                 ]);
         }
 
+        /**
+         * Tìm lô sản xuất khác bị trùng giờ (overlap) với khoảng [$start, $end] trên cùng
+         * một phòng/nguồn lực (resourceId) và cùng công đoạn (stage_code), chỉ dựa vào
+         * thời gian thực tế (actual_*).
+         *
+         * Không kiểm tra ở stage_code 1 (Cân NL), 2 (Cân NL Khác), 4 (Trộn Hoàn Tất).
+         * Không tính là trùng với các lịch Bảo Trì/Hiệu Chuẩn (stage_code = 8) vì khác stage_code.
+         *
+         * @return object|null Bản ghi stage_plan bị trùng, hoặc null nếu không trùng / không cần kiểm tra.
+         */
+        private function overlapConflict($resourceId, $excludeId, ?Carbon $start, ?Carbon $end)
+        {
+                if (!$resourceId || !$start || !$end) {
+                        return null;
+                }
+
+                $stage_code = DB::table('room')
+                        ->where('id', $resourceId)
+                        ->value('stage_code');
+
+                if (in_array((int) $stage_code, [1, 2, 4], true)) {
+                        return null;
+                }
+
+                return DB::table('stage_plan as sp')
+                        ->select(
+                                'sp.id',
+                                'sp.title',
+                                'sp.actual_start',
+                                'sp.actual_end',
+                                'sp.actual_end_clearning'
+                        )
+                        ->where('sp.resourceId', $resourceId)
+                        ->where('sp.stage_code', $stage_code)
+                        ->where('sp.active', 1)
+                        ->whereNotNull('sp.actual_start')
+                        ->whereNotNull('sp.actual_end')
+                        ->when($excludeId, fn($q) => $q->where('sp.id', '!=', $excludeId))
+                        ->where('sp.actual_start', '<', $end)
+                        ->whereRaw('COALESCE(sp.actual_end_clearning, sp.actual_end) > ?', [$start])
+                        ->first();
+        }
+
+        /**
+         * Endpoint AJAX: kiểm tra trùng giờ trong lúc người dùng đang nhập (cảnh báo, chưa chặn lưu).
+         */
+        public function checkOverlap(Request $request)
+        {
+                $start = $request->start ? Carbon::parse($request->start) : null;
+                $end   = $request->end ? Carbon::parse($request->end) : null;
+
+                $conflict = $this->overlapConflict($request->resourceId, $request->id, $start, $end);
+
+                return response()->json([
+                        'overlap'  => (bool) $conflict,
+                        'conflict' => $conflict,
+                ]);
+        }
+
         public function store(Request $request)
         {
 
@@ -221,6 +280,34 @@ class SchedualFinisedController extends Controller
 
                 if (!$request->resourceId)
                         return response()->json(['message' => '❌ Chọn Phòng Sản Xuất!'], 422);
+
+                /* ===============================
+                2.5 VALIDATE TRÙNG GIỜ (OVERLAP) - CHẶN LƯU NẾU TRÙNG
+                =============================== */
+
+                $formatRange = function ($conflict) {
+                        $end = $conflict->actual_end_clearning ?? $conflict->actual_end;
+                        return Carbon::parse($conflict->actual_start)->format('H:i d/m/Y')
+                                . ' - ' . Carbon::parse($end)->format('H:i d/m/Y');
+                };
+
+                $overlapProd = $this->overlapConflict($request->resourceId, $request->id, $actualStart, $actualEnd);
+                if ($overlapProd) {
+                        return response()->json([
+                                'message' => '❌ Thời gian sản xuất bị trùng giờ với lô "' . $overlapProd->title
+                                        . '" (' . $formatRange($overlapProd) . ') trên cùng phòng sản xuất, vui lòng kiểm tra lại!'
+                        ], 422);
+                }
+
+                if ($request->actionType === 'finised') {
+                        $overlapClean = $this->overlapConflict($request->resourceId, $request->id, $actualStartCleaning, $actualEndCleaning);
+                        if ($overlapClean) {
+                                return response()->json([
+                                        'message' => '❌ Thời gian vệ sinh bị trùng giờ với lô "' . $overlapClean->title
+                                                . '" (' . $formatRange($overlapClean) . ') trên cùng phòng sản xuất, vui lòng kiểm tra lại!'
+                                ], 422);
+                        }
+                }
 
                 /* ===============================
                 3. VALIDATE YIELD RANGE & OVERLAP

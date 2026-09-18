@@ -368,11 +368,73 @@
     $(document).on('input change', '.start', function() {
         const row = $(this).closest('tr');
         const maxYieldEnd = row.find('.max_yield_end').val();
-        
+
         // Nếu đã có xác nhận sản lượng trước đó (maxYieldEnd không rỗng), không được tự động ghi đè BĐCM
         if (!maxYieldEnd) {
             row.find('.start_yield').val($(this).val());
         }
+    });
+</script>
+
+<script>
+    // Kiểm tra trùng giờ (overlap) giữa các lô cùng công đoạn/phòng khi nhập thời gian kết thúc
+    function checkTimeOverlap(row, inputEl) {
+        const resourceInput = row.querySelector('[name="resourceId"]');
+        const resourceId = resourceInput ? resourceInput.value : null;
+        const start = row.querySelector('[name="' + inputEl.dataset.pairStart + '"]')?.value;
+        const end = inputEl.value;
+        const id = row.dataset.id;
+
+        // reset trạng thái cảnh báo trước đó của ô này
+        $(inputEl).css('border', '');
+
+        if (!resourceId || !start || !end) return;
+
+        $.ajax({
+            url: "{{ route('pages.Schedual.finised.check_overlap') }}",
+            type: 'POST',
+            data: {
+                _token: "{{ csrf_token() }}",
+                id: id,
+                resourceId: resourceId,
+                start: start,
+                end: end
+            },
+            success: function(res) {
+                if (res && res.overlap) {
+                    $(inputEl).css('border', '2px solid red');
+
+                    const c = res.conflict || {};
+                    const fmtTime = v => v ? String(v).replace('T', ' ').substring(0, 16) : '?';
+                    const cStart = fmtTime(c.actual_start);
+                    const cEnd = fmtTime(c.actual_end_clearning || c.actual_end);
+
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Trùng giờ sản xuất',
+                        html: 'Khoảng thời gian vừa nhập đang <b>trùng giờ</b> với lô <b>' +
+                            (c.title || '') + '</b> (' + cStart + ' &rarr; ' + cEnd +
+                            ') trên cùng phòng sản xuất!<br><br>Vui lòng kiểm tra lại.',
+                        confirmButtonText: 'Đã hiểu',
+                        confirmButtonColor: '#d33'
+                    });
+                }
+            }
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        document.body.addEventListener('change', function(e) {
+            if (e.target.matches('input[name="end"]')) {
+                e.target.dataset.pairStart = 'start';
+                checkTimeOverlap(e.target.closest('tr'), e.target);
+            }
+
+            if (e.target.matches('input[name="end_clearning"]')) {
+                e.target.dataset.pairStart = 'start_clearning';
+                checkTimeOverlap(e.target.closest('tr'), e.target);
+            }
+        });
     });
 </script>
 
