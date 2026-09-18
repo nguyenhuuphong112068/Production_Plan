@@ -122,7 +122,7 @@ Kỹ năng này tài liệu hóa quy trình quản lý nhân sự và phân côn
 #### Hiệu năng & Cache
 - **Đặc tính máy chủ nguồn (đo thực tế):** mỗi request tốn **cố định ~9.5s** bất kể cửa sổ ngày lớn hay nhỏ (2 ngày cũng như 30 ngày). Vì vậy phải giảm SỐ LƯỢNG request và cho chúng chạy song song, chứ thu hẹp khoảng ngày không giúp gì.
 - `ShiftApiService`:
-    - gom **toàn bộ** request còn thiếu (mọi tháng × mọi bộ phận × 3 endpoint) vào **một mẻ `curl_multi` duy nhất** — thời gian ≈ request chậm nhất thay vì cộng dồn. Đo thực tế: 1 tháng ~9.9s (thay vì ~28s nếu gọi lần lượt); 2 tháng PXTN 11.6s so với 19.3s khi gọi tuần tự (**nhanh hơn 40%**),
+    - gom request còn thiếu vào các mẻ `curl_multi` chạy song song trong mẻ — thời gian ≈ request chậm nhất thay vì cộng dồn. Đo thực tế: 1 tháng ~9.9s (thay vì ~28s nếu gọi lần lượt); 2 tháng PXTN 11.6s so với 19.3s khi gọi tuần tự (**nhanh hơn 40%**). ⚠️ **KHÔNG còn gom tất cả vào một mẻ duy nhất** như bản đầu: mỗi mẻ tối đa `max_batch` (3) và nghỉ `batch_pause` (70s) giữa hai mẻ, xem *Quy tắc giãn nhịp* ngay dưới,
     - lấy và cache **trọn từng tháng lịch** làm đơn vị chung để mọi màn hình dùng lại được một bản cache (cache nóng ~0.003s),
     - nén gzip + base64 trước khi ghi cache (bảng tra một tháng vượt `max_allowed_packet` 1MB của MySQL nếu ghi thẳng),
     - giữ **bản sao lưu 24h** để giao diện vẫn chạy khi API lỗi/timeout.
@@ -136,6 +136,36 @@ Kỹ năng này tài liệu hóa quy trình quản lý nhân sự và phân côn
 
   Đây là chậm phía máy chủ nguồn, không phải do khối lượng dữ liệu (payload chỉ 74KB). Hệ quả trực tiếp: **không được gọi API lịch trực trong luồng đăng nhập.**
 
+#### Quy tắc giãn nhịp gọi eO2 — 60s cho MỖI ENDPOINT
+
+> **LUẬT GỐC:** hai lời gọi liên tiếp tới **cùng một endpoint** phải cách nhau **hơn 60 giây**.
+>
+> Giới hạn tính **theo từng api** (`range`, `leave`, `overtime` đếm riêng), **không** theo tổng số request, và **không** phân biệt `department` — `range?department=15` và `range?department=17` là **cùng một api**.
+
+Hệ quả trực tiếp lên thiết kế, đừng phá:
+
+- **`max_batch = 3`** để một mẻ đúng bằng một "ô" dữ liệu mà `loadMonthIndexes` sinh ra, tức `range` + `leave` + `overtime` mỗi cái **đúng một lần** → một mẻ không tự chặn chính nó. Đổi sang số khác là phá vỡ tính chất này: mẻ 6 sẽ gọi `range` hai lần cách nhau vài giây và chắc chắn bị chặn.
+- **`batch_pause = 70`** (> 60s, có biên) vì mẻ sau gọi lại đúng 3 api đó.
+- **Một tháng PXV1 = 6 request** (bộ phận 15 + Kho 17, mỗi bộ 3 api) nên **một lượt không bao giờ đủ** → phải chia 2 mẻ cách nhau > 60s, mất ~110s.
+- **`roster()` cũng gọi `range`**, nên nó phải cách lần gọi `range` gần nhất > 60s. Thêm luồng mới gọi eO2 thì phải tính vào ngân sách này.
+- **Trang tự gọi API khi đổi dropdown phân xưởng** ([`index.blade.php:456`](../../../resources/views/pages/assignment/DashBoard/index.blade.php)) — 3 request. Nên cú bấm nút Đồng bộ ngay sau đó là lần gọi **thứ hai** của cả 3 api trong vòng vài giây.
+
+Nguồn gốc 429 và cơ chế tự bảo vệ:
+
+- **429 do proxy openresty sinh ra, không phải ứng dụng.** Header đo 18/09/2026 12:41:43: `Server: openresty` + `X-Powered-By: ASP.NET`, tức luật nằm ở proxy cấu hình theo đường dẫn, và **không kèm `Retry-After`**. Khi bị 429, service rơi về bản sao lưu 24h → giao diện vẫn chạy nhưng **hiển thị số cũ**, log `Shift API bi chan do rate limit (429)`.
+- ⚠️ **Cầu dao `shiftapi:blocked_until`:** một cú 429 làm MỌI tiến trình (web, command, nút Đồng bộ) ngừng gọi eO2 tới hết thời gian chờ, log `Bo qua goi Shift API vi eO2 dang chan`. Cả hệ thống đồng loạt rơi về bản sao lưu dù chỉ một endpoint bị 429 là **đúng chủ ý**, không phải lỗi.
+- ⚠️ **Thời gian chờ nhân đôi sau mỗi lần bị chặn liên tiếp** (60s → 120s → 240s → 480s, `BREAKER_STREAK_KEY`), chỉ reset khi có request trả 200 thật. Có số liệu: lượt 11:10:02 chỉ 1 trong 6 endpoint bị 429, nhưng hai lượt thử lại sau đúng 60s (11:11:02 và 11:12:02) thì **cả 6** đều 429. **Đừng** hạ về mức cố định 60s — đó đúng là nhịp làm eO2 chặn vĩnh viễn.
+- ⚠️ **Hạn ngạch `rate_limit`/`rate_window` đọc theo cửa sổ TRƯỢT**, không phải ô cố định: đếm theo ô cố định cho phép 2× hạn mức ngay tại biên ô (18 lúc 10:04:59 + 18 lúc 10:05:00). **Đừng "đơn giản hoá"** `reserveQuota` về `used <= limit`.
+- ✅ **Không ném phần đã nạp được:** `forgetMonthIfComplete()` (dùng chung cho nút Đồng bộ và `shifts:warm-cache`) chỉ xoá cache khi tháng đang ĐỦ; đang khuyết thì giữ phần đã có và chỉ hỏi ô còn thiếu. Nhờ đó mỗi lượt tiến thêm một ô và lượt sau chỉ còn 3 request. **Đừng** đổi lại thành `forgetMonth()` trần — đó là lỗi làm nút Đồng bộ bấm mãi không xong.
+
+Đã thử và SAI, đừng làm lại:
+
+- Hạ `max_concurrency` 3 → 2: endpoint chết chỉ **đổi chỗ** (`overtime`/15 → `leave`/17), không giảm. Luật không tính theo số kết nối đồng thời.
+- Cắt mẻ 3+3 nghỉ **10s**: vẫn chết, vì 10s < 60s.
+- Nghi eO2 giới hạn **tổng** số request (~5/mẻ): sai — lượt 12:41:00 gọi `range` đơn lẻ trả **200 trong 0.06s** ngay sau một chuỗi dài bị chặn.
+
+🩺 **Tồn đọng: riêng `leave` bị siết nặng hơn, chưa lý giải được.** Lượt 12:37:25 đã cách lần gọi `leave` trước **~105s** (vượt xa 60s) mà vẫn 429, trong khi `range` và `overtime` cùng mẻ, cùng giãn cách đó, đều qua. Phép thử tách biệt lúc 12:41 dứt khoát: `range`/17 → **200** (102KB, 0.06s), `leave`/17 sáu giây sau → **429** (0 byte, 0.04s), và vẫn 429 dù đã im lặng 3,5 phút. Triệu chứng nhận biết: **429 trả về tức thì với 0 byte**. Khi gặp lại, **đừng tune** `max_batch`/`batch_pause`/`max_concurrency` — đo `leave` đơn lẻ bằng `curl` trước, rồi nhờ bên quản trị eO2 xem cấu hình proxy cho đường dẫn đó.
+
 #### Đồng bộ danh sách nhân sự (KHÔNG chạy trong luồng đăng nhập)
 - `App\Services\EmployeeRosterSync` là nơi duy nhất ghi nhân sự xuống `employees` / `employee_assignments`, với hai lối vào:
     - `refresh()` — gọi API rồi đồng bộ. Được phép chờ lâu. Dùng bởi command chạy nền và nút Sync thủ công.
@@ -143,14 +173,6 @@ Kỹ năng này tài liệu hóa quy trình quản lý nhân sự và phân côn
 - Command: `php artisan employees:sync-roster [--department=PXV1] [--timeout=180]`, đã đặt lịch chạy **05:00 và 12:30** hằng ngày trong `routes/console.php`. Chạy **lần lượt** từng bộ phận, không song song, để tránh rate limit.
 - ⚠️ **Việc đồng bộ nhân sự phụ thuộc vào scheduler.** Nếu `php artisan schedule:run` không được đặt lịch chạy mỗi phút trên máy chủ thì command không bao giờ chạy. Khi cache danh sách nhân sự rỗng, hệ thống ghi log cảnh báo `Cache danh sach nhan su rong - hay kiem tra scheduler...`. Lưới an toàn: sau `login_sync_interval_hours` (12h), lần đăng nhập kế tiếp sẽ tự ghi lại từ cache; và nút **Sync** thủ công ở trang Quản lý nhân sự luôn dùng được.
 - **Không bao giờ** đưa lời gọi `shiftIndex()` / `roster()` vào `LoginController` — đó chính là nguyên nhân làm đăng nhập chậm trước đây (mỗi lần đăng nhập tốn 8s và PXV1 thì không bao giờ đồng bộ nổi).
-- ⚠️ **Rate limit (HTTP 429):** máy chủ nguồn chặn khi bị dồn quá nhiều request nặng liên tục (đã tái hiện được với PXV1). Khi bị 429, service rơi về bản sao lưu 24h → giao diện vẫn chạy nhưng **hiển thị dữ liệu cũ**, và ghi log riêng `Shift API bi chan do rate limit (429)`. Thấy log 429 nhiều thì giảm `shiftapi.max_concurrency`, đừng tăng lên.
-- ⚠️ **Cầu dao 429 (`shiftapi:blocked_until`):** một cú 429 làm MỌI tiến trình (web, command, nút Đồng bộ) ngừng gọi eO2 cho tới hết thời gian chờ, ghi log `Bo qua goi Shift API vi eO2 dang chan`. Đây là chủ ý: bắn tiếp vào server đang chặn vừa vô ích vừa làm nó gia hạn chặn. Nên thấy cả hệ thống đồng loạt rơi về bản sao lưu dù chỉ có một endpoint bị 429 là **đúng**, không phải lỗi.
-- ⚠️ **eO2 gia hạn chặn nếu thử lại quá sớm — có số liệu.** Đo 18/09/2026: lượt 11:10:02 chỉ **1 trong 6** endpoint bị 429 (`overtime` dept 15), nhưng hai lượt thử lại sau đúng 60s (11:11:02 và 11:12:02) thì **cả 6** đều 429. Vì vậy thời gian chờ **nhân đôi sau mỗi lần bị chặn liên tiếp** (60s → 120s → 240s → 480s, `BREAKER_STREAK_KEY`), và chỉ reset khi có request trả 200 thật. **Đừng** hạ về mức cố định 60s — đó chính là nhịp làm eO2 chặn vĩnh viễn.
-- 🚦 **Luật chặn của eO2 là THEO TỪNG ENDPOINT, do proxy openresty sinh ra.** Header của phản hồi 429 (đo 18/09/2026 12:41:43): `Server: openresty` + `X-Powered-By: ASP.NET`, tức luật nằm ở proxy đứng trước ứng dụng, cấu hình theo đường dẫn — và **không có `Retry-After`**. Hai lời gọi liên tiếp tới cùng một api phải cách nhau **hơn 60s**; `range?department=15` và `range?department=17` tính là CÙNG một api. Đây là lý do `max_batch=3` + `batch_pause=70` (xem config) chứ không phải con số tuỳ ý.
-- 🔬 **Ba giả thuyết ĐÃ THỬ VÀ SAI, đừng làm lại:** (a) hạ `max_concurrency` 3 → 2 (endpoint chết chỉ đổi chỗ, không giảm); (b) cắt mẻ 3+3 nghỉ 10s (vẫn chết vì 10s < 60s); (c) nghi eO2 giới hạn TỔNG số request (~5/mẻ) — sai, vì lượt 12:41:00 gọi `range` đơn lẻ trả 200 trong 0.06s ngay sau một chuỗi dài bị chặn.
-- 🩺 **Riêng `leave` bị siết nặng hơn 3 api còn lại — chưa lý giải được, có thể phải nhờ bên quản trị eO2.** Đo 18/09/2026: lượt 12:37:25 đã cách lần gọi `leave` trước **~105s** (vượt xa 60s) mà vẫn 429, trong khi `range` và `overtime` cùng mẻ, cùng giãn cách đó, đều qua. Phép thử tách biệt lúc 12:41 dứt khoát: `range`/17 → **200** (102KB, 0.06s), `leave`/17 sáu giây sau → **429** (0 byte, 0.04s), và vẫn 429 dù đã im lặng 3,5 phút. Triệu chứng: 429 trả về TỨC THÌ với 0 byte. Khi gặp lại, đừng tune `max_batch`/`batch_pause`/`max_concurrency` nữa — đo `leave` đơn lẻ trước để biết có phải phía eO2 đang chặn riêng nó hay không.
-- ✅ **Thứ THẬT SỰ làm nó chạy được: không ném phần đã nạp được.** Một tháng PXV1 = 2 "ô" (bộ phận 15 + Kho 17) × 3 endpoint = 6 request, vượt ngưỡng ~5 nên **một lượt không bao giờ đủ**. Vì vậy `forgetMonthIfComplete()` (dùng chung cho nút Đồng bộ và command) chỉ xoá cache khi tháng đang ĐỦ; đang khuyết thì giữ phần đã có và chỉ hỏi ô còn thiếu. Cộng với `max_batch=3` (một mẻ = trọn một ô = một lượt ghi cache), mỗi lượt chắc chắn tiến thêm một ô và lượt sau chỉ còn 3 request — cỡ đi qua được. Đo 18/09/2026: lượt 6-request thất bại để lại ô 15 đã cache, lượt sau chỉ hỏi ô 17 và xong trong 15-17s. **Đừng** đổi lại thành `forgetMonth()` trần, đó là lỗi làm nút Đồng bộ bấm mãi không xong.
-- ⚠️ **Hạn ngạch `rate_limit`/`rate_window` đọc theo cửa sổ TRƯỢT**, không phải ô cố định: lưu lượng tính được = trọn ô hiện tại + phần ô trước còn nằm trong cửa sổ. Đọc theo ô cố định cho phép 2× hạn mức ngay tại biên ô (18 lúc 10:04:59 + 18 lúc 10:05:00) — chính là kiểu burst gây loạt 429 ngày 18/09/2026. **Đừng "đơn giản hoá"** `reserveQuota` về `used <= limit`.
 - `shiftIndex()` / `monthlyByDayKey()` trả **`null`** khi API hỏng hẳn (không còn bản sao lưu), khác với **`[]`** nghĩa là bộ phận rỗng — nơi gọi phải phân biệt hai trường hợp này.
 
 ### 7.1 Tự động Phân công Nhân sự Sản Xuất (Auto Assign)
