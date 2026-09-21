@@ -146,13 +146,24 @@ class MaintenanceAssignmentController extends Controller
             ->orderBy('r.name')
             ->get();
 
+        // Các dòng lịch BT-HC đã bị hủy ở lịch công tác (theo tổ đang xem)
+        $cancelledSpIds = ($group_code && $group_code !== 'EN_ALL')
+            ? DB::table('assignment_cancellations')
+                ->where('deparment_code', $dept_code)
+                ->where('stage_groups_code', $group_code)
+                ->pluck('stage_plan_id')
+                ->flip()
+            : collect();
+
         // 2. Gộp các task và lấy phân công kèm danh sách nhân viên
         $tasks = collect($rawTasks)->groupBy(function ($item) {
             return $item->start . '_' . $item->room_id;
-        })->map(function ($group) use ($group_code, $dept_code, $canEdit, $allPersonnelData) {
+        })->map(function ($group) use ($group_code, $dept_code, $canEdit, $allPersonnelData, $cancelledSpIds) {
             $first      = $group->first();
             $allSpIds   = $group->pluck('sp_id')->sort()->toArray();
             $spIdString = implode(',', $allSpIds);
+
+            if ($cancelledSpIds->has($spIdString)) return null;
 
             $minStart    = $group->min('start');
             $maxEnd      = $group->max('end');
@@ -414,6 +425,21 @@ class MaintenanceAssignmentController extends Controller
      */
     public function weekly(Request $request, ShiftApiService $shiftApi)
     {
+        session()->put(['title' => 'LỊCH CÔNG TÁC BT-HC THEO TUẦN']);
+
+        return view('pages.assignment.maintenance.weekly', $this->weeklyData($request, $shiftApi));
+    }
+
+    /** Bản công khai của lịch tuần: không cần đăng nhập */
+    public function publicWeekly(Request $request, ShiftApiService $shiftApi)
+    {
+        return view('pages.assignment.publicWeekly', $this->weeklyData($request, $shiftApi) + [
+            'kind' => 'maintenance',
+        ]);
+    }
+
+    private function weeklyData(Request $request, ShiftApiService $shiftApi): array
+    {
         $anchorDate = $request->reportedDate ?? Carbon::now()->format('Y-m-d');
         $weekStart = Carbon::parse($anchorDate)->startOfWeek(Carbon::MONDAY);
         $weekEnd = $weekStart->copy()->addDays(6);
@@ -607,9 +633,7 @@ class MaintenanceAssignmentController extends Controller
 
         $groupNames['UNSCHEDULED'] = 'Nhân sự chưa có lịch trong tuần';
 
-        session()->put(['title' => 'LỊCH CÔNG TÁC BT-HC THEO TUẦN']);
-
-        return view('pages.assignment.maintenance.weekly', [
+        return [
             'days' => $days,
             'rows' => $rowList,
             'cells' => $cells,
@@ -626,7 +650,7 @@ class MaintenanceAssignmentController extends Controller
             'anchorDate' => Carbon::parse($anchorDate)->format('Y-m-d'),
             'totalPeople' => count($weekPeople),
             'totalHours' => round(array_sum(array_column($dayTotals, 'hours')), 2),
-        ]);
+        ];
     }
 
     /**
@@ -863,6 +887,58 @@ class MaintenanceAssignmentController extends Controller
 
             return response()->json(['success' => true, 'message' => 'Đã xóa ca này']);
         } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Lỗi: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Hủy hẳn một dòng lịch sinh từ lịch BT-HC (stage_plan) của tổ đang xem:
+     * vô hiệu các ca đã lưu và ghi dấu để index() không sinh lại dòng đó.
+     */
+    public function cancelPlanTask(Request $request)
+    {
+        $spIdString = $request->sp_id;
+        $group_code = $request->group_code;
+        $reportedDate = $request->reportedDate;
+
+        if (!$spIdString || !$group_code || $group_code === 'EN_ALL' || str_starts_with($spIdString, 'EXT_')) {
+            return response()->json(['success' => false, 'message' => 'Dữ liệu hủy không hợp lệ']);
+        }
+
+        $dept_code = ($group_code == 20) ? 'QA' : 'EN';
+
+        try {
+            DB::beginTransaction();
+
+            $assignmentsQuery = DB::table('assignments')
+                ->where('stage_plan_id', $spIdString)
+                ->where('deparment_code', $dept_code)
+                ->where('active', 1);
+            if ($group_code == 12 || $group_code == 13) {
+                $assignmentsQuery->whereIn('stage_groups_code', [12, 13]);
+            } else {
+                $assignmentsQuery->where('stage_groups_code', $group_code);
+            }
+            $assignmentsQuery->update(['active' => 0, 'updated_at' => now()]);
+
+            DB::table('assignment_cancellations')->updateOrInsert(
+                [
+                    'stage_plan_id'     => $spIdString,
+                    'deparment_code'    => $dept_code,
+                    'stage_groups_code' => $group_code,
+                ],
+                [
+                    'reported_date' => $reportedDate,
+                    'cancelled_by'  => session('user')['userName'] ?? 'System',
+                    'updated_at'    => now(),
+                    'created_at'    => now(),
+                ]
+            );
+
+            DB::commit();
+            return response()->json(['success' => true, 'message' => 'Đã hủy công tác']);
+        } catch (\Exception $e) {
+            DB::rollBack();
             return response()->json(['success' => false, 'message' => 'Lỗi: ' . $e->getMessage()]);
         }
     }

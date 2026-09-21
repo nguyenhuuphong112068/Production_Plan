@@ -235,6 +235,7 @@
         .quick-menu {
             display: flex;
             justify-content: center;
+            flex-wrap: wrap;
             gap: 20px;
             margin-top: 24px;
         }
@@ -447,6 +448,14 @@
             <a href="{{ route('pages.assignment.public') }}" class="quick-btn">
                 <i class="bi bi-tools"></i>
                 <span>Phân Công<br>Bảo Trì</span>
+            </a>
+            <a href="{{ route('pages.assignment.production.public.weekly') }}" class="quick-btn">
+                <i class="bi bi-calendar-week"></i>
+                <span>Lịch Tuần<br>Sản Xuất</span>
+            </a>
+            <a href="{{ route('pages.assignment.public.weekly') }}" class="quick-btn">
+                <i class="bi bi-calendar-range"></i>
+                <span>Lịch Tuần<br>Bảo Trì</span>
             </a>
         </div>
     </div>

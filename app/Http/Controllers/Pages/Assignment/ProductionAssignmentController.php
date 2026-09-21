@@ -504,9 +504,30 @@ class ProductionAssignmentController extends Controller
      */
     public function weekly(Request $request, ShiftApiService $shiftApi)
     {
-        $production_code = session('user')['production_code'];
-        $user_group_name = session('user')['group_name'];
+        session()->put(['title' => 'LỊCH CÔNG TÁC THEO TUẦN']);
 
+        return view('pages.assignment.production.weekly', $this->weeklyData(
+            $request,
+            $shiftApi,
+            session('user')['production_code'],
+            session('user')['group_name']
+        ));
+    }
+
+    /** Bản công khai của lịch tuần: không cần đăng nhập, phân xưởng chọn qua ?production_code= */
+    public function publicWeekly(Request $request, ShiftApiService $shiftApi)
+    {
+        $production_code = in_array($request->production_code, ['PXV1', 'PXV2', 'PXVH', 'PXTN', 'PXDN'], true)
+            ? $request->production_code
+            : 'PXV1';
+
+        return view('pages.assignment.publicWeekly', $this->weeklyData($request, $shiftApi, $production_code, null) + [
+            'kind' => 'production',
+        ]);
+    }
+
+    private function weeklyData(Request $request, ShiftApiService $shiftApi, $production_code, $user_group_name): array
+    {
         $anchorDate = $request->reportedDate ?? Carbon::now()->format('Y-m-d');
         $weekStart = Carbon::parse($anchorDate)->startOfWeek(Carbon::MONDAY);
         $weekEnd = $weekStart->copy()->addDays(6);
@@ -760,9 +781,7 @@ class ProductionAssignmentController extends Controller
 
         $groupNames['UNSCHEDULED'] = 'Nhân sự chưa có lịch trong tuần';
 
-        session()->put(['title' => 'LỊCH CÔNG TÁC THEO TUẦN']);
-
-        return view('pages.assignment.production.weekly', [
+        return [
             'days' => $days,
             'rows' => $rowList,
             'cells' => $cells,
@@ -781,7 +800,7 @@ class ProductionAssignmentController extends Controller
             'production_code' => $production_code,
             'totalPeople' => count($weekPeople),
             'totalHours' => round(array_sum(array_column($dayTotals, 'hours')), 2),
-        ]);
+        ];
     }
 
     public function approveOvertime(Request $request)

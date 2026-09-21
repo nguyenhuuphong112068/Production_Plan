@@ -13,6 +13,8 @@ Route::get('/public-assignments', [MaintenanceAssignmentController::class, 'publ
 Route::get('/public-production-assignments', [ProductionAssignmentController::class, 'publicView'])->name('pages.assignment.production.public');
 Route::get('/public-production-assignments/shifts', [ProductionAssignmentController::class, 'getPersonnelShifts'])->name('pages.assignment.production.public.shifts');
 Route::get('/public-assignments/shifts', [MaintenanceAssignmentController::class, 'getPersonnelShifts'])->name('pages.assignment.public.shifts');
+Route::get('/public-production-assignments/weekly', [ProductionAssignmentController::class, 'publicWeekly'])->name('pages.assignment.production.public.weekly');
+Route::get('/public-assignments/weekly', [MaintenanceAssignmentController::class, 'publicWeekly'])->name('pages.assignment.public.weekly');
 
 Route::prefix('/assignemnt/production')
     ->controller(ProductionAssignmentController::class)
@@ -52,6 +54,7 @@ Route::prefix('/assignemnt/maintenance')
         Route::post('store', 'store')->name('store');
         Route::post('clone-custom-task', 'cloneCustomTask')->name('clone_custom_task');
         Route::delete('destroy/{id}', 'destroy')->name('destroy');
+        Route::post('cancel-plan-task', 'cancelPlanTask')->name('cancel_plan_task');
     });
 
 Route::prefix('/assignemnt/dashboard')

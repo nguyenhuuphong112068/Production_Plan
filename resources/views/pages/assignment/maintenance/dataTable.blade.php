@@ -532,7 +532,8 @@
                     @foreach ($tasks as $task)
                         <tr class="room-row {{ $task->assignments->first()?->off_stream ?? 0 ? 'off-stream-row' : '' }}"
                             data-sp-id="{{ $task->sp_id ?: (count($task->assignments) > 0 ? 'EXT_EXISTING_' . $task->assignments[0]->id : '') }}"
-                            data-room-id="{{ $task->room_id }}" data-group-code="{{ $task->group_code }}"
+                            data-room-id="{{ $task->room_id ?? ($task->room_name !== 'Công tác khác' ? $task->room_name : '') }}"
+                            data-group-code="{{ $task->group_code }}"
                             data-n1="{{ $task->number_of_employes_on_sheet1 }}"
                             data-n2="{{ $task->number_of_employes_on_sheet2 }}"
                             data-n3="{{ $task->number_of_employes_on_sheet3 }}"
@@ -2274,6 +2275,52 @@
         $(document).on('click', '.btn-remove-shift', function() {
             const row = $(this).closest('.assignment-item');
             const assignmentId = row.data('id');
+
+            // Ca cuối cùng của dòng sinh từ lịch BT-HC: hủy hẳn cả dòng (không sinh lại khi tải lại trang)
+            const planRow = row.closest('.room-row');
+            const planSpId = String(planRow.attr('data-sp-id') || '');
+            const isPlanRow = /^\d+$/.test(planRow.attr('data-room-id') || '') && planSpId &&
+                !planSpId.startsWith('EXT_') && "{{ $group_code }}" !== 'EN_ALL';
+            if (isPlanRow && row.closest('.assignment-container').find('.assignment-item').length === 1) {
+                Swal.fire({
+                    title: 'Hủy công tác này?',
+                    text: 'Dòng này sẽ bị hủy và không hiển thị lại trong lịch công tác.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Đồng ý hủy',
+                    cancelButtonText: 'Quay lại'
+                }).then((result) => {
+                    if (!result.isConfirmed) return;
+                    $.ajax({
+                        url: "{{ route('pages.assignment.maintenance.cancel_plan_task') }}",
+                        method: "POST",
+                        data: {
+                            _token: "{{ csrf_token() }}",
+                            sp_id: planSpId,
+                            group_code: "{{ $group_code }}",
+                            reportedDate: "{{ $reportedDate }}"
+                        },
+                        success: function(res) {
+                            if (res.success) {
+                                planRow.fadeOut(300, function() {
+                                    $(this).remove();
+                                    updateTimelines();
+                                    updateSidebarHighlights();
+                                    updateSidebarPersonnelTimes();
+                                });
+                            } else {
+                                Swal.fire('Lỗi', res.message, 'error');
+                            }
+                        },
+                        error: function(xhr) {
+                            Swal.fire('Lỗi', xhr.responseJSON ? xhr.responseJSON.message :
+                                'Lỗi kết nối server', 'error');
+                        }
+                    });
+                });
+                return;
+            }
+
             if (assignmentId) {
                 Swal.fire({
                     title: 'Xác nhận xóa?',
@@ -2391,7 +2438,8 @@
 
                 // Nếu không có ca nào, vẫn cho phép gửi để xóa sạch ca cũ của phòng đó
                 btn.prop('disabled', true);
-                const roomId = row.attr('data-room-id');
+                let roomId = row.attr('data-room-id');
+                if (!roomId) roomId = row.find('.room-select-custom').val();
                 let spId = row.attr('data-sp-id');
 
                 // Fallback nếu thiếu cả roomId và spId (có thể do trang chưa reload)
@@ -2459,7 +2507,8 @@
             for (let i = 0; i < rows.length; i++) {
                 const $row = $(rows[i]);
                 const roomName = $row.find('.room-name-cell b').text() || 'Công tác khác';
-                const roomId = $row.attr('data-room-id');
+                let roomId = $row.attr('data-room-id');
+                if (!roomId) roomId = $row.find('.room-select-custom').val();
                 let spId = $row.attr('data-sp-id');
 
                 // Fallback ID cho công việc ngoài lịch chưa có mã định danh

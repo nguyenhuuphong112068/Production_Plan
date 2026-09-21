@@ -382,6 +382,11 @@
     $groupDisabled = $groupDisabled ?? false;
     $exportTitle = $exportTitle ?? 'Lịch Công Tác Theo Tuần';
     $exportFilePrefix = $exportFilePrefix ?? 'Lich_Cong_Tac_Tuan';
+    // Dùng cho bản công khai (không có thanh điều hướng của layout đăng nhập)
+    $toolbarOffset = $toolbarOffset ?? 60;
+    $extraParams = $extraParams ?? [];
+    $extraQuery = $extraParams ? '&' . http_build_query($extraParams) : '';
+    $productionOptions = $productionOptions ?? null;
 
     // Trục dòng: phòng (mặc định) hoặc nhân sự. Chỉ render trục đang xem để
     // trang không phình gấp đôi khi chọn "Tất cả" các tổ.
@@ -397,9 +402,29 @@
 @endphp
 
 <div class="content-wrapper">
-    <div class="wk-toolbar py-2 px-3" style="margin-top: 60px;">
+    <div class="wk-toolbar py-2 px-3" style="margin-top: {{ $toolbarOffset }}px;">
         <div class="d-flex justify-content-between align-items-center flex-wrap">
             <form action="{{ route($weeklyRoute) }}" method="GET" class="form-inline" id="wk-filter-form">
+                @foreach ($extraParams as $paramName => $paramValue)
+                    @if (!($productionOptions && $paramName === 'production_code'))
+                        <input type="hidden" name="{{ $paramName }}" value="{{ $paramValue }}">
+                    @endif
+                @endforeach
+
+                @if ($productionOptions)
+                    <span class="mr-2 font-weight-bold">Phân xưởng:</span>
+                    {{-- Mỗi phân xưởng có danh sách tổ riêng nên đổi phân xưởng thì bỏ bộ lọc tổ --}}
+                    <select name="production_code" class="form-control form-control-sm mr-3 shadow-sm"
+                        style="border: 2px solid #003A4F; width: 90px"
+                        onchange="this.form.elements['group_code'].disabled = true; this.form.submit()">
+                        @foreach ($productionOptions as $opt)
+                            <option value="{{ $opt }}"
+                                {{ ($extraParams['production_code'] ?? '') === $opt ? 'selected' : '' }}>
+                                {{ $opt }}</option>
+                        @endforeach
+                    </select>
+                @endif
+
                 <span class="mr-2 font-weight-bold">Tổ:</span>
                 <select name="group_code" class="form-control form-control-sm mr-3 shadow-sm"
                     style="border: 2px solid #003A4F" onchange="this.form.submit()"
@@ -420,14 +445,14 @@
                 </select>
 
                 <span class="mr-2 font-weight-bold">Tuần:</span>
-                <a href="{{ route($weeklyRoute) }}?group_code={{ $group_code }}&axis={{ $axis }}&reportedDate={{ $prevWeek }}"
+                <a href="{{ route($weeklyRoute) }}?group_code={{ $group_code }}&axis={{ $axis }}&reportedDate={{ $prevWeek }}{{ $extraQuery }}"
                     class="btn btn-sm btn-outline-secondary" title="Tuần trước"><i class="fas fa-chevron-left"></i></a>
                 <input type="date" name="reportedDate" value="{{ $anchorDate }}"
                     class="form-control form-control-sm shadow-sm mx-1" style="border: 2px solid #003A4F"
                     onchange="this.form.submit()">
-                <a href="{{ route($weeklyRoute) }}?group_code={{ $group_code }}&axis={{ $axis }}&reportedDate={{ $nextWeek }}"
+                <a href="{{ route($weeklyRoute) }}?group_code={{ $group_code }}&axis={{ $axis }}&reportedDate={{ $nextWeek }}{{ $extraQuery }}"
                     class="btn btn-sm btn-outline-secondary" title="Tuần sau"><i class="fas fa-chevron-right"></i></a>
-                <a href="{{ route($weeklyRoute) }}?group_code={{ $group_code }}&axis={{ $axis }}"
+                <a href="{{ route($weeklyRoute) }}?group_code={{ $group_code }}&axis={{ $axis }}{{ $extraQuery }}"
                     class="btn btn-sm btn-outline-primary ml-1">Tuần này</a>
 
                 <span class="badge badge-light border ml-3 py-1" style="font-size: 0.78rem;">

@@ -453,7 +453,12 @@
                     class="form-control form-control-sm shadow-sm" style="border: 1px solid #003A4F"
                     onchange="this.form.submit()">
 
-                <a href="{{ route('login') }}" class="btn btn-sm btn-outline-light ml-3">
+                <a href="{{ route('pages.assignment.production.public.weekly', array_filter(['production_code' => $production_code, 'group_code' => $group_code, 'reportedDate' => $reportedDate])) }}"
+                    class="btn btn-sm btn-outline-light ml-3">
+                    <i class="fas fa-calendar-week"></i> Xem theo tuần
+                </a>
+
+                <a href="{{ route('login') }}" class="btn btn-sm btn-outline-light ml-2">
                     <i class="fas fa-sign-in-alt"></i> Quay lại Đăng Nhập
                 </a>
             </form>
