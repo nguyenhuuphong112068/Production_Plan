@@ -91,6 +91,7 @@
                                 <th class="text-center align-middle">Tên Sản Phẩm</th>
                                 <th class="text-center align-middle">Mã BTP</th>
                                 <th class="text-center align-middle">Dạng Bào Chế</th>
+                                <th class="text-center align-middle">Dược Sĩ Phụ Trách</th>
                                 <th class="text-center align-middle">Cỡ Lô (Khối lượng)</th>
                                 <th class="text-center align-middle">Cỡ Lô (ĐV Liều)</th>
                                 <th class="text-center align-middle">Đơn Vị TG Biệt Trữ</th>

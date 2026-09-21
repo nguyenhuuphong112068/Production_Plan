@@ -820,6 +820,7 @@
             html += '<td class="text-center align-middle">' + esc(item.product_name) + '</td>';
             html += '<td class="text-center align-middle">' + esc(item.intermediate_code) + '</td>';
             html += '<td class="text-center align-middle">' + esc(item.dosage_name) + '</td>';
+            html += '<td class="text-center align-middle">' + esc(item.pharmacist_name) + '</td>';
             html += '<td class="text-center align-middle">' + esc(item.batch_size) + '</td>';
             html += '<td class="text-center align-middle">' + esc(item.batch_qty) + '</td>';
             html += '<td class="text-center align-middle">' + (item.quarantine_time_unit == 1 ? 'Ngày' : 'Giờ') + '</td>';
