@@ -100,6 +100,7 @@
                                 <th class="text-center align-middle">Định Hình</th>
                                 <th class="text-center align-middle">Bao Phim</th>
                                 <th class="text-center align-middle">TG BT Tổng (Pha Chế -> Trước ĐGSC)</th>
+                                <th class="text-center align-middle">Lý Do Thay Đổi</th>
                             </tr>
                         </thead>
                         <tbody id="data_table_history_body">

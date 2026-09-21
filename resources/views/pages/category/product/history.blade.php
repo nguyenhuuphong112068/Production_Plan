@@ -95,6 +95,7 @@
                                 <th class="text-center align-middle">Qui Cách</th>
                                 <th class="text-center align-middle">Cỡ Lô (Thành Phẩm)</th>
                                 <th class="text-center align-middle">Đóng Gói Cấp 1</th>
+                                <th class="text-center align-middle">Lý Do Thay Đổi</th>
                             </tr>
                         </thead>
                         <tbody id="data_table_history_body">

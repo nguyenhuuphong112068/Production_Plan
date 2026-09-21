@@ -177,7 +177,10 @@ class IntermediateCategoryController extends Controller
                         'batch_size' => 'required',
                         'batch_qty' => 'required',
                         'unit_batch_qty' => 'required',
+                        'change_reason' => 'required|string|max:500',
                 ], [
+                        'change_reason.required' => 'Vui lòng nhập lý do thay đổi.',
+                        'change_reason.max' => 'Lý do thay đổi tối đa 500 ký tự.',
                         //'intermediate_code.required' => 'Vui lòng nhập mã bán thành phẩm.',
                         'intermediate_code.unique' => 'Mã bán thành phẩm đã tồn tại.',
                         'product_name_id.required' => 'Vui lòng chọn tên sản phẩm',
@@ -237,11 +240,12 @@ class IntermediateCategoryController extends Controller
 
                                 'deparment_code' => session('user')['production_code'],
                                 'pharmacist_id' => $request->pharmacist_id ?: null,
+                                'change_reason' => trim($request->change_reason),
                                 'prepared_by' => session('user')['fullName'],
                                 'updated_at' => now(),
                         ]);
 
-                        return $this->syncFinishedProductBatch($intermediate_code, $request->batch_qty, $request->unit_batch_qty);
+                        return $this->syncFinishedProductBatch($intermediate_code, $request->batch_qty, $request->unit_batch_qty, trim($request->change_reason));
                 });
 
                 $message = 'Đã cập nhật thành công!';
@@ -273,7 +277,7 @@ class IntermediateCategoryController extends Controller
          *
          * @return int Số mã TP đã được cập nhật
          */
-        private function syncFinishedProductBatch($intermediate_code, $batch_qty, $unit_batch_qty)
+        private function syncFinishedProductBatch($intermediate_code, $batch_qty, $unit_batch_qty, $reason = null)
         {
                 if (empty($intermediate_code)) {
                         return 0;
@@ -300,6 +304,7 @@ class IntermediateCategoryController extends Controller
                         DB::table('finished_product_category')->where('id', $product->id)->update([
                                 'batch_qty' => $batch_qty,
                                 'unit_batch_qty' => $unit_batch_qty,
+                                'change_reason' => Str::limit('Đồng bộ cỡ lô theo BTP ' . $intermediate_code . ($reason ? ': ' . $reason : ''), 497),
                                 'prepared_by' => session('user')['fullName'],
                                 'updated_at' => now(),
                         ]);
@@ -318,12 +323,14 @@ class IntermediateCategoryController extends Controller
                 if ($request->IsHypothesis == 1) {
                         DB::table('intermediate_category')->where('id', $request->id)->update([
                                 'cancel' => 1,
+                                'change_reason' => 'Hủy mã giả định',
                                 'prepared_by' => session('user')['fullName'],
                                 'updated_at' => now(),
                         ]);
                 } else {
                         DB::table('intermediate_category')->where('id', $request->id)->update([
                                 'Active' => !$request->active,
+                                'change_reason' => $request->active ? 'Vô hiệu hóa' : 'Kích hoạt lại',
                                 'prepared_by' => session('user')['fullName'],
                                 'updated_at' => now(),
                         ]);

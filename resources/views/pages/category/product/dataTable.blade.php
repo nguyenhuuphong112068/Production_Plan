@@ -320,6 +320,8 @@
 
             // Gán dữ liệu vào input
             modal.find('input[name="id"]').val(button.data('id'));
+            // Mỗi lần sửa là một lý do mới, không mang lý do của lần trước sang
+            modal.find('textarea[name="change_reason"]').val('');
             modal.find('input[name="finished_product_code"]').val(button.data('finished_product_code'));
             modal.find('input[name="intermediate_code"]').val(button.data('intermediate_code'));
             modal.find('select[name="product_name_id"]').val(button.data('product_name_id'));
@@ -638,6 +640,8 @@
                         html += '<td class="text-center align-middle">' + (current
                             .primary_parkaging !== null && current.primary_parkaging !==
                             undefined ? current.primary_parkaging : '') + '</td>';
+                        html += '<td class="text-left align-middle" style="min-width: 220px; white-space: normal;">' +
+                            $('<div>').text(current.change_reason || '').html() + '</td>';
                         html += '</tr>';
                         tbody.append(html);
                     }
@@ -682,6 +686,8 @@
                                 .primary_parkaging !== null && item
                                 .primary_parkaging !== undefined ? item
                                 .primary_parkaging : '') + '</td>';
+                            html += '<td class="text-left align-middle" style="min-width: 220px; white-space: normal;">' +
+                                $('<div>').text(item.change_reason || '').html() + '</td>';
                             html += '</tr>';
                             tbody.append(html);
                         });

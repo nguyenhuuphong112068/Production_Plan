@@ -283,6 +283,16 @@
                         </div>
                     </div>
 
+                    {{-- Lý do thay đổi: bắt buộc, lưu kèm phiên bản mới để xem trong Lịch Sử --}}
+                    <div class="form-group mb-0">
+                        <label for="update_change_reason">Lý Do Thay Đổi <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="update_change_reason" name="change_reason" rows="2"
+                            maxlength="500" required placeholder="Nhập lý do điều chỉnh danh mục...">{{ old('change_reason') }}</textarea>
+                        @error('change_reason', 'updateErrors')
+                            <div class="alert alert-danger mt-1">{{ $message }}</div>
+                        @enderror
+                    </div>
+
                 </div>
 
                 <div class="modal-footer">

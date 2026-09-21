@@ -192,9 +192,11 @@ class ProductCategoryController extends Controller
                         'product_name_id' => 'required',
                         'batch_qty' => 'required',
                         'market_id' => 'required',
-                        'specification_id' => 'required'
+                        'specification_id' => 'required',
+                        'change_reason' => 'required|string|max:500',
                 ], [
-                       
+                        'change_reason.required' => 'Vui lòng nhập lý do thay đổi.',
+                        'change_reason.max' => 'Lý do thay đổi tối đa 500 ký tự.',
                         'product_name_id.required' => 'Vui lòng chọn tên sản phẩm',
                         'batch_qty.required' => 'Vui lòng nhâp cỡ lô',
                         'market_id.required' => 'Vui lòng chọn thị trường',
@@ -221,6 +223,7 @@ class ProductCategoryController extends Controller
                         'batch_qty' => $intermediate->batch_qty ?? $request->batch_qty,
                         'unit_batch_qty' => $intermediate->unit_batch_qty ?? $request->unit_batch_qty,
                         'primary_parkaging'=> $request->primary_parkaging == "on"? true:false,
+                        'change_reason' => trim($request->change_reason),
                         'prepared_by' => session('user')['fullName'],
                         'updated_at' => now(),
                 ]);
@@ -235,12 +238,14 @@ class ProductCategoryController extends Controller
                 if ($request->IsHypothesis == 1){
                         DB::table('finished_product_category')->where('id', $request->id)->update([
                                 'cancel' => 1,
+                                'change_reason' => 'Hủy mã giả định',
                                 'prepared_by' => session('user')['fullName'],
-                                'updated_at' => now(), 
+                                'updated_at' => now(),
                         ]);
                 }else{
                         DB::table('finished_product_category')->where('id', $request->id)->update([
                                 'Active' => !$request->active,
+                                'change_reason' => $request->active ? 'Vô hiệu hóa' : 'Kích hoạt lại',
                                 'prepared_by' => session('user')['fullName'],
                                 'updated_at' => now(), 
                         ]);

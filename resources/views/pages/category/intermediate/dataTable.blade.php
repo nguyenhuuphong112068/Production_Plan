@@ -477,6 +477,8 @@
 
             // Gán dữ liệu vào input
             modal.find('input[name="id"]').val(button.data('id'));
+            // Mỗi lần sửa là một lý do mới, không mang lý do của lần trước sang
+            modal.find('textarea[name="change_reason"]').val('');
             modal.find('input[name="intermediate_code"]').val(button.data('intermediate_code'));
             modal.find('select[name="product_name_id"]').val(button.data('product_name_id'));
             modal.find('input[name="batch_size"]').val(button.data('batch_size'));
@@ -827,6 +829,7 @@
             html += stepCell(item.forming, item.quarantine_forming, unit);
             html += stepCell(item.coating, item.quarantine_coating, unit);
             html += '<td class="text-center align-middle">' + total + '</td>';
+            html += '<td class="text-left align-middle" style="min-width: 220px; white-space: normal;">' + esc(item.change_reason) + '</td>';
             html += '</tr>';
             return html;
         }
