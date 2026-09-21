@@ -40,6 +40,65 @@
         border-radius: 2px;
         background-color: #fff;
     }
+
+    /* Công tắc "Xác nhận và điều chỉnh lịch theo thời gian thực" */
+    .reroute-toggle-box {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 12px;
+        border: 1px dashed #f0ad4e;
+        border-radius: 6px;
+        background: #fffaf0;
+    }
+
+    .reroute-switch {
+        position: relative;
+        display: inline-block;
+        width: 42px;
+        height: 22px;
+        flex-shrink: 0;
+    }
+
+    .reroute-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .reroute-slider {
+        position: absolute;
+        inset: 0;
+        cursor: pointer;
+        background: #ccc;
+        border-radius: 22px;
+        transition: background .2s;
+    }
+
+    .reroute-slider::before {
+        content: "";
+        position: absolute;
+        width: 16px;
+        height: 16px;
+        left: 3px;
+        top: 3px;
+        background: #fff;
+        border-radius: 50%;
+        transition: transform .2s;
+    }
+
+    .reroute-switch input:checked + .reroute-slider {
+        background: #dc3545;
+    }
+
+    .reroute-switch input:checked + .reroute-slider::before {
+        transform: translateX(20px);
+    }
+
+    .reroute-switch input:focus-visible + .reroute-slider {
+        box-shadow: 0 0 0 2px #80bdff;
+    }
 </style>
 
 <div class="content-wrapper">
@@ -51,6 +110,25 @@
         </div>
         <!-- /.card-Body -->
         <div class="card-body">
+
+            {{-- Tính năng thử nghiệm: mặc định TẮT mỗi lần mở trang, chỉ user được phép mới thấy.
+                 Tắt: xác nhận hoàn thành không làm thay đổi lịch lý thuyết.
+                 Không dùng .custom-switch vì layout nạp Bootstrap 4.1.3 (chưa có class này). --}}
+            @if (\App\Services\ScheduleRerouteService::canUse())
+                <div class="reroute-toggle-box mb-3">
+                    <label class="reroute-switch mb-0" for="realtimeRerouteToggle">
+                        <input type="checkbox" id="realtimeRerouteToggle">
+                        <span class="reroute-slider"></span>
+                    </label>
+                    <label for="realtimeRerouteToggle" class="mb-0 font-weight-bold" style="cursor:pointer">
+                        Xác nhận và điều chỉnh lịch theo thời gian thực
+                        <span class="badge badge-warning ml-1">Thử nghiệm</span>
+                    </label>
+                    <small id="realtimeRerouteHint" class="d-block w-100 text-muted mt-1">
+                        Đang tắt: xác nhận hoàn thành không ảnh hưởng đến lịch lý thuyết.
+                    </small>
+                </div>
+            @endif
 
 
             <form id="filterForm" method="GET" action="{{ route('pages.Schedual.finised.index') }}"
@@ -338,6 +416,15 @@
 <script>
     $(document).ready(function() {
         document.body.style.overflowY = "auto";
+
+        $('#realtimeRerouteToggle').on('change', function() {
+            $('#realtimeRerouteHint')
+                .toggleClass('text-muted', !this.checked)
+                .toggleClass('text-danger', this.checked)
+                .text(this.checked
+                    ? 'Đang bật: mỗi lần bấm Hoàn thành sẽ tự dịch các lô liên quan trên lịch lý thuyết.'
+                    : 'Đang tắt: xác nhận hoàn thành không ảnh hưởng đến lịch lý thuyết.');
+        });
 
 
         $('#data_table_Schedual_list').DataTable({
@@ -692,16 +779,32 @@
                         ...data,
                         _token: "{{ csrf_token() }}",
                         actionType: actionType,
-                        stage_code: stage_code
+                        stage_code: stage_code,
+                        realtime_reroute: $('#realtimeRerouteToggle').is(':checked') ? 1 : 0
                     },
                     success: function(res) {
 
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Hoàn Thành',
-                            timer: 1500,
-                            showConfirmButton: false,
-                        });
+                        const rerouteCount = (res && res.reroute_count) ? res.reroute_count : 0;
+
+                        if (rerouteCount > 0) {
+                            const delta = res.reroute_delta || 0;
+                            const direction = delta < 0 ? 'sớm' : 'trễ';
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Hoàn Thành',
+                                html: `Lô hoàn thành ${direction} <b>${Math.abs(delta)} phút</b> so với lịch lý thuyết.<br>` +
+                                    `Đã tịnh tuyến <b>${rerouteCount}</b> lô liên quan.<br>` +
+                                    `<small>Xem chi tiết: chuột phải lên lô trên Lịch Sản Xuất → "Lịch sử tịnh tuyến".</small>`,
+                                confirmButtonText: 'Đóng',
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Hoàn Thành',
+                                timer: 1500,
+                                showConfirmButton: false,
+                            });
+                        }
 
                         // Giữ nút ở trạng thái disabled sau khi hoàn thành
                         $(btn).addClass('disabled').text('✓ Đã hoàn thành');

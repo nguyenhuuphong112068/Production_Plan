@@ -204,6 +204,17 @@
                                     </div>
                                 </div>
 
+                                <!-- Cốm sửa hạt khô: đi kèm Pha Chế -->
+                                <div class="form-group row align-items-center mb-2 dry-granule-row">
+                                    <div class="col-md-6 d-flex align-items-center">
+                                        <label class="mb-0 pl-4 font-weight-normal font-italic">Cốm sửa hạt khô</label>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <input type="number" min="0" step="any" class="form-control dry-granule-input"
+                                            placeholder="Biệt trữ cốm sửa hạt khô" name ="quarantine_dry_granule">
+                                    </div>
+                                </div>
+
                                 <!-- Trộn Hoàn Tất -->
                                 <div class="form-group row align-items-center mb-2">
                                       <div class="col-md-6 d-flex align-items-center">
@@ -341,6 +352,14 @@
                     row.find('.step-ratio').hide();
                 }
             });
+
+            // Cốm sửa hạt khô đi kèm Pha Chế; để trống = không có biệt trữ
+            const dryInput = $updateModal.find('.dry-granule-input');
+            if ($updateModal.find('#update_checkbox2').is(':checked')) {
+                dryInput.prop('readonly', false);
+            } else {
+                dryInput.val('').prop('readonly', true);
+            }
         }
 
         // Lắng nghe thay đổi của các checkbox trong chính modal này

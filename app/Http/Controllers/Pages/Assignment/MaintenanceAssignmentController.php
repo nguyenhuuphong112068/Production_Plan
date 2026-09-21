@@ -615,21 +615,52 @@ class MaintenanceAssignmentController extends Controller
         // Bảng theo trục nhân sự: lật lại từ chính dữ liệu trên, không truy vấn thêm
         [$personRows, $personCells, $personTotals] = AssignmentWeek::pivotByPersonnel($cells, $rowList);
 
-        // Badge "Nghỉ phép" / "Chưa phân công" ở trục nhân sự: cùng mapping bộ
-        // phận đã dùng để gọi eO2 ở cloneCustomTask(). eO2 lỗi thì bỏ qua, không
-        // được làm sập trang.
-        $depMapping = [
-            '20' => 9,
-            '18' => 18,
-        ];
-        $shiftDepartment = $depMapping[$group_code] ?? 3;
+        // Badge trạng thái ngày ở trục nhân sự: tính đúng theo quy tắc của Dashboard
+        // tình hình nhân sự, gồm cả mã bộ phận eO2 (EN / QA). eO2 lỗi thì bỏ qua phần
+        // nghỉ phép/chưa phân công, không được làm sập trang.
+        $shiftDepartment = DashBoardController::DEPARTMENT_MAP[$dept_code] ?? 3;
         try {
             $rosterIndex = $shiftApi->shiftIndex($weekStart, $weekEnd, $shiftDepartment, $shiftDepartment === 15);
         } catch (\Throwable $e) {
             Log::warning('Khong lay duoc du lieu nghi phep cho bang tuan: ' . $e->getMessage());
             $rosterIndex = null;
         }
-        [$personRows, $personDayStatus] = AssignmentWeek::attachRosterStatus($personRows, $personCells, $days, $rosterIndex);
+
+        // Đang lọc theo tổ thì $personCells chỉ có phân công của tổ đó. Giờ công theo
+        // ngày và việc "chưa phân công" phải tính trên phân công của MỌI tổ, nếu không
+        // người đang làm ở tổ khác sẽ bị coi là chưa phân công.
+        $groupFiltered = $group_code && $group_code !== 'EN_ALL';
+        $allDayHours = null;
+        if ($groupFiltered) {
+            $allDayHours = AssignmentWeek::personDayHours(
+                DB::table('assignments as a')
+                    ->join('assignment_personnel as ap', 'a.id', '=', 'ap.assignment_id')
+                    ->where('a.deparment_code', $dept_code)
+                    ->where('a.active', 1)
+                    ->where('a.start', '>=', $rangeStart)
+                    ->where('a.start', '<', $rangeEnd)
+                    ->select('ap.personnel_id', 'a.start', 'a.end', 'ap.start as p_start', 'ap.end as p_end', 'a.Sheet')
+                    ->get(),
+                $weekStart->format('Y-m-d'),
+                $weekEnd->format('Y-m-d')
+            );
+        }
+
+        // Tổ QA (20) là cả bộ phận QA; các tổ EN khác lọc theo ea.group_id như Dashboard
+        $population = AssignmentWeek::population(
+            $dept_code,
+            ($groupFiltered && $group_code != 20) ? (($group_code == 12 || $group_code == 13) ? [12, 13] : [$group_code]) : null,
+            $weekEnd->format('Y-m-d')
+        );
+
+        [$personRows, $personDayStatus] = AssignmentWeek::attachDayStatus(
+            $personRows,
+            $personCells,
+            $days,
+            $rosterIndex,
+            $allDayHours,
+            $population
+        );
 
         $groupNames['UNSCHEDULED'] = 'Nhân sự chưa có lịch trong tuần';
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Pages\Schedual;
 
 use App\Http\Controllers\Controller;
+use App\Services\ScheduleRerouteService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -468,6 +469,38 @@ class SchedualFinisedController extends Controller
                                         ]);
                         }
                 });
+
+                /* ===============================
+                6. TỊNH TUYẾN LỊCH LÝ THUYẾT THEO GIỜ HOÀN THÀNH THỰC TẾ
+                Lỗi ở bước này không được làm hỏng xác nhận hoàn thành đã lưu.
+                =============================== */
+
+                $reroute = ['run_code' => null, 'delta_minutes' => 0, 'changes' => []];
+
+                // Tính năng thử nghiệm: chỉ chạy khi người dùng bật công tắc
+                // "Xác nhận và điều chỉnh lịch theo thời gian thực" trên trang xác nhận.
+                // Chỉ user được phép (ScheduleRerouteService::ALLOWED_USER_IDS) mới kích hoạt được, kể cả khi gửi cờ trực tiếp.
+                if ($request->actionType === 'finised'
+                        && $request->boolean('realtime_reroute')
+                        && ScheduleRerouteService::canUse()) {
+                        try {
+                                $reroute = app(ScheduleRerouteService::class)->reroute((int) $request->id);
+                        } catch (\Throwable $e) {
+                                Log::error('[Reroute] Tịnh tuyến thất bại cho stage_plan ' . $request->id, [
+                                        'error' => $e->getMessage(),
+                                        'trace' => $e->getTraceAsString(),
+                                ]);
+                        }
+                }
+
+                if ($request->ajax() || $request->wantsJson()) {
+                        return response()->json([
+                                'message'        => '✅ Cập nhật công đoạn thành công!',
+                                'reroute_run'    => $reroute['run_code'],
+                                'reroute_delta'  => $reroute['delta_minutes'],
+                                'reroute_count'  => count($reroute['changes']),
+                        ]);
+                }
 
                 return back()->with('success', '✅ Cập nhật công đoạn thành công!');
         }

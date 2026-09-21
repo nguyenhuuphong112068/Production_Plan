@@ -145,23 +145,120 @@ class AssignmentWeek
     }
 
     /**
-     * Gắn trạng thái "Nghỉ phép" / "Chưa phân công" cho từng ô ngày trống ở trục
-     * nhân sự, và thêm dòng cho người trắng lịch cả tuần (có trong bảng trực eO2
-     * nhưng PMS chưa hề phân công).
+     * Giờ công theo [personKey][ngày công tác] của MỌI tổ trong bộ phận.
      *
-     * Chỉ dùng để hiển thị badge — không đụng tới $personCells/$personTotals nên
-     * tổng giờ công không đổi.
+     * Khi bảng tuần đang lọc theo một tổ, $personCells chỉ chứa phân công của tổ đó.
+     * Muốn biết một người đã đủ 8h hay chưa được phân công thì phải tính cả phần
+     * họ làm ở tổ khác — hàm này gom từ các dòng phân công không lọc tổ.
+     *
+     * @param iterable $rows mỗi dòng cần: personnel_id, start, end, p_start, p_end, Sheet
+     */
+    public static function personDayHours(iterable $rows, string $weekStart, string $weekEnd): array
+    {
+        $result = [];
+        foreach ($rows as $r) {
+            $workDay = WorkingDay::of($r->start);
+            if ($workDay < $weekStart || $workDay > $weekEnd) continue;
+
+            $hours = self::hours($r->p_start ?: $r->start, $r->p_end ?: $r->end, $r->Sheet) ?? 0;
+            $key = 'p' . $r->personnel_id;
+            $result[$key][$workDay] = ($result[$key][$workDay] ?? 0) + $hours;
+        }
+
+        return $result;
+    }
+
+    /**
+     * Ngưỡng phân loại giờ công trong ngày. Giữ đúng ngưỡng của Dashboard tình hình
+     * nhân sự (DashBoardController::getData): dưới 7.9h là thiếu, 7.9-8.1h là đủ 8h,
+     * trên 8.1h là quá 8h.
+     */
+    public const UNDER_HOURS = 7.9;
+    public const OVER_HOURS = 8.1;
+
+    /** @return string 'under' | 'full' | 'over' */
+    public static function hoursStatus(float $hours): string
+    {
+        if ($hours < self::UNDER_HOURS) return 'under';
+        if ($hours <= self::OVER_HOURS) return 'full';
+        return 'over';
+    }
+
+    /**
+     * Nhân sự thuộc bộ phận (và tổ đang chọn) trong tuần đang xem — cùng tiêu chí với
+     * Dashboard tình hình nhân sự: đang hoạt động, chưa nghỉ việc, đã vào làm tính tới
+     * cuối tuần, và có phân công active ở bộ phận đó.
+     *
+     * @param string     $productionCode PXV1... hoặc EN / QA
+     * @param array|null $groupIds       giới hạn theo ea.group_id, null = cả bộ phận
+     * @return array<string, object> ['p'.id => {id, code, name, on_maternity_leave, on_long_leave, joined_on}]
+     */
+    public static function population(string $productionCode, ?array $groupIds, string $weekEnd): array
+    {
+        $query = DB::table('employees as e')
+            ->join('employee_assignments as ea', 'e.id', '=', 'ea.employees_id')
+            ->where('e.active', 1)
+            ->where(function ($q) {
+                $q->whereNull('e.resign')->orWhere('e.resign', 0);
+            })
+            ->whereRaw('DATE(e.created_at) <= ?', [$weekEnd])
+            ->where('ea.production_code', $productionCode)
+            ->where('ea.active', 1);
+
+        if ($groupIds !== null) {
+            $query->whereIn('ea.group_id', $groupIds);
+        }
+
+        $result = [];
+        $rows = $query
+            ->select('e.id', 'e.code', 'e.name', 'e.on_maternity_leave', 'e.on_long_leave', DB::raw('DATE(e.created_at) as joined_on'))
+            ->groupBy('e.id', 'e.code', 'e.name', 'e.on_maternity_leave', 'e.on_long_leave', 'joined_on')
+            ->get();
+        foreach ($rows as $emp) {
+            $result['p' . $emp->id] = $emp;
+        }
+
+        return $result;
+    }
+
+    /**
+     * Tính trạng thái từng ngày của từng người ở trục nhân sự, theo đúng quy tắc của
+     * Dashboard tình hình nhân sự, và thêm dòng cho người chưa được phân công ở bất kỳ
+     * tổ nào trong tuần.
+     *
+     * Mỗi (người, ngày) ra đúng một trạng thái:
+     *   - có giờ công (tính MỌI tổ): 'under' | 'full' | 'over' theo hoursStatus()
+     *   - không có giờ công: 'maternity' | 'long_leave' (cờ trong bảng employees), rồi
+     *     'leave' (eO2 ghi mã ca P), còn lại là 'unassigned'
+     *   - ngày trước ngày vào làm, và ngày nghỉ công ty (off_days): không có trạng thái
+     *
+     * Chỉ dùng để hiển thị badge — không đụng tới $personCells/$personTotals.
      *
      * @param array      $personRows  kết quả pivotByPersonnel()
      * @param array      $personCells kết quả pivotByPersonnel()
      * @param iterable   $days        danh sách ngày trong tuần, cần ->date
-     * @param array|null $rosterIndex kết quả ShiftApiService::shiftIndex(), null nếu eO2 lỗi
+     * @param array|null $rosterIndex kết quả ShiftApiService::shiftIndex(); null nếu eO2 lỗi thì
+     *                                không kết luận được "nghỉ phép"/"chưa phân công" nên bỏ qua
+     * @param array|null $allDayHours personDayHours() của MỌI tổ; null = bảng không lọc tổ,
+     *                                lấy luôn từ $personCells
+     * @param array      $population  kết quả population()
      * @return array{0: array, 1: array} [personRows, personDayStatus]
      */
-    public static function attachRosterStatus(array $personRows, array $personCells, iterable $days, ?array $rosterIndex): array
-    {
-        if ($rosterIndex === null) {
-            return [$personRows, []];
+    public static function attachDayStatus(
+        array $personRows,
+        array $personCells,
+        iterable $days,
+        ?array $rosterIndex,
+        ?array $allDayHours,
+        array $population
+    ): array {
+        if ($allDayHours === null) {
+            $allDayHours = [];
+            foreach ($personCells as $personKey => $daysOfPerson) {
+                foreach ($daysOfPerson as $date => $shifts) {
+                    $allDayHours[$personKey][$date] = array_sum(array_column($shifts, 'hours'));
+                }
+            }
         }
 
         // Ngày nghỉ của công ty (off_days) không cần badge trạng thái
@@ -173,35 +270,41 @@ class AssignmentWeek
             }
         }
 
-        $codeToKey = [];
+        // Thông tin nhân sự (cờ nghỉ dài hạn, ngày vào làm) của các dòng đã có
+        $known = $population;
+        $unknownIds = [];
         foreach ($personRows as $row) {
-            if (!empty($row->code)) {
-                $codeToKey[$row->code] = $row->row_key;
+            if (!isset($known[$row->row_key])) {
+                $unknownIds[] = (int) substr($row->row_key, 1);
+            }
+        }
+        if (!empty($unknownIds)) {
+            $rows = DB::table('employees')
+                ->whereIn('id', $unknownIds)
+                ->select('id', 'code', 'name', 'on_maternity_leave', 'on_long_leave', DB::raw('DATE(created_at) as joined_on'))
+                ->get();
+            foreach ($rows as $emp) {
+                $known['p' . $emp->id] = $emp;
             }
         }
 
-        // Người có mặt trong bảng trực eO2 nhưng PMS chưa có dòng nào (trắng lịch cả tuần)
-        $missingCodes = array_values(array_diff(array_keys($rosterIndex), array_keys($codeToKey)));
-        if (!empty($missingCodes)) {
-            $extraEmployees = DB::table('employees')
-                ->whereIn('code', $missingCodes)
-                ->where('resign', 0)
-                ->where('on_maternity_leave', 0)
-                ->where('on_long_leave', 0)
-                ->select('id', 'code', 'name')
-                ->get();
+        // Người thuộc bộ phận nhưng chưa có ca nào trong tuần ở bất kỳ tổ nào
+        $rowKeys = [];
+        foreach ($personRows as $row) {
+            $rowKeys[$row->row_key] = true;
+        }
+        foreach ($population as $personKey => $emp) {
+            if (isset($rowKeys[$personKey])) continue;
+            if (!empty($emp->on_maternity_leave) || !empty($emp->on_long_leave)) continue;
+            if (!empty($allDayHours[$personKey])) continue; // đang làm ở tổ khác
 
-            foreach ($extraEmployees as $emp) {
-                $personKey = 'p' . $emp->id;
-                $codeToKey[$emp->code] = $personKey;
-                $personRows[] = (object) [
-                    'row_key' => $personKey,
-                    'code' => $emp->code,
-                    'name' => $emp->name,
-                    'meta' => null,
-                    'group_code' => 'UNSCHEDULED',
-                ];
-            }
+            $personRows[] = (object) [
+                'row_key' => $personKey,
+                'code' => $emp->code,
+                'name' => $emp->name,
+                'meta' => null,
+                'group_code' => 'UNSCHEDULED',
+            ];
         }
 
         // Nhóm "chưa có lịch" luôn nằm cuối bảng, các nhóm khác giữ thứ tự cũ
@@ -212,18 +315,24 @@ class AssignmentWeek
         });
 
         $personDayStatus = [];
-        foreach ($codeToKey as $code => $personKey) {
-            $rosterDays = $rosterIndex[$code]['days'] ?? null;
-            if (!$rosterDays) continue;
+        foreach ($personRows as $row) {
+            $personKey = $row->row_key;
+            $emp = $known[$personKey] ?? null;
+            $rosterDays = $rosterIndex[$row->code]['days'] ?? [];
 
             foreach ($dateKeys as $date) {
-                if (!empty($personCells[$personKey][$date])) continue;
+                if ($emp && !empty($emp->joined_on) && $emp->joined_on > $date) continue;
 
-                $shift = $rosterDays[$date]['shift'] ?? null;
-                if ($shift === 'P') {
-                    $personDayStatus[$personKey][$date] = 'leave';
-                } elseif ($shift !== null) {
-                    $personDayStatus[$personKey][$date] = 'unassigned';
+                $hours = $allDayHours[$personKey][$date] ?? 0;
+                if ($hours > 0) {
+                    $personDayStatus[$personKey][$date] = self::hoursStatus((float) $hours);
+                } elseif ($emp && !empty($emp->on_maternity_leave)) {
+                    $personDayStatus[$personKey][$date] = 'maternity';
+                } elseif ($emp && !empty($emp->on_long_leave)) {
+                    $personDayStatus[$personKey][$date] = 'long_leave';
+                } elseif ($rosterIndex !== null) {
+                    $shift = strtoupper(trim((string) ($rosterDays[$date]['shift'] ?? '')));
+                    $personDayStatus[$personKey][$date] = $shift === 'P' ? 'leave' : 'unassigned';
                 }
             }
         }

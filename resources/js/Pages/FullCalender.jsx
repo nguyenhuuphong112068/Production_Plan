@@ -1911,6 +1911,113 @@ const ScheduleTest = () => {
 
 
   // ==========================================================================
+  // LỊCH SỬ TỊNH TUYẾN THEO XÁC NHẬN HOÀN THÀNH (RIGHT CLICK)
+  // ==========================================================================
+  const handleShowRerouteLog = async (targetEvent) => {
+    if (!targetEvent) return;
+
+    // id dạng "12-main", "12,13-main", "12-cleaning-theory"...
+    const ids = String(targetEvent.id).split('-')[0].split(',').map(s => s.trim()).filter(Boolean);
+    if (ids.length === 0) return;
+
+    const esc = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const fmt = (v) => {
+      if (!v) return '';
+      const d = new Date(String(v).replace(' ', 'T'));
+      if (isNaN(d)) return esc(v);
+      const p = (n) => String(n).padStart(2, '0');
+      return `${p(d.getHours())}:${p(d.getMinutes())} ${p(d.getDate())}/${p(d.getMonth() + 1)}`;
+    };
+
+    let logs = [];
+    let canUndo = false;
+    try {
+      const { data } = await axios.post('/Schedual/rerouteLog', { ids });
+      logs = data.logs || [];
+      canUndo = !!data.can_undo;
+    } catch (err) {
+      Swal.fire('Lỗi', 'Không tải được lịch sử tịnh tuyến.', 'error');
+      return;
+    }
+
+    if (logs.length === 0) {
+      Swal.fire('Lịch sử tịnh tuyến', 'Lô này chưa từng bị tịnh tuyến và chưa gây tịnh tuyến cho lô nào.', 'info');
+      return;
+    }
+
+    // Gom theo lần chạy
+    const runs = [];
+    const byRun = {};
+    logs.forEach(l => {
+      if (!byRun[l.run_code]) {
+        byRun[l.run_code] = { run_code: l.run_code, created_at: l.created_at, created_by: l.created_by, source_title: l.source_title, source_delta_minutes: l.source_delta_minutes, undone_at: l.undone_at, rows: [] };
+        runs.push(byRun[l.run_code]);
+      }
+      byRun[l.run_code].rows.push(l);
+    });
+
+    const html = runs.map(run => {
+      const delta = Number(run.source_delta_minutes) || 0;
+      const header = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding:6px 8px;background:#f1f5f9;border-radius:4px">
+          <div>
+            <b>${esc(run.source_title)}</b> hoàn thành ${delta < 0 ? 'sớm' : 'trễ'} <b>${Math.abs(delta)} phút</b>
+            <span style="color:#64748b"> · ${fmt(run.created_at)} · ${esc(run.created_by)}</span>
+            ${run.undone_at ? '<span style="color:#b91c1c"> · Đã hoàn tác</span>' : ''}
+          </div>
+          ${(run.undone_at || !canUndo) ? '' : `<button type="button" class="reroute-undo-btn" data-run="${esc(run.run_code)}" style="border:1px solid #b91c1c;color:#b91c1c;background:white;border-radius:4px;padding:2px 8px;cursor:pointer">Hoàn tác</button>`}
+        </div>`;
+      const rows = run.rows.map(r => `
+        <tr>
+          <td style="padding:3px 6px">${esc(r.target_title)}</td>
+          <td style="padding:3px 6px">${esc(r.room_code)}</td>
+          <td style="padding:3px 6px;white-space:nowrap">${fmt(r.old_start)} → ${fmt(r.new_start)}</td>
+          <td style="padding:3px 6px;text-align:right;color:${Number(r.shift_minutes) < 0 ? '#15803d' : '#b91c1c'}">${Number(r.shift_minutes) > 0 ? '+' : ''}${esc(r.shift_minutes)}'</td>
+          <td style="padding:3px 6px">${esc(r.reason)}</td>
+        </tr>`).join('');
+      return `${header}
+        <table style="width:100%;font-size:12px;border-collapse:collapse;margin-top:4px">
+          <thead><tr style="text-align:left;border-bottom:1px solid #e2e8f0">
+            <th style="padding:3px 6px">Lô bị dịch</th><th style="padding:3px 6px">Phòng</th>
+            <th style="padding:3px 6px">Bắt đầu cũ → mới</th><th style="padding:3px 6px">Phút</th><th style="padding:3px 6px">Lý do</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>`;
+    }).join('');
+
+    Swal.fire({
+      title: 'Lịch sử tịnh tuyến',
+      html: `<div style="text-align:left;max-height:60vh;overflow:auto">${html}</div>`,
+      width: 900,
+      confirmButtonText: 'Đóng',
+      didOpen: (popup) => {
+        popup.querySelectorAll('.reroute-undo-btn').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            const runCode = btn.getAttribute('data-run');
+            const confirm = await Swal.fire({
+              title: 'Hoàn tác lần tịnh tuyến này?',
+              text: 'Các lô chưa chạy và chưa bị đổi lịch lần nữa sẽ trở về giờ cũ.',
+              icon: 'warning',
+              showCancelButton: true,
+              confirmButtonText: 'Hoàn tác',
+              cancelButtonText: 'Hủy',
+              confirmButtonColor: '#b91c1c',
+            });
+            if (!confirm.isConfirmed) return;
+            try {
+              const { data } = await axios.put('/Schedual/rerouteUndo', { run_code: runCode });
+              await Swal.fire('Đã hoàn tác', `Khôi phục ${data.restored} lô. Bỏ qua ${data.skipped} lô đã chạy hoặc đã bị đổi lịch.`, 'success');
+              handleViewChange();
+            } catch (err) {
+              Swal.fire('Lỗi', err?.response?.data?.message || 'Hoàn tác thất bại.', 'error');
+            }
+          });
+        });
+      },
+    });
+  };
+
+  // ==========================================================================
   // SUA LOI CHONG CHAT SU KIEN
   // ==========================================================================
 
@@ -7616,6 +7723,19 @@ const ScheduleTest = () => {
             onMouseLeave={(e) => e.target.style.background = 'white'}
           >
             Xem trước chuỗi
+          </div>
+
+          <div
+            style={{ padding: '8px 12px', cursor: 'pointer', whiteSpace: 'nowrap', borderTop: '1px solid #eee' }}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleShowRerouteLog(contextMenuInfo.event);
+              setContextMenuInfo({ ...contextMenuInfo, visible: false });
+            }}
+            onMouseEnter={(e) => e.target.style.background = '#f0f0f0'}
+            onMouseLeave={(e) => e.target.style.background = 'white'}
+          >
+            Lịch sử tịnh tuyến
           </div>
         </div>
       )}

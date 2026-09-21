@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Pages\Schedual;
 
 use App\Http\Controllers\Controller;
+use App\Services\ScheduleRerouteService;
 use App\Support\LeadConfirmation;
+use App\Support\StagePlanHistory;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -3433,40 +3435,7 @@ class SchedualController extends Controller
                                 $this->syncPackagingDate($sid, $rowReceiveDateStr, 1, 'SchedualController.multiStore');
                             }
 
-                            try {
-                                DB::table('stage_plan_history')
-                                    ->insert([
-                                        'stage_plan_id' => $sid,
-                                        'plan_list_id' => $update_row->plan_list_id,
-                                        'plan_master_id' => $update_row->plan_master_id,
-                                        'product_caterogy_id' => $update_row->product_caterogy_id,
-                                        'campaign_code' => $update_row->campaign_code,
-                                        'code' => $update_row->code,
-                                        'order_by' => $update_row->order_by,
-                                        'schedualed' => $update_row->schedualed,
-                                        'stage_code' => $update_row->stage_code,
-                                        'title' => $update_row->title,
-                                        'start' => $update_row->start,
-                                        'end' => $update_row->end,
-                                        'resourceId' => $update_row->resourceId,
-                                        'title_clearning' => $update_row->title_clearning,
-                                        'start_clearning' => $update_row->start_clearning,
-                                        'end_clearning' => $update_row->end_clearning,
-                                        'tank' => $update_row->tank,
-                                        'keep_dry' => $update_row->keep_dry,
-                                        'AHU_group' => $update_row->AHU_group,
-                                        'schedualed_by' => $update_row->schedualed_by,
-                                        'schedualed_at' => $update_row->schedualed_at,
-                                        'version' => DB::table('stage_plan_history')->where('stage_plan_id', $sid)->max('version') + 1 ?? 1,
-                                        'note' => $update_row->note,
-                                        'deparment_code' => session('user.production_code'),
-                                        'type_of_change' => $request->reason['reason'] ?? null,
-                                        'created_date' => now(),
-                                        'created_by' => session('user')['fullName'],
-                                    ]);
-                            } catch (\Exception $he) {
-                                Log::error('[History Debug] INSERT FAILED for sid=' . $sid, ['error' => $he->getMessage()]);
-                            }
+                            StagePlanHistory::record($update_row, $request->reason['reason'] ?? null);
                         } else {
                             Log::info('[History Debug] SKIP sid=' . $sid . ' (submit=' . ($update_row->submit ?? 'NULL') . ')');
                         }
@@ -3982,6 +3951,70 @@ class SchedualController extends Controller
                 'events' => $events,
             ]);
         }
+    }
+
+    /**
+     * Nhật ký tịnh tuyến theo xác nhận hoàn thành của một (hoặc nhiều) lô.
+     * Trả cả các lần lô bị dịch (stage_plan_id) lẫn các lần lô là nguyên nhân (source_stage_plan_id).
+     */
+    public function rerouteLog(Request $request)
+    {
+        $ids = collect(is_array($request->ids) ? $request->ids : explode(',', (string) $request->ids))
+            ->map(fn($id) => (int) trim($id))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        // Server chưa chạy migration của tính năng thử nghiệm thì coi như chưa có nhật ký
+        if (empty($ids) || ! \Illuminate\Support\Facades\Schema::hasTable('stage_plan_reroute_log')) {
+            return response()->json(['logs' => []]);
+        }
+
+        $logs = DB::table('stage_plan_reroute_log as l')
+            ->leftJoin('stage_plan as sp', 'sp.id', '=', 'l.stage_plan_id')
+            ->leftJoin('room as r', 'r.id', '=', 'sp.resourceId')
+            ->where(function ($q) use ($ids) {
+                $q->whereIn('l.stage_plan_id', $ids)
+                    ->orWhereIn('l.source_stage_plan_id', $ids);
+            })
+            ->orderByDesc('l.created_at')
+            ->orderBy('l.old_start')
+            ->limit(500)
+            ->select(
+                'l.*',
+                'sp.title as target_title',
+                'r.code as room_code'
+            )
+            ->get();
+
+        return response()->json(['logs' => $logs, 'can_undo' => ScheduleRerouteService::canUse()]);
+    }
+
+    /**
+     * Hoàn tác một lần tịnh tuyến (theo run_code).
+     */
+    public function rerouteUndo(Request $request)
+    {
+        if (! ScheduleRerouteService::canUse()) {
+            return response()->json(['message' => 'Bạn không có quyền hoàn tác tịnh tuyến'], 403);
+        }
+
+        $runCode = (string) $request->run_code;
+
+        if ($runCode === '') {
+            return response()->json(['message' => 'Thiếu mã lần tịnh tuyến'], 422);
+        }
+
+        try {
+            $result = app(ScheduleRerouteService::class)->undo($runCode);
+        } catch (\Throwable $e) {
+            Log::error('[Reroute] Hoàn tác thất bại', ['run_code' => $runCode, 'error' => $e->getMessage()]);
+
+            return response()->json(['message' => 'Lỗi hệ thống khi hoàn tác'], 500);
+        }
+
+        return response()->json($result);
     }
 
     public function updateOrder(Request $request)

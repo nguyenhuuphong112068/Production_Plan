@@ -71,6 +71,10 @@ Route::prefix('/Schedual')
                 Route::put('updateBlisterMold', 'updateBlisterMold')->name('updateBlisterMold');
                 Route::post('validate_submit', 'validateSubmit')->name('validate_submit');
 
+                // Tịnh tuyến lịch lý thuyết theo xác nhận hoàn thành
+                Route::post('rerouteLog', 'rerouteLog')->name('rerouteLog');
+                Route::put('rerouteUndo', 'rerouteUndo')->name('rerouteUndo');
+
 
                 //Route::put('updateOffdays','updateOffdays')->name('updateOffdays');
 

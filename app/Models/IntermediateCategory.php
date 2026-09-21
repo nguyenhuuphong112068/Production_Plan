@@ -28,6 +28,7 @@ class IntermediateCategory extends Model
         'quarantine_total',
         'quarantine_weight',
         'quarantine_preparing',
+        'quarantine_dry_granule',
         'quarantine_blending',
         'quarantine_forming',
         'quarantine_coating',

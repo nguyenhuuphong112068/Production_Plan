@@ -152,6 +152,7 @@ class IntermediateCategoryController extends Controller
                         'quarantine_total' => $request->quarantine_total ?? 0,
                         'quarantine_weight' => $request->quarantine_weight ?? 0,
                         'quarantine_preparing' => $request->quarantine_preparing ?? 0,
+                        'quarantine_dry_granule' => $this->dryGranuleQuarantine($request),
                         'quarantine_blending' => $request->quarantine_blending ?? 0,
                         'quarantine_forming' => $request->quarantine_forming ?? 0,
                         'quarantine_coating' => $request->quarantine_coating ?? 0,
@@ -228,6 +229,7 @@ class IntermediateCategoryController extends Controller
                                 'quarantine_total' => $request->quarantine_total ?? 0,
                                 'quarantine_weight' => $request->quarantine_weight ?? 0,
                                 'quarantine_preparing' => $request->quarantine_preparing ?? 0,
+                                'quarantine_dry_granule' => $this->dryGranuleQuarantine($request),
                                 'quarantine_blending' => $request->quarantine_blending ?? 0,
                                 'quarantine_forming' => $request->quarantine_forming ?? 0,
                                 'quarantine_coating' => $request->quarantine_coating ?? 0,
@@ -248,6 +250,18 @@ class IntermediateCategoryController extends Controller
                 }
 
                 return redirect()->back()->with('success', $message);
+        }
+
+        /**
+         * Biệt trữ cốm sửa hạt khô đi kèm công đoạn Pha Chế: bỏ chọn Pha Chế hoặc để trống thì lưu null.
+         */
+        private function dryGranuleQuarantine(Request $request)
+        {
+                if (!$request->has('prepering_chk') || !$request->filled('quarantine_dry_granule')) {
+                        return null;
+                }
+
+                return (float) $request->quarantine_dry_granule;
         }
 
         /**

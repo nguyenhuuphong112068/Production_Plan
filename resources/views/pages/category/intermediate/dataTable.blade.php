@@ -281,6 +281,9 @@
                                     @endif
                                     @if ($data->prepering && $data->prepering != '0')
                                         <span>PC: {{ $data->quarantine_preparing . ' ' . $quarantine_time_unit }}</span>
+                                        @if ($data->quarantine_dry_granule !== null)
+                                            <span>Cốm SHK: {{ $data->quarantine_dry_granule + 0 }} {{ $quarantine_time_unit }}</span>
+                                        @endif
                                     @endif
                                     @if ($data->blending && $data->blending != '0')
                                         <span>THT: {{ $data->quarantine_blending . ' ' . $quarantine_time_unit }}</span>
@@ -332,6 +335,7 @@
                                         data-quarantine_total="{{ $data->quarantine_total }}"
                                         data-quarantine_weight="{{ $data->quarantine_weight }}"
                                         data-quarantine_preparing="{{ $data->quarantine_preparing }}"
+                                        data-quarantine_dry_granule="{{ $data->quarantine_dry_granule }}"
                                         data-quarantine_blending="{{ $data->quarantine_blending }}"
                                         data-quarantine_forming="{{ $data->quarantine_forming }}"
                                         data-quarantine_coating="{{ $data->quarantine_coating }}"
@@ -516,6 +520,7 @@
             // Việc mở/khoá từng ô do updateInputs() của #update_modal đảm nhiệm (chạy ở shown.bs.modal).
             modal.find('input[name="quarantine_weight"]').val(button.data('quarantine_weight'));
             modal.find('input[name="quarantine_preparing"]').val(button.data('quarantine_preparing'));
+            modal.find('input[name="quarantine_dry_granule"]').val(button.data('quarantine_dry_granule'));
             modal.find('input[name="quarantine_blending"]').val(button.data('quarantine_blending'));
             modal.find('input[name="quarantine_forming"]').val(button.data('quarantine_forming'));
             modal.find('input[name="quarantine_coating"]').val(button.data('quarantine_coating'));
