@@ -193,6 +193,33 @@
         background: #868e96;
     }
 
+    /* Badge trạng thái ngày ở trục nhân sự */
+    .wk-day-badge {
+        display: inline-block;
+        border-radius: 3px;
+        padding: 1px 6px;
+        margin-bottom: 3px;
+        font-size: 0.68rem;
+        font-weight: 700;
+        color: #fff;
+    }
+
+    .wk-badge-full8 {
+        background: #28a745;
+    }
+
+    .wk-badge-under8 {
+        background: #fd7e14;
+    }
+
+    .wk-badge-leave {
+        background: #6f42c1;
+    }
+
+    .wk-badge-unassigned {
+        background: #dc3545;
+    }
+
     .wk-shift-time {
         font-weight: 700;
         color: #212529;
@@ -363,6 +390,10 @@
     $boardRows = $isPersonAxis ? $personRows : $rows;
     $boardCells = $isPersonAxis ? $personCells : $cells;
     $boardTotals = $isPersonAxis ? $personTotals : $rowTotals;
+    // Badge "Nghỉ phép" / "Chưa phân công" chỉ có ý nghĩa ở trục nhân sự
+    $boardDayStatus = $isPersonAxis ? ($personDayStatus ?? []) : [];
+    // Ngày nghỉ công ty (off_days) không hiện badge trạng thái
+    $offDates = $isPersonAxis ? \App\Support\OffDays::all() : [];
 @endphp
 
 <div class="content-wrapper">
@@ -455,7 +486,8 @@
                 @foreach ($boardRows as $row)
                     @php
                         $rowCells = $boardCells[$row->row_key] ?? [];
-                        $hasData = !empty($rowCells);
+                        // Dòng nhân sự trắng lịch vẫn có badge Nghỉ phép/Chưa phân công nên không được coi là dòng trống
+                        $hasData = !empty($rowCells) || !empty($boardDayStatus[$row->row_key] ?? []);
                         $totals = $boardTotals[$row->row_key] ?? ['hours' => 0, 'slots' => 0, 'shifts' => 0];
                     @endphp
 
@@ -500,6 +532,17 @@
                             @php $shifts = $rowCells[$day->date] ?? []; @endphp
                             <td
                                 class="wk-day-col {{ $day->is_today ? 'wk-day-today' : ($day->is_weekend ? 'wk-day-weekend' : '') }}">
+                                @if ($isPersonAxis && !isset($offDates[$day->date]))
+                                    @if (!empty($shifts))
+                                        @php $dayHours = array_sum(array_column($shifts, 'hours')); @endphp
+                                        <div class="wk-day-badge {{ $dayHours >= 8 ? 'wk-badge-full8' : 'wk-badge-under8' }}">
+                                            {{ $dayHours >= 8 ? 'Đủ 8h' : '< 8h' }}</div>
+                                    @elseif (($boardDayStatus[$row->row_key][$day->date] ?? null) === 'leave')
+                                        <div class="wk-day-badge wk-badge-leave">Nghỉ phép</div>
+                                    @elseif (($boardDayStatus[$row->row_key][$day->date] ?? null) === 'unassigned')
+                                        <div class="wk-day-badge wk-badge-unassigned">Chưa phân công</div>
+                                    @endif
+                                @endif
                                 @forelse ($shifts as $s)
                                     <div class="wk-shift wk-shift-{{ $shiftClass($s->shift) }}">
                                         <div class="d-flex align-items-center justify-content-between">

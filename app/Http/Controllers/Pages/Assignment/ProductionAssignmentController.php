@@ -502,7 +502,7 @@ class ProductionAssignmentController extends Controller
      * Ngày công tác chạy từ 06:00 hôm nay tới 06:00 hôm sau (App\Support\WorkingDay),
      * nên ca đêm bắt đầu 22:00 ngày D vẫn nằm ở cột ngày D.
      */
-    public function weekly(Request $request)
+    public function weekly(Request $request, ShiftApiService $shiftApi)
     {
         $production_code = session('user')['production_code'];
         $user_group_name = session('user')['group_name'];
@@ -738,6 +738,28 @@ class ProductionAssignmentController extends Controller
         // Bảng theo trục nhân sự: lật lại từ chính dữ liệu trên, không truy vấn thêm
         [$personRows, $personCells, $personTotals] = AssignmentWeek::pivotByPersonnel($cells, $rowList);
 
+        // Badge "Nghỉ phép" / "Chưa phân công" ở trục nhân sự: cùng mapping bộ
+        // phận đã dùng để gọi eO2 ở cloneCustomTask(). eO2 lỗi thì bỏ qua, không
+        // được làm sập trang.
+        $depMapping = [
+            'PXV1' => 15,
+            'PXV2' => 32,
+            'PXVH' => 30,
+            'PXDN' => 34,
+            'EN' => 3,
+            'PXTN' => 6
+        ];
+        $shiftDepartment = $depMapping[$production_code] ?? 15;
+        try {
+            $rosterIndex = $shiftApi->shiftIndex($weekStart, $weekEnd, $shiftDepartment, $shiftDepartment === 15);
+        } catch (\Throwable $e) {
+            Log::warning('Khong lay duoc du lieu nghi phep cho bang tuan: ' . $e->getMessage());
+            $rosterIndex = null;
+        }
+        [$personRows, $personDayStatus] = AssignmentWeek::attachRosterStatus($personRows, $personCells, $days, $rosterIndex);
+
+        $groupNames['UNSCHEDULED'] = 'Nhân sự chưa có lịch trong tuần';
+
         session()->put(['title' => 'LỊCH CÔNG TÁC THEO TUẦN']);
 
         return view('pages.assignment.production.weekly', [
@@ -748,6 +770,7 @@ class ProductionAssignmentController extends Controller
             'personRows' => $personRows,
             'personCells' => $personCells,
             'personTotals' => $personTotals,
+            'personDayStatus' => $personDayStatus,
             'groupNames' => $groupNames,
             'groups' => $groups,
             'group_code' => $active_group_code,

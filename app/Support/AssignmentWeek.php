@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Tiện ích dùng chung cho các trang Lịch công tác theo tuần
@@ -141,5 +142,92 @@ class AssignmentWeek
         });
 
         return [array_values($personRows), $personCells, $personTotals];
+    }
+
+    /**
+     * Gắn trạng thái "Nghỉ phép" / "Chưa phân công" cho từng ô ngày trống ở trục
+     * nhân sự, và thêm dòng cho người trắng lịch cả tuần (có trong bảng trực eO2
+     * nhưng PMS chưa hề phân công).
+     *
+     * Chỉ dùng để hiển thị badge — không đụng tới $personCells/$personTotals nên
+     * tổng giờ công không đổi.
+     *
+     * @param array      $personRows  kết quả pivotByPersonnel()
+     * @param array      $personCells kết quả pivotByPersonnel()
+     * @param iterable   $days        danh sách ngày trong tuần, cần ->date
+     * @param array|null $rosterIndex kết quả ShiftApiService::shiftIndex(), null nếu eO2 lỗi
+     * @return array{0: array, 1: array} [personRows, personDayStatus]
+     */
+    public static function attachRosterStatus(array $personRows, array $personCells, iterable $days, ?array $rosterIndex): array
+    {
+        if ($rosterIndex === null) {
+            return [$personRows, []];
+        }
+
+        // Ngày nghỉ của công ty (off_days) không cần badge trạng thái
+        $offDates = OffDays::all();
+        $dateKeys = [];
+        foreach ($days as $day) {
+            if (!isset($offDates[$day->date])) {
+                $dateKeys[] = $day->date;
+            }
+        }
+
+        $codeToKey = [];
+        foreach ($personRows as $row) {
+            if (!empty($row->code)) {
+                $codeToKey[$row->code] = $row->row_key;
+            }
+        }
+
+        // Người có mặt trong bảng trực eO2 nhưng PMS chưa có dòng nào (trắng lịch cả tuần)
+        $missingCodes = array_values(array_diff(array_keys($rosterIndex), array_keys($codeToKey)));
+        if (!empty($missingCodes)) {
+            $extraEmployees = DB::table('employees')
+                ->whereIn('code', $missingCodes)
+                ->where('resign', 0)
+                ->where('on_maternity_leave', 0)
+                ->where('on_long_leave', 0)
+                ->select('id', 'code', 'name')
+                ->get();
+
+            foreach ($extraEmployees as $emp) {
+                $personKey = 'p' . $emp->id;
+                $codeToKey[$emp->code] = $personKey;
+                $personRows[] = (object) [
+                    'row_key' => $personKey,
+                    'code' => $emp->code,
+                    'name' => $emp->name,
+                    'meta' => null,
+                    'group_code' => 'UNSCHEDULED',
+                ];
+            }
+        }
+
+        // Nhóm "chưa có lịch" luôn nằm cuối bảng, các nhóm khác giữ thứ tự cũ
+        usort($personRows, function ($a, $b) {
+            $aLast = $a->group_code === 'UNSCHEDULED' ? 1 : 0;
+            $bLast = $b->group_code === 'UNSCHEDULED' ? 1 : 0;
+            return [$aLast, $a->group_code, $a->name] <=> [$bLast, $b->group_code, $b->name];
+        });
+
+        $personDayStatus = [];
+        foreach ($codeToKey as $code => $personKey) {
+            $rosterDays = $rosterIndex[$code]['days'] ?? null;
+            if (!$rosterDays) continue;
+
+            foreach ($dateKeys as $date) {
+                if (!empty($personCells[$personKey][$date])) continue;
+
+                $shift = $rosterDays[$date]['shift'] ?? null;
+                if ($shift === 'P') {
+                    $personDayStatus[$personKey][$date] = 'leave';
+                } elseif ($shift !== null) {
+                    $personDayStatus[$personKey][$date] = 'unassigned';
+                }
+            }
+        }
+
+        return [$personRows, $personDayStatus];
     }
 }

@@ -10,6 +10,7 @@ use Carbon\Carbon;
 use App\Support\AssignmentWeek;
 use App\Support\WorkingDay;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Log;
 use App\Services\ShiftApiService;
 
 class MaintenanceAssignmentController extends Controller
@@ -411,7 +412,7 @@ class MaintenanceAssignmentController extends Controller
      * Dòng = phòng/thiết bị (hoặc work_location nếu không gắn phòng),
      * cột = ngày; mỗi ô liệt kê các ca đã phân công kèm nhân sự + giờ công.
      */
-    public function weekly(Request $request)
+    public function weekly(Request $request, ShiftApiService $shiftApi)
     {
         $anchorDate = $request->reportedDate ?? Carbon::now()->format('Y-m-d');
         $weekStart = Carbon::parse($anchorDate)->startOfWeek(Carbon::MONDAY);
@@ -588,6 +589,24 @@ class MaintenanceAssignmentController extends Controller
         // Bảng theo trục nhân sự: lật lại từ chính dữ liệu trên, không truy vấn thêm
         [$personRows, $personCells, $personTotals] = AssignmentWeek::pivotByPersonnel($cells, $rowList);
 
+        // Badge "Nghỉ phép" / "Chưa phân công" ở trục nhân sự: cùng mapping bộ
+        // phận đã dùng để gọi eO2 ở cloneCustomTask(). eO2 lỗi thì bỏ qua, không
+        // được làm sập trang.
+        $depMapping = [
+            '20' => 9,
+            '18' => 18,
+        ];
+        $shiftDepartment = $depMapping[$group_code] ?? 3;
+        try {
+            $rosterIndex = $shiftApi->shiftIndex($weekStart, $weekEnd, $shiftDepartment, $shiftDepartment === 15);
+        } catch (\Throwable $e) {
+            Log::warning('Khong lay duoc du lieu nghi phep cho bang tuan: ' . $e->getMessage());
+            $rosterIndex = null;
+        }
+        [$personRows, $personDayStatus] = AssignmentWeek::attachRosterStatus($personRows, $personCells, $days, $rosterIndex);
+
+        $groupNames['UNSCHEDULED'] = 'Nhân sự chưa có lịch trong tuần';
+
         session()->put(['title' => 'LỊCH CÔNG TÁC BT-HC THEO TUẦN']);
 
         return view('pages.assignment.maintenance.weekly', [
@@ -598,6 +617,7 @@ class MaintenanceAssignmentController extends Controller
             'personRows' => $personRows,
             'personCells' => $personCells,
             'personTotals' => $personTotals,
+            'personDayStatus' => $personDayStatus,
             'groupNames' => $groupNames,
             'groups' => $groups,
             'group_code' => $group_code,
