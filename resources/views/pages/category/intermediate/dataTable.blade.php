@@ -778,6 +778,59 @@
 
 <script>
     $(document).ready(function() {
+        function esc(v) {
+            return $('<div>').text(v === null || v === undefined ? '' : v).html();
+        }
+
+        // Số từ DB có thể về dạng "20.0" -> bỏ số 0 thừa; null/rỗng -> ''
+        function num(v) {
+            if (v === null || v === undefined || v === '') return '';
+            var n = Number(v);
+            return isNaN(n) ? esc(v) : String(n);
+        }
+
+        // Ô công đoạn: tỷ lệ ở trên, thời gian biệt trữ ở dưới. Công đoạn không có (0) thì để "—".
+        function stepCell(ratio, quarantine, unit, extra) {
+            if (ratio === null || ratio === undefined || ratio === '' || String(ratio) === '0') {
+                return '<td class="text-center align-middle text-muted">—</td>';
+            }
+            var html = '<div>' + esc(ratio) + '</div>';
+            if (num(quarantine) !== '') {
+                html += '<small class="text-primary">BT: ' + num(quarantine) + ' ' + unit + '</small>';
+            }
+            if (extra) {
+                html += extra;
+            }
+            return '<td class="text-center align-middle">' + html + '</td>';
+        }
+
+        function buildRow(item, activeText, rowStyle) {
+            var unit = item.quarantine_time_unit == 1 ? 'ngày' : 'giờ';
+            var dryGranule = num(item.quarantine_dry_granule) !== '' ?
+                '<br><small class="text-primary">Cốm SHK: ' + num(item.quarantine_dry_granule) + ' ' + unit + '</small>' :
+                '';
+            var total = Number(item.quarantine_total) > 0 ? num(item.quarantine_total) + ' ' + unit : '';
+
+            var html = '<tr' + (rowStyle ? ' style="' + rowStyle + '"' : '') + '>';
+            html += '<td class="text-center align-middle">' + esc(item.updated_at || item.created_at) + '</td>';
+            html += '<td class="text-center align-middle">' + esc(item.created_by || item.prepareBy || item.prepared_by) + '</td>';
+            html += '<td class="text-center align-middle">' + activeText + '</td>';
+            html += '<td class="text-center align-middle">' + esc(item.product_name) + '</td>';
+            html += '<td class="text-center align-middle">' + esc(item.intermediate_code) + '</td>';
+            html += '<td class="text-center align-middle">' + esc(item.dosage_name) + '</td>';
+            html += '<td class="text-center align-middle">' + esc(item.batch_size) + '</td>';
+            html += '<td class="text-center align-middle">' + esc(item.batch_qty) + '</td>';
+            html += '<td class="text-center align-middle">' + (item.quarantine_time_unit == 1 ? 'Ngày' : 'Giờ') + '</td>';
+            html += stepCell(item.weight_1, item.quarantine_weight, unit);
+            html += stepCell(item.prepering, item.quarantine_preparing, unit, dryGranule);
+            html += stepCell(item.blending, item.quarantine_blending, unit);
+            html += stepCell(item.forming, item.quarantine_forming, unit);
+            html += stepCell(item.coating, item.quarantine_coating, unit);
+            html += '<td class="text-center align-middle">' + total + '</td>';
+            html += '</tr>';
+            return html;
+        }
+
         $(document).on('click', '.btn-history', function() {
             var id = $(this).data('id');
             $.ajax({
@@ -791,59 +844,13 @@
                     tbody.empty();
                     var current = res.current;
                     if (current) {
-                        var html =
-                            '<tr style="background-color: #e8f4f8; font-weight: bold;">';
-                        html += '<td class="text-center align-middle">' + (current
-                            .created_at || current.updated_at || '') + '</td>';
-                        html += '<td class="text-center align-middle">' + ((current
-                            .created_by || current.prepareBy || current
-                            .prepared_by || '')) + '</td>';
                         var activeText = '';
                         if (current.active !== null && current.active !== undefined) {
                             activeText = (current.active == 1 || current.active === true ||
                                 current.active === '1') ? 'Hiện hành' : 'Hết hiệu lực';
                         }
-                        html += '<td class="text-center align-middle">' + activeText +
-                            '</td>';
-                        html += '<td class="text-center align-middle">' + (current
-                            .product_name !== null && current.product_name !==
-                            undefined ? current.product_name : '') + '</td>';
-                        html += '<td class="text-center align-middle">' + (current
-                            .intermediate_code !== null && current.intermediate_code !==
-                            undefined ? current.intermediate_code : '') + '</td>';
-                        html += '<td class="text-center align-middle">' + (current
-                            .dosage_name !== null && current.dosage_name !== undefined ?
-                            current.dosage_name : '') + '</td>';
-                        html += '<td class="text-center align-middle">' + (current
-                            .batch_size !== null && current.batch_size !== undefined ?
-                            current.batch_size : '') + '</td>';
-                        html += '<td class="text-center align-middle">' + (current
-                            .batch_qty !== null && current.batch_qty !== undefined ?
-                            current.batch_qty : '') + '</td>';
-                        html += '<td class="text-center align-middle">' + (current
-                            .quarantine_time_unit !== null && current
-                            .quarantine_time_unit !== undefined ? current
-                            .quarantine_time_unit : '') + '</td>';
-                        html += '<td class="text-center align-middle">' + (current
-                            .weight_1 !== null && current.weight_1 !== undefined ?
-                            current.weight_1 : '') + '</td>';
-                        html += '<td class="text-center align-middle">' + (current
-                            .prepering !== null && current.prepering !== undefined ?
-                            current.prepering : '') + '</td>';
-                        html += '<td class="text-center align-middle">' + (current
-                            .blending !== null && current.blending !== undefined ?
-                            current.blending : '') + '</td>';
-                        html += '<td class="text-center align-middle">' + (current
-                            .forming !== null && current.forming !== undefined ? current
-                            .forming : '') + '</td>';
-                        html += '<td class="text-center align-middle">' + (current
-                            .coating !== null && current.coating !== undefined ? current
-                            .coating : '') + '</td>';
-                        html += '<td class="text-center align-middle">' + (current
-                            .excution_time !== null && current.excution_time !==
-                            undefined ? current.excution_time : '') + '</td>';
-                        html += '</tr>';
-                        tbody.append(html);
+                        tbody.append(buildRow(current, activeText,
+                            'background-color: #e8f4f8; font-weight: bold;'));
                     }
 
                     if (res.history.length === 0) {
@@ -852,56 +859,7 @@
                         );
                     } else {
                         res.history.forEach(function(item) {
-                            var html = '<tr>';
-                            html += '<td class="text-center align-middle">' + (item
-                                .created_at || item.updated_at || '') + '</td>';
-                            html += '<td class="text-center align-middle">' + ((item
-                                .created_by || item.prepareBy || item
-                                .prepared_by || '')) + '</td>';
-                            var activeTextItem = 'Hết hiệu lực';
-                            html += '<td class="text-center align-middle">' +
-                                activeTextItem + '</td>';
-                            html += '<td class="text-center align-middle">' + (item
-                                .product_name !== null && item.product_name !==
-                                undefined ? item.product_name : '') + '</td>';
-                            html += '<td class="text-center align-middle">' + (item
-                                .intermediate_code !== null && item
-                                .intermediate_code !== undefined ? item
-                                .intermediate_code : '') + '</td>';
-                            html += '<td class="text-center align-middle">' + (item
-                                .dosage_name !== null && item.dosage_name !==
-                                undefined ? item.dosage_name : '') + '</td>';
-                            html += '<td class="text-center align-middle">' + (item
-                                .batch_size !== null && item.batch_size !==
-                                undefined ? item.batch_size : '') + '</td>';
-                            html += '<td class="text-center align-middle">' + (item
-                                .batch_qty !== null && item.batch_qty !==
-                                undefined ? item.batch_qty : '') + '</td>';
-                            html += '<td class="text-center align-middle">' + (item
-                                .quarantine_time_unit !== null && item
-                                .quarantine_time_unit !== undefined ? item
-                                .quarantine_time_unit : '') + '</td>';
-                            html += '<td class="text-center align-middle">' + (item
-                                .weight_1 !== null && item.weight_1 !==
-                                undefined ? item.weight_1 : '') + '</td>';
-                            html += '<td class="text-center align-middle">' + (item
-                                .prepering !== null && item.prepering !==
-                                undefined ? item.prepering : '') + '</td>';
-                            html += '<td class="text-center align-middle">' + (item
-                                .blending !== null && item.blending !==
-                                undefined ? item.blending : '') + '</td>';
-                            html += '<td class="text-center align-middle">' + (item
-                                .forming !== null && item.forming !==
-                                undefined ? item.forming : '') + '</td>';
-                            html += '<td class="text-center align-middle">' + (item
-                                .coating !== null && item.coating !==
-                                undefined ? item.coating : '') + '</td>';
-                            html += '<td class="text-center align-middle">' + (item
-                                .excution_time !== null && item
-                                .excution_time !== undefined ? item
-                                .excution_time : '') + '</td>';
-                            html += '</tr>';
-                            tbody.append(html);
+                            tbody.append(buildRow(item, 'Hết hiệu lực'));
                         });
                     }
                     $('#historyModal').modal('show');
