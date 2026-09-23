@@ -4293,6 +4293,254 @@ class ProductionPlanController extends Controller
                 ]);
         }
 
+        public function getEquipmentAllocationBatches($id)
+        {
+                $stageCodeReq = request()->query('stage_code');
+                $effectiveStageCode = ($stageCodeReq && $stageCodeReq !== 'all') ? (int)$stageCodeReq : 7;
+
+                $departmentCode = request()->query('department_code', 'PXV1');
+                $groupId = request()->query('room_id');
+
+                if ($groupId === null || $groupId === '') {
+                        return response()->json(['success' => false, 'message' => 'Thiếu thông tin thiết bị.'], 422);
+                }
+
+                // Định mức của thiết bị (hoặc của cả dòng máy khi thống kê theo dòng)
+                $quotasQuery = DB::table('quota as q')
+                        ->join('room as r', 'q.room_id', '=', 'r.id')
+                        ->where('r.deparment_code', $departmentCode)
+                        ->where('q.active', 1);
+
+                if ($stageCodeReq && $stageCodeReq !== 'all') {
+                        $quotasQuery->where('q.stage_code', $stageCodeReq);
+                } else {
+                        $quotasQuery->whereIn('q.stage_code', [3, 4, 5, 6, 7]);
+                }
+
+                if (strpos((string)$groupId, 'line_') === 0) {
+                        $quotasQuery->where('r.blister_type_code', substr((string)$groupId, 5));
+                } else {
+                        $quotasQuery->where('q.room_id', $groupId);
+                }
+
+                $quotas = $quotasQuery
+                        ->select('q.finished_product_code', 'q.intermediate_code', 'q.p_time', 'q.m_time', 'q.C1_time', 'q.C2_time', 'q.room_id', 'r.code as equipment_code', 'r.name as equipment_name')
+                        ->get();
+
+                if ($quotas->isEmpty()) {
+                        return response()->json(['success' => true, 'data' => []]);
+                }
+
+                $roomIds = $quotas->pluck('room_id')->unique()->values()->toArray();
+
+                $parseTime = function ($val) {
+                        if (strpos((string)$val, ':') !== false) {
+                                $parts = explode(':', $val);
+                                return (float)$parts[0] + ((float)$parts[1] / 60);
+                        }
+                        return (float)$val;
+                };
+
+                $timesByProduct = [];
+                $timesByIntermediate = [];
+                foreach ($quotas as $q) {
+                        $times = [
+                                'p_time' => $parseTime($q->p_time),
+                                'm_time' => $parseTime($q->m_time),
+                                'c1_time' => $parseTime($q->C1_time),
+                                'c2_time' => $parseTime($q->C2_time),
+                        ];
+
+                        if ($q->finished_product_code && $q->finished_product_code !== 'NA' && !isset($timesByProduct[$q->finished_product_code])) {
+                                $timesByProduct[$q->finished_product_code] = $times;
+                        }
+                        if ($q->intermediate_code && $q->intermediate_code !== 'NA' && !isset($timesByIntermediate[$q->intermediate_code])) {
+                                $timesByIntermediate[$q->intermediate_code] = $times;
+                        }
+                }
+
+                $productCodes = array_keys($timesByProduct);
+                $intermediateCodes = array_keys($timesByIntermediate);
+
+                if (empty($productCodes) && empty($intermediateCodes)) {
+                        return response()->json(['success' => true, 'data' => []]);
+                }
+
+                $planQuery = DB::table('plan_master as pm')
+                        ->join('finished_product_category as fpc', 'pm.product_caterogy_id', '=', 'fpc.id')
+                        ->leftJoin('product_name as pn', 'fpc.product_name_id', '=', 'pn.id')
+                        ->where('pm.active', 1)
+                        ->where('pm.cancel', 0)
+                        ->where('pm.only_parkaging', 0);
+
+                if ($id == -1) {
+                        $maxStageFinished = DB::table('stage_plan')
+                                ->where('finished', 1)
+                                ->where('active', 1)
+                                ->where('stage_code', '!=', 8)
+                                ->where('deparment_code', $departmentCode)
+                                ->select('plan_master_id', DB::raw('MAX(stage_code) as max_stage_code'))
+                                ->groupBy('plan_master_id');
+
+                        $maxPossibleStage = DB::table('stage_plan')
+                                ->where('active', 1)
+                                ->where('stage_code', '!=', 8)
+                                ->where('deparment_code', $departmentCode)
+                                ->select('plan_master_id', DB::raw('MAX(stage_code) as max_possible_stage_code'))
+                                ->groupBy('plan_master_id');
+
+                        $planQuery
+                                ->join('plan_list as pl', 'pm.plan_list_id', '=', 'pl.id')
+                                ->leftJoinSub($maxStageFinished, 'sp_max', function ($join) {
+                                        $join->on('pm.id', '=', 'sp_max.plan_master_id');
+                                })
+                                ->leftJoinSub($maxPossibleStage, 'sp_possible', function ($join) {
+                                        $join->on('pm.id', '=', 'sp_possible.plan_master_id');
+                                })
+                                ->leftJoin('stage_plan as sp', function ($join) {
+                                        $join->on('pm.id', '=', 'sp.plan_master_id')
+                                                ->on('sp.stage_code', '=', 'sp_max.max_stage_code');
+                                })
+                                ->where('pl.type', 1)
+                                ->where('pm.plan_list_id', '!=', 0)
+                                ->where('pm.plan_list_id', '>', 23)
+                                ->where('pm.deparment_code', $departmentCode)
+                                ->whereRaw("NOT (
+                    (IFNULL(sp.finished, 0) = 1 AND IFNULL(sp_max.max_stage_code, 0) < 7 AND IFNULL(sp_max.max_stage_code, 0) = IFNULL(sp_possible.max_possible_stage_code, -1))
+                    OR (IFNULL(sp.finished, 0) = 1 AND IFNULL(sp_max.max_stage_code, 0) = 7)
+                )");
+                } else {
+                        $planQuery->where('pm.plan_list_id', $id);
+                }
+
+                $planQuery->where(function ($q) use ($productCodes, $intermediateCodes) {
+                        $q->whereRaw('1 = 0');
+                        if (!empty($productCodes)) {
+                                $q->orWhere(function ($sub) use ($productCodes) {
+                                        $sub->whereIn('fpc.finished_product_code', $productCodes)
+                                                ->where('fpc.finished_product_code', '!=', 'NA');
+                                });
+                        }
+                        if (!empty($intermediateCodes)) {
+                                $q->orWhere(function ($sub) use ($intermediateCodes) {
+                                        $sub->whereIn('fpc.intermediate_code', $intermediateCodes)
+                                                ->where('fpc.intermediate_code', '!=', 'NA');
+                                });
+                        }
+                });
+
+                $batches = $planQuery
+                        ->addSelect(
+                                'pm.id',
+                                'pm.expected_date',
+                                'fpc.finished_product_code as product_code',
+                                'fpc.intermediate_code',
+                                'fpc.batch_qty',
+                                'pn.name as product_name',
+                                DB::raw("COALESCE(NULLIF(pm.actual_batch, ''), pm.batch) as batch_no")
+                        )
+                        ->get();
+
+                if ($batches->isEmpty()) {
+                        return response()->json(['success' => true, 'data' => []]);
+                }
+
+                $stagePlans = DB::table('stage_plan as sp')
+                        ->leftJoin('room as r', 'sp.resourceId', '=', 'r.id')
+                        ->whereIn('sp.plan_master_id', $batches->pluck('id')->toArray())
+                        ->where('sp.stage_code', $effectiveStageCode)
+                        ->where('sp.active', 1)
+                        ->select(
+                                'sp.plan_master_id',
+                                'sp.resourceId',
+                                'sp.schedualed_at',
+                                'sp.actual_start',
+                                'sp.start',
+                                'sp.finished',
+                                'r.code as room_code',
+                                'r.name as room_name'
+                        )
+                        ->get()
+                        ->groupBy('plan_master_id');
+
+                $result = [];
+                foreach ($batches as $b) {
+                        $times = ['p_time' => 0, 'm_time' => 0, 'c1_time' => 0, 'c2_time' => 0];
+                        if ($b->product_code && isset($timesByProduct[$b->product_code])) {
+                                $times = $timesByProduct[$b->product_code];
+                        } elseif ($b->intermediate_code && isset($timesByIntermediate[$b->intermediate_code])) {
+                                $times = $timesByIntermediate[$b->intermediate_code];
+                        }
+
+                        $scheduleStatus = 'Chưa sắp';
+                        $scheduledRoom = '';
+                        $scheduledStart = '';
+
+                        if (isset($stagePlans[$b->id])) {
+                                $rows = $stagePlans[$b->id];
+                                $row = $rows->first(function ($r) use ($roomIds) {
+                                        return in_array($r->resourceId, $roomIds);
+                                });
+                                if (!$row) {
+                                        $row = $rows->first();
+                                }
+
+                                if ($row) {
+                                        if ($row->finished == 1) {
+                                                $scheduleStatus = 'Đã hoàn tất';
+                                        } elseif (!empty($row->actual_start)) {
+                                                $scheduleStatus = 'Đang sản xuất';
+                                        } elseif (!empty($row->resourceId) && (!empty($row->start) || !empty($row->schedualed_at))) {
+                                                $scheduleStatus = 'Đã sắp lịch';
+                                        }
+
+                                        if (!empty($row->resourceId)) {
+                                                $scheduledRoom = $row->room_code ? ($row->room_code . ' - ' . $row->room_name) : $row->room_name;
+                                        }
+
+                                        $startVal = $row->actual_start ?: $row->start;
+                                        if (!empty($startVal)) {
+                                                $scheduledStart = \Carbon\Carbon::parse($startVal)->format('d/m/Y H:i');
+                                        }
+                                }
+                        }
+
+                        $result[] = [
+                                'id' => $b->id,
+                                'product_code' => $b->product_code,
+                                'intermediate_code' => $b->intermediate_code,
+                                'product_name' => $b->product_name,
+                                'batch_no' => $b->batch_no,
+                                'batch_qty' => (float)$b->batch_qty,
+                                'p_time' => round($times['p_time'], 2),
+                                'm_time' => round($times['m_time'], 2),
+                                'c1_time' => round($times['c1_time'], 2),
+                                'c2_time' => round($times['c2_time'], 2),
+                                'expected_date' => $b->expected_date ? \Carbon\Carbon::parse($b->expected_date)->format('d/m/Y') : '',
+                                'schedule_status' => $scheduleStatus,
+                                'scheduled_room' => $scheduledRoom ?: 'NA',
+                                'scheduled_start' => $scheduledStart ?: 'NA',
+                        ];
+                }
+
+                usort($result, function ($a, $b) {
+                        if ($a['product_code'] === $b['product_code']) {
+                                return strcmp((string)$a['batch_no'], (string)$b['batch_no']);
+                        }
+                        return strcmp((string)$a['product_code'], (string)$b['product_code']);
+                });
+
+                $equipmentLabel = strpos((string)$groupId, 'line_') === 0
+                        ? 'Dòng máy'
+                        : ($quotas->first()->equipment_code . ' - ' . $quotas->first()->equipment_name);
+
+                return response()->json([
+                        'success' => true,
+                        'equipment' => $equipmentLabel,
+                        'data' => $result
+                ]);
+        }
+
         private function updateOrderNumbersFromMMS()
         {
                 try {

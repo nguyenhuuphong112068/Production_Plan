@@ -761,3 +761,14 @@ body.gantt-fullscreen .schedule-page {
   outline-offset: -2px;
   z-index: 6;
 }
+
+/* Nút làm mới dữ liệu chạy ngầm: xoay icon trong lúc đang tải */
+.fc .fc-refreshData-button.is-refreshing {
+  pointer-events: none;
+  opacity: 0.7;
+  animation: fc-refresh-spin 0.9s linear infinite;
+}
+@keyframes fc-refresh-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

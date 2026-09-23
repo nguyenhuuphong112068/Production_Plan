@@ -77,6 +77,9 @@ class ScheduleRerouteService
     /** @var array<int, array{0: int, 1: int}> các khoảng ngày nghỉ [start, end) dạng timestamp */
     private array $offRanges = [];
 
+    /** @var array<int, array<int, array{0: int, 1: int}>> resourceId => ngày nghỉ thực sự của phòng */
+    private array $roomOffRanges = [];
+
     /**
      * Tịnh tuyến lịch sau khi lô $stagePlanId được xác nhận hoàn thành.
      *
@@ -124,6 +127,7 @@ class ScheduleRerouteService
         }
 
         // Lô gốc: thời điểm kết thúc lý thuyết -> thực tế
+        $this->nodes[$source->id]['origStart'] = Carbon::parse($source->start)->getTimestamp();
         $this->nodes[$source->id]['origFinish'] = $theoryFinish;
         $this->nodes[$source->id]['curFinish'] = $actualFinish;
 
@@ -295,6 +299,10 @@ class ScheduleRerouteService
                 'movable' => $movable,
                 'material' => $material,
 
+                // Thứ tự trên phòng luôn theo giờ LÝ THUYẾT (thứ tự đã sắp lịch),
+                // kể cả với lô đã chạy: lô bắt đầu thực tế trễ vẫn đứng trước các lô sau nó.
+                'orderStart' => $ts($r->start) ?? $start,
+
                 'origStart' => $start,
                 'origEnd' => $end,
                 'origCleanStart' => $cStart,
@@ -328,7 +336,7 @@ class ScheduleRerouteService
             }
         }
         foreach ($this->roomOrder as $room => $ids) {
-            usort($ids, fn($a, $b) => [$this->nodes[$a]['origStart'], $a] <=> [$this->nodes[$b]['origStart'], $b]);
+            usort($ids, fn($a, $b) => [$this->nodes[$a]['orderStart'], $a] <=> [$this->nodes[$b]['orderStart'], $b]);
             $this->roomOrder[$room] = $ids;
             foreach ($ids as $i => $id) {
                 $this->roomIndex[$id] = $i;
@@ -350,15 +358,52 @@ class ScheduleRerouteService
             })
             ->all();
 
+        // Ngày nghỉ công ty nhưng phòng vẫn có lô xếp / chạy trong ngày đó
+        // => với phòng này, ngày đó là ngày làm việc (tăng ca), không được bỏ qua.
+        $this->roomOffRanges = [];
+        foreach ($this->roomOrder as $room => $ids) {
+            $this->roomOffRanges[$room] = array_values(array_filter($this->offRanges, function ($range) use ($ids) {
+                [$os, $oe] = $range;
+                foreach ($ids as $id) {
+                    $n = $this->nodes[$id];
+                    if ($n['origStart'] < $oe && $n['origFinish'] > $os) {
+                        return false;
+                    }
+                    if ($n['curStart'] < $oe && $n['curFinish'] > $os) {
+                        return false;
+                    }
+                }
+
+                return true;
+            }));
+        }
+
         foreach ($this->nodes as $id => $n) {
             if (! $n['movable']) {
                 continue;
             }
-            $this->nodes[$id]['mainWork'] = $this->workSeconds($n['origStart'], $n['origEnd']);
+            $ranges = $this->offRangesFor($n);
+
+            // Thời lượng làm việc không bao giờ được về 0: nếu toàn bộ lô nằm trong ngày nghỉ
+            // thì giữ nguyên thời lượng thực của lịch gốc.
+            $wall = $n['origEnd'] - $n['origStart'];
+            $work = $this->workSeconds($n['origStart'], $n['origEnd'], $ranges);
+            $this->nodes[$id]['mainWork'] = $work > 0 ? $work : $wall;
+
             if ($n['origCleanStart'] !== null && $n['origCleanEnd'] !== null) {
-                $this->nodes[$id]['cleanWork'] = $this->workSeconds($n['origCleanStart'], $n['origCleanEnd']);
+                $cWall = $n['origCleanEnd'] - $n['origCleanStart'];
+                $cWork = $this->workSeconds($n['origCleanStart'], $n['origCleanEnd'], $ranges);
+                $this->nodes[$id]['cleanWork'] = $cWork > 0 ? $cWork : $cWall;
             }
         }
+    }
+
+    /**
+     * @return array<int, array{0: int, 1: int}>
+     */
+    private function offRangesFor(array $node): array
+    {
+        return $node['room'] !== null ? ($this->roomOffRanges[$node['room']] ?? $this->offRanges) : $this->offRanges;
     }
 
     // =====================================================================
@@ -607,12 +652,14 @@ class ScheduleRerouteService
             ];
         }
 
-        [$s, $e] = $this->placeForward($start, $n['mainWork'] ?? ($n['origEnd'] - $n['origStart']));
+        $ranges = $this->offRangesFor($n);
+
+        [$s, $e] = $this->placeForward($start, $n['mainWork'] ?? ($n['origEnd'] - $n['origStart']), $ranges);
 
         $cs = null;
         $ce = null;
         if ($n['cleanWork'] !== null) {
-            [$cs, $ce] = $this->placeForward($e + ($n['cleanGap'] ?? 0), $n['cleanWork']);
+            [$cs, $ce] = $this->placeForward($e + ($n['cleanGap'] ?? 0), $n['cleanWork'], $ranges);
         }
 
         return ['start' => $s, 'end' => $e, 'cleanStart' => $cs, 'cleanEnd' => $ce, 'finish' => $ce ?? $e];
@@ -659,11 +706,11 @@ class ScheduleRerouteService
         return $placed;
     }
 
-    private function workSeconds(int $start, int $end): int
+    private function workSeconds(int $start, int $end, array $ranges): int
     {
         $total = max(0, $end - $start);
 
-        foreach ($this->offRanges as [$os, $oe]) {
+        foreach ($ranges as [$os, $oe]) {
             $overlap = min($end, $oe) - max($start, $os);
             if ($overlap > 0) {
                 $total -= $overlap;
@@ -676,12 +723,12 @@ class ScheduleRerouteService
     /**
      * @return array{0: int, 1: int}  [start thực, end]
      */
-    private function placeForward(int $start, int $work): array
+    private function placeForward(int $start, int $work, array $ranges): array
     {
         $cursor = $start;
 
         // Nếu điểm bắt đầu rơi vào ngày nghỉ thì dời tới hết ngày nghỉ
-        foreach ($this->offRanges as [$os, $oe]) {
+        foreach ($ranges as [$os, $oe]) {
             if ($cursor >= $os && $cursor < $oe) {
                 $cursor = $oe;
             }
@@ -689,7 +736,7 @@ class ScheduleRerouteService
         $realStart = $cursor;
         $remain = $work;
 
-        foreach ($this->offRanges as [$os, $oe]) {
+        foreach ($ranges as [$os, $oe]) {
             if ($oe <= $cursor) {
                 continue;
             }

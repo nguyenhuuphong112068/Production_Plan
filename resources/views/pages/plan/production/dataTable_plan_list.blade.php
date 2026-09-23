@@ -835,6 +835,61 @@
     </div>
 </div>
 
+<!-- Modal Danh sách lô sản phẩm của thiết bị -->
+<div class="modal fade" id="equipmentBatchesModal" tabindex="-1" role="dialog"
+    aria-labelledby="equipmentBatchesModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document" style="max-width: 90%;">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title" id="equipmentBatchesModalLabel">
+                    <i class="fas fa-list-ul mr-2"></i>Danh sách lô có thể sắp -
+                    <span id="equipmentBatchesTitle"></span>
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p class="text-center text-secondary mb-3">
+                    Công đoạn: <span class="font-weight-bold" id="equipmentBatchesStage"></span>
+                    &nbsp;|&nbsp; Tổng số lô: <span class="font-weight-bold text-danger"
+                        id="equipmentBatchesCount">0</span>
+                </p>
+                <div class="table-responsive">
+                    <table id="table_equipment_batches" class="table table-sm table-bordered table-striped"
+                        style="width: 100%;">
+                        <thead class="thead-light">
+                            <tr>
+                                <th class="text-center align-middle" rowspan="2">STT</th>
+                                <th class="text-center align-middle" rowspan="2">Mã sản phẩm</th>
+                                <th class="text-center align-middle" rowspan="2">Tên sản phẩm</th>
+                                <th class="text-center align-middle" rowspan="2">Số lô</th>
+                                <th class="text-center align-middle" rowspan="2">Ngày dự kiến</th>
+                                <th class="text-center" colspan="4">Định mức (giờ/lô)</th>
+                                <th class="text-center align-middle" rowspan="2">Sản lượng lý thuyết</th>
+                                <th class="text-center align-middle" rowspan="2">Trạng thái</th>
+                                <th class="text-center align-middle" rowspan="2">Thiết bị đã sắp</th>
+                                <th class="text-center align-middle" rowspan="2">Thời gian bắt đầu</th>
+                            </tr>
+                            <tr>
+                                <th class="text-center" style="width: 60px;">Chuẩn bị</th>
+                                <th class="text-center" style="width: 60px;">Sản xuất</th>
+                                <th class="text-center" style="width: 60px;">VS C1</th>
+                                <th class="text-center" style="width: 60px;">VS C2</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Đóng</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
     $(document).ready(function() {
         var currentPlanListId = null;
@@ -911,10 +966,15 @@
                                 var widthBatches = (item.total_batches / maxBatches) * 100;
                                 var widthQty = (item.total_quantity / maxQty) * 100;
 
+                                var eqLabel = ((item.equipment_code || '') + ' - ' + (item
+                                    .equipment_name || '')).replace(/"/g, '&quot;');
+
                                 var batchBarHtml =
                                     '<div style="width: 100%; height: 24px; position: relative;">' +
-                                    '<div style="background-color: #e83e8c; width: ' + Math
-                                    .max(widthBatches, 5) +
+                                    '<div class="batch-bar-clickable" data-room-id="' + item.room_id +
+                                    '" data-equipment="' + eqLabel +
+                                    '" title="Bấm để xem danh sách lô sản phẩm" style="background-color: #e83e8c; cursor: pointer; width: ' +
+                                    Math.max(widthBatches, 5) +
                                     '%; height: 100%; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: width 0.5s ease; min-width: fit-content; padding: 0 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">' +
                                     '<span style="color: white; font-weight: bold; font-size: 0.85rem; white-space: nowrap;">' +
                                     item.total_batches + '</span>' +
@@ -1038,6 +1098,117 @@
 
         $('#groupByLineSwitch, #stageCodeSelect').change(function() {
             loadEquipmentAllocation();
+        });
+
+        // Bấm vào badge "Tổng số Lô Có Thể Sắp" -> xem danh sách lô sản phẩm liên quan
+        var equipmentBatchesTable = null;
+
+        $(document).on('click', '.batch-bar-clickable', function() {
+            if (!currentPlanListId) return;
+
+            var roomId = $(this).data('room-id');
+            var equipment = $(this).data('equipment') || '';
+            var stageCode = $('#stageCodeSelect').val();
+            var stageText = $('#stageCodeSelect option:selected').text();
+
+            $('#equipmentBatchesTitle').text(equipment);
+            $('#equipmentBatchesStage').text(stageText);
+            $('#equipmentBatchesCount').text(0);
+
+            if (equipmentBatchesTable) {
+                equipmentBatchesTable.destroy();
+                equipmentBatchesTable = null;
+            }
+            $('#table_equipment_batches tbody').html(
+                '<tr><td colspan="13" class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x text-info"></i><br>Đang tải dữ liệu...</td></tr>'
+            );
+
+            $('#equipmentBatchesModal').modal('show');
+
+            $.ajax({
+                url: '{{ url('plan/production/equipment_allocation_batches') }}/' + currentPlanListId,
+                type: 'GET',
+                data: {
+                    room_id: roomId,
+                    stage_code: stageCode,
+                    department_code: '{{ $production_code }}'
+                },
+                success: function(res) {
+                    if (!res || !res.success) {
+                        $('#table_equipment_batches tbody').html(
+                            '<tr><td colspan="13" class="text-center text-danger py-4">Có lỗi xảy ra khi tải dữ liệu.</td></tr>'
+                        );
+                        return;
+                    }
+
+                    var rows = res.data || [];
+                    $('#equipmentBatchesCount').text(rows.length);
+
+                    if (rows.length === 0) {
+                        $('#table_equipment_batches tbody').html(
+                            '<tr><td colspan="13" class="text-center py-4">Không có lô sản phẩm nào.</td></tr>'
+                        );
+                        return;
+                    }
+
+                    var html = '';
+                    rows.forEach(function(item, index) {
+                        var badgeClass = 'badge-secondary';
+                        if (item.schedule_status === 'Đã sắp lịch') badgeClass = 'badge-info';
+                        else if (item.schedule_status === 'Đang sản xuất') badgeClass = 'badge-warning';
+                        else if (item.schedule_status === 'Đã hoàn tất') badgeClass = 'badge-success';
+
+                        html += '<tr>' +
+                            '<td class="text-center">' + (index + 1) + '</td>' +
+                            '<td class="text-center">' + (item.product_code || '') + '</td>' +
+                            '<td>' + (item.product_name || '') + '</td>' +
+                            '<td class="text-center font-weight-bold">' + (item.batch_no || '') + '</td>' +
+                            '<td class="text-center">' + (item.expected_date || '') + '</td>' +
+                            '<td class="text-center">' + (item.p_time || 0) + '</td>' +
+                            '<td class="text-center">' + (item.m_time || 0) + '</td>' +
+                            '<td class="text-center">' + (item.c1_time || 0) + '</td>' +
+                            '<td class="text-center">' + (item.c2_time || 0) + '</td>' +
+                            '<td class="text-right">' + new Intl.NumberFormat().format(item.batch_qty || 0) +
+                            '</td>' +
+                            '<td class="text-center"><span class="badge ' + badgeClass + '">' + (item
+                                .schedule_status || '') + '</span></td>' +
+                            '<td class="text-center">' + (item.scheduled_room || 'NA') + '</td>' +
+                            '<td class="text-center">' + (item.scheduled_start || 'NA') + '</td>' +
+                            '</tr>';
+                    });
+
+                    $('#table_equipment_batches tbody').html(html);
+
+                    equipmentBatchesTable = $('#table_equipment_batches').DataTable({
+                        "responsive": true,
+                        "autoWidth": false,
+                        "pageLength": 10,
+                        "order": []
+                    });
+                },
+                error: function() {
+                    $('#table_equipment_batches tbody').html(
+                        '<tr><td colspan="13" class="text-center text-danger py-4">Lỗi kết nối máy chủ.</td></tr>'
+                    );
+                }
+            });
+        });
+
+        // Cho phép mở modal con đè lên modal phân bổ thiết bị
+        $('#equipmentBatchesModal').on('show.bs.modal', function() {
+            var zIndex = 1060;
+            $(this).css('z-index', zIndex);
+            setTimeout(function() {
+                // Chỉ nâng z-index của backdrop vừa được thêm cho modal con này
+                // (backdrop cuối cùng trong DOM), không đụng tới backdrop của modal cha.
+                $('.modal-backdrop').last().css('z-index', zIndex - 1);
+            }, 0);
+        });
+
+        $('#equipmentBatchesModal').on('hidden.bs.modal', function() {
+            if ($('.modal:visible').length > 0) {
+                $('body').addClass('modal-open');
+            }
         });
 
         document.body.style.overflowY = "auto";

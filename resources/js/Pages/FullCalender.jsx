@@ -806,6 +806,86 @@ const ScheduleTest = () => {
     }
   }, []);
 
+  /// Làm mới dữ liệu chạy ngầm: không hiện hộp thoại, không đổi khung thời gian,
+  /// giữ nguyên vị trí cuộn để người dùng vẫn đứng đúng chỗ đang xem.
+  const isRefreshingRef = useRef(false);
+  const handleSilentRefresh = async () => {
+    const api = calendarRef.current?.getApi();
+    if (!api || isRefreshingRef.current) return;
+
+    if (pendingChanges.length > 0) {
+      const { isConfirmed } = await Swal.fire({
+        icon: 'warning',
+        title: 'Có thay đổi chưa lưu',
+        text: `Còn ${pendingChanges.length} lịch đã kéo thả nhưng chưa lưu. Làm mới sẽ hiển thị lại dữ liệu trên máy chủ. Tiếp tục?`,
+        showCancelButton: true,
+        confirmButtonText: 'Làm mới',
+        cancelButtonText: 'Hủy',
+      });
+      if (!isConfirmed) return;
+    }
+
+    const btn = document.querySelector('.fc-refreshData-button');
+    const scrollers = Array.from(document.querySelectorAll('.fc .fc-scroller'));
+    const savedScroll = scrollers.map(el => [el, el.scrollTop, el.scrollLeft]);
+
+    isRefreshingRef.current = true;
+    btn?.classList.add('is-refreshing');
+    try {
+      const { activeStart, activeEnd, type: currentView } = api.view;
+      const { data } = await axios.post(`/Schedual/view`, {
+        startDate: toLocalISOString(activeStart),
+        endDate: toLocalISOString(activeEnd),
+        viewtype: currentView,
+        clearning: true,
+        theory: JSON.parse(sessionStorage.getItem('theoryHidden')),
+      });
+
+      let cleanData = data;
+      if (typeof cleanData === "string") {
+        cleanData = JSON.parse(cleanData.replace(/^<!--.*?-->/, "").trim());
+      }
+      setEvents(cleanData.events);
+      setResources(cleanData.resources);
+      if (cleanData.personnel_events) {
+        setPersonnelEvents(cleanData.personnel_events);
+      }
+      setSumBatchByStage(cleanData.sumBatchByStage);
+
+      // Chờ lịch vẽ lại xong rồi trả thanh cuộn về đúng chỗ cũ
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        savedScroll.forEach(([el, top, left]) => {
+          if (el.isConnected) {
+            el.scrollTop = top;
+            el.scrollLeft = left;
+          }
+        });
+      }));
+
+      Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon: 'success',
+        title: 'Đã cập nhật dữ liệu',
+        showConfirmButton: false,
+        timer: 1500,
+      });
+    } catch (err) {
+      console.error(err);
+      Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon: 'error',
+        title: 'Không tải được dữ liệu mới',
+        showConfirmButton: false,
+        timer: 2500,
+      });
+    } finally {
+      isRefreshingRef.current = false;
+      btn?.classList.remove('is-refreshing');
+    }
+  };
+
   const toggleCleaningEvents = () => {
     const newHidden = !isCleaningHidden;
     setIsCleaningHidden(newHidden);
@@ -6703,6 +6783,7 @@ const ScheduleTest = () => {
     handleEditEventClick,
     handleUndoFrontend,
     handleViewChange,
+    handleSilentRefresh,
     handleShowList,
     toggleNoteModal,
     toggleCleaningEvents,
@@ -7249,6 +7330,12 @@ const ScheduleTest = () => {
               hint: 'Trờ về ngày hiện tại của khung thời gian đã chọn'
             },
 
+            refreshData: {
+              text: '🔄',
+              click: () => fcLatest.current.handleSilentRefresh(),
+              hint: 'Làm mới dữ liệu lịch (chạy ngầm, giữ nguyên khung xem và vị trí cuộn)'
+            },
+
             customList: {
               text: 'KHSX',
               click: (...args) => fcLatest.current.handleShowList(...args),
@@ -7400,7 +7487,7 @@ const ScheduleTest = () => {
           }}
 
           headerToolbar={{
-            left: 'customPre,myToday,customNext noteModal hiddenClearning hiddenTheory cascadeToggle historyToggle detailToggle autoSchedualer deleteAllScheduale changeSchedualer unSelect ShowBadge AcceptQuarantine clearningValidation Cleaninglevelchange togglePersonnel',
+            left: 'customPre,myToday,customNext refreshData noteModal hiddenClearning hiddenTheory cascadeToggle historyToggle detailToggle autoSchedualer deleteAllScheduale changeSchedualer unSelect ShowBadge AcceptQuarantine clearningValidation Cleaninglevelchange togglePersonnel',
             center: 'title',
             right: 'Submit fontSizeBox searchBox slotDuration customDay,customWeek,customMonth,customQuarter customList toggleFullscreen' //customYear
           }}
