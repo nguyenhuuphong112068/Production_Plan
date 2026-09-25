@@ -452,6 +452,45 @@
         border-color: #dc3545 !important;
         background-color: #ffe6e6 !important;
     }
+
+    /* Giờ nhân sự dùng <input type="time"> chỉ đọc, hiển thị như chữ thường,
+       để trình duyệt định dạng 12h/24h giống hệt ô giờ ca */
+    .time-display .time-display-range {
+        white-space: nowrap;
+    }
+
+    .time-display .time-display-field {
+        display: inline-block;
+        width: auto;
+        height: auto;
+        padding: 0;
+        margin: 0;
+        border: 0;
+        background: transparent;
+        font: inherit;
+        color: inherit;
+        line-height: inherit;
+        vertical-align: baseline;
+        pointer-events: none;
+    }
+
+    .time-display .time-display-field::-webkit-calendar-picker-indicator {
+        display: none;
+    }
+
+    .time-display .time-display-field::-webkit-datetime-edit,
+    .time-display .time-display-field::-webkit-datetime-edit-fields-wrapper,
+    .time-display .time-display-field::-webkit-datetime-edit-hour-field,
+    .time-display .time-display-field::-webkit-datetime-edit-minute-field,
+    .time-display .time-display-field::-webkit-datetime-edit-ampm-field,
+    .time-display .time-display-field::-webkit-datetime-edit-text {
+        padding: 0;
+    }
+
+    /* Chrome chừa ~0.5em trống cuối ô time, bù bên phải dấu "-" cho cân */
+    .time-display .time-display-sep {
+        padding-right: 0.5em;
+    }
 </style>
 @php
     $production_code = session('user')['production_code'];
@@ -4841,14 +4880,10 @@
                             let pTimeStr = '';
                             const pRow = $(this).closest('.personnel-row');
                             if (pRow.length > 0) {
-                                const displayEl = pRow.find('.time-display')
-                                    .text().trim();
-                                if (displayEl) {
-                                    let timePart = displayEl.split('=')[0]
-                                        .trim();
-                                    if (timePart) {
-                                        pTimeStr = ` (${timePart})`;
-                                    }
+                                const pStart = pRow.find('.p-start-input').val();
+                                const pEnd = pRow.find('.p-end-input').val();
+                                if (pStart && pEnd) {
+                                    pTimeStr = ` (${pStart}-${pEnd})`;
                                 }
                             }
                             if (!pTimeStr && timeStr) {
@@ -5708,6 +5743,13 @@
     });
 
 
+    // Ô giờ ca là <input type="time"> nên trình duyệt hiển thị theo định dạng giờ của Windows (12h/24h),
+    // JS không đọc được định dạng đó → giờ nhân sự cũng hiển thị bằng <input type="time"> chỉ đọc để luôn khớp.
+    // Giá trị ghi vào attribute value để giữ được khi code khác đọc/ghi lại .time-display bằng .html().
+    function timeFieldHtml(hhmm) {
+        return `<input type="time" class="time-display-field" value="${hhmm}" readonly tabindex="-1">`;
+    }
+
     function initTimeSlider(row) {
         const sliderEl = row.find('.time-slider')[0];
         const displayEl = row.find('.time-display');
@@ -5817,7 +5859,8 @@
 
             // Gộp tất cả trên 1 dòng
             displayEl.html(
-                `<span style="color:#555;">${values[0]}-${values[1]}</span> ` +
+                `<span class="time-display-range" style="color:#555;">${timeFieldHtml(values[0])}` +
+                `<span class="time-display-sep">-</span>${timeFieldHtml(values[1])}</span> ` +
                 `<span style="color:#007bff;font-weight:bold;">=${totalHrs}h</span>` +
                 (tc > 0 ? ` <span style="color:#dc3545;font-weight:bold;">TC:${tc}h</span>` : '')
             );
@@ -5955,15 +5998,8 @@
                     const pEndStr = $(this).find('.p-end-input').val();
 
                     let basicIntervals = [];
-                    // Extract start/end from display HTML or inputs
-                    const displayHtml = $(this).find('.time-display').html() || '';
-                    const timeMatch = displayHtml.match(
-                        />([0-9]{2}:[0-9]{2})-([0-9]{2}:[0-9]{2})</);
-
-                    if (timeMatch) {
-                        basicIntervals = extractBasicIntervals(timeMatch[1], timeMatch[2],
-                            shiftVal);
-                    } else if (pStartStr && pEndStr) {
+                    // p-start/p-end luôn được slider cập nhật cùng lúc với .time-display
+                    if (pStartStr && pEndStr) {
                         basicIntervals = extractBasicIntervals(pStartStr, pEndStr, shiftVal);
                     } else {
                         // fallback to item shift times

@@ -41,6 +41,11 @@
         background-color: #fff;
     }
 
+    .time:disabled,
+    .updateInput:disabled {
+        cursor: not-allowed;
+    }
+
     /* Công tắc "Xác nhận và điều chỉnh lịch theo thời gian thực" */
     .reroute-toggle-box {
         display: flex;
@@ -223,6 +228,12 @@
                             @php $semi_finished = '' @endphp
                         @endif
 
+                        {{-- Chưa có lịch lý thuyết (chưa sắp lịch) thì khóa toàn bộ dòng --}}
+                        @php
+                            $unscheduled = empty($data->start) || empty($data->resourceId);
+                            $locked = $unscheduled ? 'disabled' : '';
+                        @endphp
+
 
                         <tr data-id="{{ $data->id }}">
                             <td>{{ $loop->iteration }}
@@ -239,13 +250,21 @@
                                 <input type="hidden" name="title"
                                     value = "{{ $data->product_name . '-' . $data->batch }}">
 
+                                @if ($unscheduled)
+                                    <div>
+                                        <span class="badge badge-danger" style="white-space: normal; text-align: left;">
+                                            Không được xác nhận hoàn thành do chưa sắp lịch
+                                        </span>
+                                    </div>
+                                @endif
+
                             </td>
 
 
                             <td>
                                 @if (!$data->actual_start && $stageCode == 1)
                                     <input style="color: red" type="text" class="time actual_batch"
-                                        id = "actual_batch" name="actual_batch" value = "{{ $data->batch }}">
+                                        id = "actual_batch" name="actual_batch" value = "{{ $data->batch }}" {{ $locked }}>
                                 @else
                                     @if ($data->actual_batch)
                                         <div style="color: blue" class = "text-center"> {{ $data->batch }} </div>
@@ -268,7 +287,7 @@
                                     </span>
                                     <input type="hidden" name="resourceId" value="{{ $data->resourceId }}">
                                 @else
-                                    <select class="form-control" name="resourceId" id ="room_id">
+                                    <select class="form-control" name="resourceId" id ="room_id" {{ $locked }}>
                                         <option value="">-- Phòng Sản Xuất --</option>
                                         @foreach ($room_stages as $room_stage)
                                             <option value="{{ $room_stage->id }}"
@@ -289,32 +308,32 @@
                             <td>
                                 @if (!empty($data->actual_start) || !empty($data->start))
                                     <input type="datetime-local" class="time start" id = "start" name="start"
-                                        {{ $semi_finished }}
+                                        {{ $semi_finished ?: $locked }}
                                         value = "{{ \Carbon\Carbon::parse($data->actual_start ?? $data->start)->format('Y-m-d\TH:i') }}">
 
                                     <input type="datetime-local" class="time start_yield" id="start_yield"
-                                        name="start_yield"
+                                        name="start_yield" {{ $locked }}
                                         value="{{ $data->max_yield_end ? \Carbon\Carbon::parse($data->max_yield_end)->format('Y-m-d\TH:i') : \Carbon\Carbon::parse($data->actual_start ?? $data->start)->format('Y-m-d\TH:i') }}">
                                     <input type="hidden" class="max_yield_end" value="{{ $data->max_yield_end ? \Carbon\Carbon::parse($data->max_yield_end)->format('Y-m-d\TH:i') : '' }}">
 
-                                    <input type="datetime-local" class="time" id = "end" name="end"
+                                    <input type="datetime-local" class="time" id = "end" name="end" {{ $locked }}
                                         value = "{{ \Carbon\Carbon::parse($data->actual_end ?? $data->end)->format('Y-m-d\TH:i') }}">
                                 @else
                                     <input type="datetime-local" class="time start" id = "start" name="start"
-                                        {{ $semi_finished }}>
+                                        {{ $semi_finished ?: $locked }}>
 
                                     <input type="datetime-local" class="time start_yield" id="start_yield"
-                                        name="start_yield"
+                                        name="start_yield" {{ $locked }}
                                         value="{{ $data->max_yield_end ? \Carbon\Carbon::parse($data->max_yield_end)->format('Y-m-d\TH:i') : \Carbon\Carbon::parse($data->actual_start ?? $data->start)->format('Y-m-d\TH:i') }}">
                                     <input type="hidden" class="max_yield_end" value="{{ $data->max_yield_end ? \Carbon\Carbon::parse($data->max_yield_end)->format('Y-m-d\TH:i') : '' }}">
 
-                                    <input type="datetime-local" class="time" id = "end" name="end">
+                                    <input type="datetime-local" class="time" id = "end" name="end" {{ $locked }}>
                                 @endif
 
                             </td>
                             <td>
 
-                                <input type="text" class="time" name="yields"
+                                <input type="text" class="time" name="yields" {{ $locked }}
                                     data-max="{{ $data->Theoretical_yields * 1.1 }}"
                                     value="{{ ($data->yields ? $data->Theoretical_yields - $data->total_confirmed : $data->Theoretical_yields) < 0 ? 0 : $data->Theoretical_yields - $data->total_confirmed }}"
                                     oninput="
@@ -333,7 +352,7 @@
                             </td>
 
                             <td>
-                                <input type="text" class="time" name="number_of_boxes"
+                                <input type="text" class="time" name="number_of_boxes" {{ $locked }}
                                     value="{{ $data->number_of_boxes ?? 1 }}"
                                     oninput="
                                         // Chỉ cho nhập số nguyên
@@ -349,7 +368,7 @@
                             </td>
 
                             <td>
-                                <textarea class="updateInput text-left" name="note"> {{ $data->note }} </textarea>
+                                <textarea class="updateInput text-left" name="note" {{ $locked }}> {{ $data->note }} </textarea>
                             </td>
 
 
@@ -360,6 +379,7 @@
                                     </button>  
                                 @else  {{ $finisedRow ? 'disabled' : '' }} --}}
                                 <button type="button" class="btn btn-success btn-semi-finised position-relative"
+                                    {{ $locked }}
                                     data-id="{{ $data->id }}" data-toggle="modal" data-target="#finisedModal">
                                     <i class="fas fa-check"></i>
                                 </button>
@@ -373,16 +393,16 @@
                             <td>
                                 @if (!empty($data->actual_start_clearning) || !empty($data->start_clearning))
                                     <input type="datetime-local" class="time" id = "start_clearning"
-                                        name="start_clearning"
+                                        name="start_clearning" {{ $locked }}
                                         value="{{ \Carbon\Carbon::parse($data->start_clearning)->format('Y-m-d\TH:i') }}">
                                     <input type="datetime-local" class="time" id = "end_clearning"
-                                        name="end_clearning"
+                                        name="end_clearning" {{ $locked }}
                                         value = "{{ \Carbon\Carbon::parse($data->end_clearning)->format('Y-m-d\TH:i') }}">
                                 @else
                                     <input type="datetime-local" class="time" id = "start_clearning"
-                                        name="start_clearning">
+                                        name="start_clearning" {{ $locked }}>
                                     <input type="datetime-local" class="time" id = "end_clearning"
-                                        name="end_clearning">
+                                        name="end_clearning" {{ $locked }}>
                                 @endif
 
                             </td>
@@ -390,7 +410,7 @@
 
                             <td class="text-center align-middle">
                                 <button type="button" class="btn btn-success btn-finised position-relative"
-                                    {{ $data->actual_start_clearning ? 'disabled' : '' }}
+                                    {{ $data->actual_start_clearning || $unscheduled ? 'disabled' : '' }}
                                     data-id="{{ $data->id }}" data-toggle="modal" data-target="#finisedModal">
                                     <i class="fas fa-check"></i><i class="fas fa-check"
                                         style="margin-left:-6px;"></i>
