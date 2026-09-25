@@ -228,9 +228,10 @@
                             @php $semi_finished = '' @endphp
                         @endif
 
-                        {{-- Chưa có lịch lý thuyết (chưa sắp lịch) thì khóa toàn bộ dòng --}}
+                        {{-- Chưa có lịch lý thuyết (chưa sắp lịch) thì khóa toàn bộ dòng, trừ Cân NL / Cân NL Khác (stage 1, 2) --}}
                         @php
-                            $unscheduled = empty($data->start) || empty($data->resourceId);
+                            $unscheduled = !in_array((int) $data->stage_code, [1, 2], true)
+                                && (empty($data->start) || empty($data->resourceId));
                             $locked = $unscheduled ? 'disabled' : '';
                         @endphp
 

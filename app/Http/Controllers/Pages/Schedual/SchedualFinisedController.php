@@ -282,9 +282,9 @@ class SchedualFinisedController extends Controller
                 if (!$request->resourceId)
                         return response()->json(['message' => '❌ Chọn Phòng Sản Xuất!'], 422);
 
-                // Lô chưa có lịch lý thuyết (chưa sắp lịch) thì không được xác nhận hoàn thành
-                $plan = DB::table('stage_plan')->where('id', $request->id)->first(['start', 'resourceId']);
-                if (!$plan || !$plan->start || !$plan->resourceId)
+                // Lô chưa có lịch lý thuyết (chưa sắp lịch) thì không được xác nhận hoàn thành, trừ Cân NL / Cân NL Khác (stage 1, 2)
+                $plan = DB::table('stage_plan')->where('id', $request->id)->first(['stage_code', 'start', 'resourceId']);
+                if (!$plan || (!in_array((int) $plan->stage_code, [1, 2], true) && (!$plan->start || !$plan->resourceId)))
                         return response()->json(['message' => '❌ Không được xác nhận hoàn thành do chưa sắp lịch'], 422);
 
                 /* ===============================
