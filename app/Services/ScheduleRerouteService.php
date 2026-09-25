@@ -12,6 +12,10 @@ use Illuminate\Support\Str;
 /**
  * Tịnh tuyến lịch lý thuyết theo xác nhận hoàn thành.
  *
+ * Chạy ở 2 thời điểm trên trang xác nhận hoàn thành:
+ *   - nút ✓ (xác nhận sản xuất): lô đã trễ thì dời vệ sinh của chính lô và dịch các lô sau (rerouteAfterProduction),
+ *   - nút ✓✓ (xác nhận toàn bộ): dịch 2 chiều theo giờ kết thúc vệ sinh thực tế (reroute).
+ *
  * Khi một lô được xác nhận hoàn thành, giờ kết thúc thực tế thường lệch so với lý thuyết.
  * Service này dịch chuyển (2 chiều) các lô chịu ảnh hưởng, giữ nguyên thứ tự lô:
  *   - lô kế tiếp trên CÙNG PHÒNG (cùng hoặc khác sản phẩm),
@@ -24,6 +28,9 @@ use Illuminate\Support\Str;
  *   newStart = max(earliest, startGốc + min(0, shiftIn))
  * => trễ thì khoảng trống hấp thụ độ trễ; sớm thì chỉ kéo lùi đúng lượng lô trước sớm lên,
  *    khoảng trống cố ý vẫn giữ. Không kéo sớm hơn hiện tại và ngày có NL/BB.
+ *
+ * Ngày nghỉ: dịch trễ thì được chạy trong ngày nghỉ (tăng ca) để hấp thụ trễ; lô mà lịch gốc kéo dài
+ * vắt ngang ngày nghỉ chỉ lấn vào phần nghỉ vừa đủ, còn kịp thì giữ giờ kết thúc cũ. Kéo sớm thì không tăng ca.
  *
  * Mọi thay đổi được ghi vào stage_plan_reroute_log (kèm giờ cũ để hoàn tác).
  */
@@ -47,9 +54,15 @@ class ScheduleRerouteService
     /** Lịch bảo trì - hiệu chuẩn: cố định, không dịch. */
     public const MAINTENANCE_STAGE = 8;
 
-    public const TYPE_OF_CHANGE = 'Tịnh tuyến theo hoàn thành';
-
     public const TYPE_OF_CHANGE_UNDO = 'Hoàn tác tịnh tuyến';
+
+    /** Nút ✓ "Xác nhận sản xuất": đã có giờ kết thúc sản xuất, vệ sinh chưa làm. */
+    public const TRIGGER_PRODUCTION = 'production';
+
+    /** Nút ✓✓ "Xác nhận toàn bộ": đã có giờ vệ sinh thực tế. */
+    public const TRIGGER_FINISHED = 'finished';
+
+    public const SOURCE_CLEANING_REASON = 'Dời vệ sinh của chính lô ra sau giờ kết thúc sản xuất thực tế';
 
     /** Tính năng thử nghiệm: chỉ các user id này được thấy và bật công tắc tịnh tuyến. */
     public const ALLOWED_USER_IDS = [1];
@@ -81,66 +94,177 @@ class ScheduleRerouteService
     private array $roomOffRanges = [];
 
     /**
-     * Tịnh tuyến lịch sau khi lô $stagePlanId được xác nhận hoàn thành.
+     * Nút ✓✓ "Xác nhận toàn bộ": tịnh tuyến theo giờ kết thúc vệ sinh thực tế (dịch 2 chiều).
+     * Nếu trước đó đã tịnh tuyến theo nút ✓ thì lịch lý thuyết của lô đã được dời,
+     * nên lần này chỉ bù phần chênh còn lại.
      *
-     * @return array{run_code: ?string, delta_minutes: int, changes: array}
+     * @return array{run_code: ?string, delta_minutes: int, changes: array, source_cleaning_moved: bool}
      */
     public function reroute(int $stagePlanId): array
     {
-        $empty = ['run_code' => null, 'delta_minutes' => 0, 'changes' => []];
+        $source = $this->loadSource($stagePlanId);
 
-        $source = DB::table('stage_plan')->where('id', $stagePlanId)->first();
-
-        if (! $source || (int) $source->finished !== 1 || ! $source->start || ! $source->end) {
-            return $empty;
-        }
-
-        $sourceStage = (int) $source->stage_code;
-        if (in_array($sourceStage, self::SKIP_STAGES, true) || $sourceStage === self::MAINTENANCE_STAGE) {
-            return $empty;
-        }
-
-        $actualFinishRaw = $source->actual_end_clearning ?? $source->actual_end;
+        $actualFinishRaw = $source ? ($source->actual_end_clearning ?? $source->actual_end) : null;
         if (! $actualFinishRaw) {
-            return $empty;
+            return $this->emptyResult();
         }
 
+        return $this->run($source, self::TRIGGER_FINISHED, Carbon::parse($actualFinishRaw)->getTimestamp());
+    }
+
+    /**
+     * Nút ✓ "Xác nhận sản xuất" (vệ sinh chưa làm): nếu lô đã trễ so với lịch lý thuyết thì dời
+     * vệ sinh của chính lô ra ngay sau giờ kết thúc sản xuất thực tế và dịch các lô sau theo.
+     * Chỉ dịch về sau, không kéo sớm: bấm ✓ theo ca thì lô có thể vẫn đang chạy tiếp.
+     * Bấm ✓ nhiều lần thì mỗi lần chỉ bù phần trễ thêm so với lần trước.
+     *
+     * @return array{run_code: ?string, delta_minutes: int, changes: array, source_cleaning_moved: bool}
+     */
+    public function rerouteAfterProduction(int $stagePlanId): array
+    {
+        $source = $this->loadSource($stagePlanId);
+
+        if (! $source || ! $source->actual_end || $source->actual_start_clearning) {
+            return $this->emptyResult();
+        }
+
+        return $this->run($source, self::TRIGGER_PRODUCTION, Carbon::parse($source->actual_end)->getTimestamp());
+    }
+
+    /**
+     * @param  int  $actualTs  TRIGGER_FINISHED: giờ kết thúc thực tế của lô; TRIGGER_PRODUCTION: giờ kết thúc sản xuất thực tế
+     */
+    private function run(object $source, string $trigger, int $actualTs): array
+    {
         $theoryFinish = Carbon::parse($source->end_clearning ?? $source->end)->getTimestamp();
-        $actualFinish = Carbon::parse($actualFinishRaw)->getTimestamp();
-        $delta = $actualFinish - $theoryFinish;
-
-        if (abs($delta) < self::MIN_SHIFT_SECONDS) {
-            return $empty;
-        }
 
         $windowStart = $this->at(min(
             Carbon::parse($source->start)->getTimestamp(),
             $source->actual_start ? Carbon::parse($source->actual_start)->getTimestamp() : PHP_INT_MAX
         ))->subDay();
-        $windowEnd = $this->at(max($theoryFinish, $actualFinish))->addDays(self::WINDOW_DAYS);
+        $windowEnd = $this->at(max($theoryFinish, $actualTs))->addDays(self::WINDOW_DAYS);
 
         $this->loadGraph($windowStart, $windowEnd);
         $this->loadOffRanges($windowStart, $windowEnd->copy()->addDays(self::WINDOW_DAYS));
 
         if (! isset($this->nodes[$source->id])) {
-            return $empty;
+            return $this->emptyResult();
         }
 
-        // Lô gốc: thời điểm kết thúc lý thuyết -> thực tế
-        $this->nodes[$source->id]['origStart'] = Carbon::parse($source->start)->getTimestamp();
-        $this->nodes[$source->id]['origFinish'] = $theoryFinish;
-        $this->nodes[$source->id]['curFinish'] = $actualFinish;
+        $sourceCleaning = null;
+        $actualFinish = $actualTs;
 
-        $changes = $this->propagate($source->id);
+        if ($trigger === self::TRIGGER_PRODUCTION) {
+            $sourceCleaning = $this->projectSourceCleaning($source, $actualTs);
+            $actualFinish = $sourceCleaning['finish'];
+        }
 
-        if (empty($changes)) {
-            return ['run_code' => null, 'delta_minutes' => intdiv($delta, 60), 'changes' => []];
+        // Độ lệch giờ kết thúc của lô gốc => quyết định dịch các lô sau
+        $delta = $actualFinish - $theoryFinish;
+
+        // Độ lệch báo cho người dùng / ghi lý do: ✓ = sản xuất trễ bao nhiêu so với giờ kết thúc sản xuất lý thuyết
+        $reportDelta = $trigger === self::TRIGGER_PRODUCTION
+            ? $actualTs - Carbon::parse($source->end)->getTimestamp()
+            : $delta;
+
+        // ✓ chỉ dịch khi lô trễ; ✓✓ dịch cả 2 chiều
+        $propagate = $trigger === self::TRIGGER_PRODUCTION ? $delta >= self::MIN_SHIFT_SECONDS : abs($delta) >= self::MIN_SHIFT_SECONDS;
+
+        // Vệ sinh của lô gốc vẫn dời dù phần trễ đã được hấp thụ hết (vệ sinh vốn dừng qua ngày nghỉ)
+        $sourceChange = $this->sourceCleaningChange($source, $sourceCleaning);
+
+        if (! $propagate && ! $sourceChange) {
+            return $this->emptyResult();
+        }
+
+        $changes = [];
+        if ($propagate) {
+            // Lô gốc: thời điểm kết thúc lý thuyết -> thực tế (✓: dự kiến, gồm cả vệ sinh đã dời)
+            $this->nodes[$source->id]['origStart'] = Carbon::parse($source->start)->getTimestamp();
+            $this->nodes[$source->id]['origFinish'] = $theoryFinish;
+            $this->nodes[$source->id]['curFinish'] = $actualFinish;
+
+            $changes = $this->propagate($source->id);
+        }
+
+        $result = ['run_code' => null, 'delta_minutes' => intdiv($reportDelta, 60), 'changes' => [], 'source_cleaning_moved' => false];
+
+        if (empty($changes) && ! $sourceChange) {
+            return $result;
         }
 
         $runCode = (string) Str::uuid();
-        $this->apply($runCode, $source, intdiv($delta, 60), $changes);
+        $this->apply($runCode, $source, intdiv($reportDelta, 60), $changes, $sourceChange, $this->runReason($source, $trigger, $reportDelta));
 
-        return ['run_code' => $runCode, 'delta_minutes' => intdiv($delta, 60), 'changes' => array_values($changes)];
+        return ['run_code' => $runCode, 'changes' => array_values($changes), 'source_cleaning_moved' => (bool) $sourceChange] + $result;
+    }
+
+    private function loadSource(int $stagePlanId): ?object
+    {
+        $source = DB::table('stage_plan')->where('id', $stagePlanId)->first();
+
+        if (! $source || (int) $source->finished !== 1 || ! $source->start || ! $source->end) {
+            return null;
+        }
+
+        $sourceStage = (int) $source->stage_code;
+        if (in_array($sourceStage, self::SKIP_STAGES, true) || $sourceStage === self::MAINTENANCE_STAGE) {
+            return null;
+        }
+
+        return $source;
+    }
+
+    private function emptyResult(): array
+    {
+        return ['run_code' => null, 'delta_minutes' => 0, 'changes' => [], 'source_cleaning_moved' => false];
+    }
+
+    /**
+     * Vệ sinh chưa làm của lô gốc khi sản xuất kết thúc trễ: bắt đầu ngay khi kết thúc sản xuất thực tế,
+     * giữ thời lượng làm việc theo kế hoạch. Giống lô dịch trễ trong place(): được chạy trong ngày nghỉ,
+     * vệ sinh vốn dừng qua ngày nghỉ thì còn kịp thì giữ giờ kết thúc cũ. Chưa trễ thì giữ nguyên kế hoạch.
+     *
+     * @return array{start: ?int, end: ?int, finish: int}  start = null nếu vệ sinh không dời
+     */
+    private function projectSourceCleaning(object $source, int $actualEnd): array
+    {
+        if (! $source->start_clearning || ! $source->end_clearning) {
+            return ['start' => null, 'end' => null, 'finish' => $actualEnd];
+        }
+
+        $cs = Carbon::parse($source->start_clearning)->getTimestamp();
+        $ce = Carbon::parse($source->end_clearning)->getTimestamp();
+
+        // Chưa trễ: lô có thể vẫn đang chạy tiếp ca sau, không kéo vệ sinh sớm lên
+        if ($actualEnd <= $cs) {
+            return ['start' => null, 'end' => null, 'finish' => $ce];
+        }
+
+        $work = $this->workSeconds($cs, $ce, $this->offRangesFor($this->nodes[$source->id]));
+        $newCe = max($ce, $actualEnd + ($work > 0 ? $work : max(0, $ce - $cs)));
+
+        return ['start' => $actualEnd, 'end' => $newCe, 'finish' => $newCe];
+    }
+
+    private function sourceCleaningChange(object $source, ?array $projected): ?array
+    {
+        if (! $projected || $projected['start'] === null) {
+            return null;
+        }
+
+        $oldCs = Carbon::parse($source->start_clearning)->getTimestamp();
+        $oldCe = Carbon::parse($source->end_clearning)->getTimestamp();
+
+        if (abs($projected['start'] - $oldCs) < self::MIN_SHIFT_SECONDS && abs($projected['end'] - $oldCe) < self::MIN_SHIFT_SECONDS) {
+            return null;
+        }
+
+        return [
+            'old' => ['start_clearning' => $source->start_clearning, 'end_clearning' => $source->end_clearning],
+            'new' => ['start_clearning' => $this->fmt($projected['start']), 'end_clearning' => $this->fmt($projected['end'])],
+            'shift_minutes' => intdiv($projected['start'] - $oldCs, 60),
+        ];
     }
 
     /**
@@ -170,6 +294,25 @@ class ScheduleRerouteService
 
             foreach ($logs as $log) {
                 $row = DB::table('stage_plan')->where('id', $log->stage_plan_id)->first();
+
+                // Dòng của chính lô gốc (nút ✓): chỉ khôi phục vệ sinh, khi vệ sinh chưa làm và chưa bị dời lần nữa
+                if ((int) $log->stage_plan_id === (int) $log->source_stage_plan_id) {
+                    $unchanged = $row
+                        && ! $row->actual_start_clearning
+                        && $this->sameTime($row->start_clearning, $log->new_start_clearning)
+                        && $this->sameTime($row->end_clearning, $log->new_end_clearning);
+
+                    if (! $unchanged) {
+                        $skipped++;
+
+                        continue;
+                    }
+
+                    $this->writeSourceCleaning($row, $log->old_start_clearning, $log->old_end_clearning, self::TYPE_OF_CHANGE_UNDO);
+                    $restored++;
+
+                    continue;
+                }
 
                 $unchanged = $row
                     && (int) $row->finished === 0
@@ -269,7 +412,8 @@ class ScheduleRerouteService
                 $end = $ts($r->actual_end) ?? $ts($r->end);
                 $cStart = $ts($r->actual_start_clearning) ?? $ts($r->start_clearning);
                 $cEnd = $ts($r->actual_end_clearning) ?? $ts($r->end_clearning);
-                $finish = $ts($r->actual_end_clearning) ?? $ts($r->actual_end) ?? $cEnd ?? $end;
+                // Đã xác nhận sản xuất (✓) nhưng chưa xác nhận vệ sinh: phòng còn bận tới hết vệ sinh theo kế hoạch
+                $finish = $ts($r->actual_end_clearning) ?? (max($end ?? 0, $cEnd ?? 0) ?: null);
             }
 
             if ($start === null || $finish === null) {
@@ -358,19 +502,19 @@ class ScheduleRerouteService
             })
             ->all();
 
-        // Ngày nghỉ công ty nhưng phòng vẫn có lô xếp / chạy trong ngày đó
+        // Ngày nghỉ công ty nhưng phòng vẫn có lô bắt đầu / kết thúc / nằm trong ngày đó
         // => với phòng này, ngày đó là ngày làm việc (tăng ca), không được bỏ qua.
+        // Lô chỉ vắt ngang trọn ngày nghỉ (bắt đầu trước, kết thúc sau) thì KHÔNG tính: lô đó đang dừng
+        // qua ngày nghỉ (lịch gốc kéo dài lô vì ngày nghỉ), tức phòng nghỉ ngày đó.
         $this->roomOffRanges = [];
         foreach ($this->roomOrder as $room => $ids) {
             $this->roomOffRanges[$room] = array_values(array_filter($this->offRanges, function ($range) use ($ids) {
-                [$os, $oe] = $range;
                 foreach ($ids as $id) {
                     $n = $this->nodes[$id];
-                    if ($n['origStart'] < $oe && $n['origFinish'] > $os) {
-                        return false;
-                    }
-                    if ($n['curStart'] < $oe && $n['curFinish'] > $os) {
-                        return false;
+                    foreach ([['origStart', 'origEnd'], ['origCleanStart', 'origCleanEnd'], ['curStart', 'curEnd'], ['curCleanStart', 'curCleanEnd']] as [$a, $b]) {
+                        if ($n[$a] !== null && $n[$b] !== null && $this->worksInside($n[$a], $n[$b], $range)) {
+                            return false;
+                        }
                     }
                 }
 
@@ -396,6 +540,18 @@ class ScheduleRerouteService
                 $this->nodes[$id]['cleanWork'] = $cWork > 0 ? $cWork : $cWall;
             }
         }
+    }
+
+    /**
+     * Khoảng [start, end] có làm việc trong ngày nghỉ $range: chồng lên ngày nghỉ nhưng không vắt ngang trọn ngày nghỉ.
+     *
+     * @param  array{0: int, 1: int}  $range
+     */
+    private function worksInside(int $start, int $end, array $range): bool
+    {
+        [$os, $oe] = $range;
+
+        return $start < $oe && $end > $os && ! ($start < $os && $end > $oe);
     }
 
     /**
@@ -633,7 +789,11 @@ class ScheduleRerouteService
     // =====================================================================
 
     /**
-     * Đặt lô bắt đầu từ $start, giữ nguyên thời lượng làm việc, bỏ qua ngày nghỉ.
+     * Đặt lô bắt đầu từ $start, giữ nguyên thời lượng làm việc.
+     *
+     * - Dịch trễ: được chạy cả trong ngày nghỉ (tăng ca) để hấp thụ trễ. Lô vốn dừng qua ngày nghỉ
+     *   (lịch gốc kéo dài lô vì ngày nghỉ) chỉ lấn vào phần nghỉ vừa đủ: còn kịp thì giữ giờ kết thúc cũ.
+     * - Kéo sớm: không tự sinh tăng ca, bỏ qua ngày nghỉ phòng không làm.
      *
      * @return array{start: int, end: int, cleanStart: ?int, cleanEnd: ?int, finish: int}
      */
@@ -652,9 +812,24 @@ class ScheduleRerouteService
             ];
         }
 
+        $mainWork = $n['mainWork'] ?? ($n['origEnd'] - $n['origStart']);
+
+        if ($start > $n['origStart']) {
+            $e = max($n['origEnd'], $start + $mainWork);
+
+            $cs = null;
+            $ce = null;
+            if ($n['cleanWork'] !== null) {
+                $cs = $e + ($n['cleanGap'] ?? 0);
+                $ce = max($n['origCleanEnd'], $cs + $n['cleanWork']);
+            }
+
+            return ['start' => $start, 'end' => $e, 'cleanStart' => $cs, 'cleanEnd' => $ce, 'finish' => $ce ?? $e];
+        }
+
         $ranges = $this->offRangesFor($n);
 
-        [$s, $e] = $this->placeForward($start, $n['mainWork'] ?? ($n['origEnd'] - $n['origStart']), $ranges);
+        [$s, $e] = $this->placeForward($start, $mainWork, $ranges);
 
         $cs = null;
         $ce = null;
@@ -754,14 +929,43 @@ class ScheduleRerouteService
     // Ghi DB
     // =====================================================================
 
-    private function apply(string $runCode, object $source, int $deltaMinutes, array $changes): void
+    /**
+     * @param  ?array  $sourceChange  Vệ sinh của chính lô gốc được dời (nút ✓), null nếu không dời
+     * @param  string  $reason  Lý do ghi vào stage_plan_history.type_of_change
+     */
+    private function apply(string $runCode, object $source, int $deltaMinutes, array $changes, ?array $sourceChange, string $reason): void
     {
         $offDays = DB::table('off_days')->pluck('off_date')->map(fn($d) => Carbon::parse($d)->toDateString())->all();
         $user = session('user')['fullName'] ?? 'System';
         $department = session('user.production_code') ?? $source->deparment_code;
 
-        DB::transaction(function () use ($runCode, $source, $deltaMinutes, $changes, $offDays, $user, $department) {
+        DB::transaction(function () use ($runCode, $source, $deltaMinutes, $changes, $sourceChange, $reason, $offDays, $user, $department) {
             $logs = [];
+
+            if ($sourceChange) {
+                $this->writeSourceCleaning($source, $sourceChange['new']['start_clearning'], $sourceChange['new']['end_clearning'], $reason);
+
+                $logs[] = [
+                    'run_code' => $runCode,
+                    'source_stage_plan_id' => $source->id,
+                    'source_title' => $source->title,
+                    'source_delta_minutes' => $deltaMinutes,
+                    'stage_plan_id' => $source->id,
+                    'old_start' => $source->start,
+                    'old_end' => $source->end,
+                    'old_start_clearning' => $sourceChange['old']['start_clearning'],
+                    'old_end_clearning' => $sourceChange['old']['end_clearning'],
+                    'new_start' => $source->start,
+                    'new_end' => $source->end,
+                    'new_start_clearning' => $sourceChange['new']['start_clearning'],
+                    'new_end_clearning' => $sourceChange['new']['end_clearning'],
+                    'shift_minutes' => $sourceChange['shift_minutes'],
+                    'reason' => self::SOURCE_CLEANING_REASON,
+                    'deparment_code' => $department,
+                    'created_by' => $user,
+                    'created_at' => now(),
+                ];
+            }
 
             foreach ($changes as $id => $c) {
                 $row = DB::table('stage_plan')->where('id', $id)->first();
@@ -769,7 +973,7 @@ class ScheduleRerouteService
                     continue;
                 }
 
-                $this->writeTimes($row, $c['new'], $offDays, $user, self::TYPE_OF_CHANGE);
+                $this->writeTimes($row, $c['new'], $offDays, $user, $reason);
 
                 $logs[] = [
                     'run_code' => $runCode,
@@ -803,7 +1007,9 @@ class ScheduleRerouteService
 
     /**
      * Ghi giờ mới cho một lô, kèm các hiệu ứng phụ giống SchedualController::update():
-     * ngày nhận bao bì (ĐG), lịch sử phiên bản khi lịch đã submit, reset cờ submit.
+     * ngày nhận bao bì (ĐG), lịch sử phiên bản khi lịch đã submit.
+     * Khác update(): giữ nguyên cờ submit, vì đây là dịch tự động theo xác nhận hoàn thành, không phải
+     * người lập lịch sửa tay; thay đổi đã được ghi vào stage_plan_history kèm lý do.
      */
     private function writeTimes(object $row, array $times, array $offDays, string $user, string $typeOfChange): void
     {
@@ -829,25 +1035,99 @@ class ScheduleRerouteService
 
         DB::table('stage_plan')->where('id', $row->id)->update($update);
 
-        if ((int) $row->submit === 1) {
-            if ($receiveDate) {
-                PackagingDate::sync($row->id, $receiveDate, 0, 'ScheduleRerouteService');
-                PackagingDate::sync($row->id, $receiveDate, 1, 'ScheduleRerouteService');
-            }
-
-            $updated = DB::table('stage_plan')->where('id', $row->id)->first();
-            StagePlanHistory::record($updated, $typeOfChange);
+        if ((int) $row->submit === 1 && $receiveDate) {
+            PackagingDate::sync($row->id, $receiveDate, 0, 'ScheduleRerouteService');
+            PackagingDate::sync($row->id, $receiveDate, 1, 'ScheduleRerouteService');
         }
 
-        DB::table('stage_plan')
-            ->where('id', $row->id)
-            ->where('stage_code', '!=', self::MAINTENANCE_STAGE)
-            ->update(['submit' => 0]);
+        $this->recordHistory($row, $typeOfChange);
+    }
+
+    /**
+     * Dời vệ sinh lý thuyết của lô gốc. Lô đang chạy / đã chạy nên chỉ đổi giờ vệ sinh,
+     * không đụng giờ sản xuất lý thuyết và các cờ submit / xác nhận của lô.
+     */
+    private function writeSourceCleaning(object $row, ?string $startClearning, ?string $endClearning, string $typeOfChange): void
+    {
+        DB::table('stage_plan')->where('id', $row->id)->update([
+            'start_clearning' => $startClearning,
+            'end_clearning' => $endClearning,
+        ]);
+
+        $this->recordHistory($row, $typeOfChange);
+    }
+
+    /**
+     * Ghi phiên bản vào stage_plan_history kèm lý do tịnh tuyến.
+     *
+     * Ngoài lô đã submit, còn ghi cả lô đã có phiên bản nhưng đang submit = 0 (người lập lịch đã sửa tay,
+     * chưa submit lại), để không mất dấu lần tịnh tuyến. Lô chưa submit lần nào thì bỏ qua:
+     * lúc submit sẽ ghi "Tạo Mới Lịch". Submit bỏ qua lô có phiên bản mới nhất trùng giờ, nên không bị ghi trùng.
+     *
+     * @param  object  $row  Dòng stage_plan TRƯỚC khi cập nhật (để lấy cờ submit cũ)
+     */
+    private function recordHistory(object $row, string $typeOfChange): void
+    {
+        if ((int) $row->submit !== 1 && ! DB::table('stage_plan_history')->where('stage_plan_id', $row->id)->exists()) {
+            return;
+        }
+
+        StagePlanHistory::record(DB::table('stage_plan')->where('id', $row->id)->first(), $typeOfChange);
     }
 
     // =====================================================================
     // Tiện ích
     // =====================================================================
+
+    /**
+     * Lý do ghi vào stage_plan_history: lô nào (sản phẩm, số lô, công đoạn, phòng),
+     * xác nhận lúc nào, giờ kết thúc thực tế và lệch bao nhiêu so với lịch lý thuyết.
+     * Cùng 1 chuỗi cho mọi lô trong lần tịnh tuyến, để trang Lịch Sử Thay Đổi tính là 1 lần thay đổi.
+     */
+    private function runReason(object $source, string $trigger, int $deltaSeconds): string
+    {
+        $info = DB::table('stage_plan as sp')
+            ->leftJoin('plan_master as pm', 'pm.id', '=', 'sp.plan_master_id')
+            ->leftJoin('finished_product_category as fpc', 'fpc.id', '=', 'sp.product_caterogy_id')
+            ->leftJoin('intermediate_category as ic', 'ic.intermediate_code', '=', 'fpc.intermediate_code')
+            ->leftJoin('product_name as pn', 'pn.id', '=', 'ic.product_name_id')
+            ->leftJoin('room as r', 'r.id', '=', 'sp.resourceId')
+            ->where('sp.id', $source->id)
+            ->select('pn.name as product_name', DB::raw('COALESCE(pm.actual_batch, pm.batch) as batch'), 'r.code as room_code', 'r.stage as stage_name')
+            ->first();
+
+        $batch = ($info->product_name ?? $source->title) . ($info && $info->batch ? ' - lô ' . $info->batch : '');
+        $where = implode(', ', array_filter([$info->stage_name ?? null, ($info->room_code ?? null) ? 'phòng ' . $info->room_code : null]));
+        $confirmedAt = Carbon::parse($source->finished_date ?? now())->format('H:i d/m/Y');
+        $lag = ($deltaSeconds < 0 ? 'sớm ' : 'trễ ') . $this->durationText($deltaSeconds);
+
+        if ($trigger === self::TRIGGER_PRODUCTION) {
+            $head = 'Tịnh tuyến theo xác nhận sản xuất';
+            $actual = 'KT sản xuất thực tế ' . Carbon::parse($source->actual_end)->format('H:i d/m/Y');
+        } else {
+            $head = 'Tịnh tuyến theo xác nhận hoàn thành';
+            $actual = 'KT vệ sinh thực tế ' . Carbon::parse($source->actual_end_clearning ?? $source->actual_end)->format('H:i d/m/Y');
+        }
+
+        $text = "{$head}: {$batch}" . ($where !== '' ? " ({$where})" : '')
+            . ", xác nhận lúc {$confirmedAt}, {$actual}, {$lag}";
+
+        // stage_plan_history.type_of_change là varchar(255)
+        return Str::limit($text, 250, '...');
+    }
+
+    private function durationText(int $seconds): string
+    {
+        $minutes = intdiv(abs($seconds), 60);
+        $hours = intdiv($minutes, 60);
+        $minutes %= 60;
+
+        if ($hours === 0) {
+            return "{$minutes} phút";
+        }
+
+        return $minutes > 0 ? "{$hours} giờ {$minutes} phút" : "{$hours} giờ";
+    }
 
     private function reasonText(?int $reasonId, ?string $reasonType): string
     {

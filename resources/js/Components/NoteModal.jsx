@@ -21,6 +21,7 @@ export default function NoteModal({ show, setShow }) {
     { color: "#4d4b4bff", label: "Lịch Vi Phạm, Bắt Đầu Công Đoạn Sau < Kết Thúc Công Đoạn Trước — CHẶN SUBMIT" },
     { color: "#002af9ff", label: "Lịch Sản Xuất/Bảo Trì/Hiệu Chuẩn Lý Thực Tế đã hoàn tất" },
     { color: "#8195f5ff", label: "Lịch Sản Xuất Lý Thuyết" },
+    { color: "#ffcc80", label: "Sự Kiện Đã Qua Giờ Kết Thúc Kế Hoạch Nhưng Chưa Xác Nhận Hoàn Thành (sản xuất hoặc vệ sinh, không áp dụng BT-HC)" },
     { color: "#003A4F", label: "Lịch Bảo Trì Thiết Bị " },
     { color: "#b06c0cff", label: "Lịch Bảo Trì Tiện Ích" },
     { color: "#830cbfff", label: "Lịch Hiệu Chuẩn" },

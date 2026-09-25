@@ -93,7 +93,13 @@ const WARNING_REASONS = {
   '#e67e22': 'Sai Thiết Bị Nguồn NL',
   '#bda124ff': 'Quá Hạn Biệt Trữ',
   '#e4e405e2': 'Lô Thẩm Định Vệ Sinh',
+  '#ffcc80': 'Quá Giờ Kế Hoạch Nhưng Chưa Xác Nhận Hoàn Thành',
 };
+
+// Cam nhạt: sự kiện đã trôi vào quá khứ (end < now) mà chưa có giờ kết thúc thực tế.
+// Giữ đồng bộ với OVERDUE_COLOR trong SchedualController.php và bảng chú thích ở NoteModal.
+const OVERDUE_COLOR = '#ffcc80';
+const OVERDUE_TEXT_COLOR = '#5d3200';
 
 // Hằng số ngoài component: tránh tạo mảng/đối tượng mới mỗi lần render
 const SELECTO_TARGETS = ['.fc-event:not(.fc-bg-event):not(.fc-ngay-nghi)'];
@@ -1963,6 +1969,7 @@ const ScheduleTest = () => {
               ev.setExtendedProp('violation_colors', newColors.violation_colors);
               ev.setProp('backgroundColor', newColors.backgroundColor);
               ev.setProp('textColor', newColors.textColor);
+              ev.setExtendedProp('is_overdue', newColors.is_overdue);
             }
           }
           if (u.start && u.end && ev) {
@@ -2036,12 +2043,16 @@ const ScheduleTest = () => {
       byRun[l.run_code].rows.push(l);
     });
 
+    // Dòng của chính lô gốc = vệ sinh của lô bị dời (chỉ có ở lần tịnh tuyến theo nút ✓ Xác nhận sản xuất)
+    const isSourceRow = (r) => String(r.stage_plan_id) === String(r.source_stage_plan_id);
+
     const html = runs.map(run => {
       const delta = Number(run.source_delta_minutes) || 0;
+      const action = run.rows.some(isSourceRow) ? 'xác nhận sản xuất' : 'hoàn thành';
       const header = `
         <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding:6px 8px;background:#f1f5f9;border-radius:4px">
           <div>
-            <b>${esc(run.source_title)}</b> hoàn thành ${delta < 0 ? 'sớm' : 'trễ'} <b>${Math.abs(delta)} phút</b>
+            <b>${esc(run.source_title)}</b> ${action} ${delta < 0 ? 'sớm' : 'trễ'} <b>${Math.abs(delta)} phút</b>
             <span style="color:#64748b"> · ${fmt(run.created_at)} · ${esc(run.created_by)}</span>
             ${run.undone_at ? '<span style="color:#b91c1c"> · Đã hoàn tác</span>' : ''}
           </div>
@@ -2051,7 +2062,9 @@ const ScheduleTest = () => {
         <tr>
           <td style="padding:3px 6px">${esc(r.target_title)}</td>
           <td style="padding:3px 6px">${esc(r.room_code)}</td>
-          <td style="padding:3px 6px;white-space:nowrap">${fmt(r.old_start)} → ${fmt(r.new_start)}</td>
+          <td style="padding:3px 6px;white-space:nowrap">${isSourceRow(r)
+            ? `VS ${fmt(r.old_start_clearning)} → ${fmt(r.new_start_clearning)}`
+            : `${fmt(r.old_start)} → ${fmt(r.new_start)}`}</td>
           <td style="padding:3px 6px;text-align:right;color:${Number(r.shift_minutes) < 0 ? '#15803d' : '#b91c1c'}">${Number(r.shift_minutes) > 0 ? '+' : ''}${esc(r.shift_minutes)}'</td>
           <td style="padding:3px 6px">${esc(r.reason)}</td>
         </tr>`).join('');
@@ -2418,7 +2431,15 @@ const ScheduleTest = () => {
     });
 
     violation_colors = [...new Set(violation_colors)].filter(c => c !== color_event);
-    return { backgroundColor: color_event, textColor: textColor, violation_colors: violation_colors };
+
+    // Quá giờ kế hoạch mà chưa xác nhận hoàn thành → nền cam nhạt, vi phạm cũ lùi xuống dãy sọc.
+    // Không áp dụng cho Bảo Trì/Hiệu Chuẩn (stage_code = 8).
+    if (plan.stage_code != 8 && !plan.is_clearning && !plan.actual_end && plan.end && dayjs(plan.end).isBefore(dayjs())) {
+      if (ERROR_REASONS[color_event] || WARNING_REASONS[color_event]) violation_colors.unshift(color_event);
+      return { backgroundColor: OVERDUE_COLOR, textColor: OVERDUE_TEXT_COLOR, violation_colors: violation_colors, is_overdue: true };
+    }
+
+    return { backgroundColor: color_event, textColor: textColor, violation_colors: violation_colors, is_overdue: false };
   };
 
   const handleOptimizeSchedule = async () => {
@@ -2895,6 +2916,7 @@ const ScheduleTest = () => {
               ev.setExtendedProp('violation_colors', newColors.violation_colors);
               ev.setProp('backgroundColor', newColors.backgroundColor);
               ev.setProp('textColor', newColors.textColor);
+              ev.setExtendedProp('is_overdue', newColors.is_overdue);
             }
           }
           if (u.start && u.end && ev) {
@@ -3066,6 +3088,7 @@ const ScheduleTest = () => {
               ev.setExtendedProp('violation_colors', newColors.violation_colors);
               ev.setProp('backgroundColor', newColors.backgroundColor);
               ev.setProp('textColor', newColors.textColor);
+              ev.setExtendedProp('is_overdue', newColors.is_overdue);
             }
           }
           if (u.start && u.end && ev) {
@@ -5523,7 +5546,7 @@ const ScheduleTest = () => {
                 });
                 setLoading(!loading);
               }).catch(err => {
-                Swal.fire('Lỗi Pass 2', err.message, 'error');
+                Swal.fire('Lỗi Pass 2', err.response?.data?.message || err.message, 'error');
                 setLoading(!loading);
               });
             }, 200);
@@ -5620,6 +5643,10 @@ const ScheduleTest = () => {
 
               setLoading(!loading)
               console.error("ScheduleAll error:", err.response?.data || err.message);
+              // 423: phân xưởng đang có người khác chạy sắp lịch tự động
+              if (err.response?.status === 423) {
+                Swal.fire('Đang sắp lịch', err.response.data?.message, 'warning');
+              }
             });
         }
       });

@@ -104,6 +104,26 @@
     .reroute-switch input:focus-visible + .reroute-slider {
         box-shadow: 0 0 0 2px #80bdff;
     }
+
+    /* Cột "Thời Gian Sản Xuất": nhãn BĐSX/BĐCM/KT */
+    .col-time-label {
+        min-width: 80px;
+        max-width: 110px;
+    }
+
+    /* Cột "Thời Gian Sản Xuất": input datetime-local (BĐSX/BĐCM/KT) */
+    .col-time-value {
+        min-width: 220px;
+        max-width: 260px;
+    }
+
+    /* Cột "Sản Lượng Thực Tế": input số lượng + lịch sử xác nhận + tổng */
+    .col-yield {
+        min-width: 160px;
+        max-width: 260px;
+        word-break: break-word;
+    }
+
 </style>
 
 <div class="content-wrapper">
@@ -191,7 +211,7 @@
                         </th>
 
 
-                        <th class = "text-center">Sản Lượng Thực Tế
+                        <th class = "text-center col-yield">Sản Lượng Thực Tế
                             @if ($stageCode <= 4)
                                 {{ '(Kg)' }}
                             @else
@@ -237,7 +257,7 @@
 
 
                         <tr data-id="{{ $data->id }}">
-                            <td>{{ $loop->iteration }}
+                            <td data-order="{{ $loop->iteration }}">{{ $loop->iteration }}
                                 @if (session('user')['userGroup'] == 'Admin')
                                     <div> {{ $data->id }} </div>
                                 @endif
@@ -247,7 +267,12 @@
                                 <div> {{ $data->finished_product_code }} </div>
                             </td>
                             <td>
-                                {{ $data->product_name }} {{ $stageCode == 7 ? '- ' . $data->market : '' }}
+                                @if ($data->need_confirm)
+                                    {{-- Lô đã quá giờ kết thúc lý thuyết mà chưa xác nhận hoàn thành --}}
+                                    <strong>{{ $data->product_name }}{{ $data->market ? ' - ' . $data->market : '' }}</strong>
+                                @else
+                                    {{ $data->product_name }} {{ $stageCode == 7 ? '- ' . $data->market : '' }}
+                                @endif
                                 <input type="hidden" name="title"
                                     value = "{{ $data->product_name . '-' . $data->batch }}">
 
@@ -264,13 +289,13 @@
 
                             <td>
                                 @if (!$data->actual_start && $stageCode == 1)
-                                    <input style="color: red" type="text" class="time actual_batch"
+                                    <input style="color: red" type="text" class="time actual_batch {{ $data->need_confirm ? 'font-weight-bold' : '' }}"
                                         id = "actual_batch" name="actual_batch" value = "{{ $data->batch }}" {{ $locked }}>
                                 @else
                                     @if ($data->actual_batch)
-                                        <div style="color: blue" class = "text-center"> {{ $data->batch }} </div>
+                                        <div style="color: blue" class = "text-center {{ $data->need_confirm ? 'font-weight-bold' : '' }}"> {{ $data->batch }} </div>
                                     @else
-                                        <div style="color: rgb(0, 0, 0)" class = "text-center"> {{ $data->batch }}
+                                        <div style="color: rgb(0, 0, 0)" class = "text-center {{ $data->need_confirm ? 'font-weight-bold' : '' }}"> {{ $data->batch }}
                                         </div>
                                     @endif
                                 @endif
@@ -300,13 +325,13 @@
                             </td>
 
 
-                            <td>
+                            <td class="col-time-label">
                                 <div>BĐSX: </div>
                                 <div>BĐCM: </div>
                                 <div>KT: </div>
                             </td>
                             {{-- {{ $semi_finished }} --}}
-                            <td>
+                            <td class="col-time-value">
                                 @if (!empty($data->actual_start) || !empty($data->start))
                                     <input type="datetime-local" class="time start" id = "start" name="start"
                                         {{ $semi_finished ?: $locked }}
@@ -332,7 +357,7 @@
                                 @endif
 
                             </td>
-                            <td>
+                            <td class="col-yield">
 
                                 <input type="text" class="time" name="yields" {{ $locked }}
                                     data-max="{{ $data->Theoretical_yields * 1.1 }}"
@@ -443,7 +468,7 @@
                 .toggleClass('text-muted', !this.checked)
                 .toggleClass('text-danger', this.checked)
                 .text(this.checked
-                    ? 'Đang bật: mỗi lần bấm Hoàn thành sẽ tự dịch các lô liên quan trên lịch lý thuyết.'
+                    ? 'Đang bật: bấm ✓ khi lô đã trễ sẽ dời vệ sinh của lô và dịch các lô liên quan; bấm ✓✓ sẽ dịch lại theo giờ vệ sinh thực tế.'
                     : 'Đang tắt: xác nhận hoàn thành không ảnh hưởng đến lịch lý thuyết.');
         });
 
@@ -806,14 +831,18 @@
                     success: function(res) {
 
                         const rerouteCount = (res && res.reroute_count) ? res.reroute_count : 0;
+                        const cleaningMoved = !!(res && res.reroute_cleaning_moved);
 
-                        if (rerouteCount > 0) {
+                        if (rerouteCount > 0 || cleaningMoved) {
                             const delta = res.reroute_delta || 0;
                             const direction = delta < 0 ? 'sớm' : 'trễ';
+                            // ✓ (semi-finised): lô chưa xong vệ sinh, chỉ báo đang trễ
+                            const lead = actionType === 'finised' ? 'Lô hoàn thành' : 'Lô đang';
                             Swal.fire({
                                 icon: 'success',
                                 title: 'Hoàn Thành',
-                                html: `Lô hoàn thành ${direction} <b>${Math.abs(delta)} phút</b> so với lịch lý thuyết.<br>` +
+                                html: `${lead} ${direction} <b>${Math.abs(delta)} phút</b> so với lịch lý thuyết.<br>` +
+                                    (cleaningMoved ? `Đã dời vệ sinh của lô ra sau giờ kết thúc sản xuất.<br>` : '') +
                                     `Đã tịnh tuyến <b>${rerouteCount}</b> lô liên quan.<br>` +
                                     `<small>Xem chi tiết: chuột phải lên lô trên Lịch Sản Xuất → "Lịch sử tịnh tuyến".</small>`,
                                 confirmButtonText: 'Đóng',

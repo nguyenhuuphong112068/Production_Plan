@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Pages\Schedual;
 
 use App\Http\Controllers\Controller;
 use App\Services\ScheduleRerouteService;
+use App\Services\SchedulingLock;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -19,6 +20,8 @@ class SchedualFinisedController extends Controller
                 $stage_code = $request->stage_code ?? 1;
 
                 $production = session('user')['production_code'];
+
+                $now = now()->format('Y-m-d H:i:s');
 
                 // 🔹 1. Lấy dữ liệu mới nhất cho mỗi stage_plan_id
                 $datas = DB::table('stage_plan as sp')
@@ -110,8 +113,16 @@ class SchedualFinisedController extends Controller
                                         ->whereNull('sp.start');
                         })
 
+                        // 🔹 Lô cần xác nhận hoàn thành (chưa xác nhận SX mà lịch lý thuyết đã kết thúc)
+                        //    lên đầu, lô có end gần now nhất trước; các lô còn lại giữ thứ tự theo start
+                        ->orderByRaw('CASE WHEN sp.finished = 0 AND sp.`end` < ? THEN 0 ELSE 1 END', [$now])
+                        ->orderByRaw('CASE WHEN sp.finished = 0 AND sp.`end` < ? THEN sp.`end` END DESC', [$now])
                         ->orderBy('sp.start')
                         ->get();
+
+                foreach ($datas as $data) {
+                        $data->need_confirm = !$data->finished && $data->end && $data->end < $now;
+                }
 
                 //dd ($datas);
 
@@ -168,7 +179,7 @@ class SchedualFinisedController extends Controller
          * một phòng/nguồn lực (resourceId) và cùng công đoạn (stage_code), chỉ dựa vào
          * thời gian thực tế (actual_*).
          *
-         * Không kiểm tra ở stage_code 1 (Cân NL), 2 (Cân NL Khác), 4 (Trộn Hoàn Tất).
+         * Không kiểm tra ở stage_code 1 (Cân NL), 2 (Cân NL Khác), 3 (Pha Chế), 4 (Trộn Hoàn Tất).
          * Không tính là trùng với các lịch Bảo Trì/Hiệu Chuẩn (stage_code = 8) vì khác stage_code.
          *
          * @return object|null Bản ghi stage_plan bị trùng, hoặc null nếu không trùng / không cần kiểm tra.
@@ -183,7 +194,7 @@ class SchedualFinisedController extends Controller
                         ->where('id', $resourceId)
                         ->value('stage_code');
 
-                if (in_array((int) $stage_code, [1, 2, 4], true)) {
+                if (in_array((int) $stage_code, [1, 2, 3, 4], true)) {
                         return null;
                 }
 
@@ -224,6 +235,10 @@ class SchedualFinisedController extends Controller
 
         public function store(Request $request)
         {
+                // Phân xưởng đang chạy sắp lịch tự động (ở máy khác) thì chưa cho xác nhận, tránh xáo trộn lịch
+                $schedulingLock = SchedulingLock::active(session('user.production_code'));
+                if ($schedulingLock)
+                        return response()->json(['message' => SchedulingLock::message($schedulingLock)], 423);
 
 
 
@@ -480,16 +495,18 @@ class SchedualFinisedController extends Controller
                 Lỗi ở bước này không được làm hỏng xác nhận hoàn thành đã lưu.
                 =============================== */
 
-                $reroute = ['run_code' => null, 'delta_minutes' => 0, 'changes' => []];
+                $reroute = ['run_code' => null, 'delta_minutes' => 0, 'changes' => [], 'source_cleaning_moved' => false];
 
                 // Tính năng thử nghiệm: chỉ chạy khi người dùng bật công tắc
                 // "Xác nhận và điều chỉnh lịch theo thời gian thực" trên trang xác nhận.
                 // Chỉ user được phép (ScheduleRerouteService::ALLOWED_USER_IDS) mới kích hoạt được, kể cả khi gửi cờ trực tiếp.
-                if ($request->actionType === 'finised'
-                        && $request->boolean('realtime_reroute')
-                        && ScheduleRerouteService::canUse()) {
+                // ✓✓ (finised): dịch theo giờ vệ sinh thực tế; ✓ (semi-finised): chỉ dịch khi lô đã trễ, dời cả vệ sinh của lô.
+                if ($request->boolean('realtime_reroute') && ScheduleRerouteService::canUse()) {
                         try {
-                                $reroute = app(ScheduleRerouteService::class)->reroute((int) $request->id);
+                                $service = app(ScheduleRerouteService::class);
+                                $reroute = $request->actionType === 'finised'
+                                        ? $service->reroute((int) $request->id)
+                                        : $service->rerouteAfterProduction((int) $request->id);
                         } catch (\Throwable $e) {
                                 Log::error('[Reroute] Tịnh tuyến thất bại cho stage_plan ' . $request->id, [
                                         'error' => $e->getMessage(),
@@ -504,6 +521,7 @@ class SchedualFinisedController extends Controller
                                 'reroute_run'    => $reroute['run_code'],
                                 'reroute_delta'  => $reroute['delta_minutes'],
                                 'reroute_count'  => count($reroute['changes']),
+                                'reroute_cleaning_moved' => $reroute['source_cleaning_moved'],
                         ]);
                 }
 

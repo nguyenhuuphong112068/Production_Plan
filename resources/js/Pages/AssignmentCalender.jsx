@@ -1582,6 +1582,10 @@ const AssignmentCalender = () => {
 
             setLoading(!loading)
             console.error("ScheduleAll error:", err.response?.data || err.message);
+            // 423: phân xưởng đang có người khác chạy sắp lịch tự động
+            if (err.response?.status === 423) {
+              Swal.fire('Đang sắp lịch', err.response.data?.message, 'warning');
+            }
           });
       }
     });

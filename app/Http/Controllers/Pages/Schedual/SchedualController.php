@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Pages\Schedual;
 
 use App\Http\Controllers\Controller;
 use App\Services\ScheduleRerouteService;
+use App\Services\SchedulingLock;
 use App\Support\LeadConfirmation;
 use App\Support\StagePlanHistory;
 use Carbon\Carbon;
@@ -254,6 +255,39 @@ class SchedualController extends Controller
     // nên hạn biệt trữ sau PC được tính theo quarantine_blending thay vì quarantine_preparing.
     protected $mergedPcThtPlanMasters = [];
 
+    // Cam nhạt: sự kiện đã trôi vào quá khứ (end < now) nhưng chưa xác nhận hoàn thành (actual_end null).
+    // Giữ đồng bộ với OVERDUE_COLOR ở FullCalender.jsx và bảng chú thích ở NoteModal.
+    const OVERDUE_COLOR = '#ffcc80';
+    const OVERDUE_TEXT_COLOR = '#5d3200';
+
+    // Màu vi phạm theo thứ tự ưu tiên (nặng → nhẹ) kèm textColor, dùng ở colorEvent()
+    const SEVERITY_TEXT_COLORS = [
+        '#920000ff' => '#ffffff',   // Cảnh Báo Ngày Đáp Ứng NL/BB      (chặn submit)
+        '#4d4b4bff' => '#ffffff',   // Lỗi Cân NL / Sai Trình Tự CĐ     (chặn submit)
+        '#e54a4aff' => '#ffffff',   // Không Đáp Ứng Ngày Cần Hàng      (chặn submit)
+        '#e67e22'   => '#ffffff',   // Sai Thiết Bị Nguồn NL            (cảnh báo)
+        '#ffd500ff' => '#ffffff',   // Thiếu / Sai / Trùng Khuôn        (cảnh báo)
+        '#bda124ff' => '#ffffff',   // Quá Hạn Biệt Trữ                 (cảnh báo)
+        '#e4e405e2' => '#fb0101e2', // Lô Thẩm Định Vệ Sinh             (thông tin)
+    ];
+
+    /**
+     * Sự kiện quá giờ kế hoạch mà chưa có giờ kết thúc thực tế → nền cam nhạt (trừ Bảo Trì/Hiệu Chuẩn, stage_code = 8).
+     * Màu vi phạm cũ (nếu có) không mất mà rơi xuống đầu dãy sọc violation_colors.
+     */
+    protected function applyOverdueColor($stageCode, $plannedEnd, $actualEnd, $color, $textColor, array $violationColors, $now)
+    {
+        if ($stageCode == 8 || ! $plannedEnd || $actualEnd || Carbon::parse($plannedEnd)->gte($now)) {
+            return [$color, $textColor, $violationColors, false];
+        }
+
+        if (isset(self::SEVERITY_TEXT_COLORS[$color]) && ! in_array($color, $violationColors, true)) {
+            array_unshift($violationColors, $color);
+        }
+
+        return [self::OVERDUE_COLOR, self::OVERDUE_TEXT_COLOR, $violationColors, true];
+    }
+
     public function test()
     {
         // $this->Auto_updateDepartment ();
@@ -445,7 +479,7 @@ class SchedualController extends Controller
 
         $room_code = DB::table('room')->where('deparment_code', $production)->pluck('code', 'id');
 
-        $is_own_department = $production === session('user')['department'];
+        $is_own_department = ($production === session('user')['department'] || session('user')['department'] === "COMP" || session('user')['department'] === "BOD");
 
         $has_permission_maintenance = $is_own_department || user_has_permission(session('user')['userId'], 'plan_maintenance_scheduler', 'boolean');
         $has_permission_production = $is_own_department || in_array(session('user')['userGroup'], ['Schedualer',  'Admin',  'Leader']);
@@ -671,6 +705,7 @@ class SchedualController extends Controller
         $groupedPlans = $event_plans->groupBy('plan_master_id');
 
         $events = collect();
+        $now = now();
 
         // 5️⃣ duyệt từng nhóm (theo batch sản xuất)
         foreach ($groupedPlans as $plans) {
@@ -692,6 +727,17 @@ class SchedualController extends Controller
                 // 🎯 lịch chưa hoàn thành
                 if (($plan->start && ! $plan->actual_start && $plan->finished == 0)) {
 
+                    // biến riêng: $textColor còn được sự kiện vệ sinh bên dưới dùng lại
+                    [$main_color, $main_text_color, $main_violation_colors, $is_overdue] = $this->applyOverdueColor(
+                        $plan->stage_code,
+                        $plan->end,
+                        $plan->actual_end,
+                        $color_event,
+                        $textColor,
+                        $violation_colors,
+                        $now
+                    );
+
                     $events->push([
                         'plan_id' => $plan->id,
                         'id' => "{$plan->id}-main",
@@ -699,11 +745,12 @@ class SchedualController extends Controller
                         'start' => $plan->start,
                         'end' => $plan->end,
                         'resourceId' => $plan->resourceId,
-                        'color' => $plan->finished == 1 ? '#002af9ff' : $color_event,
-                        'textColor' => $textColor,
+                        'color' => $plan->finished == 1 ? '#002af9ff' : $main_color,
+                        'textColor' => $main_text_color,
                         'plan_master_id' => $plan->plan_master_id,
                         'stage_code' => $plan->stage_code,
                         'is_clearning' => false,
+                        'is_overdue' => $is_overdue,
                         // Lead đã xác nhận sẽ chạy đúng lịch này → hiện tick xanh trên Gantt
                         'comfirm_of_lead' => $plan->comfirm_of_lead,
                         'comfirm_of_lead_by' => $plan->comfirm_of_lead_by,
@@ -717,7 +764,7 @@ class SchedualController extends Controller
                         'submit' => $plan->submit,
                         'storage_capacity' => $storage_capacity,
                         'subtitle' => $subtitle,
-                        'violation_colors' => $violation_colors,
+                        'violation_colors' => $main_violation_colors,
                         'violation_predecessor_id' => $v_pre_id,
                         'violation_predecessor_end' => $v_pre_end,
                         'violation_successor_id' => $v_suc_id,
@@ -744,6 +791,16 @@ class SchedualController extends Controller
                     ($clearning && $plan->actual_start_clearning && ! $plan->actual_start_clearning && $plan->yields >= 0 && $plan->finished == 0)
                 ) {
 
+                    [$clean_color, $clean_text_color,, $clean_overdue] = $this->applyOverdueColor(
+                        $plan->stage_code,
+                        $plan->end_clearning,
+                        $plan->actual_end_clearning,
+                        '#a1a2a2ff',
+                        $textColor,
+                        [],
+                        $now
+                    );
+
                     $events->push([
                         'plan_id' => $plan->id,
                         'id' => "{$plan->id}-cleaning",
@@ -751,11 +808,12 @@ class SchedualController extends Controller
                         'start' => $plan->actual_start_clearning ?? $plan->start_clearning,
                         'end' => $plan->actual_end_clearning ?? $plan->end_clearning,
                         'resourceId' => $plan->resourceId,
-                        'color' => '#a1a2a2ff',
-                        'textColor' => $textColor,
+                        'color' => $clean_color,
+                        'textColor' => $clean_text_color,
                         'plan_master_id' => $plan->plan_master_id,
                         'stage_code' => $plan->stage_code,
                         'is_clearning' => true,
+                        'is_overdue' => $clean_overdue,
                         'finished' => $plan->finished,
                         'process_code' => $plan->process_code,
                         'campaign_code' => $plan->campaign_code,
@@ -844,21 +902,31 @@ class SchedualController extends Controller
                             'blister_mold_code' => $plan->blister_mold_code ?? $mold_code,
                         ]);
 
+                        // Đã xác nhận sản xuất (✓) nhưng chưa xác nhận vệ sinh: hiện vệ sinh theo kế hoạch
+                        // (tịnh tuyến đã dời nó ra sau giờ kết thúc thực tế). Vệ sinh kế hoạch nằm trước giờ kết thúc thực tế thì bỏ.
+                        $pendingCleaning = ! $plan->actual_start_clearning && $plan->start_clearning && $plan->actual_end
+                            && strtotime($plan->start_clearning) >= strtotime($plan->actual_end);
+
                         // event lich vs thực tế
                         if ($clearning && $plan->yields >= 0) {
+
+                            [$clean_color, $clean_text_color,, $clean_overdue] = $pendingCleaning
+                                ? $this->applyOverdueColor($plan->stage_code, $plan->end_clearning, $plan->actual_end_clearning, '#a1a2a2ff', $textColor, [], $now)
+                                : ['#002af9ff', $textColor, [], false];
 
                             $events->push([
                                 'plan_id' => $plan->id,
                                 'id' => "{$plan->id}-cleaning",
                                 'title' => $plan->title_clearning,
-                                'start' => $plan->actual_start_clearning,
-                                'end' => $plan->actual_end_clearning,
+                                'start' => $pendingCleaning ? $plan->start_clearning : $plan->actual_start_clearning,
+                                'end' => $pendingCleaning ? $plan->end_clearning : $plan->actual_end_clearning,
                                 'resourceId' => $plan->resourceId,
-                                'color' => '#002af9ff',
-                                'textColor' => $textColor,
+                                'color' => $clean_color,
+                                'textColor' => $clean_text_color,
                                 'plan_master_id' => $plan->plan_master_id,
                                 'stage_code' => $plan->stage_code,
                                 'is_clearning' => true,
+                                'is_overdue' => $clean_overdue,
                                 'finished' => $plan->finished,
                                 'process_code' => $plan->process_code,
                                 'campaign_code' => $plan->campaign_code,
@@ -1664,17 +1732,9 @@ class SchedualController extends Controller
          * Một lô có thể vi phạm nhiều thứ cùng lúc (vd Thiếu Khuôn + trễ hạn KCS). Trước đây màu nền
          * là màu của check chạy sau cùng nên vi phạm nặng bị vi phạm nhẹ tô đè. Giờ màu nặng nhất
          * làm nền, phần còn lại rơi xuống violation_colors để vẽ thành dãy sọc phía sau sự kiện.
-         * Đổi thứ tự mảng này là đổi luôn thứ tự ưu tiên hiển thị. Giá trị là textColor đi kèm.
+         * Đổi thứ tự SEVERITY_TEXT_COLORS là đổi luôn thứ tự ưu tiên hiển thị.
          */
-        $severityOrder = [
-            '#920000ff' => '#ffffff',   // Cảnh Báo Ngày Đáp Ứng NL/BB      (chặn submit)
-            '#4d4b4bff' => '#ffffff',   // Lỗi Cân NL / Sai Trình Tự CĐ     (chặn submit)
-            '#e54a4aff' => '#ffffff',   // Không Đáp Ứng Ngày Cần Hàng      (chặn submit)
-            '#e67e22'   => '#ffffff',   // Sai Thiết Bị Nguồn NL            (cảnh báo)
-            '#ffd500ff' => '#ffffff',   // Thiếu / Sai / Trùng Khuôn        (cảnh báo)
-            '#bda124ff' => '#ffffff',   // Quá Hạn Biệt Trữ                 (cảnh báo)
-            '#e4e405e2' => '#fb0101e2', // Lô Thẩm Định Vệ Sinh             (thông tin)
-        ];
+        $severityOrder = self::SEVERITY_TEXT_COLORS;
 
         $rank = array_flip(array_keys($severityOrder));
 
@@ -2432,8 +2492,8 @@ class SchedualController extends Controller
                         'start_clearning' => $end_man,
                         'end_clearning' => $end_clearning,
                         'resourceId' => $request->room_id,
-                        'title' => $product['stage_code'] === 9
-                            ? ($product['title'] . '-' . $product['batch'])
+                        'title' => (int) $product['stage_code'] < 7
+                            ? ($product['name'] . '-' . $product['batch'])
                             : ($product['name'] . '-' . $product['batch'] . '-' . $product['market']),
                         'title_clearning' => $clearning_type,
                         'schedualed' => 1,
@@ -6189,6 +6249,41 @@ class SchedualController extends Controller
 
     public function scheduleAll(Request $request)
     {
+        return $this->withSchedulingLock(fn() => $this->runScheduleAll($request));
+    }
+
+    public function scheduleAllPass2(Request $request)
+    {
+        return $this->withSchedulingLock(fn() => $this->runScheduleAllPass2($request));
+    }
+
+    /**
+     * Bật is_scheduling cho phân xưởng trong lúc sắp lịch tự động, để các máy khác cùng
+     * phân xưởng không xác nhận hoàn thành được (xem SchedualFinisedController::store).
+     * Phân xưởng đang có người sắp lịch thì không cho chạy song song.
+     */
+    private function withSchedulingLock(callable $run)
+    {
+        $deparmentCode = session('user.production_code');
+
+        if (!SchedulingLock::acquire($deparmentCode, session('user.fullName'))) {
+            $lock = SchedulingLock::active($deparmentCode);
+
+            return response()->json([
+                'success' => false,
+                'message' => $lock ? SchedulingLock::message($lock) : '⏳ Phân xưởng đang chạy sắp lịch tự động, vui lòng thử lại sau.',
+            ], 423);
+        }
+
+        try {
+            return $run();
+        } finally {
+            SchedulingLock::release($deparmentCode);
+        }
+    }
+
+    private function runScheduleAll(Request $request)
+    {
         set_time_limit(1200);
         ini_set('max_execution_time', 1200);
 
@@ -6342,7 +6437,7 @@ class SchedualController extends Controller
         return response()->json(['overdueCampaigns' => $overdueCampaigns]);
     }
 
-    public function scheduleAllPass2(Request $request)
+    private function runScheduleAllPass2(Request $request)
     {
         set_time_limit(1200);
         ini_set('max_execution_time', 1200);
