@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Support\LeadConfirmation;
 use App\Support\PackagingDate;
 use App\Support\StagePlanHistory;
 use Carbon\Carbon;
@@ -12,9 +11,8 @@ use Illuminate\Support\Str;
 /**
  * Tịnh tuyến lịch lý thuyết theo xác nhận hoàn thành.
  *
- * Chạy ở 2 thời điểm trên trang xác nhận hoàn thành:
- *   - nút ✓ (xác nhận sản xuất): lô đã trễ thì dời vệ sinh của chính lô và dịch các lô sau (rerouteAfterProduction),
- *   - nút ✓✓ (xác nhận toàn bộ): dịch 2 chiều theo giờ kết thúc vệ sinh thực tế (reroute).
+ * Chạy khi bấm ✓✓ (xác nhận toàn bộ) trên trang xác nhận hoàn thành: dịch 2 chiều theo giờ kết thúc vệ sinh
+ * thực tế (reroute). Nút ✓ (xác nhận 1 phần) không dịch lịch; rerouteAfterProduction() giữ lại nhưng hiện không nơi nào gọi.
  *
  * Khi một lô được xác nhận hoàn thành, giờ kết thúc thực tế thường lệch so với lý thuyết.
  * Service này dịch chuyển (2 chiều) các lô chịu ảnh hưởng, giữ nguyên thứ tự lô:
@@ -36,14 +34,16 @@ use Illuminate\Support\Str;
  */
 class ScheduleRerouteService
 {
-    /** Chỉ xét các lô bắt đầu trong khoảng này sau lô gốc. */
-    public const WINDOW_DAYS = 30;
+    /** Chỉ xét các lô bắt đầu từ 1 ngày trước lô gốc tới khoảng này sau giờ kết thúc của lô gốc. */
+    public const WINDOW_DAYS = 45;
 
     /**
-     * Lô được coi là "bám sát" lô trước nếu khoảng hở không quá ngưỡng này.
-     * Lịch được đặt theo lưới 15 phút nên khoảng hở nhỏ thường chỉ là làm tròn, không phải khoảng trống cố ý.
+     * Lô được coi là "bám sát" lô trước nếu khoảng hở không quá ngưỡng này; lô trước xong sớm thì lô bám sát
+     * được kéo sớm theo. Khoảng hở nhỏ thường không cố ý: làm tròn lưới 15 phút, hoặc phần dư khi lịch chừa
+     * chỗ p_time + m_time mà lô chỉ chạy m_time (vd. Paracetamol EG FORTE ở S20: hở đúng p_time = 2h).
+     * Khoảng hở lớn hơn coi là khoảng trống cố ý, giữ nguyên.
      */
-    public const TIGHT_TOLERANCE_SECONDS = 1800;
+    public const TIGHT_TOLERANCE_SECONDS = 7200;
 
     /** Lệch dưới ngưỡng này thì bỏ qua. */
     public const MIN_SHIFT_SECONDS = 60;
@@ -64,7 +64,10 @@ class ScheduleRerouteService
 
     public const SOURCE_CLEANING_REASON = 'Dời vệ sinh của chính lô ra sau giờ kết thúc sản xuất thực tế';
 
-    /** Tính năng thử nghiệm: chỉ các user id này được thấy và bật công tắc tịnh tuyến. */
+    /**
+     * Tính năng thử nghiệm: chỉ các user id này được thấy và bật công tắc tịnh tuyến,
+     * xem "Lịch sử tịnh tuyến" trên lịch và hoàn tác.
+     */
     public const ALLOWED_USER_IDS = [1];
 
     public static function canUse(): bool
@@ -95,8 +98,7 @@ class ScheduleRerouteService
 
     /**
      * Nút ✓✓ "Xác nhận toàn bộ": tịnh tuyến theo giờ kết thúc vệ sinh thực tế (dịch 2 chiều).
-     * Nếu trước đó đã tịnh tuyến theo nút ✓ thì lịch lý thuyết của lô đã được dời,
-     * nên lần này chỉ bù phần chênh còn lại.
+     * Độ lệch = giờ kết thúc vệ sinh thực tế - giờ kết thúc vệ sinh lý thuyết hiện tại của lô.
      *
      * @return array{run_code: ?string, delta_minutes: int, changes: array, source_cleaning_moved: bool}
      */
@@ -290,8 +292,6 @@ class ScheduleRerouteService
         $skipped = 0;
 
         DB::transaction(function () use ($logs, $offDays, $user, $runCode, &$restored, &$skipped) {
-            $restoredIds = [];
-
             foreach ($logs as $log) {
                 $row = DB::table('stage_plan')->where('id', $log->stage_plan_id)->first();
 
@@ -333,11 +333,8 @@ class ScheduleRerouteService
                     'end_clearning' => $log->old_end_clearning,
                 ], $offDays, $user, self::TYPE_OF_CHANGE_UNDO);
 
-                $restoredIds[] = $row->id;
                 $restored++;
             }
-
-            LeadConfirmation::reset($restoredIds);
 
             DB::table('stage_plan_reroute_log')
                 ->where('run_code', $runCode)
@@ -539,11 +536,18 @@ class ScheduleRerouteService
                 $cWork = $this->workSeconds($n['origCleanStart'], $n['origCleanEnd'], $ranges);
                 $this->nodes[$id]['cleanWork'] = $cWork > 0 ? $cWork : $cWall;
             }
+
+            // Khoảng chờ giữa sản xuất và vệ sinh chỉ tính giờ làm: vệ sinh chờ qua ngày nghỉ
+            // (vd. sản xuất xong 06:00 CN, vệ sinh 06:00 T2) thì khi dời lô, vệ sinh làm ngay sau sản xuất.
+            if ($n['cleanGap'] !== null && $n['cleanGap'] > 0) {
+                $this->nodes[$id]['cleanGap'] = $this->workSeconds($n['origEnd'], $n['origCleanStart'], $ranges);
+            }
         }
     }
 
     /**
      * Khoảng [start, end] có làm việc trong ngày nghỉ $range: chồng lên ngày nghỉ nhưng không vắt ngang trọn ngày nghỉ.
+     * Bắt đầu đúng lúc ngày nghỉ bắt đầu (vd. vệ sinh 06:00 CN -> 06:30 T2) vẫn là vắt ngang: dừng suốt ngày nghỉ.
      *
      * @param  array{0: int, 1: int}  $range
      */
@@ -551,7 +555,7 @@ class ScheduleRerouteService
     {
         [$os, $oe] = $range;
 
-        return $start < $oe && $end > $os && ! ($start < $os && $end > $oe);
+        return $start < $oe && $end > $os && ! ($start <= $os && $end >= $oe);
     }
 
     /**
@@ -571,7 +575,8 @@ class ScheduleRerouteService
      */
     private function propagate(int $sourceId): array
     {
-        $now = now()->getTimestamp();
+        // Mốc "không kéo sớm hơn hiện tại": làm tròn lên theo lưới 15 phút của lịch
+        $now = (int) ceil(now()->getTimestamp() / 900) * 900;
         $queue = [];
         $cause = [];
 
@@ -997,8 +1002,6 @@ class ScheduleRerouteService
                 ];
             }
 
-            LeadConfirmation::reset(array_keys($changes));
-
             foreach (array_chunk($logs, 200) as $chunk) {
                 DB::table('stage_plan_reroute_log')->insert($chunk);
             }
@@ -1008,8 +1011,8 @@ class ScheduleRerouteService
     /**
      * Ghi giờ mới cho một lô, kèm các hiệu ứng phụ giống SchedualController::update():
      * ngày nhận bao bì (ĐG), lịch sử phiên bản khi lịch đã submit.
-     * Khác update(): giữ nguyên cờ submit, vì đây là dịch tự động theo xác nhận hoàn thành, không phải
-     * người lập lịch sửa tay; thay đổi đã được ghi vào stage_plan_history kèm lý do.
+     * Khác update(): giữ nguyên cờ submit và xác nhận của Lead (comfirm_of_lead), vì đây là dịch tự động theo
+     * xác nhận hoàn thành, không phải người lập lịch sửa tay; thay đổi đã được ghi vào stage_plan_history kèm lý do.
      */
     private function writeTimes(object $row, array $times, array $offDays, string $user, string $typeOfChange): void
     {

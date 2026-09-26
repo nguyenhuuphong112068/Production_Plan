@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Pages\Report;
 
 use App\Http\Controllers\Controller;
+use App\Services\DailyRoomTimelineService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -11,6 +12,8 @@ use Illuminate\Support\Facades\Validator;
 
 class DailyReportController extends Controller
 {
+    const EXECUTION_LOCKED = 'Hoạt động này được tạo từ trang Thực Thi Sản Xuất, không được sửa hoặc xóa ở Báo cáo ngày.';
+
     public function index(Request $request)
     {
 
@@ -37,6 +40,13 @@ class DailyReportController extends Controller
         //dd($yield_theoryl_detial);
 
         $theory = $this->yield_theory($startDate, $endDate, 'resourceId');
+
+        // Dòng thời gian trong ngày của từng phòng: khoảng chuẩn bị / đang diễn ra + khoảng "Ngưng hoạt động" suy ra
+        $roomTimeline = app(DailyRoomTimelineService::class)->build(
+            $theory['yield_room']->pluck('resourceId')->all(),
+            $startDate,
+            collect($yield_actual_detial['actual_detail'] ?? [])
+        );
 
 
         $yieldsSubquery = DB::table('stage_plan as sp')
@@ -91,7 +101,8 @@ class DailyReportController extends Controller
             'theory' => $theory,
             'sum_by_next_room' => $sum_by_next_room,
             'reportedDate'    => $displayDate,
-            'explanation' => $explanation
+            'explanation' => $explanation,
+            'roomTimeline' => $roomTimeline,
         ]);
     }
     public function yield_theoryl_detial($startDate, $endDate, $group_By, $production_code = null)
@@ -203,7 +214,14 @@ class DailyReportController extends Controller
                     'stage_code'    => $first->stage_code,
                     'yield_theory_detial' => $items->map(function ($i) {
                         return date('H:i', strtotime($i->start)) . ' - ' . date('H:i', strtotime($i->end)) . ': ' . $i->title . ' || ' . number_format($i->yields, 2);
-                    })->implode('<br>')
+                    })->implode('<br>'),
+                    // Cùng nội dung dạng mảng để trang Báo cáo ngày tự trình bày
+                    'theory_items' => $items->map(fn($i) => (object) [
+                        'start'  => date('H:i', strtotime($i->start)),
+                        'end'    => date('H:i', strtotime($i->end)),
+                        'title'  => $i->title,
+                        'yields' => $i->yields,
+                    ])->values(),
                 ];
             })
             ->values();
@@ -333,6 +351,8 @@ class DailyReportController extends Controller
         */
         $order_action = DB::table("room_status as rs")
             ->leftJoin('room', 'rs.room_id', 'room.id')
+            // Dòng do trang Thực Thi Sản Xuất tạo cho khoảng tạm dừng / vệ sinh không gắn lô: trạng thái phòng của khoảng đó
+            ->leftJoin('room_execution_log as rel', fn($j) => $j->on('rel.room_id', '=', 'rs.room_id')->on('rel.room_status_id', '=', 'rs.id'))
 
             ->whereNotNull('rs.start')
             ->whereNotNull('rs.end')
@@ -354,7 +374,9 @@ class DailyReportController extends Controller
                 DB::raw("NULL as unit"),
                 DB::raw("'NA' as table_type"),
                 "rs.notification as note",
-                "rs.is_daily_report"
+                "rs.is_daily_report",
+                "rs.from_execution",
+                "rel.state as execution_state"
             )
             ->get();
 
@@ -381,6 +403,8 @@ class DailyReportController extends Controller
                     'unit'          => $item->unit,
                     'note'          => $item->note ?? null,
                     'is_order_action' => $item->is_daily_report ?? 0,
+                    'from_execution' => $item->from_execution ?? 0,
+                    'execution_state' => $item->execution_state ?? null,
                     'table_type'    => $item->table_type ?? 'NA',
                     'stage_code'    => $item->stage_code
                 ];
@@ -872,6 +896,9 @@ class DailyReportController extends Controller
 
     public function update(Request $request)
     {
+        if ($this->fromExecution($request->id)) {
+            return redirect()->back()->with('error', self::EXECUTION_LOCKED);
+        }
 
         $validator = Validator::make($request->all(), [
             'id' => 'required',
@@ -919,6 +946,10 @@ class DailyReportController extends Controller
             return redirect()->back()->withErrors($validator, 'createErrors')->withInput();
         }
 
+        if ($this->fromExecution($request->id)) {
+            return redirect()->back()->with('error', self::EXECUTION_LOCKED);
+        }
+
         DB::table('room_status')->where('id', explode("-", $request->id)[0])->update([
             'active' => 0,
             'created_by' => session('user')['fullName'],
@@ -926,5 +957,14 @@ class DailyReportController extends Controller
         ]);
 
         return redirect()->back()->with('success', 'Đã hủy thành công!');
+    }
+
+    /**
+     * Hoạt động do trang Thực Thi Sản Xuất tạo (hoạt động khác, khoảng tạm dừng, vệ sinh không gắn lô): chỉ xem ở đây.
+     * $id dạng "123-action" như trên trang.
+     */
+    private function fromExecution($id): bool
+    {
+        return (bool) DB::table('room_status')->where('id', explode('-', (string) $id)[0])->value('from_execution');
     }
 }

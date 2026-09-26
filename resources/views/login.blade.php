@@ -441,6 +441,11 @@
                 <i class="bi bi-activity"></i>
                 <span>Trạng Thái<br>Thời Gian Thực</span>
             </a> --}}
+            {{-- Trạng thái hiện tại các phòng sản xuất theo dữ liệu Thực Thi Sản Xuất (không cần đăng nhập) --}}
+            <a href="{{ route('pages.execution.public') }}" class="quick-btn">
+                <i class="bi bi-activity"></i>
+                <span>Trạng Thái<br>Sản Xuất</span>
+            </a>
             <a href="{{ route('pages.assignment.production.public') }}" class="quick-btn">
                 <i class="bi bi-calendar4-week"></i>
                 <span>Phân Công<br>Sản Xuất</span>

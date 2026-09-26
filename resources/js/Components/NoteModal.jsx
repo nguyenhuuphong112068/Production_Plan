@@ -20,6 +20,9 @@ export default function NoteModal({ show, setShow }) {
     { color: "#eb0cb3ff", label: "Sự Kiện Khác Ngoài Kế Hoạch" },
     { color: "#4d4b4bff", label: "Lịch Vi Phạm, Bắt Đầu Công Đoạn Sau < Kết Thúc Công Đoạn Trước — CHẶN SUBMIT" },
     { color: "#002af9ff", label: "Lịch Sản Xuất/Bảo Trì/Hiệu Chuẩn Lý Thực Tế đã hoàn tất" },
+    // 2 kiểu sọc trên lịch thực tế: giữ đồng bộ với GAP_STYLE (actualGapLayer) trong EventContent của FullCalender.jsx
+    { color: "#002af9ff", backgroundImage: "repeating-linear-gradient(45deg, rgba(134,239,172,0.95) 0 3px, rgba(220,252,231,0.85) 3px 6px)", label: "Trên Lịch Thực Tế: Khoảng Chuẩn Bị, Từ BĐSX Đến BĐCM Của Lần Xác Nhận Sản Lượng Đầu Tiên" },
+    { color: "#002af9ff", backgroundImage: "repeating-linear-gradient(135deg, rgba(30,41,59,0.85) 0 3px, rgba(203,213,225,0.9) 3px 6px)", label: "Trên Lịch Thực Tế: Khoảng Ngưng Sản Xuất Giữa 2 Lần Xác Nhận Sản Lượng" },
     { color: "#8195f5ff", label: "Lịch Sản Xuất Lý Thuyết" },
     { color: "#ffcc80", label: "Sự Kiện Đã Qua Giờ Kết Thúc Kế Hoạch Nhưng Chưa Xác Nhận Hoàn Thành (sản xuất hoặc vệ sinh, không áp dụng BT-HC)" },
     { color: "#003A4F", label: "Lịch Bảo Trì Thiết Bị " },
@@ -55,6 +58,7 @@ export default function NoteModal({ show, setShow }) {
                     <div
                       style={{
                         backgroundColor: item.color,
+                        backgroundImage: item.backgroundImage || "none",
                         width: "100%",
                         height: "30px",
                         display: "flex",

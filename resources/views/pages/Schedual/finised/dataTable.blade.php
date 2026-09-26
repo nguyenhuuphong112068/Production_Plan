@@ -136,21 +136,24 @@
         <!-- /.card-Body -->
         <div class="card-body">
 
-            {{-- Tính năng thử nghiệm: mặc định TẮT mỗi lần mở trang, chỉ user được phép mới thấy.
+            {{-- Tính năng thử nghiệm: bật/tắt lưu theo phân xưởng ở bảng schedule_reroute_settings (dùng chung với
+                 trang Thực Thi Sản Xuất), chỉ user được phép mới thấy và đổi được.
                  Tắt: xác nhận hoàn thành không làm thay đổi lịch lý thuyết.
                  Không dùng .custom-switch vì layout nạp Bootstrap 4.1.3 (chưa có class này). --}}
             @if (\App\Services\ScheduleRerouteService::canUse())
                 <div class="reroute-toggle-box mb-3">
                     <label class="reroute-switch mb-0" for="realtimeRerouteToggle">
-                        <input type="checkbox" id="realtimeRerouteToggle">
+                        <input type="checkbox" id="realtimeRerouteToggle"
+                            {{ \App\Services\RealtimeRerouteSwitch::enabled(session('user')['production_code'] ?? null) ? 'checked' : '' }}>
                         <span class="reroute-slider"></span>
                     </label>
                     <label for="realtimeRerouteToggle" class="mb-0 font-weight-bold" style="cursor:pointer">
                         Xác nhận và điều chỉnh lịch theo thời gian thực
                         <span class="badge badge-warning ml-1">Thử nghiệm</span>
                     </label>
-                    <small id="realtimeRerouteHint" class="d-block w-100 text-muted mt-1">
-                        Đang tắt: xác nhận hoàn thành không ảnh hưởng đến lịch lý thuyết.
+                    <small id="realtimeRerouteHint" class="d-block w-100 text-muted mt-1"
+                        data-production="{{ session('user')['production_code'] ?? '' }}"
+                        data-last-change="{{ \App\Services\RealtimeRerouteSwitch::lastChange(\App\Services\RealtimeRerouteSwitch::get(session('user')['production_code'] ?? null)) }}">
                     </small>
                 </div>
             @endif
@@ -463,13 +466,42 @@
     $(document).ready(function() {
         document.body.style.overflowY = "auto";
 
+        // Công tắc lưu DB theo phân xưởng: bật thì mọi ✓✓ của phân xưởng (ai bấm cũng vậy) đều dịch lịch
+        function renderRerouteHint(on, lastChange) {
+            const $hint = $('#realtimeRerouteHint');
+            const production = $hint.data('production');
+            $hint.toggleClass('text-muted', !on)
+                .toggleClass('text-danger', on)
+                .text((on
+                    ? 'Đang bật cho ' + production + ': bấm ✓✓ (xác nhận toàn bộ) ở trang này hoặc Kết thúc vệ sinh ở trang Thực Thi Sản Xuất sẽ tự dịch các lô liên quan trên lịch lý thuyết theo giờ vệ sinh thực tế, bất kể ai thao tác. Bấm ✓ không dịch lịch.'
+                    : 'Đang tắt cho ' + production + ': xác nhận hoàn thành không ảnh hưởng đến lịch lý thuyết.')
+                    + (lastChange ? ' (Đổi lần cuối: ' + lastChange + ')' : ''));
+        }
+        renderRerouteHint($('#realtimeRerouteToggle').is(':checked'), $('#realtimeRerouteHint').data('last-change'));
+
         $('#realtimeRerouteToggle').on('change', function() {
-            $('#realtimeRerouteHint')
-                .toggleClass('text-muted', !this.checked)
-                .toggleClass('text-danger', this.checked)
-                .text(this.checked
-                    ? 'Đang bật: bấm ✓ khi lô đã trễ sẽ dời vệ sinh của lô và dịch các lô liên quan; bấm ✓✓ sẽ dịch lại theo giờ vệ sinh thực tế.'
-                    : 'Đang tắt: xác nhận hoàn thành không ảnh hưởng đến lịch lý thuyết.');
+            const toggle = this;
+            const on = toggle.checked;
+            toggle.disabled = true;
+            $.ajax({
+                url: "{{ route('pages.Schedual.execution.reroute_switch') }}",
+                type: 'post',
+                data: { _token: "{{ csrf_token() }}", enabled: on ? 1 : 0 },
+                success: function(res) {
+                    renderRerouteHint(res.enabled, res.last_change);
+                },
+                error: function(xhr) {
+                    toggle.checked = !on;
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Không lưu được công tắc',
+                        text: (xhr.responseJSON && xhr.responseJSON.message) || 'Có lỗi xảy ra'
+                    });
+                },
+                complete: function() {
+                    toggle.disabled = false;
+                }
+            });
         });
 
 
@@ -825,8 +857,7 @@
                         ...data,
                         _token: "{{ csrf_token() }}",
                         actionType: actionType,
-                        stage_code: stage_code,
-                        realtime_reroute: $('#realtimeRerouteToggle').is(':checked') ? 1 : 0
+                        stage_code: stage_code
                     },
                     success: function(res) {
 

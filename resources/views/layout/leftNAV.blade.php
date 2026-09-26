@@ -653,6 +653,13 @@
 
                         @if (user_has_permission(session('user')['userId'], 'layout_finised', 'boolean'))
                             <li class="nav-item">
+                                <a href="{{ route('pages.Schedual.execution.index') }}"
+                                    class="nav-link {{ str_contains(url()->current(), 'Schedual/execution') ? 'active' : '' }}">
+                                    <i class="far fa-circle nav-icon text-success"></i>
+                                    <p>Thực Thi Sản Xuất</p>
+                                </a>
+                            </li>
+                            <li class="nav-item">
                                 <a href="{{ route('pages.Schedual.finised.index') }}" class="nav-link">
                                     <i class="far fa-circle nav-icon"></i>
                                     <p>Xác Nhận Hoàn Thành</p>

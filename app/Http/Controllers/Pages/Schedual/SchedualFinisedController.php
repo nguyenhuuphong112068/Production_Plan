@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Pages\Schedual;
 
 use App\Http\Controllers\Controller;
+use App\Services\RealtimeRerouteSwitch;
 use App\Services\ScheduleRerouteService;
 use App\Services\SchedulingLock;
 use Carbon\Carbon;
@@ -497,16 +498,14 @@ class SchedualFinisedController extends Controller
 
                 $reroute = ['run_code' => null, 'delta_minutes' => 0, 'changes' => [], 'source_cleaning_moved' => false];
 
-                // Tính năng thử nghiệm: chỉ chạy khi người dùng bật công tắc
-                // "Xác nhận và điều chỉnh lịch theo thời gian thực" trên trang xác nhận.
-                // Chỉ user được phép (ScheduleRerouteService::ALLOWED_USER_IDS) mới kích hoạt được, kể cả khi gửi cờ trực tiếp.
-                // ✓✓ (finised): dịch theo giờ vệ sinh thực tế; ✓ (semi-finised): chỉ dịch khi lô đã trễ, dời cả vệ sinh của lô.
-                if ($request->boolean('realtime_reroute') && ScheduleRerouteService::canUse()) {
+                // Tính năng thử nghiệm: chỉ chạy khi công tắc "Xác nhận và điều chỉnh lịch theo thời gian thực"
+                // của phân xưởng đang bật (bảng schedule_reroute_settings). Chỉ user được phép
+                // (ScheduleRerouteService::ALLOWED_USER_IDS) mới bật/tắt được; đang bật thì ai xác nhận cũng dịch lịch.
+                // Chỉ dịch khi ✓✓ (finised: đã xác nhận vệ sinh); ✓ (semi-finised, xác nhận 1 phần) không dịch lịch.
+                if ($request->actionType === 'finised'
+                        && RealtimeRerouteSwitch::enabled(session('user.production_code'))) {
                         try {
-                                $service = app(ScheduleRerouteService::class);
-                                $reroute = $request->actionType === 'finised'
-                                        ? $service->reroute((int) $request->id)
-                                        : $service->rerouteAfterProduction((int) $request->id);
+                                $reroute = app(ScheduleRerouteService::class)->reroute((int) $request->id);
                         } catch (\Throwable $e) {
                                 Log::error('[Reroute] Tịnh tuyến thất bại cho stage_plan ' . $request->id, [
                                         'error' => $e->getMessage(),

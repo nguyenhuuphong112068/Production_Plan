@@ -7,6 +7,7 @@ use App\Http\Controllers\Pages\Schedual\SchedualAuditController;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Pages\Schedual\SchedualController;
 use App\Http\Controllers\Pages\Schedual\SchedualFinisedController;
+use App\Http\Controllers\Pages\Schedual\ProductionExecutionController;
 use App\Http\Controllers\Pages\Schedual\SchedualQuarantineRoomController;
 use App\Http\Controllers\Pages\Schedual\SchedualReportController;
 use App\Http\Controllers\Pages\Schedual\SchedualWarningController;
@@ -235,6 +236,30 @@ Route::prefix('/Schedual')
                                 Route::post('check_overlap', 'checkOverlap')->name('check_overlap');
                         });
 
+                // Thực thi sản xuất theo phòng (sẽ thay trang Xác nhận hoàn thành)
+                Route::prefix('/execution')
+                        ->controller(ProductionExecutionController::class)
+                        ->name('execution.')
+                        ->group(function () {
+                                Route::get('', 'index')->name('index');
+                                Route::get('plans', 'plans')->name('plans');
+                                Route::get('history', 'history')->name('history');
+                                Route::get('equipment', 'equipment')->name('equipment');
+                                Route::get('equipment_label', 'equipmentLabel')->name('equipment_label');
+                                Route::post('start', 'start')->name('start');
+                                Route::post('execute', 'execute')->name('execute');
+                                Route::post('pause', 'pause')->name('pause');
+                                Route::post('resume', 'resume')->name('resume');
+                                Route::post('finish', 'finish')->name('finish');
+                                Route::post('clean_start', 'cleanStart')->name('clean_start');
+                                Route::post('clean_end', 'cleanEnd')->name('clean_end');
+                                Route::post('mark_dirty', 'markDirty')->name('mark_dirty');
+                                Route::post('undo', 'undo')->name('undo');
+                                Route::post('activity', 'storeActivity')->name('activity');
+                                Route::post('activity_end', 'endActivity')->name('activity_end');
+                                Route::post('reroute_switch', 'rerouteSwitch')->name('reroute_switch');
+                        });
+
                 Route::prefix('/quarantine_room')
                         ->controller(SchedualQuarantineRoomController::class)
                         ->name('quarantine_room.')
@@ -263,3 +288,6 @@ Route::prefix('/Schedual')
         });
 
 
+
+// Trang công khai (không cần đăng nhập, mở từ trang đăng nhập): trạng thái hiện tại các phòng sản xuất theo dữ liệu Thực Thi Sản Xuất
+Route::get('/public-production-status', [ProductionExecutionController::class, 'publicView'])->name('pages.execution.public');

@@ -88,3 +88,14 @@
         });
     </script>
 @endif
+
+@if (session('error'))
+    <script>
+        Swal.fire({
+            title: 'Không thể thực hiện',
+            text: @json(session('error')),
+            icon: 'warning',
+            confirmButtonText: 'Đóng'
+        });
+    </script>
+@endif

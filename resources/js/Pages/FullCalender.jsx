@@ -238,6 +238,8 @@ const ScheduleTest = () => {
   const [allLines, setAllLines] = useState([]);
   const [currentPassword, setCurrentPassword] = useState(null);
   const [userID, setUserID] = useState(null);
+  // Tịnh tuyến theo xác nhận hoàn thành (thử nghiệm): chỉ user được phép mới xem được lịch sử tịnh tuyến
+  const [canReroute, setCanReroute] = useState(false);
   const [production, setProduction] = useState(null);
   const [isCascadeMode, setIsCascadeMode] = useState(() => {
     return JSON.parse(sessionStorage.getItem('cascadeMode')) || false;
@@ -357,6 +359,7 @@ const ScheduleTest = () => {
           setOffDays(data.off_days);
           setBkcCode(data.bkc_code);
           setUserID(data.UesrID);
+          setCanReroute(!!data.can_reroute);
           setProduction(data.production);
 
         }
@@ -6405,10 +6408,54 @@ const ScheduleTest = () => {
       `;
     }
 
+    // Lịch thực tế: tô trên thanh actual_start → actual_end các khoảng không sản xuất, lấy từ các lần xác nhận sản lượng
+    // (props.actual_runs = [[BĐCM, KT, sản lượng], ...]): khoảng chuẩn bị BĐSX → BĐCM lần đầu (sọc sáng) và các khoảng
+    // ngưng giữa 2 lần xác nhận (sọc xám đậm). Rê chuột lên từng khoảng để xem giờ.
+    let actualGapLayer = '';
+    if (!props.is_clearning && Array.isArray(props.actual_runs) && props.actual_runs.length && event.start && event.end) {
+      // Khoảng tính theo mốc thật của lô (evStart/evEnd); còn vị trí tính theo phần thanh đang hiển thị (s0/e0), vì thanh
+      // bị cắt ở mép khung đang xem khi lô dài hơn khung (các view đều liên tục 24h)
+      const evStart = event.start.getTime();
+      const evEnd = event.end.getTime();
+      const s0 = Math.max(evStart, arg.view.activeStart.getTime());
+      const e0 = Math.min(evEnd, arg.view.activeEnd.getTime());
+      if (e0 > s0) {
+        const pct = t => Math.max(0, Math.min(100, (t - s0) / (e0 - s0) * 100));
+        const fmt = t => dayjs(t).format('HH:mm DD/MM');
+        const hours = ms => {
+          const m = Math.round(ms / 60000);
+          return m >= 60 ? `${Math.floor(m / 60)} giờ${m % 60 ? ` ${m % 60} phút` : ''}` : `${m} phút`;
+        };
+        const runs = props.actual_runs
+          .map(r => [dayjs(r[0]).valueOf(), dayjs(r[1]).valueOf(), r[2]])
+          .sort((a, b) => a[0] - b[0]);
+        const gaps = [];
+        if (runs[0][0] > evStart) gaps.push({ kind: 'prep', a: evStart, b: runs[0][0], label: 'Chuẩn bị (BĐSX → BĐCM lần đầu)' });
+        let lastEnd = runs[0][1];
+        runs.slice(1).forEach(r => {
+          if (r[0] > lastEnd) gaps.push({ kind: 'pause', a: lastEnd, b: r[0], label: 'Ngưng sản xuất' });
+          lastEnd = Math.max(lastEnd, r[1]);
+        });
+        if (lastEnd < evEnd) gaps.push({ kind: 'pause', a: lastEnd, b: evEnd, label: 'Không có xác nhận sản lượng' });
+
+        // Giữ đồng bộ với 2 dòng chú thích sọc trong NoteModal. Màu tách bạch nhau: chuẩn bị = xanh lá nhạt, ngưng = xám đậm
+        // (trước đây cả 2 đều dùng sọc trắng/xám nhạt trên nền xanh nên dễ nhầm).
+        const GAP_STYLE = {
+          prep: 'background: repeating-linear-gradient(45deg, rgba(134,239,172,0.95) 0 3px, rgba(220,252,231,0.85) 3px 6px); border-right: 1px solid #fff;',
+          pause: 'background: repeating-linear-gradient(135deg, rgba(30,41,59,0.85) 0 3px, rgba(203,213,225,0.9) 3px 6px); border-left: 1px solid #fff; border-right: 1px solid #fff;',
+        };
+        actualGapLayer = gaps.filter(g => pct(g.b) > pct(g.a)).map(g => `
+          <div title="${g.label}: ${fmt(g.a)} → ${fmt(g.b)} (${hours(g.b - g.a)})"
+            style="position: absolute; top: 0; bottom: 0; left: ${pct(g.a)}%; width: ${pct(g.b) - pct(g.a)}%; z-index: 0; ${GAP_STYLE[g.kind]}"></div>
+        `).join('');
+      }
+    }
+
     let html = `
         <div class="relative group custom-event-content" data-event-id="${event.id}" style="${tankStyle}; padding-right: ${violationCount > 0 ? violationCount * 4 + 2 : 0}px; max-height: 60px; overflow: hidden;">
+          ${actualGapLayer}
           ${violationBars}
-          <div style="font-size:${arg.eventFontSize || 12}px; ${isTank ? 'padding: 0px;' : ''} position: relative; z-index: 2;">
+          <div style="font-size:${arg.eventFontSize || 12}px; ${isTank ? 'padding: 0px;' : ''} position: relative; z-index: 2; ${actualGapLayer ? 'text-shadow: 0 0 3px rgba(0,0,0,0.9);' : ''}">
             
           ${productionChangeEvent ? `
               <div 
@@ -7839,18 +7886,20 @@ const ScheduleTest = () => {
             Xem trước chuỗi
           </div>
 
-          <div
-            style={{ padding: '8px 12px', cursor: 'pointer', whiteSpace: 'nowrap', borderTop: '1px solid #eee' }}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleShowRerouteLog(contextMenuInfo.event);
-              setContextMenuInfo({ ...contextMenuInfo, visible: false });
-            }}
-            onMouseEnter={(e) => e.target.style.background = '#f0f0f0'}
-            onMouseLeave={(e) => e.target.style.background = 'white'}
-          >
-            Lịch sử tịnh tuyến
-          </div>
+          {canReroute && (
+            <div
+              style={{ padding: '8px 12px', cursor: 'pointer', whiteSpace: 'nowrap', borderTop: '1px solid #eee' }}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleShowRerouteLog(contextMenuInfo.event);
+                setContextMenuInfo({ ...contextMenuInfo, visible: false });
+              }}
+              onMouseEnter={(e) => e.target.style.background = '#f0f0f0'}
+              onMouseLeave={(e) => e.target.style.background = 'white'}
+            >
+              Lịch sử tịnh tuyến
+            </div>
+          )}
         </div>
       )}
 

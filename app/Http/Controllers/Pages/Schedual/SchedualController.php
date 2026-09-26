@@ -701,6 +701,9 @@ class SchedualController extends Controller
         // 3️⃣ Ma trận cảnh báo nguồn NL: thiết bị được phép của từng lô, tải 1 lần cho cả vòng lặp
         $sourceWarningRules = $this->materialSourceWarningRules($event_plans, $production);
 
+        // Các lần xác nhận sản lượng (BĐCM → KT) của lô đã chạy: Gantt tô khoảng chuẩn bị và các khoảng ngưng trên lịch thực tế
+        $actualRunsByPlan = $this->actualRunsByPlan($event_plans);
+
         // 4️⃣ Gom nhóm theo plan_master_id
         $groupedPlans = $event_plans->groupBy('plan_master_id');
 
@@ -874,6 +877,7 @@ class SchedualController extends Controller
                             'title' => $plan->title,
                             'start' => $plan->actual_start,
                             'end' => $plan->actual_end,
+                            'actual_runs' => $actualRunsByPlan[$plan->id] ?? null,
                             'resourceId' => $plan->resourceId,
                             'color' => '#002af9ff',
                             'textColor' => $textColor,
@@ -1012,6 +1016,7 @@ class SchedualController extends Controller
                             'title' => $plan->title,
                             'start' => $plan->actual_start,
                             'end' => $plan->actual_end,
+                            'actual_runs' => $actualRunsByPlan[$plan->id] ?? null,
                             'resourceId' => $plan->resourceId,
                             'color' => '#002af9ff',
                             'textColor' => $textColor,
@@ -1175,6 +1180,9 @@ class SchedualController extends Controller
                 $first->start = $group->min('start');
 
                 $first->end = $group->max('end');
+
+                // Các lần xác nhận là của từng lô, không khớp với thanh gộp → không tô chuẩn bị / ngưng
+                $first->actual_runs = null;
 
                 if (! $first->is_clearning) {
 
@@ -1423,6 +1431,52 @@ class SchedualController extends Controller
             })
             ->pluck('pm.id')
             ->all();
+    }
+
+    /**
+     * Các lần xác nhận sản lượng (bảng yields: BĐCM → KT, sản lượng) của những lô đang hiện lịch thực tế
+     * (actual_start + finished = 1), dạng plan_id => [[BĐCM, KT, sản lượng], ...] theo thứ tự thời gian.
+     * Gantt dùng để tô trên thanh thực tế: khoảng chuẩn bị (BĐSX → BĐCM lần đầu) và các khoảng ngưng giữa 2 lần xác nhận.
+     * Lô chạy liền một mạch (không có khoảng nào như vậy) thì không trả để khỏi nặng dữ liệu.
+     */
+    protected function actualRunsByPlan($plans): array
+    {
+        $actual = $plans->filter(fn($p) => $p->actual_start && $p->actual_end && $p->finished == 1)->keyBy('id');
+        if ($actual->isEmpty()) {
+            return [];
+        }
+
+        $result = [];
+        $rows = DB::table('yields')
+            ->whereIn('stage_plan_id', $actual->keys()->all())
+            ->whereNotNull('start')
+            ->whereNotNull('end')
+            ->orderBy('start')
+            ->get(['stage_plan_id', 'start', 'end', 'yield'])
+            ->groupBy('stage_plan_id');
+
+        foreach ($rows as $planId => $list) {
+            $runs = $list->map(fn($y) => [
+                Carbon::parse($y->start)->format('Y-m-d\TH:i:s'),
+                Carbon::parse($y->end)->format('Y-m-d\TH:i:s'),
+                round((float) $y->yield, 2),
+            ])->values()->all();
+
+            // Có khoảng chuẩn bị, khoảng ngưng giữa 2 lần, hoặc phần cuối không có xác nhận thì mới cần tô
+            $hasGap = strtotime($runs[0][0]) > strtotime($actual[$planId]->actual_start);
+            $lastEnd = strtotime($runs[0][1]);
+            foreach (array_slice($runs, 1) as $run) {
+                $hasGap = $hasGap || strtotime($run[0]) > $lastEnd;
+                $lastEnd = max($lastEnd, strtotime($run[1]));
+            }
+            $hasGap = $hasGap || $lastEnd < strtotime($actual[$planId]->actual_end);
+
+            if ($hasGap) {
+                $result[$planId] = $runs;
+            }
+        }
+
+        return $result;
     }
 
     protected function colorEvent($plan, $plans, $i, $room_code, array $sourceWarningRules = [])
@@ -2232,6 +2286,8 @@ class SchedualController extends Controller
                 'off_days' => DB::table('off_days')->where('off_date', '>=', now())->get()->pluck('off_date') ?? [],
                 'bkc_code' => $bkc_code ?? [],
                 'UesrID' => $UesrID,
+                // Hiện menu "Lịch sử tịnh tuyến" (tính năng thử nghiệm)
+                'can_reroute' => ScheduleRerouteService::canUse(),
                 'personnel_events' => $personnelEvents,
                 'room_links' => $room_links,
                 'blister_molds' => $blister_molds,
@@ -4019,6 +4075,11 @@ class SchedualController extends Controller
      */
     public function rerouteLog(Request $request)
     {
+        // Tính năng thử nghiệm: chỉ user được phép mới xem được lịch sử tịnh tuyến
+        if (! ScheduleRerouteService::canUse()) {
+            return response()->json(['message' => 'Bạn không có quyền xem lịch sử tịnh tuyến'], 403);
+        }
+
         $ids = collect(is_array($request->ids) ? $request->ids : explode(',', (string) $request->ids))
             ->map(fn($id) => (int) trim($id))
             ->filter()
