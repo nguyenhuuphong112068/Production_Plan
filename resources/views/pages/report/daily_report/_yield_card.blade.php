@@ -233,3 +233,22 @@
         </table>
     </div>
 </div>
+
+<script>
+    // Bấm 1 đoạn trên dòng thời gian → tô dòng chi tiết tương ứng (và ngược lại); bấm lại để bỏ tô
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('button, a, form')) return;
+        const el = e.target.closest('.dr-seg, .dr-item');
+        const cell = el && el.closest('.dr-detail-cell');
+        if (!cell) return;
+        const i = el.dataset.i;
+        const on = !el.classList.contains('is-hl');
+        cell.querySelectorAll('.is-hl').forEach(x => x.classList.remove('is-hl'));
+        if (!on) return;
+        cell.querySelectorAll(`.dr-seg[data-i="${i}"], .dr-item[data-i="${i}"]`).forEach(x => x.classList.add('is-hl'));
+        if (el.classList.contains('dr-seg')) {
+            const row = cell.querySelector(`.dr-item[data-i="${i}"]`);
+            if (row) row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    });
+</script>

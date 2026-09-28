@@ -35,6 +35,43 @@
         $rows->push((object) ['idle' => false, 'kind' => $kind, 'start' => $start, 'end' => $end, 'title' => $d->title,
             'note' => $d->note && $d->note != 'NA' ? $d->note : null, 'live' => false, 'd' => $d]);
     }
+    // Nhóm lô cân chung: các lô cùng sản phẩm, trùng giờ → 1 dòng
+    //   vệ sinh: "VS-I (Sản phẩm - lô1, lô2...)"; sản xuất: "Sản phẩm - lô1, lô2..." + tổng sản lượng, ghi chú sản lượng từng lô
+    $splitBatch = fn($title) => preg_match('/^(.*)-([^-()]*)$/u', trim((string) $title), $m) ? [trim($m[1]), trim($m[2])] : [trim((string) $title), ''];
+    $rows = $rows->groupBy(function ($r) use ($splitBatch) {
+            $span = $r->start->getTimestamp() . '|' . $r->end->getTimestamp();
+            if ($r->kind === 'cleaning' && !$r->d->is_order_action) {
+                return 'vs|' . $span;
+            }
+            if ($r->kind === 'producing') {
+                return 'sx|' . $span . '|' . $splitBatch($r->title)[0] . '|' . $r->d->unit;
+            }
+            return 'x|' . $r->d->id;
+        })
+        ->map(function ($same) use ($splitBatch) {
+            $first = $same->first();
+            if ($same->count() < 2) {
+                return $first;
+            }
+            if ($first->kind === 'producing') {
+                $batches = $same->map(fn($r) => $splitBatch($r->title)[1]);
+                $note = $same->count() . ' lô: ' . $same->map(fn($r, $i) => $batches[$i] . ' ' . number_format((float) $r->d->yields, 2))->implode(' · ')
+                    . ($first->note ? ' · ' . $first->note : '');
+                $yields = $same->sum(fn($r) => (float) $r->d->yields);
+                $batchQty = round($same->sum(fn($r) => (float) $r->d->yields_batch_qty), 2) ?: null;
+                $first->title = $splitBatch($first->title)[0] . ' - ' . $batches->implode(', ');
+                $first->note = $note;
+                $first->d = clone $first->d;
+                $first->d->yields = $yields;
+                $first->d->yields_batch_qty = $batchQty;
+                return $first;
+            }
+            $parts = $same->map(fn($r) => preg_match('/^(.*?) \((.*)-([^-()]*)\)$/u', trim((string) $r->title), $m) ? $m : null);
+            $first->title = $parts->every(fn($m) => $m && $m[1] === $parts[0][1] && $m[2] === $parts[0][2])
+                ? $parts[0][1] . ' (' . $parts[0][2] . ' - ' . $parts->pluck(3)->implode(', ') . ')'
+                : $same->pluck('title')->implode('; ');
+            return $first;
+        })->values();
     foreach ($tl->extra ?? [] as $e) {
         $rows->push((object) ['idle' => false, 'kind' => $e->kind, 'start' => $e->start, 'end' => $e->end, 'title' => $e->title,
             'note' => $e->note, 'live' => $e->live, 'd' => null]);
@@ -67,7 +104,7 @@
     <div class="dr-items">
         @foreach ($rows as $r)
             @if ($r->idle)
-                <div class="dr-item is-idle">
+                <div class="dr-item is-idle" data-i="{{ $loop->index }}">
                     <span class="dr-time">{{ $r->range }}</span>
                     <span class="dr-dur">{{ $r->dur }}</span>
                     <span><span class="dr-state dr-state-idle"
@@ -83,7 +120,7 @@
                 </div>
             @else
                 @php $d = $r->d; @endphp
-                <div class="dr-item">
+                <div class="dr-item" data-i="{{ $loop->index }}">
                     <span class="dr-time">{{ $r->range }}</span>
                     <span class="dr-dur">{{ $r->dur }}</span>
                     <span><span class="dr-state dr-state-{{ $r->cls }}"><i class="fas {{ $r->icon }}"></i> {{ $r->label }}</span></span>
@@ -140,7 +177,7 @@
         <div class="dr-day-track">
             @foreach ($rows as $r)
                 @if ($r->width > 0)
-                    <span class="dr-seg {{ $r->idle ? 'dr-idle' : 'dr-seg-' . $r->cls }}"
+                    <span data-i="{{ $loop->index }}" class="dr-seg {{ $r->idle ? 'dr-idle' : 'dr-seg-' . $r->cls }}"
                         style="left: {{ $r->left }}%; width: {{ $r->width }}%;"
                         title="{{ $r->range }} · {{ $r->idle ? 'Không hoạt động' : $r->label }}: {{ $r->title }}"></span>
                 @endif

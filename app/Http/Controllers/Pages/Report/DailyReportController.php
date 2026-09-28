@@ -323,6 +323,10 @@ class DailyReportController extends Controller
         |--------------------------------------------------------------------------
         */
         $cleaning = DB::table("stage_plan as sp")
+            // Tên lô như dòng sản xuất (sp.title trống ở nhiều lô, vd. Cân NL)
+            ->leftJoin('plan_master', 'sp.plan_master_id', 'plan_master.id')
+            ->leftJoin('finished_product_category', 'sp.product_caterogy_id', '=', 'finished_product_category.id')
+            ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
             ->whereNotNull('sp.actual_start_clearning')
             ->whereNotNull('sp.actual_end_clearning')
             ->whereRaw('(sp.actual_start_clearning < ? AND sp.actual_end_clearning > ?)', [$endDateStr, $startDateStr])
@@ -332,7 +336,7 @@ class DailyReportController extends Controller
                 "sp.$group_By",
                 DB::raw("CASE WHEN sp.stage_code = 2 THEN 1 ELSE sp.stage_code END as stage_code"),
                 DB::raw("CONCAT(sp.id, '-clearning') AS id"),
-                DB::raw("CONCAT(sp.title_clearning, ' (', sp.title, ') ') AS title"),
+                DB::raw("CONCAT(COALESCE(sp.title_clearning, 'Vệ sinh'), ' (', COALESCE(CONCAT(product_name.name, '-', COALESCE(plan_master.actual_batch, plan_master.batch)), sp.title, ''), ')') AS title"),
                 DB::raw("GREATEST(sp.actual_start_clearning, '$startDateStr') AS actual_start"),
                 DB::raw("LEAST(sp.actual_end_clearning, '$endDateStr') AS actual_end"),
                 DB::raw("NULL as yields"),

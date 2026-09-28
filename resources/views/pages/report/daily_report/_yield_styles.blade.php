@@ -216,7 +216,11 @@
         content: ''; position: absolute; inset: 0; pointer-events: none;
         background-image: repeating-linear-gradient(to right, transparent 0 calc(25% - 1px), rgba(255, 255, 255, .95) calc(25% - 1px) 25%);
     }
-    .dr-seg { position: absolute; top: 0; bottom: 0; min-width: 2px; }
+    .dr-seg { position: absolute; top: 0; bottom: 0; min-width: 2px; cursor: pointer; }
+    .dr-seg:hover { filter: brightness(1.15); }
+    .dr-seg.is-hl { z-index: 2; box-shadow: inset 0 0 0 2px #0f172a; }
+    .dr-item { cursor: pointer; }
+    .dr-item.is-hl, .dr-item.is-hl:hover { background: #fef3c7; box-shadow: inset 4px 0 0 #f59e0b; }
     .dr-now { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; background: #0f172a; z-index: 1; }
     .dr-day-ticks { position: relative; height: 14px; margin-top: 3px; color: #94a3b8; font-size: 12.6px; font-variant-numeric: tabular-nums; }
     .dr-day-ticks span { position: absolute; top: 0; transform: translateX(-50%); }

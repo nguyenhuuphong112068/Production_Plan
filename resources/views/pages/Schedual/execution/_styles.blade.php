@@ -9,6 +9,7 @@
             --c-dirty: #ea580c;
             --c-cleaning: #b7791f;
             --c-expired: #dc2626;
+            --c-checking: #4d7c0f;
             color: #1f2937;
         }
 
@@ -19,6 +20,7 @@
         .st-dirty { --sc: var(--c-dirty); --sc-bg: rgba(234, 88, 12, .10); }
         .st-cleaning { --sc: var(--c-cleaning); --sc-bg: rgba(217, 119, 6, .12); }
         .st-expired { --sc: var(--c-expired); --sc-bg: rgba(220, 38, 38, .10); }
+        .st-checking { --sc: var(--c-checking); --sc-bg: rgba(101, 163, 13, .12); }
 
         /* ── Thanh công cụ ─────────────────────────────── */
         .exec-toolbar {
@@ -133,7 +135,56 @@
             background: var(--sc-bg); color: var(--sc); border: 1px solid var(--sc); border-radius: 999px;
             padding: 3px 9px; font-size: .7rem; font-weight: 800; text-transform: uppercase; white-space: nowrap; flex-shrink: 0;
         }
-        .st-producing .exec-chip i { animation: exec-spin 3s linear infinite; }
+        .st-producing .exec-chip i:first-child { animation: exec-spin 3s linear infinite; }
+        .exec-chip.is-btn { cursor: pointer; line-height: inherit; transition: box-shadow .15s, transform .15s; }
+        .exec-chip.is-btn:hover, .exec-chip.is-btn:focus { box-shadow: 0 0 0 3px var(--sc-bg), 0 2px 6px rgba(0,0,0,.18); transform: translateY(-1px); outline: none; }
+        .exec-chip-tag { font-size: .62rem; opacity: .6; margin-left: 2px; }
+
+        /* ---------- Chọn thùng khi ghi sản lượng ---------- */
+        .exec-boxmode { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .exec-modal .exec-boxopt { display: flex; gap: 8px; align-items: flex-start; margin: 0; padding: 8px 10px; border: 1.5px solid #d1d5db; border-radius: 8px; cursor: pointer; font-weight: 400; transition: border-color .15s, background .15s; }
+        .exec-boxopt input { margin-top: 3px; flex-shrink: 0; }
+        .exec-boxopt b { display: block; font-size: .85rem; color: #1f2937; }
+        .exec-boxopt small { display: block; color: #6b7280; font-size: .74rem; line-height: 1.35; margin-top: 2px; }
+        .exec-boxopt:has(input:checked) { border-color: #2563eb; background: #eff6ff; }
+        @media (max-width: 480px) { .exec-boxmode { grid-template-columns: 1fr; } }
+
+        /* ---------- Nhãn tình trạng phòng (mẫu nhãn phòng eBMR) ---------- */
+        .rl-modal .modal-dialog { max-width: 520px; }
+        .rl-card { border: 4px solid var(--rl); border-radius: 8px; overflow: hidden; background: #fff; color: #1f2937; }
+        .rl-card.to-clean { --rl: #f5b301; --rl-band: #ffc107; --rl-band-ink: #1f2937; }
+        .rl-card.cleaned { --rl: #16a34a; --rl-band: #16a34a; --rl-band-ink: #fff; }
+        .rl-head { text-align: center; padding: 10px 12px 8px; background: #f8fafc; border-bottom: 2px solid #d1d5db; position: relative; }
+        .rl-head h5 { margin: 0; font-weight: 800; letter-spacing: .06em; font-size: 1.1rem; }
+        .rl-head small { color: #6b7280; letter-spacing: .12em; font-size: .7rem; }
+        .rl-head .close { position: absolute; right: 10px; top: 8px; }
+        .rl-table { width: 100%; border-collapse: collapse; }
+        .rl-table th, .rl-table td { border-bottom: 1px solid #d1d5db; padding: 7px 10px; vertical-align: middle; }
+        .rl-table th { width: 40%; background: #f8fafc; font-size: .82rem; font-weight: 700; border-right: 1px solid #d1d5db; }
+        .rl-table th small { display: block; font-weight: 400; color: #6b7280; font-style: italic; }
+        .rl-table td { font-weight: 700; font-size: .95rem; }
+        .rl-code { color: #0b5ed7; }
+        .rl-band { background: var(--rl-band); color: var(--rl-band-ink); text-align: center; font-weight: 800; letter-spacing: .05em; padding: 8px; font-size: 1rem; }
+        .rl-body { padding: 10px 12px; font-size: .84rem; }
+        .rl-levels { display: flex; justify-content: space-between; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
+        .rl-check { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; }
+        .rl-box { width: 18px; height: 18px; border: 2px solid #374151; border-radius: 3px; display: inline-flex; align-items: center; justify-content: center; font-size: .8rem; font-weight: 900; color: #0b5ed7; }
+        .rl-rule { color: #6b7280; font-size: .75rem; border-bottom: 1px solid #d1d5db; padding-bottom: 6px; margin-bottom: 6px; line-height: 1.45; }
+        .rl-grid { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid #d1d5db; padding-bottom: 6px; margin-bottom: 6px; }
+        .rl-grid > div + div { border-left: 1px solid #d1d5db; padding-left: 10px; }
+        .rl-lbl { display: block; font-weight: 700; font-size: .76rem; }
+        .rl-val { font-weight: 700; color: #0b5ed7; }
+        .rl-val.due { color: #dc2626; }
+        .rl-person { font-style: italic; color: #0b5ed7; }
+        .rl-person.checked { color: #16a34a; }
+        .rl-empty { color: #9ca3af; font-style: normal; font-weight: 400; }
+        .rl-attach { font-weight: 700; color: #6b7280; font-size: .76rem; margin-bottom: 2px; }
+        .rl-next td { border: 0; padding: 3px 0; }
+        .rl-next td:first-child { width: 32%; font-size: .76rem; font-weight: 700; }
+        .rl-next td:first-child small { display: block; font-weight: 400; color: #6b7280; font-style: italic; }
+        .rl-note { margin: 8px 12px 0; padding: 6px 9px; border-radius: 6px; font-size: .8rem; background: #eff6ff; color: #1e3a8a; border: 1px solid #bfdbfe; }
+        .rl-note.warn { background: #fef2f2; color: #991b1b; border-color: #fecaca; }
+        .rl-foot { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #f8fafc; border-top: 1px solid #d1d5db; font-size: .74rem; color: #6b7280; }
         .st-expired .exec-chip { animation: exec-blink 1.4s ease-in-out infinite; }
         @keyframes exec-spin { to { transform: rotate(360deg); } }
         @keyframes exec-blink { 50% { opacity: .55; } }
@@ -163,6 +214,8 @@
         .st-preparing .exec-live { --lv-bg: #ecfeff; --lv-bd: #bae6f0; --lv-acc: #06b6d4; --lv-ink: #083344; --lv-strong: #0e7490; }
         .st-paused .exec-live { --lv-bg: #f6f3ff; --lv-bd: #e2dafb; --lv-acc: #8b5cf6; --lv-ink: #2e1065; --lv-strong: #6d28d9; --lv-seg: #7c3aed; --lv-run: #a78bfa; }
         .st-cleaning .exec-live { --lv-bg: #fff8eb; --lv-bd: #fde3b5; --lv-acc: #f59e0b; --lv-ink: #451a03; --lv-strong: #b45309; }
+        .st-checking .exec-live { --lv-bg: #f4fbe8; --lv-bd: #d3ebb0; --lv-acc: #65a30d; --lv-ink: #1a2e05; --lv-strong: #4d7c0f; }
+        .st-checking .exec-chip i:first-child { animation: exec-blink 1.6s ease-in-out infinite; }
         .exec-live-product { font-weight: 800; font-size: 1.05rem; line-height: 1.25; }
         .exec-live-tag {
             font-size: .62rem; font-weight: 700; color: var(--lv-strong); background: #fff; border: 1px solid var(--lv-bd);
@@ -227,8 +280,6 @@
             margin-bottom: 8px; padding: 5px 8px; background: #f8fafc; border: 1px solid #e3e8ee; border-radius: 8px; font-size: .76rem;
         }
         .exec-staff-shift { display: flex; flex-wrap: wrap; align-items: center; }
-        .exec-staff-head { font-weight: 700; color: var(--navy); margin-right: 6px; white-space: nowrap; }
-        .exec-staff-head span { font-weight: 500; color: #6b7785; }
         .exec-staff-person {
             display: inline-flex; align-items: center; margin: 2px 4px 2px 0; padding: 1px 8px 1px 2px; white-space: nowrap;
             background: #fff; border: 1px solid #dbe3ec; border-radius: 999px; font-weight: 600; color: #1f2937;
@@ -237,6 +288,7 @@
             display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; margin-right: 4px;
             border-radius: 50%; background: var(--navy); color: #fff; font-size: .6rem; font-style: normal; font-weight: 700;
         }
+        .exec-staff-person small { margin-left: 4px; font-size: .68rem; font-weight: 700; color: #2563eb; }
         .exec-staff-job { color: #6b7785; font-size: .72rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .exec-staff.empty { color: #92400e; background: #fffbeb; border-color: #fde68a; }
 
@@ -297,6 +349,7 @@
         .btn-exec-clean { background: linear-gradient(135deg, #f97316, #ea580c); }
         .btn-exec-cleanend { background: linear-gradient(135deg, #d97706, #b45309); }
         .btn-exec-danger { background: linear-gradient(135deg, #ef4444, #b91c1c); }
+        .btn-exec-check { background: linear-gradient(135deg, #65a30d, #3f6212); }
 
         .exec-room-foot { display: flex; border-top: 1px solid #eef1f5; }
         .exec-room-foot button {
@@ -327,6 +380,42 @@
         .exec-mh-stop { background: linear-gradient(135deg, #dc2626, #b91c1c); }
         .exec-mh-clean { background: linear-gradient(135deg, #f97316, #ea580c); }
         .exec-mh-cleanend { background: linear-gradient(135deg, #d97706, #b45309); }
+        .exec-mh-check { background: linear-gradient(135deg, #65a30d, #3f6212); }
+
+        /* Kiểm tra vệ sinh: xác thực lại tài khoản + kết quả */
+        .exec-check-auth { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 12px 2px; margin-bottom: 12px; }
+        .exec-check-auth-title { font-size: .8rem; font-weight: 700; color: #334155; margin-bottom: 6px; }
+        .exec-check-result { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .exec-check-result button { border: 2px solid #d1d5db; background: #fff; border-radius: 10px; padding: 10px 8px; font-weight: 800; font-size: .95rem; transition: all .15s; }
+        .exec-check-result:has(.js-check-toggle) { grid-template-columns: 1fr; }
+        .exec-check-result .js-check-toggle small { font-weight: 500; font-size: .74rem; opacity: .85; margin-left: 4px; }
+        .exec-check-result button[data-result="pass"] { color: #15803d; }
+        .exec-check-result button[data-result="fail"] { color: #b91c1c; }
+        .exec-check-result button[data-result="pass"].active { background: #16a34a; border-color: #16a34a; color: #fff; }
+        .exec-check-result button[data-result="fail"].active { background: #dc2626; border-color: #dc2626; color: #fff; }
+        /* Nhóm lô cân chung trên card */
+        .exec-group { margin: 5px 0 2px; background: #fff; border: 1px solid var(--lv-bd); border-radius: 8px; overflow: hidden; }
+        .exec-group-row { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: center; padding: 3px 8px; font-size: .78rem; }
+        .exec-group-row + .exec-group-row { border-top: 1px solid var(--lv-bd); }
+        .exec-group-batch { font-weight: 800; color: var(--lv-ink); }
+        .exec-group-batch i { color: var(--lv-strong); font-size: .72rem; }
+        .exec-group-qty { font-variant-numeric: tabular-nums; color: #374151; }
+        .exec-group-state { font-size: .7rem; color: var(--lv-strong); font-weight: 700; }
+        .exec-group-row.done { background: #f8fafc; }
+        .exec-group-row.done .exec-group-batch, .exec-group-row.done .exec-group-qty { color: #6b7280; }
+        .exec-group-row.done .exec-group-batch i, .exec-group-row.done .exec-group-state { color: #16a34a; }
+
+        /* Modal: chọn nhiều lô (Cân NL), nhập sản lượng từng lô */
+        .exec-plan.disabled { opacity: .45; cursor: not-allowed; }
+        .exec-plan-same { font-size: .68rem; font-weight: 700; color: #0e7490; background: #ecfeff; border: 1px solid #bae6f0; border-radius: 999px; padding: 0 6px; margin-left: 4px; }
+        .exec-group-yield { width: 100%; font-size: .84rem; }
+        .exec-group-yield th { font-size: .74rem; color: #6b7280; font-weight: 700; padding: 4px 6px; border-bottom: 1px solid #e5e7eb; white-space: nowrap; }
+        .exec-group-yield td { padding: 5px 6px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+        .exec-group-yield .form-control { height: calc(1.6em + .5rem); padding: .2rem .4rem; font-size: .84rem; }
+        .exec-group-yield tr.off td:not(:first-child) { opacity: .4; }
+        .exec-group-yield small { display: block; color: #6b7280; font-size: .72rem; }
+
+        .exec-note-bad { background: #fef2f2 !important; color: #991b1b !important; border-color: #fecaca !important; }
 
         .exec-modal-batch { background: #f4f6f9; border-radius: 10px; padding: 8px 12px; margin-bottom: 12px; }
         .exec-modal-batch b { color: #111827; }

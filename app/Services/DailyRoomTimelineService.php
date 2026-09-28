@@ -21,6 +21,7 @@ class DailyRoomTimelineService
     const IDLE_REASONS = [
         'paused'     => 'Tạm dừng giữa 2 lần xác nhận',
         'wait_clean' => 'Chờ vệ sinh',
+        'await_check' => 'Chờ kiểm tra vệ sinh',
         'expired'    => 'Phòng quá hạn sạch – chờ vệ sinh lại',
         'clean_idle' => 'Phòng sạch – chờ sản xuất',
         'off_day'    => 'Ngày nghỉ',
@@ -28,7 +29,7 @@ class DailyRoomTimelineService
     ];
 
     // Khoảng ngưng bị nhiều trạng thái phủ (phòng chạy nhiều lô song song): lô đang dở > phòng bẩn > quá hạn sạch > phòng sạch
-    const PRIORITY = ['paused' => 1, 'wait_clean' => 2, 'expired' => 3, 'clean_idle' => 4];
+    const PRIORITY = ['paused' => 1, 'wait_clean' => 2, 'await_check' => 3, 'expired' => 4, 'clean_idle' => 5];
 
     // Xét các lô có mốc thực tế trong khoảng này trước ngày báo cáo (hạn sạch dài nhất 7 ngày)
     const LOOKBACK_DAYS = 20;
@@ -79,6 +80,7 @@ class DailyRoomTimelineService
             $planRows->pluck('id')->all(),
             $logs->flatten()->pluck('stage_plan_id')->filter()->all()
         ))->map(fn($p) => $p->label);
+        $groupMembers = $this->groupLabels($labels, $logs->flatten()->pluck('stage_plan_id')->filter()->unique()->all());
         $off = DB::table('off_days')->where('off_date', $dayStart->toDateString())->first();
         $offDay = $off ? (string) $off->reason : null; // ngày nghỉ tính 06:00 → 06:00 như lịch
         $detail = $detail->groupBy('resourceId');
@@ -91,6 +93,7 @@ class DailyRoomTimelineService
                 'yields' => $yields,
                 'logs' => $logs->get($roomId, collect()),
                 'labels' => $labels,
+                'groupMembers' => $groupMembers,
             ];
 
             $extra = $this->extraItems($ctx);
@@ -113,6 +116,40 @@ class DailyRoomTimelineService
         }
 
         return $result;
+    }
+
+    /**
+     * Nhóm lô cân chung: log trạng thái phòng chỉ gắn lô đầu của nhóm → nhãn của lô đó liệt kê mọi số lô trong nhóm.
+     *
+     * @return array<int, int> lô trong nhóm (không phải lô đầu) => lô đầu
+     */
+    private function groupLabels(Collection $labels, array $leadIds): array
+    {
+        $members = [];
+        if (!$leadIds) {
+            return $members;
+        }
+        $openIds = DB::table('room_execution_batch')->whereNull('cancelled_at')->whereIn('stage_plan_id', $leadIds)
+            ->pluck('open_log_id')->unique()->all();
+        if (!$openIds) {
+            return $members;
+        }
+        $groups = DB::table('room_execution_batch')->whereNull('cancelled_at')->whereIn('open_log_id', $openIds)
+            ->orderBy('id')->get()->groupBy('open_log_id');
+        $plans = $this->execution->planDetails($groups->flatten()->pluck('stage_plan_id')->all());
+
+        foreach ($groups as $rows) {
+            $lead = $plans->get($rows->first()->stage_plan_id);
+            if ($rows->count() > 1 && $lead) {
+                $labels[$lead->id] = ($lead->product_name ?? $lead->title) . ' - '
+                    . $rows->map(fn($r) => $plans->get($r->stage_plan_id)->batch ?? '')->implode(', ');
+                foreach ($rows->skip(1) as $r) {
+                    $members[(int) $r->stage_plan_id] = $lead->id;
+                }
+            }
+        }
+
+        return $members;
     }
 
     /** Các lô của phòng có mốc thực tế gần ngày báo cáo (để lấy BĐSX, KT, vệ sinh, lô kế tiếp) */
@@ -141,6 +178,10 @@ class DailyRoomTimelineService
         $prepDone = [];
 
         foreach ($ctx->plans as $p) {
+            // Nhóm lô cân chung: 1 khoảng chuẩn bị cho cả nhóm, ghi ở lô đầu (nhãn đã liệt kê mọi lô)
+            if (isset($ctx->groupMembers[$p->id])) {
+                continue;
+            }
             $first = $ctx->yields->get($p->id)?->first();
             $bdsx = $this->ts($p->actual_start);
             if ($first && $this->ts($first->start) > $bdsx) {
@@ -148,6 +189,14 @@ class DailyRoomTimelineService
                 $prepDone[$p->id] = true;
             }
         }
+
+        // Đợt vệ sinh chưa kiểm tra Đạt (đang VS / chờ kiểm tra / tiếp tục VS sau Không đạt) chưa có trong stage_plan
+        // hay room_status → lấy các khoảng Đang VS của đợt từ log
+        $current = $ctx->logs->first(fn($l) => !$l->ended_at);
+        $pendingFrom = $current && in_array((int) $current->state, [ProductionExecutionService::CLEANING, ProductionExecutionService::AWAIT_CHECK], true)
+            ? $this->execution->cleaningCycle((int) $current->room_id, (int) $current->id)->start
+            : null;
+        $pendingFrom = $pendingFrom ? $pendingFrom->getTimestamp() : null;
 
         foreach ($ctx->logs as $log) {
             $from = $this->ts($log->started_at);
@@ -163,8 +212,9 @@ class DailyRoomTimelineService
                 $items->push($this->item('producing', $from, $to, $label, 'Đang chạy, chưa khai báo sản lượng', true));
             } elseif ($open && $state === ProductionExecutionService::PAUSED) {
                 $items->push($this->item('paused', $from, $to, 'Tạm dừng SX', trim(($log->note ?: 'Không ghi lý do') . ($label ? ' - ' . $label : '')), true));
-            } elseif ($open && $state === ProductionExecutionService::CLEANING) {
-                $items->push($this->item('cleaning', $from, $to, ($log->cleaning_level ?: 'Vệ sinh') . ($label ? ' (' . $label . ')' : ''), 'Đang vệ sinh', true));
+            } elseif ($state === ProductionExecutionService::CLEANING && $pendingFrom !== null && $from >= $pendingFrom) {
+                $items->push($this->item('cleaning', $from, $to, ($log->cleaning_level ?: 'Vệ sinh') . ($label ? ' (' . $label . ')' : ''),
+                    $open ? 'Đang vệ sinh' : 'Đã vệ sinh, chưa kiểm tra đạt', $open));
             }
         }
 
@@ -252,6 +302,11 @@ class DailyRoomTimelineService
                     break;
                 case ProductionExecutionService::PAUSED:
                     $states[] = $this->state('paused', $from, $to, $label ? 'Lô ' . $label : null);
+                    break;
+                case ProductionExecutionService::AWAIT_CHECK:
+                    $result = $log->check_result === null ? 'chưa kiểm tra'
+                        : ((int) $log->check_result === 1 ? 'Đạt' : 'Không đạt') . ' – ' . $log->checked_by;
+                    $states[] = $this->state('await_check', $from, $to, ($log->cleaning_level ? $log->cleaning_level . ' · ' : '') . $result);
                     break;
             }
         }

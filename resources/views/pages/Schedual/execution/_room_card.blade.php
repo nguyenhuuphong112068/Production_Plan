@@ -90,13 +90,34 @@
             'can_edit_batch' => (int) $plan->stage_code === 1 && !$plan->actual_start,
             'title_clearning' => $plan->title_clearning,
         ] : null,
+        'weighing'   => in_array((int) $room->stage_code, $PES::GROUP_STAGES, true),
+        // Nhóm lô: "Sản phẩm - lô1, lô2, ..." cho các modal (vệ sinh, kiểm tra...)
+        'plan_label' => $st->group && $plan ? ($plan->product_name ?? $plan->title) . ' - ' . $st->group->pluck('batch')->implode(', ') : ($plan->label ?? null),
+        // Nhóm lô cân chung: nhập sản lượng / kết thúc từng lô
+        'group'      => $st->group ? $st->group->map(fn($b) => [
+            'id'             => $b->id,
+            'label'          => $b->label,
+            'batch'          => $b->batch,
+            'unit'           => $b->unit,
+            'theory'         => round((float) $b->Theoretical_yields, 2),
+            'confirmed'      => round((float) $b->total_confirmed, 2),
+            'boxes'          => $b->number_of_boxes ?? 1,
+            'can_edit_batch' => (int) $b->stage_code === 1 && !$b->actual_start,
+            'running'        => $b->running,
+        ])->values() : null,
     ];
+    $group = $st->group;
+    // "Sau lô ...": nhóm lô thì liệt kê số lô
+    $afterLabel = $plan ? ($group ? ($plan->product_name ?? $plan->title) . ' - ' . $group->pluck('batch')->implode(', ') : $plan->label) : null;
+    if ($group) {
+        $groupTheory = $group->sum('Theoretical_yields');
+        $groupConfirmed = $group->sum('total_confirmed');
+    }
 
-    $isActive = $live || $preparing || $st->state === $PES::CLEANING || count($room->activities);
+    $isActive = $live || $preparing || in_array($st->state, [$PES::CLEANING, $PES::AWAIT_CHECK], true) || count($room->activities);
 
-    // Nhân sự đang được phân công (Lịch Công Tác): chữ cái đầu của tên (bỏ phần " - WH", "(mã)")
+    // Nhân sự đang được phân công (Lịch Công Tác): nhãn A, B, C... theo đúng thứ tự hiển thị bên Lịch Công Tác → Sản Xuất
     $staff = $room->staff ?? collect();
-    $initial = fn($name) => mb_strtoupper(mb_substr(\Illuminate\Support\Str::afterLast(trim(preg_replace('/\s*[-(].*$/u', '', $name)), ' '), 0, 1));
 
     $search = mb_strtolower($room->code . ' ' . $room->name . ' ' . ($plan->label ?? '') . ' ' . ($plan->intermediate_code ?? '') . ' ' . ($plan->finished_product_code ?? '')
         . ' ' . $staff->flatMap(fn($s) => $s->people->pluck('name'))->implode(' '));
@@ -114,7 +135,13 @@
                     <div class="exec-room-equip" title="{{ $room->main_equiment_name }}">{{ $room->main_equiment_name }}</div>
                 @endif
             </div>
-            <span class="exec-chip"><i class="fas {{ $stateIcon }}"></i> {{ $st->label }}</span>
+            @if ($readonly)
+                <span class="exec-chip"><i class="fas {{ $stateIcon }}"></i> {{ $st->label }}</span>
+            @else
+                <button type="button" class="exec-chip is-btn js-act" data-act="label" title="Xem nhãn tình trạng phòng">
+                    <i class="fas {{ $stateIcon }}"></i> {{ $st->label }} <i class="fas fa-tag exec-chip-tag"></i>
+                </button>
+            @endif
         </div>
 
         <div class="exec-room-body">
@@ -128,9 +155,25 @@
                             <span class="exec-live-tag" title="Lô thẩm định"><i class="fas fa-check-circle"></i> TĐ</span>
                         @endif
                     </div>
-                    <div class="exec-live-batch">
-                        Lô <b>{{ $plan->batch }}</b> · {{ $plan->intermediate_code }}{{ $plan->finished_product_code ? ' / ' . $plan->finished_product_code : '' }}
-                    </div>
+                    @if ($group)
+                        <div class="exec-live-batch">
+                            <b>{{ $group->count() }} lô</b> cân chung · {{ $plan->intermediate_code }}
+                            · còn {{ $group->where('running', true)->count() }} lô đang chạy
+                        </div>
+                        <div class="exec-group">
+                            @foreach ($group as $b)
+                                <div class="exec-group-row {{ $b->running ? '' : 'done' }}">
+                                    <span class="exec-group-batch"><i class="fas {{ $b->running ? 'fa-circle-notch' : 'fa-check-circle' }}"></i> {{ $b->batch }}</span>
+                                    <span class="exec-group-qty">{{ $b->total_confirmed > 0 ? $num($b->total_confirmed) : '—' }} / {{ $num($b->Theoretical_yields) }} {{ $b->unit }}</span>
+                                    <span class="exec-group-state">{{ $b->running ? 'đang chạy' : 'KT ' . $fmt($b->ended_at) }}</span>
+                                </div>
+                            @endforeach
+                        </div>
+                    @else
+                        <div class="exec-live-batch">
+                            Lô <b>{{ $plan->batch }}</b> · {{ $plan->intermediate_code }}{{ $plan->finished_product_code ? ' / ' . $plan->finished_product_code : '' }}
+                        </div>
+                    @endif
 
                     @if ($live && !$producing)
                         <div class="exec-live-pause">
@@ -166,13 +209,18 @@
                             </div>
                         @endif
                         <div class="exec-live-stat text-right">
-                            <div class="exec-live-label">Sản lượng đã khai báo</div>
-                            <div class="exec-live-big {{ $plan->total_confirmed > 0 ? '' : 'muted' }}">
-                                {{ $plan->total_confirmed > 0 ? $num($plan->total_confirmed) : '—' }}
+                            @php
+                                $confirmedAll = $group ? $groupConfirmed : $plan->total_confirmed;
+                                $theoryAll = $group ? $groupTheory : $plan->Theoretical_yields;
+                                $pctAll = $theoryAll > 0 ? min(100, round($confirmedAll / $theoryAll * 100)) : 0;
+                            @endphp
+                            <div class="exec-live-label">Sản lượng đã khai báo{{ $group ? ' (cả nhóm)' : '' }}</div>
+                            <div class="exec-live-big {{ $confirmedAll > 0 ? '' : 'muted' }}">
+                                {{ $confirmedAll > 0 ? $num($confirmedAll) : '—' }}
                             </div>
                             <div class="exec-live-small">
-                                / {{ $num($plan->Theoretical_yields) }} {{ $plan->unit }} ·
-                                {{ $plan->total_confirmed > 0 ? $pct . '%' : 'chưa khai báo' }}
+                                / {{ $num($theoryAll) }} {{ $plan->unit }} ·
+                                {{ $confirmedAll > 0 ? $pctAll . '%' : 'chưa khai báo' }}
                             </div>
                         </div>
                     </div>
@@ -197,13 +245,19 @@
                 <div class="exec-live">
                     <div class="exec-live-product"><i class="fas fa-broom"></i> {{ $PES::CLEANING_LEVELS[$st->cleaning_level] ?? ($st->cleaning_level ?: 'Vệ sinh') }}</div>
                     @if ($plan)
-                        <div class="exec-live-batch">Sau lô <b>{{ $plan->label }}</b></div>
+                        <div class="exec-live-batch">Sau lô <b>{{ $afterLabel }}</b></div>
                     @endif
                     <div class="exec-live-stats">
                         <div class="exec-live-stat">
                             <div class="exec-live-label">Thời gian vệ sinh</div>
                             <div class="exec-live-big {{ $sinceSec >= 86400 ? 'long' : '' }} js-clock" data-since="{{ $iso($st->since) }}" data-base="0">{{ $clock($sinceSec) }}</div>
-                            <div class="exec-live-small">bắt đầu {{ $fmt($st->since) }}</div>
+                            <div class="exec-live-small">
+                                @if ($st->cycle && $st->cycle->start && $st->cycle->start->lt($st->since))
+                                    tiếp tục từ {{ $fmt($st->since) }} · bắt đầu VS lần đầu {{ $fmt($st->cycle->start) }}
+                                @else
+                                    bắt đầu {{ $fmt($st->since) }}
+                                @endif
+                            </div>
                         </div>
                     </div>
                     @if ($plan)
@@ -214,8 +268,30 @@
                     @endif
                 </div>
                 @if ($st->note)
-                    <div class="exec-note"><i class="fas fa-info-circle"></i> {{ $st->note }}</div>
+                    <div class="exec-note {{ str_starts_with($st->note, 'Kiểm tra không đạt') ? 'exec-note-bad' : '' }}"><i class="fas fa-info-circle"></i> {{ $st->note }}</div>
                 @endif
+
+            {{-- ===== Chờ kiểm tra vệ sinh ===== --}}
+            @elseif ($st->state === $PES::AWAIT_CHECK)
+                <div class="exec-live">
+                    <div class="exec-live-product"><i class="fas fa-user-check"></i> Chờ kiểm tra
+                        <span class="exec-live-tag">{{ $PES::CLEANING_LEVELS[$st->cleaning_level] ?? ($st->cleaning_level ?: 'Vệ sinh') }}</span>
+                    </div>
+                    @if ($plan)
+                        <div class="exec-live-batch">Sau lô <b>{{ $afterLabel }}</b></div>
+                    @endif
+                    <div class="exec-live-stats">
+                        <div class="exec-live-stat">
+                            <div class="exec-live-label">Đã chờ</div>
+                            <div class="exec-live-big {{ $sinceSec >= 86400 ? 'long' : '' }} js-clock" data-since="{{ $iso($st->since) }}" data-base="0">{{ $clock($sinceSec) }}</div>
+                            <div class="exec-live-small">kết thúc VS {{ $fmt($st->since) }}{{ $st->cycle && $st->cycle->start ? ' · bắt đầu ' . $fmt($st->cycle->start) : '' }}</div>
+                        </div>
+                    </div>
+                    <div class="exec-live-foot">
+                        <span>Người vệ sinh <b>{{ $st->cycle && $st->cycle->cleaners ? implode(', ', $st->cycle->cleaners) : '—' }}</b></span>
+                    </div>
+                </div>
+                <div class="exec-note"><i class="fas fa-info-circle"></i> Người kiểm tra phải khác người vệ sinh. Đạt → Phòng sạch (hạn tính từ lúc kết thúc VS), Không đạt → tiếp tục vệ sinh.</div>
             @endif
 
             {{-- ===== Hoạt động khác đang diễn ra (ghi vào Báo cáo ngày) ===== --}}
@@ -245,21 +321,15 @@
             @if ($staff->isNotEmpty())
                 <div class="exec-staff">
                     @foreach ($staff as $shift)
-                        <div class="exec-staff-shift">
-                            <span class="exec-staff-head" title="Phân công trên Lịch Công Tác → Sản Xuất">
-                                <i class="fas fa-user-friends"></i> {{ $shift->shift }}
-                                <span>{{ \Carbon\Carbon::parse($shift->start)->format('H:i') }}–{{ \Carbon\Carbon::parse($shift->end)->format('H:i') }}</span>
-                            </span>
+                        <div class="exec-staff-shift" title="Phân công trên Lịch Công Tác → Sản Xuất">
                             @foreach ($shift->people as $person)
                                 <span class="exec-staff-person"
                                     title="{{ $person->code }} · {{ $person->name }} · {{ \Carbon\Carbon::parse($person->start)->format('H:i') }}–{{ \Carbon\Carbon::parse($person->end)->format('H:i') }}{{ $person->note ? ' · ' . $person->note : '' }}">
-                                    <i>{{ $initial($person->name) }}</i>{{ $person->name }}
+                                    <i>{{ $person->label }}</i>{{ $person->name }}
+                                    <small>({{ \Carbon\Carbon::parse($person->start)->format('H:i') }} - {{ \Carbon\Carbon::parse($person->end)->format('H:i') }})</small>
                                 </span>
                             @endforeach
                         </div>
-                        @if ($shift->job)
-                            <div class="exec-staff-job" title="{{ $shift->job }}">{{ $shift->job }}</div>
-                        @endif
                     @endforeach
                 </div>
             @elseif (in_array($st->state, [$PES::PREPARING, $PES::PRODUCING, $PES::CLEANING], true) || count($room->activities))
@@ -273,7 +343,7 @@
                 @if ($plan)
                     <div class="exec-batch">
                         <div class="exec-batch-meta">Sau lô</div>
-                        <div class="exec-batch-name">{{ $plan->label }}</div>
+                        <div class="exec-batch-name">{{ $afterLabel }}</div>
                         <div class="exec-batch-meta">KT sản xuất {{ $fmt($plan->actual_end) }} · Lịch vệ sinh: {{ $plan->title_clearning ?? '—' }}</div>
                     </div>
                 @endif
@@ -289,7 +359,7 @@
 
             {{-- ===== Phòng sạch / quá hạn ===== --}}
             @elseif ($st->state === $PES::CLEAN)
-                <div class="exec-kv"><span>Sạch từ</span><b>{{ $fmt($st->since) }}{{ $st->cleaning_level ? ' · ' . $st->cleaning_level : '' }}</b></div>
+                <div class="exec-kv"><span>Sạch từ</span><b>{{ $fmt($st->cleaned->finished_on ?? $st->since) }}{{ $st->cleaning_level ? ' · ' . $st->cleaning_level : '' }}</b></div>
                 @if ($st->expired_at)
                     <div class="exec-kv">
                         <span>Hạn sạch</span>
@@ -374,6 +444,12 @@
                 @case($PES::CLEANING)
                     <button type="button" class="btn btn-exec btn-exec-cleanend js-act" data-act="clean_end">
                         <i class="fas fa-check-double"></i> Kết thúc vệ sinh
+                    </button>
+                @break
+
+                @case($PES::AWAIT_CHECK)
+                    <button type="button" class="btn btn-exec btn-exec-check js-act" data-act="clean_check">
+                        <i class="fas fa-user-check"></i> Kiểm tra
                     </button>
                 @break
             @endswitch

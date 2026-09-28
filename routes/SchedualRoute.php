@@ -244,7 +244,8 @@ Route::prefix('/Schedual')
                                 Route::get('', 'index')->name('index');
                                 Route::get('plans', 'plans')->name('plans');
                                 Route::get('history', 'history')->name('history');
-                                Route::get('equipment', 'equipment')->name('equipment');
+                                Route::get('room_label', 'roomLabel')->name('room_label');
+                                Route::get('equipment','equipment')->name('equipment');
                                 Route::get('equipment_label', 'equipmentLabel')->name('equipment_label');
                                 Route::post('start', 'start')->name('start');
                                 Route::post('execute', 'execute')->name('execute');
@@ -253,6 +254,7 @@ Route::prefix('/Schedual')
                                 Route::post('finish', 'finish')->name('finish');
                                 Route::post('clean_start', 'cleanStart')->name('clean_start');
                                 Route::post('clean_end', 'cleanEnd')->name('clean_end');
+                                Route::post('clean_check', 'cleanCheck')->name('clean_check');
                                 Route::post('mark_dirty', 'markDirty')->name('mark_dirty');
                                 Route::post('undo', 'undo')->name('undo');
                                 Route::post('activity', 'storeActivity')->name('activity');

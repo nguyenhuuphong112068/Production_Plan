@@ -153,6 +153,7 @@ return [
             'prefix' => '',
             'encrypt' => env('DB_CAL1_ENCRYPT', false),
             'trust_server_certificate' => env('DB_CAL1_TRUST_SERVER_CERTIFICATE', true),
+            'login_timeout' => env('DB_CAL1_LOGIN_TIMEOUT', 5),
         ],
 
         'cal2' => [
@@ -166,6 +167,7 @@ return [
             'prefix' => '',
             'encrypt' => env('DB_CAL2_ENCRYPT', false),
             'trust_server_certificate' => env('DB_CAL2_TRUST_SERVER_CERTIFICATE', true),
+            'login_timeout' => env('DB_CAL2_LOGIN_TIMEOUT', 5),
         ],
 
 

@@ -115,14 +115,23 @@ class EquipmentLabelService
 
         // Tình trạng từng dụng cụ, đọc theo từng (kết nối, loại)
         $status = [];
+        $downConns = []; // máy chủ đã lỗi thì bỏ qua các loại còn lại, khỏi chờ timeout lần nữa
         foreach ($links->groupBy(fn($l) => $l->conn . '|' . $l->suffix) as $group => $rows) {
             [$conn, $suffix] = explode('|', $group);
+            $status[$group] = null;
+            if (isset($downConns[$conn])) {
+                $errors[] = 'Không kết nối được CSDL ' . self::TYPES[$suffix]['label'] . ' khối ' . ($conn === 'cal1' ? 'B1' : 'B2');
+                continue;
+            }
             try {
                 $status[$group] = $this->instrumentStatus($conn, (int) $suffix, $rows->pluck('inst_id')->unique()->values()->all(), $today);
             } catch (\Throwable $e) {
                 Log::warning("[EquipmentLabel] Không đọc được $conn Schedule_Master_$suffix: " . $e->getMessage());
                 $errors[] = 'Không kết nối được CSDL ' . self::TYPES[$suffix]['label'] . ' khối ' . ($conn === 'cal1' ? 'B1' : 'B2');
-                $status[$group] = null;
+                // Chỉ lỗi kết nối (SQLSTATE 08xxx / HYT00 timeout), không phải lỗi câu lệnh
+                if (preg_match('/SQLSTATE\[(08|HYT00)/', $e->getMessage())) {
+                    $downConns[$conn] = true;
+                }
             }
         }
 

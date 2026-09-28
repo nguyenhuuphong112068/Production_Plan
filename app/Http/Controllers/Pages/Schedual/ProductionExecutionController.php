@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Pages\Schedual;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Pages\AuditTrail\AuditTrialController;
 use App\Services\EquipmentLabelService;
 use App\Services\ProductionExecutionException;
 use App\Services\ProductionExecutionService;
@@ -110,6 +111,9 @@ class ProductionExecutionController extends Controller
                         'market'    => $p->stage_code == 7 ? $p->market : null,
                         'batch'     => $p->batch,
                         'codes'     => trim(($p->intermediate_code ?? '') . ' / ' . ($p->finished_product_code ?? ''), ' /'),
+                        'btp'       => $p->intermediate_code,
+                        // Cân NL: lô cùng lịch lý thuyết + cùng BTP được chọn theo nhau
+                        'plan_key'  => $p->start ? $p->start . '|' . $p->end . '|' . $p->intermediate_code : null,
                         'start'     => $fmt($p->start),
                         'end'       => $fmt($p->end),
                         'room_code' => $p->room_code,
@@ -165,12 +169,24 @@ class ProductionExecutionController extends Controller
                 return response()->json($this->service->history($room->id));
         }
 
+        /** Nhãn tình trạng phòng (mẫu nhãn phòng eBMR) */
+        public function roomLabel(Request $request)
+        {
+                $room = $this->ownRoom($request->room_id);
+                if (!$room) {
+                        return response()->json(['message' => '❌ Phòng không thuộc phân xưởng đang chọn'], 403);
+                }
+
+                return response()->json($this->service->roomLabel($room->id));
+        }
+
         public function start(Request $request)
         {
                 return $this->act($request, fn($user) => $this->service->start(
                         (int) $request->room_id,
                         $request->token,
-                        (int) $request->stage_plan_id,
+                        // Cân NL gửi nhiều lô (stage_plan_ids[]), công đoạn khác 1 lô
+                        $request->filled('stage_plan_ids') ? (array) $request->input('stage_plan_ids') : (int) $request->stage_plan_id,
                         $request->mode, // 'prepare' = Chuẩn bị, 'execute' = Thực thi sản xuất ngay
                         null, // giờ hệ thống
                         $user
@@ -193,7 +209,7 @@ class ProductionExecutionController extends Controller
                 return $this->act($request, fn($user) => $this->service->pause(
                         (int) $request->room_id,
                         $request->token,
-                        $request->only(['yields', 'number_of_boxes', 'note', 'reason', 'actual_batch']),
+                        $request->only(['yields', 'number_of_boxes', 'box_mode', 'note', 'reason', 'actual_batch', 'batches']),
                         $user
                 ), true);
         }
@@ -213,7 +229,7 @@ class ProductionExecutionController extends Controller
                 return $this->act($request, fn($user) => $this->service->finish(
                         (int) $request->room_id,
                         $request->token,
-                        $request->only(['yields', 'number_of_boxes', 'note', 'actual_batch']),
+                        $request->only(['yields', 'number_of_boxes', 'box_mode', 'note', 'actual_batch', 'batches', 'finish_ids']),
                         $user
                 ), true);
         }
@@ -237,7 +253,30 @@ class ProductionExecutionController extends Controller
                         null, // giờ hệ thống
                         $request->note,
                         $user
-                ), true);
+                ));
+        }
+
+        /**
+         * Kiểm tra vệ sinh: người kiểm tra nhập lại tài khoản + mật khẩu (có thể trên phiên đăng nhập của người khác),
+         * phải khác người vệ sinh. Người thao tác được ghi là người kiểm tra, không phải người đang đăng nhập.
+         */
+        public function cleanCheck(Request $request)
+        {
+                return $this->act($request, function () use ($request) {
+                        $checker = $this->service->verifyChecker($request->input('username'), $request->input('password'));
+                        $pass = $request->input('result') === 'pass';
+                        if (!$pass && $request->input('result') !== 'fail') {
+                                throw new ProductionExecutionException('❌ Chọn kết quả Đạt hoặc Không đạt', 422);
+                        }
+
+                        $result = $this->service->checkCleaning((int) $request->room_id, $request->token, $pass, $request->input('note'), $checker);
+
+                        AuditTrialController::log('Clean Check', 'room_execution_log', (int) $request->room_id, 'NA',
+                                ($pass ? 'Đạt' : 'Không đạt: ' . $request->input('note'))
+                                . ' · phiên đăng nhập: ' . (session('user')['userName'] ?? 'NA'), $checker->userName);
+
+                        return $result;
+                }, true);
         }
 
         public function markDirty(Request $request)

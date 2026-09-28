@@ -5,13 +5,16 @@ namespace App\Services;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use App\Http\Controllers\Pages\AuditTrail\AuditTrialController;
 use Illuminate\Support\Facades\Log;
 
 /**
  * Thực thi sản xuất theo phòng (trang "Thực Thi Sản Xuất").
  *
  * Máy trạng thái của phòng:
- *   Phòng Sạch → (Mở phòng, chọn lô) Đang SX ⇄ Tạm Dừng SX → (Kết thúc SX) Cần VS → Đang VS → Phòng Sạch
+ *   Phòng Sạch → (Mở phòng, chọn lô) Đang SX ⇄ Tạm Dừng SX → (Kết thúc SX) Cần VS → Đang VS → Chờ Kiểm Tra
+ *   Chờ Kiểm Tra → (người khác kiểm tra, xác thực lại tài khoản) Đạt → Phòng Sạch / Không đạt → Đang VS
  *   Mở phòng chọn "Chuẩn bị": Phòng Sạch → Đang Chuẩn Bị (BĐSX) → (Thực thi sản xuất, BĐCM) Đang SX → ...
  *   Phòng Sạch quá hạn → Cần VS Lại → Đang VS → Phòng Sạch
  *
@@ -33,6 +36,7 @@ class ProductionExecutionService
     const EXPIRED    = 5; // Phòng sạch quá hạn: chỉ tính lúc hiển thị, không lưu
     const PAUSED     = 6;
     const PREPARING  = 7; // Mở phòng chọn "Chuẩn bị": đã có BĐSX, chưa bắt đầu tạo ra sản lượng (BĐCM)
+    const AWAIT_CHECK = 8; // Đã kết thúc vệ sinh, chờ người khác kiểm tra (Đạt → Phòng Sạch, Không đạt → tiếp tục vệ sinh)
 
     const STATE_LABELS = [
         self::CLEAN      => 'Phòng Sạch',
@@ -42,6 +46,7 @@ class ProductionExecutionService
         self::EXPIRED    => 'Cần Vệ Sinh Lại',
         self::PAUSED     => 'Tạm Dừng SX',
         self::PREPARING  => 'Đang Chuẩn Bị',
+        self::AWAIT_CHECK => 'Chờ Kiểm Tra',
     ];
 
     // [hậu tố class CSS, icon]
@@ -53,19 +58,24 @@ class ProductionExecutionService
         self::EXPIRED    => ['expired', 'fa-exclamation-triangle'],
         self::PAUSED     => ['paused', 'fa-pause-circle'],
         self::PREPARING  => ['preparing', 'fa-clipboard-check'],
+        self::AWAIT_CHECK => ['checking', 'fa-user-check'],
     ];
 
     // Thứ tự trạng thái trên bộ lọc và bộ đếm (trang Thực Thi SX, trang công khai)
-    const DISPLAY_ORDER = [self::PREPARING, self::PRODUCING, self::PAUSED, self::NEED_CLEAN, self::CLEANING, self::CLEAN, self::EXPIRED];
+    const DISPLAY_ORDER = [self::PREPARING, self::PRODUCING, self::PAUSED, self::NEED_CLEAN, self::CLEANING, self::AWAIT_CHECK, self::CLEAN, self::EXPIRED];
 
     // Mở phòng: chuẩn bị trước (BĐCM ghi khi bấm Thực thi sản xuất) hoặc thực thi ngay (BĐCM = BĐSX)
     const START_MODES = ['prepare' => self::PREPARING, 'execute' => self::PRODUCING];
+
+    // Công đoạn được mở phòng cho nhiều lô cùng lúc (Cân NL, Cân NL Khác)
+    const GROUP_STAGES = [1, 2];
 
     // Lô đang chạy trong phòng (từ BĐSX đến KT): phòng dành cho lô, không được thêm hoạt động khác
     const BATCH_RUNNING_STATES = [self::PREPARING, self::PRODUCING, self::PAUSED];
 
     // Hủy thao tác: chỉ các thao tác chưa ghi gì vào stage_plan/yields, và chỉ trong 2 phút kể từ lúc thao tác
-    const UNDO_STATES = [self::PREPARING, self::PRODUCING, self::CLEANING];
+    // Kết thúc vệ sinh (→ Chờ kiểm tra) chưa ghi stage_plan nên hủy được; kết quả kiểm tra thì không (xem undo())
+    const UNDO_STATES = [self::PREPARING, self::PRODUCING, self::CLEANING, self::AWAIT_CHECK];
     const UNDO_SECONDS = 120;
 
     // Mã ca (assignments.Sheet) như trang Lịch Công Tác → Sản Xuất
@@ -168,11 +178,36 @@ class ProductionExecutionService
 
             $room->st = $log && !$stale ? $this->stateFromLog($log, $now) : $this->deriveState($sp, $now);
             $room->stage_group = in_array((int) $room->stage_code, [1, 2], true) ? 1 : (int) $room->stage_code;
+
+            // Phòng sạch: người vệ sinh, người kiểm tra, lô sản xuất trước lần vệ sinh (vệ sinh lại không gắn lô → lô gần nhất của phòng)
+            $room->st->cleaned = null;
+            $room->st->prev_plan_id = null;
+            if ($room->st->state === self::CLEAN) {
+                $room->st->cleaned = $room->st->derived
+                    ? (object) ['finished_on' => $room->st->since, 'done_by' => $sp->finished_by ?? null, 'checked_by' => null]
+                    : $this->cleanedBy($room->id, $log);
+                $room->st->prev_plan_id = $room->st->stage_plan_id ?: ($sp->id ?? null);
+            }
         }
+
+        // Nhóm lô chạy chung (Cân NL): chỉ khi trạng thái hiện tại lấy từ log và lô chính của log thuộc nhóm
+        $groupRows = DB::table('room_execution_batch')
+            ->whereIn('room_id', $ids)
+            ->whereNull('cleaned_at')
+            ->whereNull('cancelled_at')
+            ->orderBy('id')
+            ->get()
+            ->groupBy('room_id')
+            ->filter(function ($rows, $roomId) use ($rooms) {
+                $st = $rooms->firstWhere('id', $roomId)->st ?? null;
+                return $st && !$st->derived && $st->state !== self::CLEAN && $rows->contains('stage_plan_id', $st->stage_plan_id);
+            });
 
         $nextIds = $this->nextPlanIds($ids);
         $details = $this->planDetails(array_merge(
             $rooms->pluck('st.stage_plan_id')->filter()->all(),
+            $rooms->pluck('st.prev_plan_id')->filter()->all(),
+            $groupRows->flatten()->pluck('stage_plan_id')->all(),
             array_values($nextIds)
         ));
 
@@ -221,6 +256,22 @@ class ProductionExecutionService
                 // Khoảng chuẩn bị (BĐSX → BĐCM); ended_at NULL = đang chuẩn bị
                 $plan->prep = $logs->where('state', self::PREPARING)->values();
             }
+            // Đợt vệ sinh đang dở (Không đạt → tiếp tục vệ sinh): lúc bắt đầu vệ sinh đầu tiên, người vệ sinh
+            $room->st->cycle = in_array($room->st->state, [self::CLEANING, self::AWAIT_CHECK], true) && $room->st->log_id
+                ? $this->cleaningCycle($room->id, $room->st->log_id)
+                : null;
+            $room->st->prev_plan = $room->st->prev_plan_id ? $details->get($room->st->prev_plan_id) : null;
+            // Mỗi lô trong nhóm: thông tin lô + row_id, started_at (BĐSX), ended_at (đã kết thúc), running
+            $room->st->group = $groupRows->has($room->id)
+                ? $groupRows->get($room->id)->map(function ($r) use ($details) {
+                    $b = clone $details->get($r->stage_plan_id);
+                    $b->row_id = $r->id;
+                    $b->started_at = $r->started_at;
+                    $b->ended_at = $r->ended_at;
+                    $b->running = $r->ended_at === null;
+                    return $b;
+                })->values()
+                : null;
             $room->next_plan = isset($nextIds[$room->id]) ? $details->get($nextIds[$room->id]) : null;
             $room->activities = $activities->get($room->id, collect());
             $room->staff = $staff->get($room->id, collect());
@@ -249,11 +300,16 @@ class ProductionExecutionService
             ->orderBy('a.start')
             ->orderBy('a.id')
             ->orderBy('ap.display_order')
-            ->get([
+            ->orderBy('ap.personnel_id')
+            // Vị trí của người trong cả phân công (kể cả người chưa/hết giờ) để nhãn A, B, C... khớp Lịch Công Tác
+            ->selectRaw('(SELECT COUNT(*) FROM assignment_personnel ap2 WHERE ap2.assignment_id = ap.assignment_id
+                AND (ap2.display_order < ap.display_order OR (ap2.display_order = ap.display_order AND ap2.personnel_id < ap.personnel_id))) AS position')
+            ->addSelect([
                 'a.id', 'a.room_id', 'a.Sheet', 'a.start', 'a.end', 'a.Job_description',
                 'ap.start as person_start', 'ap.end as person_end', 'ap.operation_type', 'ap.notification',
                 'e.code', 'e.name',
             ])
+            ->get()
             ->groupBy('room_id')
             ->map(fn($rows) => $rows->groupBy('id')->map(function ($people) {
                 $a = $people->first();
@@ -266,6 +322,7 @@ class ProductionExecutionService
                     // Bỏ mô tả không có chữ (nhiều phân công chỉ ghi "1")
                     'job'    => preg_match('/\p{L}/u', $job) ? $job : '',
                     'people' => $people->map(fn($p) => (object) [
+                        'label' => chr(65 + (int) $p->position),
                         'code'  => $p->code,
                         'name'  => $p->name,
                         'start' => $p->person_start ?? $a->start,
@@ -294,6 +351,7 @@ class ProductionExecutionService
                 'sp.actual_end',
                 'sp.actual_end_clearning',
                 'sp.title_clearning',
+                'sp.finished_by',
                 DB::raw('ROW_NUMBER() OVER (PARTITION BY sp.resourceId ORDER BY COALESCE(sp.actual_end_clearning, sp.actual_end, sp.actual_start) DESC, sp.id DESC) AS rn')
             );
 
@@ -330,8 +388,12 @@ class ProductionExecutionService
             ->whereNull('ended_at')
             ->whereNull('cancelled_at')
             ->whereNotNull('stage_plan_id')
-            ->whereIn('state', [self::PREPARING, self::PRODUCING, self::PAUSED, self::NEED_CLEAN, self::CLEANING])
+            ->whereIn('state', [self::PREPARING, self::PRODUCING, self::PAUSED, self::NEED_CLEAN, self::CLEANING, self::AWAIT_CHECK])
             ->pluck('stage_plan_id')
+            // các lô còn lại của nhóm lô đang chạy chung
+            ->merge(DB::table('room_execution_batch')->whereNull('cleaned_at')->whereNull('cancelled_at')->pluck('stage_plan_id'))
+            ->unique()
+            ->values()
             ->all();
     }
 
@@ -453,6 +515,8 @@ class ProductionExecutionService
             'note'           => $note,
             'derived'        => $derived,
             'acted_at'       => null, // lúc thao tác, gán ở stateFromLog (trạng thái dẫn xuất không có)
+            'cycle'          => null, // đợt vệ sinh đang dở (Đang VS / Chờ kiểm tra), gán ở attachStates
+            'group'          => null, // nhóm lô chạy chung (Cân NL), gán ở attachStates
             // Trình duyệt gửi lại token khi thao tác; khác token hiện tại nghĩa là phòng vừa bị người khác đổi trạng thái
             'token'          => implode('|', [$display, $logId ?? 'd', $spId ?? '-', $since ? $since->format('YmdHis') : '-']),
             'plan'           => null,
@@ -462,9 +526,23 @@ class ProductionExecutionService
     /**
      * Hạn Hủy thao tác của trạng thái hiện tại (null = không hủy được): UNDO_SECONDS kể từ lúc thao tác.
      */
+    private static function groupEndedSince(object $st): bool
+    {
+        return $st->group && $st->since
+            && $st->group->contains(fn($b) => $b->ended_at && Carbon::parse($b->ended_at)->gte($st->since));
+    }
+
     public static function undoUntil(object $st): ?Carbon
     {
         if ($st->derived || !$st->acted_at || !in_array($st->state, self::UNDO_STATES, true)) {
+            return null;
+        }
+        // Nhóm lô: đã kết thúc lô nào sau thao tác này (đã ghi sản lượng) thì không hủy được
+        if (self::groupEndedSince($st)) {
+            return null;
+        }
+        // Đang VS mở lại do kiểm tra Không đạt (không phải dòng Đang VS đầu tiên của đợt): kết quả kiểm tra không hủy được
+        if ($st->state === self::CLEANING && !empty($st->cycle->first_log_id) && $st->cycle->first_log_id != $st->log_id) {
             return null;
         }
 
@@ -509,9 +587,9 @@ class ProductionExecutionService
             ->where('sp.deparment_code', $room->deparment_code)
             ->whereIn('sp.stage_code', $stageCodes)
             ->whereNull('sp.actual_start_clearning')
-            // chưa bắt đầu, hoặc đã xác nhận 1 phần (✓) — lô đã chạy dở thì chỉ tiếp tục ở chính phòng đó
-            ->where(fn($q) => $q->where(fn($q2) => $q2->where('sp.finished', 0)->whereNull('sp.actual_start'))
-                ->orWhere(fn($q2) => $q2->whereNotNull('sp.actual_start')->where('sp.resourceId', $room->id)))
+            // Mở phòng chỉ dành cho lô chưa từng thực thi: chưa hoàn thành và chưa từng xác nhận sản lượng (actual_start)
+            ->where('sp.finished', 0)
+            ->whereNull('sp.actual_start')
             ->where(function ($q) use ($roomIds, $weighing) {
                 $q->whereIn('sp.resourceId', $roomIds);
                 if ($weighing) {
@@ -526,8 +604,9 @@ class ProductionExecutionService
     public function candidatePlans(object $room, string $scope): Collection
     {
         $ids = $this->candidateQuery($room, $scope)
+            // Modal "Mở phòng" chỉ hiện lô đã sắp lịch, kể cả Cân NL (candidateQuery vẫn cho phép chọn lô chưa sắp lịch để start())
+            ->whereNotNull('sp.start')
             ->orderByRaw('sp.resourceId = ? DESC', [$room->id])
-            ->orderByRaw('sp.start IS NULL')
             // lô có lịch gần thời điểm hiện tại nhất lên đầu
             ->orderByRaw('ABS(TIMESTAMPDIFF(MINUTE, sp.start, NOW()))')
             ->orderBy('sp.id')
@@ -548,38 +627,73 @@ class ProductionExecutionService
      * Phòng Sạch → Đang Chuẩn Bị (mode 'prepare') hoặc Đang SX (mode 'execute'). Cả hai đều là BĐSX của lô;
      * 'execute' thì BĐCM của lần xác nhận sản lượng đầu tiên = BĐSX.
      */
-    public function start(int $roomId, ?string $token, int $stagePlanId, ?string $mode, ?string $time, string $user): string
+    /**
+     * @param int|int[] $stagePlanIds  Cân NL được mở nhiều lô cùng mã BTP (nhóm lô): lô đầu tiên là lô chính của log,
+     *                                 cả nhóm lưu ở room_execution_batch
+     */
+    public function start(int $roomId, ?string $token, int|array $stagePlanIds, ?string $mode, ?string $time, string $user): string
     {
         if (!isset(self::START_MODES[$mode])) {
             throw new ProductionExecutionException('❌ Chọn Chuẩn bị hoặc Thực thi sản xuất');
         }
+        $ids = array_values(array_unique(array_filter(array_map('intval', (array) $stagePlanIds))));
+        if (!$ids) {
+            throw new ProductionExecutionException('❌ Chọn lô cần sản xuất');
+        }
 
-        return $this->transition($roomId, $token, function ($room, $st) use ($stagePlanId, $mode, $time, $user) {
+        return $this->transition($roomId, $token, function ($room, $st) use ($ids, $mode, $time, $user) {
             if ($st->display === self::EXPIRED) {
                 throw new ProductionExecutionException('❌ Phòng đã quá hạn sạch, cần vệ sinh lại trước khi sản xuất');
             }
             if ($st->state !== self::CLEAN) {
                 throw new ProductionExecutionException('❌ Chỉ mở phòng khi phòng đang ở trạng thái Phòng Sạch');
             }
-            if (!$this->candidateQuery($room, 'stage')->where('sp.id', $stagePlanId)->exists()) {
+            if (count($ids) > 1 && !in_array((int) $room->stage_code, self::GROUP_STAGES, true)) {
+                throw new ProductionExecutionException('❌ Chỉ công đoạn Cân nguyên liệu được mở phòng cho nhiều lô');
+            }
+            if (count($ids) !== $this->candidateQuery($room, 'stage')->whereIn('sp.id', $ids)->count()) {
                 throw new ProductionExecutionException('❌ Lô không hợp lệ, đã hoàn thành hoặc đang được thực hiện ở phòng khác');
             }
 
-            $plan = $this->planDetails([$stagePlanId])->get($stagePlanId);
+            $plans = $this->planDetails($ids);
+            if ($plans->pluck('intermediate_code')->unique()->count() > 1) {
+                throw new ProductionExecutionException('❌ Chỉ mở chung các lô cùng mã bán thành phẩm (BTP)');
+            }
             $at = $this->parseTime($time, 'Thời gian bắt đầu sản xuất (BĐSX)', $st->since);
 
             if ($st->expired_at && $at->gte($st->expired_at)) {
                 throw new ProductionExecutionException('❌ Phòng đã hết hạn sạch lúc ' . $st->expired_at->format('H:i d/m/Y') . ', cần vệ sinh lại');
             }
-            if ($plan->max_yield_end && $at->lt(Carbon::parse($plan->max_yield_end))) {
-                throw new ProductionExecutionException('❌ BĐSX không được nhỏ hơn thời gian kết thúc lần xác nhận sản lượng trước của lô ('
-                    . Carbon::parse($plan->max_yield_end)->format('H:i d/m/Y') . ')');
+            foreach ($plans as $plan) {
+                if ($plan->max_yield_end && $at->lt(Carbon::parse($plan->max_yield_end))) {
+                    throw new ProductionExecutionException('❌ BĐSX không được nhỏ hơn thời gian kết thúc lần xác nhận sản lượng trước của lô '
+                        . $plan->label . ' (' . Carbon::parse($plan->max_yield_end)->format('H:i d/m/Y') . ')');
+                }
             }
 
             $this->closeCurrent($room, $st, $at, $user);
-            $this->openLog($room, self::START_MODES[$mode], $at, $user, ['stage_plan_id' => $stagePlanId]);
+            $logId = $this->openLog($room, self::START_MODES[$mode], $at, $user, ['stage_plan_id' => $ids[0]]);
 
-            return ($mode === 'prepare' ? '✅ Đã mở phòng, bắt đầu chuẩn bị ' : '✅ Đã bắt đầu sản xuất ') . $plan->label;
+            if (count($ids) > 1) {
+                // Nhóm cũ còn sót (vd. vệ sinh được xác nhận ở trang cũ) thì đóng lại
+                DB::table('room_execution_batch')->where('room_id', $room->id)->whereNull('cleaned_at')->whereNull('cancelled_at')
+                    ->update(['cleaned_at' => now(), 'updated_at' => now()]);
+                DB::table('room_execution_batch')->insert(array_map(fn($id) => [
+                    'room_id'       => $room->id,
+                    'stage_plan_id' => $id,
+                    'open_log_id'   => $logId,
+                    'started_at'    => $at,
+                    'created_by'    => $user,
+                    'created_at'    => now(),
+                    'updated_at'    => now(),
+                ], $ids));
+            }
+
+            $label = count($ids) > 1
+                ? count($ids) . ' lô ' . ($plans->first()->product_name ?? '') . ' (' . $plans->pluck('batch')->implode(', ') . ')'
+                : $plans->first()->label;
+
+            return ($mode === 'prepare' ? '✅ Đã mở phòng, bắt đầu chuẩn bị ' : '✅ Đã bắt đầu sản xuất ') . $label;
         });
     }
 
@@ -610,7 +724,18 @@ class ProductionExecutionService
                 throw new ProductionExecutionException('❌ Phòng không ở trạng thái Đang Sản Xuất');
             }
 
-            $end = $this->recordSegment($room, $st, $in, $user);
+            if ($st->group) {
+                // Nhóm lô: ghi sản lượng lần này của từng lô đang chạy
+                $end = $this->parseTime(null, 'Thời gian kết thúc (KT)', $st->since, true);
+                $yieldId = null;
+                foreach ($st->group->where('running', true) as $b) {
+                    $yieldId = $this->groupYield($room, $st, $b, $end, $in, $user);
+                }
+                $logId = $this->closeCurrent($room, $st, $end, $user);
+                DB::table('room_execution_log')->where('id', $logId)->update(['yield_id' => $yieldId]);
+            } else {
+                $end = $this->recordSegment($room, $st, $in, $user);
+            }
             $this->openLog($room, self::PAUSED, $end, $user, [
                 'stage_plan_id' => $st->stage_plan_id,
                 'note'          => $this->text($in['reason'] ?? null),
@@ -646,6 +771,9 @@ class ProductionExecutionService
     public function finish(int $roomId, ?string $token, array $in, string $user): string
     {
         return $this->transition($roomId, $token, function ($room, $st) use ($in, $user) {
+            if ($st->group && in_array($st->state, [self::PRODUCING, self::PAUSED], true)) {
+                return $this->finishGroup($room, $st, $in, $user);
+            }
             if ($st->state === self::PRODUCING) {
                 $end = $this->recordSegment($room, $st, $in, $user);
             } elseif ($st->state === self::PAUSED) {
@@ -668,6 +796,65 @@ class ProductionExecutionService
 
             return '✅ Đã kết thúc sản xuất, phòng chuyển sang Cần Vệ Sinh';
         });
+    }
+
+    /**
+     * Kết thúc các lô được chọn ($in['finish_ids']) trong nhóm lô. Đang SX thì ghi sản lượng lần này của các lô đó;
+     * Tạm dừng thì sản lượng đã ghi lúc tạm dừng. Còn lô đang chạy thì phòng giữ nguyên trạng thái, hết lô thì Cần VS.
+     */
+    private function finishGroup(object $room, object $st, array $in, string $user): string
+    {
+        $running = $st->group->where('running', true);
+        $ids = array_map('intval', (array) ($in['finish_ids'] ?? []));
+        $finishing = $running->whereIn('id', $ids);
+        if ($finishing->isEmpty()) {
+            throw new ProductionExecutionException('❌ Chọn lô cần kết thúc');
+        }
+
+        $producing = $st->state === self::PRODUCING;
+        $end = $this->parseTime(null, 'Thời gian kết thúc (KT)', $st->since, $producing);
+        $yieldId = null;
+        if ($producing) {
+            foreach ($finishing as $b) {
+                $yieldId = $this->groupYield($room, $st, $b, $end, $in, $user);
+            }
+        }
+
+        DB::table('room_execution_batch')->whereIn('id', $finishing->pluck('row_id')->all())
+            ->update(['ended_at' => $end, 'ended_by' => $user, 'updated_at' => now()]);
+
+        $labels = $finishing->pluck('batch')->implode(', ');
+        if ($finishing->count() < $running->count()) {
+            return '✅ Đã kết thúc lô ' . $labels . ', còn ' . ($running->count() - $finishing->count()) . ' lô đang '
+                . ($producing ? 'sản xuất' : 'tạm dừng');
+        }
+
+        if ($producing) {
+            $logId = $this->closeCurrent($room, $st, $end, $user);
+            DB::table('room_execution_log')->where('id', $logId)->update(['yield_id' => $yieldId]);
+        } else {
+            $this->closePause($room, $st, $end, $user);
+        }
+
+        $plan = $this->planDetails([$st->stage_plan_id])->get($st->stage_plan_id);
+        $this->openLog($room, self::NEED_CLEAN, $end, $user, [
+            'stage_plan_id'  => $st->stage_plan_id,
+            'cleaning_level' => $this->levelOf($plan->title_clearning ?? null),
+        ]);
+
+        return '✅ Đã kết thúc lô ' . $labels . ', hết lô trong phòng → Cần Vệ Sinh';
+    }
+
+    /** Ghi sản lượng lần này của 1 lô trong nhóm: $in['batches'][stage_plan_id] = {yields, number_of_boxes, box_mode, actual_batch} */
+    private function groupYield(object $room, object $st, object $b, Carbon $end, array $in, string $user): int
+    {
+        $row = (array) ($in['batches'][$b->id] ?? []);
+        try {
+            return $this->recordYield($room, (int) $b->id, $st->since, $end,
+                $row + ['note' => $in['note'] ?? null], $user, Carbon::parse($b->started_at));
+        } catch (ProductionExecutionException $e) {
+            throw new ProductionExecutionException('Lô ' . $b->batch . ': ' . $e->getMessage(), $e->getCode() ?: 422);
+        }
     }
 
     /** Cần VS / Cần VS lại → Đang VS */
@@ -695,28 +882,22 @@ class ProductionExecutionService
     }
 
     /**
-     * Đang VS → Phòng Sạch (= ✓✓ nếu vệ sinh sau lô).
-     * Vệ sinh sau lô + công tắc tịnh tuyến của phân xưởng đang bật thì tịnh tuyến lịch lý thuyết sau khi đã lưu,
-     * lỗi tịnh tuyến không làm mất xác nhận vệ sinh (giống trang Xác nhận hoàn thành).
-     *
-     * @return array{message: string, reroute: ?array}
+     * Đang VS → Chờ Kiểm Tra. Chưa ghi stage_plan / Báo cáo ngày: vệ sinh chỉ được công nhận khi kiểm tra Đạt
+     * (checkCleaning); Không đạt thì tiếp tục vệ sinh và lần kết thúc sau mới là giờ kết thúc vệ sinh thật.
      */
-    public function endCleaning(int $roomId, ?string $token, ?string $time, ?string $note, string $user): array
+    public function endCleaning(int $roomId, ?string $token, ?string $time, ?string $note, string $user): string
     {
-        $cleanedPlanId = null;
-        $deparmentCode = null;
-
-        $message = $this->transition($roomId, $token, function ($room, $st) use ($time, $note, $user, &$cleanedPlanId, &$deparmentCode) {
+        return $this->transition($roomId, $token, function ($room, $st) use ($time, $note, $user) {
             if ($st->state !== self::CLEANING) {
                 throw new ProductionExecutionException('❌ Phòng không ở trạng thái Đang Vệ Sinh');
             }
 
             $at = $this->parseTime($time, 'Thời gian kết thúc vệ sinh', $st->since, true);
-            $level = $st->cleaning_level ?: 'VS-I';
             $note = $this->text($note);
 
             if ($st->stage_plan_id) {
-                $conflict = $this->overlapConflict($room, $st->stage_plan_id, $st->since, $at);
+                $cycle = $this->cleaningCycle($room->id, $st->log_id);
+                $conflict = $this->overlapConflict($room, $st->stage_plan_id, $cycle->start ?? $st->since, $at);
                 if ($conflict) {
                     throw new ProductionExecutionException('❌ Thời gian vệ sinh bị trùng giờ với lô "' . $conflict->title
                         . '" (' . $this->conflictRange($conflict) . ') trên cùng phòng sản xuất, vui lòng kiểm tra lại!');
@@ -724,34 +905,105 @@ class ProductionExecutionService
             }
 
             $logId = $this->closeCurrent($room, $st, $at, $user);
-
-            if ($st->stage_plan_id) {
-                DB::table('stage_plan')->where('id', $st->stage_plan_id)->update([
-                    'actual_start_clearning' => $st->since,
-                    'actual_end_clearning'   => $at,
-                    'finished_by'            => $user,
-                    'finished_date'          => now(),
-                    'finished'               => 1,
-                ]);
-                if ($note) {
-                    DB::table('room_execution_log')->where('id', $logId)->update(['note' => $note]);
-                }
-            } else {
-                // Vệ sinh không gắn lô: ghi vào Báo cáo ngày như 1 hoạt động của phòng
-                $rsId = $this->insertActivity($room, $level === 'VS-LAI' ? 'Vệ sinh lại' : $level, $st->since, $at, $note, $user);
-                DB::table('room_execution_log')->where('id', $logId)->update(['room_status_id' => $rsId, 'note' => $note]);
+            if ($note) {
+                DB::table('room_execution_log')->where('id', $logId)->update(['note' => $note]);
             }
 
-            $this->openLog($room, self::CLEAN, $at, $user, [
+            $this->openLog($room, self::AWAIT_CHECK, $at, $user, [
+                'stage_plan_id'  => $st->stage_plan_id,
+                'cleaning_level' => $st->cleaning_level ?: 'VS-I',
+            ]);
+
+            return '✅ Đã kết thúc vệ sinh, phòng chờ kiểm tra (người kiểm tra phải khác người vệ sinh)';
+        });
+    }
+
+    /**
+     * Kiểm tra vệ sinh (Chờ Kiểm Tra). Người kiểm tra đã xác thực lại tài khoản (verifyChecker) và phải khác người vệ sinh.
+     * - Đạt: ghi thời gian vệ sinh (= ✓✓ nếu vệ sinh sau lô, không gắn lô thì ghi Báo cáo ngày) từ lúc bắt đầu vệ sinh
+     *   tới lúc kết thúc vệ sinh; phòng sạch, hạn tính từ lúc kết thúc vệ sinh. Tịnh tuyến lịch như ✓✓ nếu công tắc bật.
+     * - Không đạt (bắt buộc lý do): tiếp tục vệ sinh cùng cấp.
+     *
+     * @return array{message: string, reroute: ?array}
+     */
+    public function checkCleaning(int $roomId, ?string $token, bool $pass, ?string $note, object $checker): array
+    {
+        $cleanedPlanId = null;
+        $deparmentCode = null;
+        $note = $this->text($note);
+        if (!$pass && !$note) {
+            throw new ProductionExecutionException('❌ Nhập lý do không đạt');
+        }
+
+        $message = $this->transition($roomId, $token, function ($room, $st) use ($pass, $note, $checker, &$cleanedPlanId, &$deparmentCode) {
+            if ($st->state !== self::AWAIT_CHECK || !$st->log_id) {
+                throw new ProductionExecutionException('❌ Phòng không ở trạng thái Chờ Kiểm Tra');
+            }
+
+            $cycle = $this->cleaningCycle($room->id, $st->log_id);
+            if (in_array(mb_strtolower($checker->fullName), array_map('mb_strtolower', $cycle->cleaners), true)) {
+                throw new ProductionExecutionException('❌ Người kiểm tra phải khác người thực hiện vệ sinh ('
+                    . implode(', ', $cycle->cleaners) . ')', 422);
+            }
+
+            $name = $checker->fullName;
+            $now = now();
+            $level = $st->cleaning_level ?: 'VS-I';
+
+            $this->closeCurrent($room, $st, $now, $name);
+            DB::table('room_execution_log')->where('id', $st->log_id)->update([
+                'checked_by'   => $name,
+                'checked_at'   => $now,
+                'check_result' => $pass ? 1 : 0,
+                'note'         => $note,
+            ]);
+
+            if (!$pass) {
+                $this->openLog($room, self::CLEANING, $now, $name, [
+                    'stage_plan_id'  => $st->stage_plan_id,
+                    'cleaning_level' => $level,
+                    'note'           => 'Kiểm tra không đạt: ' . $note,
+                ]);
+
+                return '⚠️ Kiểm tra không đạt, phòng tiếp tục vệ sinh';
+            }
+
+            $end = $st->since; // giờ kết thúc vệ sinh
+            $start = $cycle->start ?? $end;
+
+            if ($st->stage_plan_id) {
+                // Nhóm lô: 1 lần vệ sinh chung ghi cho mọi lô trong nhóm (như trang Xác nhận hoàn thành đang làm)
+                $planIds = $st->group ? $st->group->pluck('id')->push($st->stage_plan_id)->unique()->all() : [$st->stage_plan_id];
+                DB::table('stage_plan')->whereIn('id', $planIds)->update([
+                    'actual_start_clearning' => $start,
+                    'actual_end_clearning'   => $end,
+                    'finished_by'            => $name,
+                    'finished_date'          => $now,
+                    'finished'               => 1,
+                ]);
+                if ($st->group) {
+                    DB::table('room_execution_batch')->whereIn('id', $st->group->pluck('row_id')->all())
+                        ->update(['cleaned_at' => $now, 'updated_at' => $now]);
+                }
+            } elseif ($cycle->first_log_id) {
+                // Vệ sinh không gắn lô: ghi vào Báo cáo ngày như 1 hoạt động của phòng, gắn với dòng Đang VS đầu tiên
+                $rsId = $this->insertActivity($room, $level === 'VS-LAI' ? 'Vệ sinh lại' : $level, $start, $end,
+                    'Kiểm tra đạt: ' . $name . ($note ? ' - ' . $note : ''), $cycle->cleaners[0] ?? $name);
+                DB::table('room_execution_log')->where('id', $cycle->first_log_id)->update(['room_status_id' => $rsId]);
+            }
+
+            $expiredAt = $this->expiry($end, $level);
+            $this->openLog($room, self::CLEAN, $now, $name, [
                 'stage_plan_id'  => $st->stage_plan_id,
                 'cleaning_level' => $level,
-                'expired_at'     => $this->expiry($at, $level),
+                'expired_at'     => $expiredAt,
+                'note'           => 'Kết thúc vệ sinh ' . $end->format('H:i d/m/Y') . ' · Kiểm tra đạt: ' . $name,
             ]);
 
             $cleanedPlanId = $st->stage_plan_id;
             $deparmentCode = $room->deparment_code;
 
-            return '✅ Đã kết thúc vệ sinh, phòng sạch đến ' . $this->expiry($at, $level)->format('H:i d/m/Y');
+            return '✅ Kiểm tra đạt, phòng sạch đến ' . $expiredAt->format('H:i d/m/Y');
         });
 
         $reroute = null;
@@ -773,6 +1025,99 @@ class ProductionExecutionService
         }
 
         return ['message' => $message, 'reroute' => $reroute];
+    }
+
+    /**
+     * Đợt vệ sinh đang dở của phòng: chuỗi dòng Đang VS / Chờ kiểm tra liền nhau kết thúc ở dòng $logId
+     * (Không đạt → tiếp tục vệ sinh vẫn cùng 1 đợt). start = lúc bắt đầu vệ sinh đầu tiên; cleaners = người bắt đầu
+     * vệ sinh + người bấm Kết thúc vệ sinh (không tính người kiểm tra đã mở lại dòng Đang VS khi Không đạt).
+     */
+    public function cleaningCycle(int $roomId, ?int $logId): object
+    {
+        $cycle = (object) ['start' => null, 'first_log_id' => null, 'cleaners' => []];
+        if (!$logId) {
+            return $cycle;
+        }
+
+        $logs = DB::table('room_execution_log')
+            ->where('room_id', $roomId)
+            ->whereNull('cancelled_at')
+            ->where('id', '<=', $logId)
+            ->orderByDesc('id')
+            ->limit(100)
+            ->get(['id', 'state', 'started_at', 'created_by']);
+
+        $chain = collect();
+        foreach ($logs as $l) {
+            if (!in_array((int) $l->state, [self::CLEANING, self::AWAIT_CHECK], true)) {
+                break;
+            }
+            $chain->prepend($l);
+        }
+
+        $first = $chain->first(fn($l) => (int) $l->state === self::CLEANING);
+        if ($first) {
+            $cycle->start = Carbon::parse($first->started_at);
+            $cycle->first_log_id = $first->id;
+        }
+        $cycle->cleaners = $chain
+            ->filter(fn($l) => (int) $l->state === self::AWAIT_CHECK || ($first && $l->id === $first->id))
+            ->pluck('created_by')
+            ->filter(fn($n) => $n && $n !== 'Hệ thống')
+            ->unique()
+            ->values()
+            ->all();
+
+        return $cycle;
+    }
+
+    /**
+     * Xác thực lại tài khoản người kiểm tra (chữ ký điện tử): cùng quy tắc khóa tài khoản với màn hình đăng nhập,
+     * nhập sai cũng tính vào số lần sai.
+     */
+    public function verifyChecker(?string $userName, ?string $password): object
+    {
+        $userName = trim((string) $userName);
+        if ($userName === '' || (string) $password === '') {
+            throw new ProductionExecutionException('❌ Nhập tài khoản và mật khẩu của người kiểm tra', 422);
+        }
+
+        $user = DB::table('user_management')->where('userName', $userName)->first();
+        if (!$user) {
+            throw new ProductionExecutionException('❌ Tài khoản hoặc mật khẩu không đúng', 422);
+        }
+
+        $maxAttempts = (int) config('security.max_login_attempts', 5);
+        $lockoutMin = (int) config('security.lockout_minutes', 15);
+
+        if ($user->isLocked && $user->locked_at && now()->gte(Carbon::parse($user->locked_at)->addMinutes($lockoutMin))) {
+            DB::table('user_management')->where('id', $user->id)->update(['isLocked' => 0, 'failed_attempts' => 0, 'locked_at' => null]);
+            $user->isLocked = 0;
+            $user->failed_attempts = 0;
+        }
+        if ($user->isLocked) {
+            throw new ProductionExecutionException('❌ Tài khoản đang bị khóa do nhập sai nhiều lần, thử lại sau', 423);
+        }
+
+        if (!Hash::check((string) $password, $user->passWord)) {
+            $attempts = (int) $user->failed_attempts + 1;
+            $locked = $attempts >= $maxAttempts;
+            DB::table('user_management')->where('id', $user->id)->update(
+                ['failed_attempts' => $attempts] + ($locked ? ['isLocked' => 1, 'locked_at' => now()] : [])
+            );
+            AuditTrialController::log('Clean Check Auth Failed', 'user_management', $user->id, 'NA',
+                "Sai mật khẩu khi kiểm tra vệ sinh lần {$attempts}/{$maxAttempts}" . ($locked ? ' - tài khoản bị khóa' : ''), $user->userName);
+
+            throw new ProductionExecutionException($locked
+                ? "❌ Sai mật khẩu $maxAttempts lần, tài khoản đã bị khóa $lockoutMin phút"
+                : '❌ Tài khoản hoặc mật khẩu không đúng (còn ' . ($maxAttempts - $attempts) . ' lần thử)', 422);
+        }
+
+        if ($user->failed_attempts) {
+            DB::table('user_management')->where('id', $user->id)->update(['failed_attempts' => 0]);
+        }
+
+        return $user;
     }
 
     /** Phòng Sạch → Cần VS (ví dụ sau bảo trì, sự cố), không gắn lô */
@@ -797,13 +1142,19 @@ class ProductionExecutionService
 
     /**
      * Hủy thao tác vừa rồi. Chỉ hủy được các thao tác chưa ghi gì vào stage_plan/yields:
-     * Mở phòng (chuẩn bị / bắt đầu SX), Thực thi sản xuất, Bắt đầu lại, Bắt đầu vệ sinh — trong 2 phút kể từ lúc thao tác.
+     * Mở phòng (chuẩn bị / bắt đầu SX), Thực thi sản xuất, Bắt đầu lại, Bắt đầu vệ sinh, Kết thúc vệ sinh (chưa kiểm tra) — trong 2 phút kể từ lúc thao tác.
      */
     public function undo(int $roomId, ?string $token, string $user): string
     {
         return $this->transition($roomId, $token, function ($room, $st) use ($user) {
             if ($st->derived || !in_array($st->state, self::UNDO_STATES, true)) {
-                throw new ProductionExecutionException('❌ Chỉ hủy được thao tác Mở phòng / Thực thi sản xuất / Bắt đầu lại / Bắt đầu vệ sinh vừa thực hiện');
+                throw new ProductionExecutionException('❌ Chỉ hủy được thao tác Mở phòng / Thực thi sản xuất / Bắt đầu lại / Bắt đầu / Kết thúc vệ sinh vừa thực hiện');
+            }
+            if ($st->state === self::CLEANING && !empty($st->cycle->first_log_id) && $st->cycle->first_log_id != $st->log_id) {
+                throw new ProductionExecutionException('❌ Không hủy được kết quả kiểm tra vệ sinh', 409);
+            }
+            if (self::groupEndedSince($st)) {
+                throw new ProductionExecutionException('❌ Đã kết thúc lô trong nhóm sau thao tác này (đã ghi sản lượng), không hủy được', 409);
             }
             $until = self::undoUntil($st);
             if (!$until || now()->gte($until)) {
@@ -819,11 +1170,19 @@ class ProductionExecutionService
                 ->orderByDesc('id')
                 ->first();
 
+            // Đang VS do kiểm tra Không đạt: kết quả kiểm tra (đã xác thực tài khoản) không hủy được
+            if ($prev && (int) $prev->state === self::AWAIT_CHECK && $prev->check_result !== null) {
+                throw new ProductionExecutionException('❌ Không hủy được kết quả kiểm tra vệ sinh');
+            }
+
             DB::table('room_execution_log')->where('id', $st->log_id)->update([
                 'cancelled_at' => now(),
                 'cancelled_by' => $user,
                 'updated_at'   => now(),
             ]);
+            // Hủy Mở phòng nhiều lô: hủy cả nhóm
+            DB::table('room_execution_batch')->where('open_log_id', $st->log_id)->whereNull('cancelled_at')
+                ->update(['cancelled_at' => now(), 'updated_at' => now()]);
 
             if ($prev) {
                 // Bắt đầu lại đã ghi khoảng tạm dừng vào Báo cáo ngày → hủy luôn dòng đó
@@ -933,6 +1292,235 @@ class ProductionExecutionService
     }
 
     /* =========================================================
+       NHÃN PHÒNG (theo mẫu nhãn phòng eBMR: Cần vệ sinh / Đã vệ sinh)
+       ========================================================= */
+
+    // Nhãn Cần vệ sinh: cấp I phải vệ sinh trong 24 giờ, cấp II trong 3 ngày kể từ khi hoàn tất sản xuất
+    const CLEAN_WITHIN_HOURS = ['VS-I' => 24, 'VS-II' => 72, 'VS-LAI' => 24];
+
+    /**
+     * Nhãn tình trạng phòng hiện tại.
+     * - Cần VS / Đang VS / Cần VS lại → nhãn vàng "Cần vệ sinh".
+     * - Phòng sạch → nhãn xanh "Đã vệ sinh", lô tiếp theo = lô kế tiếp theo lịch.
+     * - Đang chuẩn bị / Đang SX / Tạm dừng → nhãn xanh của lần vệ sinh trước BĐSX, đã gắn vào hồ sơ lô đang chạy.
+     */
+    public function roomLabel(int $roomId): ?array
+    {
+        $room = $this->room($roomId);
+        if (!$room) {
+            return null;
+        }
+
+        $st = $room->st;
+        $fmt = fn($t) => $t ? Carbon::parse($t)->format('H:i d/m/Y') : null;
+        $label = [
+            'room_name'   => $room->name,
+            'room_code'   => $room->code,
+            'state'       => $st->display,
+            'state_label' => $st->label,
+            'note'        => null,
+            'generated_at' => now()->format('H:i d/m/Y'),
+        ];
+
+        if (in_array($st->display, [self::NEED_CLEAN, self::CLEANING, self::EXPIRED], true)) {
+            $finishedOn = null;
+            $doneBy = null;
+            $level = $st->cleaning_level;
+            $before = null;
+
+            if ($st->display === self::EXPIRED) {
+                $level = 'VS-LAI';
+                $before = $st->expired_at;
+                $label['note'] = 'Phòng sạch hết hiệu lực lúc ' . $fmt($st->expired_at) . ', cần vệ sinh lại trước khi sản xuất';
+            } else {
+                // Đang VS: thông tin "cần vệ sinh" lấy từ trạng thái ngay trước lúc bắt đầu vệ sinh
+                // (Không đạt → tiếp tục vệ sinh: lấy trạng thái trước cả đợt vệ sinh)
+                $cycleFirst = $st->display === self::CLEANING ? ($this->cleaningCycle($room->id, $st->log_id)->first_log_id ?? $st->log_id) : null;
+                $dirty = $st->display === self::CLEANING && $st->log_id
+                    ? DB::table('room_execution_log')->where('room_id', $room->id)->whereNull('cancelled_at')
+                        ->where('id', '<', $cycleFirst)->orderByDesc('id')->first()
+                    : ($st->log_id ? DB::table('room_execution_log')->where('id', $st->log_id)->first() : null);
+
+                if ($dirty && (int) $dirty->state === self::CLEAN) {
+                    // Vệ sinh lại phòng quá hạn
+                    $before = $dirty->expired_at ? Carbon::parse($dirty->expired_at) : null;
+                } elseif ($dirty) {
+                    $finishedOn = Carbon::parse($dirty->started_at);
+                    $doneBy = $this->personOf($dirty->created_by, $dirty->stage_plan_id);
+                    $level = $level ?: $dirty->cleaning_level;
+                } elseif ($st->since) {
+                    $finishedOn = $st->since;
+                    $doneBy = $this->personOf(null, $st->stage_plan_id);
+                }
+                if ($finishedOn) {
+                    $before = $finishedOn->copy()->addHours(self::CLEAN_WITHIN_HOURS[$level ?: 'VS-I'] ?? 24);
+                }
+                if ($st->display === self::CLEANING) {
+                    $by = $st->log_id ? DB::table('room_execution_log')->where('id', $st->log_id)->value('created_by') : null;
+                    $label['note'] = 'Đang vệ sinh từ ' . $fmt($st->since) . ($by ? ' (' . $by . ')' : '')
+                        . ($st->note ? ' · ' . $st->note : '');
+                } elseif ($st->derived && !$st->since) {
+                    $label['note'] = $st->note;
+                }
+            }
+
+            return $label + [
+                'kind'        => 'to_clean',
+                'level'       => $level,
+                'finished_on' => $fmt($finishedOn),
+                'before'      => $fmt($before),
+                'overdue'     => $before && now()->gte($before),
+                'done_by'     => $doneBy,
+            ];
+        }
+
+        // Chờ kiểm tra: nhãn xanh đã điền người vệ sinh, còn trống người kiểm tra
+        if ($st->display === self::AWAIT_CHECK) {
+            $level = $st->cleaning_level ?: 'VS-I';
+            $next = $room->next_plan ?? null;
+            $label['note'] = 'Chờ kiểm tra vệ sinh — phòng chưa được sử dụng cho tới khi kiểm tra Đạt';
+
+            return $label + [
+                'kind'         => 'cleaned',
+                'level'        => $level,
+                'finished_on'  => $fmt($st->since),
+                'valid_until'  => $st->since ? $fmt($this->expiry($st->since, $level)) : null,
+                'done_by'      => implode(', ', $this->cleaningCycle($room->id, $st->log_id)->cleaners) ?: null,
+                'checked_by'   => null,
+                'next_product' => $next ? ($next->product_name ?? $next->title) : null,
+                'next_batch'   => $next->batch ?? null,
+                'next_planned' => $next ? $fmt($next->start) : null,
+                'received_by'  => null,
+                'attached'     => false,
+                'pending'      => true,
+            ];
+        }
+
+        // Nhãn xanh: lần vệ sinh còn hiệu lực lúc này (Phòng sạch) hoặc lúc mở phòng cho lô đang chạy
+        $running = in_array($st->state, self::BATCH_RUNNING_STATES, true) && $st->plan;
+        $at = $running ? Carbon::parse($st->plan->batch_start ?? $st->since) : now();
+        $cleaning = $this->lastCleaning($room->id, $at);
+        $nextPlan = $running ? $st->plan : ($room->next_plan ?? null);
+
+        $receivedBy = null;
+        if ($running) {
+            $opener = DB::table('room_execution_log')
+                ->where('stage_plan_id', $st->plan->id)
+                ->whereIn('state', [self::PREPARING, self::PRODUCING])
+                ->whereNull('cancelled_at')
+                ->orderBy('started_at')
+                ->first(['created_by']);
+            $receivedBy = $opener->created_by ?? null;
+            $label['note'] = 'Nhãn đã gắn vào hồ sơ lô đang sản xuất (BĐSX ' . $fmt($at) . ')';
+            if ($cleaning && $cleaning->valid_until && $at->gte($cleaning->valid_until)) {
+                $label['note'] .= ' — lưu ý: lúc BĐSX phòng đã quá hạn sạch';
+            }
+        }
+
+        return $label + [
+            'kind'         => 'cleaned',
+            'level'        => $cleaning->level ?? null,
+            'finished_on'  => $fmt($cleaning->finished_on ?? null),
+            'valid_until'  => $fmt($cleaning->valid_until ?? null),
+            'done_by'      => $cleaning->done_by ?? null,
+            'checked_by'   => $cleaning->checked_by ?? null, // chỉ có khi phòng sạch qua bước Kiểm tra
+            'next_product' => $nextPlan ? ($nextPlan->product_name ?? $nextPlan->title) : null,
+            'next_batch'   => $nextPlan->batch ?? null,
+            'next_planned' => !$running && $nextPlan ? $fmt($nextPlan->start) : null,
+            'received_by'  => $receivedBy,
+            'attached'     => $running,
+        ];
+    }
+
+    /**
+     * Lần vệ sinh gần nhất của phòng kết thúc trước $before: từ room_execution_log (Phòng sạch) hoặc
+     * stage_plan.actual_end_clearning (✓✓ ở trang Xác nhận hoàn thành), lấy cái mới hơn.
+     */
+    private function lastCleaning(int $roomId, Carbon $before): ?object
+    {
+        $log = DB::table('room_execution_log')
+            ->where('room_id', $roomId)
+            ->where('state', self::CLEAN)
+            ->whereNull('cancelled_at')
+            ->where('started_at', '<=', $before)
+            ->orderByDesc('started_at')
+            ->orderByDesc('id')
+            ->first();
+
+        $sp = DB::table('stage_plan')
+            ->where('resourceId', $roomId)
+            ->where('active', 1)
+            ->whereNotNull('actual_end_clearning')
+            ->where('actual_end_clearning', '<=', $before)
+            ->orderByDesc('actual_end_clearning')
+            ->first(['id', 'actual_end_clearning', 'title_clearning', 'finished_by']);
+
+        if ($log && (!$sp || $log->started_at >= $sp->actual_end_clearning)) {
+            $level = $log->cleaning_level ?: 'VS-I';
+            $by = $this->cleanedBy($roomId, $log);
+
+            return (object) [
+                'finished_on' => $by->finished_on,
+                'level'       => $level,
+                'valid_until' => $log->expired_at ? Carbon::parse($log->expired_at) : $this->expiry($by->finished_on, $level),
+                'done_by'     => $by->done_by,
+                'checked_by'  => $by->checked_by,
+            ];
+        }
+
+        if ($sp) {
+            $level = $this->levelOf($sp->title_clearning);
+            $finished = Carbon::parse($sp->actual_end_clearning);
+
+            return (object) [
+                'finished_on' => $finished,
+                'level'       => $level,
+                'valid_until' => $this->expiry($finished, $level),
+                'done_by'     => $sp->finished_by,
+            ];
+        }
+
+        return null;
+    }
+
+    /**
+     * Người vệ sinh / người kiểm tra / giờ kết thúc vệ sinh của 1 dòng Phòng Sạch: qua bước Kiểm tra thì lấy từ dòng
+     * Chờ kiểm tra (Đạt) ngay trước; dòng cũ (trước khi có bước kiểm tra) thì người tạo dòng, không có người kiểm tra.
+     */
+    private function cleanedBy(int $roomId, object $cleanLog): object
+    {
+        $by = (object) [
+            'finished_on' => Carbon::parse($cleanLog->started_at),
+            'done_by'     => $this->personOf($cleanLog->created_by, $cleanLog->stage_plan_id),
+            'checked_by'  => null,
+        ];
+
+        $check = DB::table('room_execution_log')
+            ->where('room_id', $roomId)
+            ->whereNull('cancelled_at')
+            ->where('id', '<', $cleanLog->id)
+            ->orderByDesc('id')
+            ->first();
+        if ($check && (int) $check->state === self::AWAIT_CHECK && (int) $check->check_result === 1) {
+            $by->finished_on = Carbon::parse($check->started_at);
+            $by->done_by = implode(', ', $this->cleaningCycle($roomId, $check->id)->cleaners) ?: $by->done_by;
+            $by->checked_by = $check->checked_by;
+        }
+
+        return $by;
+    }
+
+    /** Người thao tác; dòng log do hệ thống khởi tạo từ trang cũ thì lấy người xác nhận của lô */
+    private function personOf(?string $createdBy, $stagePlanId): ?string
+    {
+        if ($createdBy && $createdBy !== 'Hệ thống') {
+            return $createdBy;
+        }
+
+        return $stagePlanId ? DB::table('stage_plan')->where('id', $stagePlanId)->value('finished_by') : null;
+    }
+
+    /* =========================================================
        NỘI BỘ
        ========================================================= */
 
@@ -964,17 +1552,30 @@ class ProductionExecutionService
      */
     private function recordSegment(object $room, object $st, array $in, string $user): Carbon
     {
-        $sp = DB::table('stage_plan')->where('id', $st->stage_plan_id)->lockForUpdate()->first();
+        $end = $this->parseTime($in['end'] ?? null, 'Thời gian kết thúc (KT)', $st->since, true);
+        $yieldId = $this->recordYield($room, (int) $st->stage_plan_id, $st->since, $end, $in, $user);
+
+        $logId = $this->closeCurrent($room, $st, $end, $user);
+        DB::table('room_execution_log')->where('id', $logId)->update(['yield_id' => $yieldId]);
+
+        return $end;
+    }
+
+    /**
+     * Ghi sản lượng lần này (BĐCM $since → KT $end) của 1 lô vào stage_plan + yields. Không đổi trạng thái phòng.
+     * $groupStart: BĐSX của lô chạy chung nhóm (lô không phải lô chính không có dòng log riêng).
+     */
+    private function recordYield(object $room, int $stagePlanId, Carbon $since, Carbon $end, array $in, string $user, ?Carbon $groupStart = null): int
+    {
+        $sp = DB::table('stage_plan')->where('id', $stagePlanId)->lockForUpdate()->first();
         if (!$sp) {
             throw new ProductionExecutionException('❌ Không tìm thấy lô đang sản xuất');
         }
 
-        $end = $this->parseTime($in['end'] ?? null, 'Thời gian kết thúc (KT)', $st->since, true);
-
-        $startYield = !empty($in['start_yield']) ? $this->parseTime($in['start_yield'], 'BĐCM', null) : $st->since->copy();
-        if ($startYield->lt($st->since)) {
+        $startYield = !empty($in['start_yield']) ? $this->parseTime($in['start_yield'], 'BĐCM', null) : $since->copy();
+        if ($startYield->lt($since)) {
             throw new ProductionExecutionException('❌ BĐCM không được nhỏ hơn thời điểm bắt đầu sản xuất / bắt đầu lại ('
-                . $st->since->format('H:i d/m/Y') . ')');
+                . $since->format('H:i d/m/Y') . ')');
         }
         if ($startYield->gte($end)) {
             throw new ProductionExecutionException('❌ BĐCM phải nhỏ hơn thời gian kết thúc (KT)');
@@ -1008,7 +1609,7 @@ class ProductionExecutionService
             ->whereIn('state', [self::PREPARING, self::PRODUCING])
             ->whereNull('cancelled_at')
             ->min('started_at');
-        $batchStart = Carbon::parse($sp->actual_start ?? $firstStart ?? $st->since);
+        $batchStart = Carbon::parse($sp->actual_start ?? $groupStart ?? $firstStart ?? $since);
 
         $conflict = $this->overlapConflict($room, $sp->id, $batchStart, $end);
         if ($conflict) {
@@ -1016,12 +1617,25 @@ class ProductionExecutionService
                 . '" (' . $this->conflictRange($conflict) . ') trên cùng phòng sản xuất, vui lòng kiểm tra lại!');
         }
 
+        // Số thùng nhập là số thùng dùng cho LẦN NÀY. Lô đã có sản lượng > 0 thì phải chọn thùng mới hay dùng tiếp
+        // thùng đang dùng dở (thùng đó đã được đếm ở lần trước → không cộng lại)
+        $boxes = max(1, (int) ($in['number_of_boxes'] ?? 1));
+        if ($previous > 0) {
+            $mode = $in['box_mode'] ?? null;
+            if (!in_array($mode, ['new', 'continue'], true)) {
+                throw new ProductionExecutionException('❌ Chọn "Thùng mới" hoặc "Dùng tiếp thùng đang sử dụng"');
+            }
+            $totalBoxes = max(1, (int) $sp->number_of_boxes) + $boxes - ($mode === 'continue' ? 1 : 0);
+        } else {
+            $totalBoxes = $boxes;
+        }
+
         $update = [
             'resourceId'      => $room->id,
             'actual_start'    => $batchStart,
             'actual_end'      => $end,
             'yields'          => $total,
-            'number_of_boxes' => max(1, (int) ($in['number_of_boxes'] ?? $sp->number_of_boxes ?? 1)),
+            'number_of_boxes' => $totalBoxes,
             'finished_by'     => $user,
             'finished_date'   => now(),
             'finished'        => 1,
@@ -1030,12 +1644,6 @@ class ProductionExecutionService
         $note = $this->text($in['note'] ?? null);
         if ($note) {
             $update['note'] = $note;
-        }
-
-        // THT: quy đổi sản lượng (kg) ra đơn vị lô theo tổng đã xác nhận
-        if ((int) $sp->stage_code === 4 && $sp->Theoretical_yields > 0) {
-            $batchQty = DB::table('finished_product_category')->where('id', $sp->product_caterogy_id)->value('batch_qty');
-            $update['yields_batch_qty'] = round(($total / $sp->Theoretical_yields) * $batchQty, 2);
         }
 
         if ((int) $sp->stage_code <= 2) {
@@ -1061,10 +1669,7 @@ class ProductionExecutionService
                 ->update(['actual_batch' => $actualBatch, 'weighed' => 1]);
         }
 
-        $logId = $this->closeCurrent($room, $st, $end, $user);
-        DB::table('room_execution_log')->where('id', $logId)->update(['yield_id' => $yieldId]);
-
-        return $end;
+        return $yieldId;
     }
 
     /**
