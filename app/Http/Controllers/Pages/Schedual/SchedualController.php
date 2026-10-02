@@ -1864,6 +1864,19 @@ class SchedualController extends Controller
             ->leftJoin('room', 'quota.room_id', '=', 'room.id')
             ->where('quota.active', 1)
             ->where('quota.deparment_code', $production)
+            // Chỉ lấy cột FullCalender.jsx dùng: SELECT * (~9k dòng × 48 cột) làm /Schedual/view vượt memory_limit 128MB.
+            // stage_code lấy của room như SELECT * cũ (cột room đè cột quota cùng tên)
+            ->select(
+                'quota.process_code',
+                'quota.intermediate_code',
+                'quota.finished_product_code',
+                'quota.room_id',
+                'room.stage_code',
+                'quota.p_time',
+                'quota.m_time',
+                'quota.C1_time',
+                'quota.C2_time'
+            )
             ->get();
 
         $result = $result->map(function ($item) {

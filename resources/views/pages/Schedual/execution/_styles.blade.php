@@ -439,7 +439,19 @@
         .exec-plan-side .badge { display: inline-block; margin-bottom: 3px; }
         .exec-plan-empty { padding: 24px; text-align: center; color: #6b7785; }
 
-        .exec-history td { font-size: .82rem; vertical-align: top; }
+        /* Nhật ký phòng: modal rộng 90% màn hình, chữ lớn hơn 20% cho dễ đọc */
+        #execHistoryModal .modal-xl { max-width: 90vw; }
+        .exec-history th, .exec-history td { font-size: .98rem; vertical-align: top; }
+        .exec-history .small, .exec-history small { font-size: .84rem; }
+        /* Tiêu đề bám theo khi cuộn danh sách dài */
+        .exec-history thead th { position: sticky; top: 0; z-index: 2; background: #eef2f7; box-shadow: inset 0 -2px 0 #cbd5e1; }
+        /* Mốc ngày + nền xen kẽ theo từng ngày để thấy ngay dòng nào thuộc ngày nào */
+        .exec-history .exec-day td {
+            background: #d9e6f2; color: #0f2f57; font-weight: 700; padding: 6px 10px;
+            border-top: 2px solid #8fa9c2; letter-spacing: .01em;
+        }
+        .exec-history tbody tr.exec-band td { background: #f7f9fc; }
+        .exec-history tbody tr:hover td { background: #eaf2ff; }
         .exec-history .exec-cancelled td { text-decoration: line-through; color: #9ca3af; }
         .exec-history .exec-cancelled td .text-danger { text-decoration: none; }
     </style>

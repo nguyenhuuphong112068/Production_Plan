@@ -20,13 +20,19 @@
 
         <div class="exec-toolbar">
             <div class="exec-title">
-                <div class="exec-title-icon"><i class="fas fa-industry"></i></div>
+                {{-- <div class="exec-title-icon"><i class="fas fa-industry"></i></div> --}}
                 <div>
-                    <h4>THỰC THI SẢN XUẤT – {{ $production }}</h4>
-                    <div class="small">
+                    {{-- <h4>THỰC THI SẢN XUẤT – {{ $production }}</h4> --}}
+                    {{-- <div class="small">
                         Khai báo bắt đầu / tạm dừng / kết thúc sản xuất và vệ sinh phòng theo thực tế.
                         Dữ liệu ghi vào xác nhận hoàn thành và Báo cáo ngày.
-                    </div>
+                    </div> --}}
+                    @if ($foreignDepartment && false)
+                        <div class="small text-danger font-weight-bold mt-1">
+                            <i class="fas fa-lock"></i> Chỉ xem: bạn thuộc phân xưởng {{ $foreignDepartment }},
+                            không được thao tác trên phòng của {{ $production }}.
+                        </div>
+                    @endif
                 </div>
             </div>
 
@@ -336,7 +342,27 @@
                         <button type="button" class="close" data-dismiss="modal" aria-label="Đóng"><span
                                 aria-hidden="true">&times;</span></button>
                     </div>
-                    <div class="modal-body" style="max-height: 70vh; overflow-y: auto">
+                    <div class="modal-body" style="max-height: 78vh; overflow-y: auto">
+                        <div class="form-row align-items-end mb-3">
+                            <div class="col-auto">
+                                <label class="small text-muted mb-1">Từ</label>
+                                <input type="date" id="execHistoryFrom" class="form-control form-control-sm">
+                            </div>
+                            <div class="col-auto">
+                                <label class="small text-muted mb-1">Đến</label>
+                                <input type="date" id="execHistoryTo" class="form-control form-control-sm">
+                            </div>
+                            <div class="col-auto">
+                                <button type="button" class="btn btn-sm btn-primary" id="execHistoryFilter"><i
+                                        class="fas fa-filter"></i> Lọc</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="execHistoryClear">Bỏ
+                                    lọc</button>
+                            </div>
+                            <div class="col-auto">
+                                <small class="text-muted">Mỗi ngày tính từ 06:00 đến 06:00 hôm sau, như Báo cáo
+                                    ngày</small>
+                            </div>
+                        </div>
                         <table class="table table-sm table-hover exec-history mb-0">
                             <thead>
                                 <tr>
@@ -344,6 +370,7 @@
                                     <th>Chi tiết</th>
                                     <th style="width: 125px">Bắt đầu</th>
                                     <th style="width: 125px">Kết thúc</th>
+                                    <th style="width: 80px">Thời lượng</th>
                                     <th style="width: 200px">Người thực hiện</th>
                                 </tr>
                             </thead>
@@ -665,54 +692,53 @@
                     `<span class="rl-check"><span class="rl-box">${on ? '✓' : ''}</span>${text}</span>`;
                 const cleaned = d.kind === 'cleaned';
                 const levels = `<div class="rl-levels">
-                        ${box(d.level === 'VS-I', 'Cấp / Level I')}
-                        ${box(d.level === 'VS-II', 'Cấp / Level II')}
-                        ${box(d.level === 'VS-LAI', 'Vệ sinh lại / Re-Cleaning')}
+                        ${box(d.level === 'VS-I', 'Cấp I')}
+                        ${box(d.level === 'VS-II', 'Cấp II')}
+                        ${box(d.level === 'VS-LAI', 'Vệ sinh lại')}
                     </div>`;
                 const rule = cleaned ?
-                    `Đánh dấu "✓" vào nội dung áp dụng / Check "✓" in used content<br>
-                     Cấp / Level I: Hiệu lực trong vòng 3 ngày / valid for 3 days<br>
-                     Cấp / Level II: Hiệu lực trong vòng 7 ngày / valid for 7 days<br>
-                     Vệ sinh lại / Re-cleaning: Hiệu lực trong 24 giờ / valid for 24 hours` :
-                    `Đánh dấu "✓" vào nội dung áp dụng / Check "✓" in used content<br>
-                     Cấp / Level I: Phải thực hiện vệ sinh trong vòng 24 giờ / should be done within 24 hours<br>
-                     Cấp / Level II: Phải thực hiện vệ sinh trong vòng 3 ngày / should be done within 3 days`;
+                    `Đánh dấu "✓" vào nội dung áp dụng<br>
+                     Cấp I: Hiệu lực trong vòng 3 ngày<br>
+                     Cấp II: Hiệu lực trong vòng 7 ngày<br>
+                     Vệ sinh lại: Hiệu lực trong 24 giờ` :
+                    `Đánh dấu "✓" vào nội dung áp dụng<br>
+                     Cấp I: Phải thực hiện vệ sinh trong vòng 24 giờ<br>
+                     Cấp II: Phải thực hiện vệ sinh trong vòng 3 ngày`;
 
                 const body = cleaned ? `
                     ${levels}<div class="rl-rule">${rule}</div>
                     <div class="rl-grid">
-                        <div><span class="rl-lbl">Thời gian hoàn tất vệ sinh /<br>Cleaning finished on:</span>Ngày / Date: ${v(d.finished_on)}</div>
-                        <div><span class="rl-lbl">Hiệu lực đến /<br>Valid until:</span>Ngày / Date: ${v(d.valid_until, 'rl-val due')}</div>
+                        <div><span class="rl-lbl">Thời gian hoàn tất vệ sinh:</span>Ngày ${v(d.finished_on)}</div>
+                        <div><span class="rl-lbl">Hiệu lực đến:</span>Ngày ${v(d.valid_until, 'rl-val due')}</div>
                     </div>
                     <div class="rl-grid">
-                        <div><span class="rl-lbl">Người thực hiện / Done by:</span>${v(d.done_by, 'rl-person')}</div>
-                        <div><span class="rl-lbl">Người kiểm tra / Checked by:</span>${v(d.checked_by, 'rl-person checked')}</div>
+                        <div><span class="rl-lbl">Người thực hiện:</span>${v(d.done_by, 'rl-person')}</div>
+                        <div><span class="rl-lbl">Người kiểm tra:</span>${v(d.checked_by, 'rl-person checked')}</div>
                     </div>
-                 
+
                     <table class="rl-next w-100">
-                        <tr><td>Tên sản phẩm /<small>Product's name:</small></td><td>${v(d.next_product)}</td></tr>
-                        <tr><td>Số lô /<small>Batch no.:</small></td><td>${v(d.next_batch)}</td></tr>
-                        <tr><td>Người nhận /<small>Received by:</small></td><td>${v(d.received_by, 'rl-person')}</td></tr>
+                        <tr><td>Tên sản phẩm:</td><td>${v(d.next_product)}</td></tr>
+                        <tr><td>Số lô:</td><td>${v(d.next_batch)}</td></tr>
                     </table>` :
                     `
                     ${levels}<div class="rl-rule">${rule}</div>
                     <div class="rl-grid">
-                        <div><span class="rl-lbl">Thời gian hoàn tất sản xuất /<br>Process finished on:</span>Ngày / Date: ${v(d.finished_on)}</div>
-                        <div><span class="rl-lbl">Vệ sinh trước /<br>To be cleaned before:</span>Ngày / Date: ${v(d.before, 'rl-val due')}
+                        <div><span class="rl-lbl">Thời gian hoàn tất sản xuất:</span>Ngày ${v(d.finished_on)}</div>
+                        <div><span class="rl-lbl">Vệ sinh trước:</span>Ngày ${v(d.before, 'rl-val due')}
                             ${d.overdue ? '<br><small class="text-danger font-weight-bold"><i class="fas fa-exclamation-triangle"></i> Đã quá hạn</small>' : ''}</div>
                     </div>
-                    <div><span class="rl-lbl d-inline">Người thực hiện / Done by:</span> ${v(d.done_by, 'rl-person')}</div>`;
+                    <div><span class="rl-lbl d-inline">Người thực hiện:</span> ${v(d.done_by, 'rl-person')}</div>`;
 
                 return `<div class="rl-card ${cleaned ? 'cleaned' : 'to-clean'}">
                     <div class="rl-head">
-                        <h5>NHÃN PHÒNG</h5><small>ROOM LABEL</small>
+                        <h5>NHÃN PHÒNG</h5>
                         <button type="button" class="close" data-dismiss="modal" aria-label="Đóng"><span aria-hidden="true">&times;</span></button>
                     </div>
                     <table class="rl-table">
-                        <tr><th>Tên phòng<small>Name</small></th><td>${esc(d.room_name)}</td></tr>
-                        <tr><th>Mã số / Code</th><td class="rl-code">${esc(d.room_code)}</td></tr>
+                        <tr><th>Tên phòng</th><td>${esc(d.room_name)}</td></tr>
+                        <tr><th>Mã số</th><td class="rl-code">${esc(d.room_code)}</td></tr>
                     </table>
-                    <div class="rl-band">${cleaned ? 'ĐÃ VỆ SINH / CLEANED' : 'CẦN VỆ SINH / TO BE CLEANED'}</div>
+                    <div class="rl-band">${cleaned ? 'ĐÃ VỆ SINH' : 'CẦN VỆ SINH'}</div>
                     ${d.note ? `<div class="rl-note ${d.overdue || d.pending || /quá hạn|hết hiệu lực/.test(d.note) ? 'warn' : ''}">${esc(d.note)}</div>` : ''}
                     <div class="rl-body">${body}</div>
                     <div class="rl-foot"><span>Trạng thái: <b>${esc(d.state_label)}</b></span><span>Cập nhật ${esc(d.generated_at)}</span></div>
@@ -767,9 +793,9 @@
                             <td><b>${esc(e.code)}</b></td>
                             <td>${esc(e.name)}</td>
                             ${Object.keys(EQ_TYPES).map(k => `<td class="text-center">${e[k] ?
-                                                    `<button type="button" class="btn ${EQ_LEVEL[e[k].level].btn} js-label" data-index="${i}" data-type="${k}" title="Xem ${EQ_LABEL_TITLE[k].toLowerCase()}">
+                                                                        `<button type="button" class="btn ${EQ_LEVEL[e[k].level].btn} js-label" data-index="${i}" data-type="${k}" title="Xem ${EQ_LABEL_TITLE[k].toLowerCase()}">
                                     <i class="fas ${EQ_LEVEL[e[k].level].icon}"></i> ${esc(e[k].text)}</button>` :
-                                                    '<span class="text-muted">—</span>'}</td>`).join('')}
+                                                                        '<span class="text-muted">—</span>'}</td>`).join('')}
                         </tr>
                         <tr class="exec-label-row d-none" data-index="${i}"><td colspan="5"></td></tr>`).join(''));
 
@@ -1234,19 +1260,19 @@
                         ${editBatch ? '<th>Số lô TT</th>' : ''}
                     </tr></thead>
                     <tbody>${rows.map(b => `<tr data-id="${b.id}">
-                                            ${pause ? '' : '<td><input type="checkbox" class="js-gy-on" checked></td>'}
-                                            <td><b>${esc(b.batch)}</b><small>LT ${num(b.theory)} · đã XN ${num(b.confirmed)}</small></td>
-                                            ${withYield ? `
+                                                                ${pause ? '' : '<td><input type="checkbox" class="js-gy-on" checked></td>'}
+                                                                <td><b>${esc(b.batch)}</b><small>LT ${num(b.theory)} · đã XN ${num(b.confirmed)}</small></td>
+                                                                ${withYield ? `
                             <td><input type="text" inputmode="decimal" class="form-control js-gy-qty" autocomplete="off"
                                 placeholder="Còn ${num(Math.max(0, b.theory - b.confirmed))}"
                                 value="${pause ? '' : Math.max(0, Math.round((b.theory - b.confirmed) * 100) / 100)}"></td>
                             <td style="width:80px"><input type="text" inputmode="numeric" class="form-control js-gy-boxes" value="1" autocomplete="off"></td>
                             <td>${b.confirmed > 0 ? `<select class="form-control js-gy-mode" title="Lô đang có ${b.boxes} thùng">
-                                                        <option value="">— chọn —</option>
-                                                        <option value="continue">Dùng tiếp thùng đang dùng</option>
-                                                        <option value="new">Thùng mới</option></select>` : '<small>thùng mới</small>'}</td>` : ''}
-                                            ${editBatch ? `<td>${b.can_edit_batch ? `<input type="text" class="form-control js-gy-batch" value="${escAttr(b.batch || '')}" style="width:100px">` : ''}</td>` : ''}
-                                        </tr>`).join('')}</tbody></table>`);
+                                                                            <option value="">— chọn —</option>
+                                                                            <option value="continue">Dùng tiếp thùng đang dùng</option>
+                                                                            <option value="new">Thùng mới</option></select>` : '<small>thùng mới</small>'}</td>` : ''}
+                                                                ${editBatch ? `<td>${b.can_edit_batch ? `<input type="text" class="form-control js-gy-batch" value="${escAttr(b.batch || '')}" style="width:100px">` : ''}</td>` : ''}
+                                                            </tr>`).join('')}</tbody></table>`);
 
                 $('#execYieldReasonGroup').toggleClass('d-none', !pause);
                 $('#execYieldReason').val('');
@@ -1431,7 +1457,7 @@
                 const fail = checkResult === 'fail';
                 $('.js-check-note-label').text(fail ? 'Lý do không đạt (bắt buộc)' : 'Ghi chú');
                 $('.js-check-hint').text(checkResult === 'pass' ?
-                    'Đạt: phòng chuyển sang Phòng Sạch, hạn sạch tính từ lúc kết thúc vệ sinh.' :
+                    'Đạt: phòng chuyển sang Đã Vệ Sinh, hạn sạch tính từ lúc kết thúc vệ sinh.' :
                     (fail ? 'Không đạt: phòng quay lại Đang Vệ Sinh để tiếp tục vệ sinh.' : ''));
                 $('#execCheckModal .js-submit').attr('class', 'btn js-submit ' + (fail ? 'btn-danger' :
                     'btn-success'));
@@ -1496,32 +1522,94 @@
                 }, $('#execActivityModal'));
             });
 
-            /* ---------- Lịch sử ---------- */
-            function openHistory() {
-                const $m = $('#execHistoryModal');
-                $m.find('.js-room').text(ctx.room);
+            /* ---------- Lịch sử (dạng log book, lọc theo khoảng thời gian Từ/Đến) ---------- */
+            const DOW = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+
+            // "2026-09-28" → "Thứ Hai, 28/09/2026"
+            function dayLabel(ymd) {
+                const p = (ymd || '').split('-');
+                if (p.length !== 3) return ymd || '';
+                const d = new Date(+p[0], +p[1] - 1, +p[2]);
+                return `${DOW[d.getDay()]}, ${p[2]}/${p[1]}/${p[0]}`;
+            }
+
+            // Ô Từ/Đến chỉ chọn ngày; mốc giờ luôn 06:00 như "ngày báo cáo" của Báo cáo ngày.
+            // "Đến" lấy hết cả ngày đó nên mốc trên thực tế là 06:00 của ngày hôm sau.
+            function loadHistory() {
+                const fromDate = $('#execHistoryFrom').val();
+                const toDate = $('#execHistoryTo').val();
+                const from = fromDate ? `${fromDate}T06:00:00` : null;
+                const to = toDate ? `${addDays(toDate, 1)}T06:00:00` : null;
                 $('#execHistoryBody').html(
-                    '<tr><td colspan="5" class="text-center text-muted"><i class="fas fa-spinner fa-spin"></i> Đang tải...</td></tr>'
+                    '<tr><td colspan="6" class="text-center text-muted"><i class="fas fa-spinner fa-spin"></i> Đang tải...</td></tr>'
                 );
-                $m.modal('show');
                 $.get(R.history, {
-                    room_id: ctx.room_id
+                    room_id: ctx.room_id,
+                    from: from,
+                    to: to
                 }).done(rows => {
                     if (!rows.length) {
                         $('#execHistoryBody').html(
-                            '<tr><td colspan="5" class="text-center text-muted">Chưa có lịch sử.</td></tr>'
+                            '<tr><td colspan="6" class="text-center text-muted">Chưa có lịch sử.</td></tr>'
                         );
                         return;
                     }
-                    $('#execHistoryBody').html(rows.map(r => `<tr class="${r.cancelled ? 'exec-cancelled' : ''}">
-                        <td>${r.kind === 'state' && STATE_META[r.state] ? countChip(r.state, esc(r.label)) : '<span class="badge badge-warning">Hoạt động</span> ' + esc(r.label)}</td>
-                        <td>${esc(r.detail)}${r.cancelled ? `<div class="text-danger small">${esc(r.cancelled)}</div>` : ''}</td>
+                    // Chèn mốc ngày và đổi nền mỗi khi sang ngày khác
+                    let day = null,
+                        band = false;
+                    $('#execHistoryBody').html(rows.map(r => {
+                        const d = (r.sort || '').slice(0, 10);
+                        let sep = '';
+                        if (d !== day) {
+                            day = d;
+                            band = !band;
+                            sep =
+                                `<tr class="exec-day"><td colspan="6">${esc(dayLabel(d))}</td></tr>`;
+                        }
+                        return sep + `<tr class="${band ? 'exec-band' : ''} ${r.cancelled ? 'exec-cancelled' : ''}">
+                        <td>${r.kind === 'state' && STATE_META[r.state] ? countChip(r.state, esc(r.label)) : '<span class="badge badge-warning">Hoạt động khác</span>'}</td>
+                        <td>
+                            ${r.detail ? esc(r.detail) : '<i class="text-muted">—</i>'}
+                            ${r.code ? ` <small class="text-muted">${esc(r.code)}</small>` : ''}
+                            ${r.yield ? ` <span class="badge badge-light border">${esc(r.yield)}</span>` : ''}
+                            ${r.note ? `<div class="small text-muted"><i class="far fa-comment-dots"></i> ${esc(r.note)}</div>` : ''}
+                            ${r.cancelled ? `<div class="text-danger small">${esc(r.cancelled)}</div>` : ''}
+                        </td>
                         <td>${esc(r.start)}</td>
                         <td>${r.end ? esc(r.end) : '<i class="text-muted">đang diễn ra</i>'}</td>
+                        <td class="small">${r.dur ? esc(r.dur) : ''}</td>
                         <td class="small">${esc(r.by)}${r.end_by && r.end_by !== r.by ? ' → ' + esc(r.end_by) : ''}</td>
-                    </tr>`).join(''));
+                    </tr>`;
+                    }).join(''));
                 });
             }
+
+            // Date → giá trị cho input date ("YYYY-MM-DD"), giờ địa phương
+            const dateInputValue = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+            // "2026-09-28" + 1 → "2026-09-29"
+            function addDays(ymd, n) {
+                const p = ymd.split('-');
+                const d = new Date(+p[0], +p[1] - 1, +p[2] + n);
+                return dateInputValue(d);
+            }
+
+            function openHistory() {
+                const $m = $('#execHistoryModal');
+                $m.find('.js-room').text(ctx.room);
+                // Mặc định 3 ngày gần nhất (3 "ngày báo cáo" 06:00→06:00), tránh tải cả log book mỗi lần mở
+                const today = new Date();
+                $('#execHistoryFrom').val(dateInputValue(new Date(today.getFullYear(), today.getMonth(), today
+                    .getDate() - 2)));
+                $('#execHistoryTo').val(dateInputValue(today));
+                $m.modal('show');
+                loadHistory();
+            }
+
+            $('#execHistoryFilter').on('click', loadHistory);
+            $('#execHistoryClear').on('click', function() {
+                $('#execHistoryFrom, #execHistoryTo').val('');
+                loadHistory();
+            });
 
             /* ---------- Nút trên card phòng ---------- */
             $(document).on('click', '.js-act', function(ev) {
@@ -1595,7 +1683,7 @@
                                     'Vệ sinh không gắn lô') +
                                 '<div class="small mt-1"><i class="fas fa-user-check"></i> Phòng chuyển sang <b>Chờ Kiểm Tra</b>. Người khác kiểm tra Đạt thì mới ghi nhận thời gian vệ sinh' +
                                 (planMsg ? ' của lô (tương đương ✓✓)' : ' vào Báo cáo ngày') +
-                                ' và phòng mới thành Phòng Sạch.</div>' +
+                                ' và phòng mới thành Đã Vệ Sinh.</div>' +
                                 (planMsg && rerouteOn ?
                                     '<div class="small mt-1 text-danger"><i class="fas fa-random"></i> Điều chỉnh lịch theo thời gian thực đang bật: lịch lý thuyết được dịch khi kiểm tra Đạt.</div>' :
                                     ''),

@@ -21,7 +21,9 @@ if (! function_exists('user_permission_names')) {
         $fromRole = DB::table('permissions')
             ->join('role_permission', 'permissions.id', '=', 'role_permission.permission_id')
             ->join('user_role', 'role_permission.role_id', '=', 'user_role.role_id')
+            ->join('roles', 'roles.id', '=', 'user_role.role_id')
             ->where('user_role.user_id', $userId)
+            ->where('roles.active', 1) // nhóm quyền đã vô hiệu hoá không còn cấp quyền
             ->pluck('permissions.name');
 
         foreach ($fromRole as $name) {

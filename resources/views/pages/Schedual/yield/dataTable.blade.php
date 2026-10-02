@@ -279,6 +279,7 @@
                                     $stage_code = $roomLT->stage_code;
                                     // Tính tổng LT/TT theo công đoạn
                                     $stageLT = [];
+                                    $stageLT_unit = [];
                                     $stageTT = [];
 
                                     foreach ($allDates as $date) {

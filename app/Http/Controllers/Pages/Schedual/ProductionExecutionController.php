@@ -30,9 +30,13 @@ class ProductionExecutionController extends Controller
                 $production = session('user')['production_code'];
                 $rooms = $this->service->board($production);
 
+                // Nhân viên phân xưởng khác: chỉ xem, card phòng không có nút thao tác
+                $foreign = !$this->canOperate($production);
+
                 $data = [
                         'stages'     => $rooms->groupBy('stage_group'),
                         'production' => $production,
+                        'readonly'   => $foreign,
                 ];
 
                 // Tự làm mới định kỳ chỉ cần phần lưới phòng
@@ -57,6 +61,7 @@ class ProductionExecutionController extends Controller
                 $rerouteSetting = RealtimeRerouteSwitch::get($production);
 
                 return view('pages.Schedual.execution.index', $data + [
+                        'foreignDepartment'   => $foreign ? session('user')['department'] : null,
                         'activitySuggestions' => $activitySuggestions,
                         'stateCounts'         => $rooms->countBy(fn($r) => $r->st->display),
                         'rerouteEnabled'      => (bool) ($rerouteSetting->realtime_reroute ?? false),
@@ -166,7 +171,10 @@ class ProductionExecutionController extends Controller
                         return response()->json(['message' => '❌ Phòng không thuộc phân xưởng đang chọn'], 403);
                 }
 
-                return response()->json($this->service->history($room->id));
+                $from = $request->from ? Carbon::parse($request->from)->format('Y-m-d H:i:s') : null;
+                $to = $request->to ? Carbon::parse($request->to)->format('Y-m-d H:i:s') : null;
+
+                return response()->json($this->service->history($room->id, $from, $to));
         }
 
         /** Nhãn tình trạng phòng (mẫu nhãn phòng eBMR) */
@@ -264,6 +272,9 @@ class ProductionExecutionController extends Controller
         {
                 return $this->act($request, function () use ($request) {
                         $checker = $this->service->verifyChecker($request->input('username'), $request->input('password'));
+                        if (!$this->canOperate(session('user')['production_code'], $checker->deparment, (int) $checker->id)) {
+                                throw new ProductionExecutionException('❌ Người kiểm tra thuộc phân xưởng khác, không được kiểm tra vệ sinh phòng của phân xưởng này', 403);
+                        }
                         $pass = $request->input('result') === 'pass';
                         if (!$pass && $request->input('result') !== 'fail') {
                                 throw new ProductionExecutionException('❌ Chọn kết quả Đạt hoặc Không đạt', 422);
@@ -339,6 +350,11 @@ class ProductionExecutionController extends Controller
                         return response()->json(['message' => '❌ Phòng không thuộc phân xưởng đang chọn'], 403);
                 }
 
+                if (!$this->canOperate($room->deparment_code)) {
+                        return response()->json(['message' => '❌ Bạn thuộc phân xưởng ' . session('user')['department']
+                                . ', không được thao tác trên phòng của phân xưởng ' . $room->deparment_code], 403);
+                }
+
                 if ($writesSchedule) {
                         $lock = SchedulingLock::active(session('user.production_code'));
                         if ($lock) {
@@ -381,6 +397,23 @@ class ProductionExecutionController extends Controller
                                 ? "✅ Đã BẬT tịnh tuyến lịch theo thời gian thực cho $production"
                                 : "✅ Đã TẮT tịnh tuyến lịch theo thời gian thực cho $production",
                 ]);
+        }
+
+        /**
+         * Nhân viên của 1 phân xưởng chỉ được thao tác trên phòng của phân xưởng mình (các phân xưởng khác chỉ xem).
+         * Phòng ban không phải phân xưởng (QA, PL, EN...) và nhóm quyền Admin không bị giới hạn này.
+         * Mặc định xét người đang đăng nhập; kiểm tra vệ sinh truyền phòng ban + id của người kiểm tra.
+         */
+        private function canOperate(string $production, ?string $department = null, ?int $userId = null): bool
+        {
+                $department ??= session('user')['department'] ?? null;
+                $userId ??= session('user')['userId'] ?? null;
+
+                if ($department === $production || !DB::table('production')->where('code', $department)->exists()) {
+                        return true;
+                }
+
+                return DB::table('user_role')->where('user_id', $userId)->where('role_id', 1)->exists();
         }
 
         private function ownRoom($roomId): ?object

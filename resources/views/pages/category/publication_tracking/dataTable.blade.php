@@ -11,7 +11,8 @@
                             <select class="form-control" id="filter_department">
                                 <option value="">Tất cả phân xưởng</option>
                                 @foreach ($departments as $code => $name)
-                                    <option value="{{ $code }}" {{ $code === $userDepartment ? 'selected' : '' }}>
+                                    <option value="{{ $code }}"
+                                        {{ $code === $userDepartment ? 'selected' : '' }}>
                                         {{ $name }}
                                     </option>
                                 @endforeach
@@ -47,9 +48,9 @@
                                     </td>
                                     <td class="align-middle font-weight-bold">
                                         {{ $period->label }}
-                                        @if ($isCurrent)
+                                        {{-- @if ($isCurrent)
                                             <span class="badge badge-warning ml-1">Kỳ hiện tại</span>
-                                        @endif
+                                        @endif --}}
                                     </td>
                                     <td class="text-center align-middle">{{ $btpCount }}</td>
                                     <td class="text-center align-middle">{{ $tpCount }}</td>

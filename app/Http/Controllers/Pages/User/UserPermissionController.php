@@ -19,7 +19,9 @@ class UserPermissionController extends Controller
         // Quyền user đang có thông qua nhóm quyền
         $fromRole = DB::table('role_permission')
             ->join('user_role', 'role_permission.role_id', '=', 'user_role.role_id')
+            ->join('roles', 'roles.id', '=', 'user_role.role_id')
             ->where('user_role.user_id', $userId)
+            ->where('roles.active', 1)
             ->pluck('role_permission.permission_id')
             ->all();
         $fromRole = array_flip($fromRole);

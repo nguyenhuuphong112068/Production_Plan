@@ -187,7 +187,8 @@ class SchedualFinisedController extends Controller
          */
         private function overlapConflict($resourceId, $excludeId, ?Carbon $start, ?Carbon $end)
         {
-                if (!$resourceId || !$start || !$end) {
+                // Ô datetime-local đang gõ dở năm (0002, 0020, 0026...) sẽ tạo khoảng dài hàng nghìn năm, trùng mọi lô của phòng
+                if (!$resourceId || !$start || !$end || $start->year < 2000 || $end->year < 2000) {
                         return null;
                 }
 
@@ -258,6 +259,11 @@ class SchedualFinisedController extends Controller
                 /* ===============================
                 2. VALIDATE THỜI GIAN CƠ BẢN
                 =============================== */
+
+                foreach ([$actualStart, $actualStartYield, $actualEnd, $actualStartCleaning, $actualEndCleaning] as $time) {
+                        if ($time && $time->year < 2000)
+                                return response()->json(['message' => '❌ Năm của thời gian ' . $time->format('d/m/Y H:i') . ' không hợp lệ, vui lòng nhập đủ 4 số của năm'], 422);
+                }
 
                 if ($actualStart && $actualStart->gt($now))
                         return response()->json(['message' => '❌ Thời gian bắt đầu sản xuất lớn hơn hiện tại'], 422);

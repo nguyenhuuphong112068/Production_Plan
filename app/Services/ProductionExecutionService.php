@@ -39,7 +39,7 @@ class ProductionExecutionService
     const AWAIT_CHECK = 8; // Đã kết thúc vệ sinh, chờ người khác kiểm tra (Đạt → Phòng Sạch, Không đạt → tiếp tục vệ sinh)
 
     const STATE_LABELS = [
-        self::CLEAN      => 'Phòng Sạch',
+        self::CLEAN      => 'Đã Vệ Sinh',
         self::PRODUCING  => 'Đang Sản Xuất',
         self::NEED_CLEAN => 'Cần Vệ Sinh',
         self::CLEANING   => 'Đang Vệ Sinh',
@@ -1243,52 +1243,207 @@ class ProductionExecutionService
        LỊCH SỬ
        ========================================================= */
 
-    public function history(int $roomId): array
+    /**
+     * Nhật ký phòng. Dùng đúng 4 nguồn như cột Chi tiết của Báo cáo ngày để 2 trang không lệch nhau:
+     * trạng thái phòng (room_execution_log), sản xuất (yields), vệ sinh (stage_plan.actual_*_clearning),
+     * hoạt động khác (room_status). Lô thực thi ở trang này có cả dòng log lẫn yields/stage_plan nên
+     * ưu tiên dòng log (có người thực hiện, người kết thúc, cờ đã hủy) và bỏ bản sao ở 2 nguồn kia.
+     */
+    public function history(int $roomId, ?string $from = null, ?string $to = null): array
     {
         $fmt = fn($t) => $t ? Carbon::parse($t)->format('H:i d/m/Y') : null;
+        $key = fn($t) => $t ? Carbon::parse($t)->format('Y-m-d H:i:s') : '';
+        $qty = fn($v) => number_format((float) $v, 2, ',', '.');
+        // Thời lượng ngắn gọn như cột Chi tiết của Báo cáo ngày ("2h30p", "45p")
+        $dur = function ($start, $end) {
+            if (!$start || !$end) {
+                return null;
+            }
+            $m = intdiv(max(0, (int) Carbon::parse($start)->diffInSeconds(Carbon::parse($end), false)), 60);
+            [$h, $mm] = [intdiv($m, 60), $m % 60];
+            return $h ? ($mm ? "{$h}h{$mm}p" : "{$h}h") : "{$mm}p";
+        };
 
-        $logs = DB::table('room_execution_log as l')
+        // Tên lô: tên bán thành phẩm (qua intermediate_category) - số lô thực tế, như Báo cáo ngày
+        $joinPlan = fn($q) => $q
+            ->leftJoin('plan_master as pm', 'sp.plan_master_id', '=', 'pm.id')
+            ->leftJoin('finished_product_category as fpc', 'sp.product_caterogy_id', '=', 'fpc.id')
+            ->leftJoin('intermediate_category as ic', 'fpc.intermediate_code', '=', 'ic.intermediate_code')
+            ->leftJoin('product_name as pn', 'ic.product_name_id', '=', 'pn.id');
+        $planCols = [
+            'sp.title as plan_title',
+            'sp.stage_code',
+            'pn.name as product_name',
+            DB::raw('COALESCE(pm.actual_batch, pm.batch) AS batch'),
+            'fpc.intermediate_code',
+        ];
+        $product = fn($r) => $r->product_name ?: $r->plan_title;
+        $label = fn($r) => trim(($r->product_name ?: $r->plan_title) . ($r->batch ? ' - ' . $r->batch : ''), ' -');
+        $unit = fn($r) => (int) $r->stage_code <= 4 ? 'Kg' : 'ĐVL';
+
+        /* --- 1. Trạng thái phòng --- */
+        $logQuery = DB::table('room_execution_log as l')
             ->leftJoin('stage_plan as sp', 'l.stage_plan_id', '=', 'sp.id')
+            // Sản lượng của chính lần xác nhận này: yields.start = BĐCM = lúc mở dòng log Đang SX
+            ->leftJoin('yields as y', fn($j) => $j->on('y.stage_plan_id', '=', 'l.stage_plan_id')->on('y.start', '=', 'l.started_at'))
             ->where('l.room_id', $roomId)
+            ->when($from, fn($q) => $q->where(fn($q2) => $q2->whereNull('l.ended_at')->orWhere('l.ended_at', '>=', $from)))
+            ->when($to, fn($q) => $q->where('l.started_at', '<=', $to))
             ->orderByDesc('l.started_at')
-            ->orderByDesc('l.id')
-            ->limit(60)
-            ->get(['l.*', 'sp.title as plan_title'])
-            ->map(fn($l) => [
+            ->orderByDesc('l.id');
+        $joinPlan($logQuery);
+        $logRows = $logQuery->get(array_merge(['l.*', 'y.yield'], $planCols));
+
+        // Khóa để bỏ bản sao ở yields / stage_plan
+        $loggedYield = [];
+        $loggedClean = [];
+        foreach ($logRows as $l) {
+            if ($l->stage_plan_id) {
+                $loggedYield[$l->stage_plan_id . '|' . $key($l->started_at)] = true;
+            }
+            if ((int) $l->state === self::CLEANING) {
+                $loggedClean[$key($l->started_at)] = true;
+            }
+        }
+
+        /* --- 2. Vệ sinh (stage_plan): lấy trước để dòng log vệ sinh của nhóm lô liệt kê đủ số lô --- */
+        $cleanQuery = DB::table('stage_plan as sp')
+            ->where('sp.resourceId', $roomId)
+            ->whereNotNull('sp.actual_start_clearning')
+            ->whereNotNull('sp.actual_end_clearning')
+            ->when($from, fn($q) => $q->where('sp.actual_end_clearning', '>=', $from))
+            ->when($to, fn($q) => $q->where('sp.actual_start_clearning', '<=', $to))
+            ->orderByDesc('sp.actual_start_clearning');
+        $joinPlan($cleanQuery);
+        $cleanRows = $cleanQuery->get(array_merge(
+            ['sp.actual_start_clearning as start', 'sp.actual_end_clearning as end', 'sp.title_clearning', 'sp.finished_by'],
+            $planCols
+        ));
+        // Nhóm lô vệ sinh chung: 1 lần vệ sinh ghi cho mọi lô trong nhóm → gộp số lô như Báo cáo ngày
+        $groupLabel = fn($same) => $same->count() > 1
+            ? trim($product($same->first()) . ' - ' . $same->pluck('batch')->implode(', '), ' -')
+            : $label($same->first());
+        $cleanByStart = $cleanRows->groupBy(fn($c) => $key($c->start));
+
+        $logs = $logRows->map(function ($l) use ($fmt, $dur, $qty, $key, $label, $unit, $cleanByStart, $groupLabel) {
+            $group = (int) $l->state === self::CLEANING ? $cleanByStart->get($key($l->started_at)) : null;
+            $plan = $group ? $groupLabel($group) : $label($l);
+            $level = $l->cleaning_level ? (self::CLEANING_LEVELS[$l->cleaning_level] ?? $l->cleaning_level) : '';
+
+            return [
                 'kind'      => 'state',
                 'label'     => self::STATE_LABELS[$l->state] ?? $l->state,
                 'state'     => (int) $l->state,
-                'detail'    => trim(($l->plan_title ?? '') . ($l->cleaning_level ? ' · ' . $l->cleaning_level : '') . ($l->note ? ' · ' . $l->note : ''), ' ·'),
+                'detail'    => $level && $plan ? $level . ' · ' . $plan : ($level ?: $plan),
+                'note'      => $l->note ?: null,
+                'code'      => $l->intermediate_code ?: null,
+                'yield'     => $l->yield !== null ? $qty($l->yield) . ' ' . $unit($l) : null,
                 'start'     => $fmt($l->started_at),
                 'end'       => $fmt($l->ended_at),
+                'dur'       => $dur($l->started_at, $l->ended_at),
                 'by'        => $l->created_by,
                 'end_by'    => $l->ended_by,
                 'cancelled' => $l->cancelled_at ? 'Đã hủy bởi ' . $l->cancelled_by . ' lúc ' . $fmt($l->cancelled_at) : null,
                 'sort'      => $l->started_at,
-            ]);
+            ];
+        });
 
+        /* --- 3. Sản xuất (yields), gộp nhóm lô cân chung như Báo cáo ngày --- */
+        $prodQuery = DB::table('yields as y')
+            ->join('stage_plan as sp', 'sp.id', '=', 'y.stage_plan_id')
+            ->where('sp.resourceId', $roomId)
+            ->whereNotNull('y.start')
+            ->whereNotNull('y.end')
+            ->when($from, fn($q) => $q->where('y.end', '>=', $from))
+            ->when($to, fn($q) => $q->where('y.start', '<=', $to))
+            ->orderByDesc('y.start');
+        $joinPlan($prodQuery);
+        $production = $prodQuery->get(array_merge(['y.stage_plan_id', 'y.start', 'y.end', 'y.yield', 'y.created_by', 'sp.note'], $planCols))
+            ->reject(fn($y) => isset($loggedYield[$y->stage_plan_id . '|' . $key($y->start)]))
+            ->groupBy(fn($y) => $key($y->start) . '|' . $key($y->end) . '|' . $product($y) . '|' . $unit($y))
+            ->map(function ($same) use ($fmt, $dur, $qty, $label, $product, $unit) {
+                $first = $same->first();
+                $total = $same->sum(fn($y) => (float) $y->yield);
+                $note = $same->count() > 1
+                    ? $same->count() . ' lô: ' . $same->map(fn($y) => $y->batch . ' ' . $qty($y->yield))->implode(' · ')
+                    : ($first->note && $first->note !== 'NA' ? $first->note : null);
+
+                return [
+                    'kind'      => 'state',
+                    'label'     => self::STATE_LABELS[self::PRODUCING],
+                    'state'     => self::PRODUCING,
+                    'detail'    => $same->count() > 1
+                        ? trim($product($first) . ' - ' . $same->pluck('batch')->implode(', '), ' -')
+                        : $label($first),
+                    'note'      => $note,
+                    'code'      => $first->intermediate_code ?: null,
+                    'yield'     => $qty($total) . ' ' . $unit($first),
+                    'start'     => $fmt($first->start),
+                    'end'       => $fmt($first->end),
+                    'dur'       => $dur($first->start, $first->end),
+                    'by'        => $first->created_by,
+                    'end_by'    => null,
+                    'cancelled' => null,
+                    'sort'      => $first->start,
+                ];
+            })->values();
+
+        /* --- 4. Dòng vệ sinh chưa có trong room_execution_log --- */
+        $cleanings = $cleanRows
+            ->reject(fn($c) => isset($loggedClean[$key($c->start)]))
+            ->groupBy(fn($c) => $key($c->start) . '|' . $key($c->end) . '|' . $product($c))
+            ->map(function ($same) use ($fmt, $dur, $groupLabel) {
+                $first = $same->first();
+                $level = self::CLEANING_LEVELS[$this->levelOf($first->title_clearning)];
+                $plan = $groupLabel($same);
+
+                return [
+                    'kind'      => 'state',
+                    'label'     => self::STATE_LABELS[self::CLEANING],
+                    'state'     => self::CLEANING,
+                    'detail'    => $plan ? $level . ' · ' . $plan : $level,
+                    'note'      => null,
+                    'code'      => $first->intermediate_code ?: null,
+                    'yield'     => null,
+                    'start'     => $fmt($first->start),
+                    'end'       => $fmt($first->end),
+                    'dur'       => $dur($first->start, $first->end),
+                    'by'        => $first->finished_by,
+                    'end_by'    => null,
+                    'cancelled' => null,
+                    'sort'      => $first->start,
+                ];
+            })->values();
+
+        /* --- 5. Hoạt động khác --- */
         $activities = DB::table('room_status')
             ->where('room_id', $roomId)
             ->where('is_daily_report', 1)
             ->where('active', 1)
             ->whereNotNull('start')
+            ->when($from, fn($q) => $q->where(fn($q2) => $q2->whereNull('end')->orWhere('end', '>=', $from)))
+            ->when($to, fn($q) => $q->where('start', '<=', $to))
             ->orderByDesc('start')
-            ->limit(60)
             ->get()
             ->map(fn($a) => [
                 'kind'      => 'activity',
                 'label'     => $a->in_production,
                 'state'     => null,
-                'detail'    => $a->notification !== 'NA' ? $a->notification : '',
+                'detail'    => $a->in_production,
+                'note'      => $a->notification !== 'NA' ? $a->notification : null,
+                'code'      => null,
+                'yield'     => null,
                 'start'     => $fmt($a->start),
                 'end'       => $fmt($a->end),
+                'dur'       => $dur($a->start, $a->end),
                 'by'        => $a->created_by,
                 'end_by'    => null,
                 'cancelled' => null,
                 'sort'      => $a->start,
             ]);
 
-        return $logs->concat($activities)->sortByDesc('sort')->take(80)->values()->all();
+        return $logs->concat($production)->concat($cleanings)->concat($activities)
+            ->sortByDesc('sort')->values()->all();
     }
 
     /* =========================================================
@@ -1402,19 +1557,8 @@ class ProductionExecutionService
         $cleaning = $this->lastCleaning($room->id, $at);
         $nextPlan = $running ? $st->plan : ($room->next_plan ?? null);
 
-        $receivedBy = null;
-        if ($running) {
-            $opener = DB::table('room_execution_log')
-                ->where('stage_plan_id', $st->plan->id)
-                ->whereIn('state', [self::PREPARING, self::PRODUCING])
-                ->whereNull('cancelled_at')
-                ->orderBy('started_at')
-                ->first(['created_by']);
-            $receivedBy = $opener->created_by ?? null;
-            $label['note'] = 'Nhãn đã gắn vào hồ sơ lô đang sản xuất (BĐSX ' . $fmt($at) . ')';
-            if ($cleaning && $cleaning->valid_until && $at->gte($cleaning->valid_until)) {
-                $label['note'] .= ' — lưu ý: lúc BĐSX phòng đã quá hạn sạch';
-            }
+        if ($running && $cleaning && $cleaning->valid_until && $at->gte($cleaning->valid_until)) {
+            $label['note'] = 'Lưu ý: lúc BĐSX phòng đã quá hạn sạch';
         }
 
         return $label + [
@@ -1427,7 +1571,6 @@ class ProductionExecutionService
             'next_product' => $nextPlan ? ($nextPlan->product_name ?? $nextPlan->title) : null,
             'next_batch'   => $nextPlan->batch ?? null,
             'next_planned' => !$running && $nextPlan ? $fmt($nextPlan->start) : null,
-            'received_by'  => $receivedBy,
             'attached'     => $running,
         ];
     }

@@ -119,8 +119,9 @@ class DailyReportController extends Controller
         $production = DB::table('stage_plan as sp')
             ->leftJoin('plan_master', 'sp.plan_master_id', 'plan_master.id')
             ->leftJoin('finished_product_category as fpc', 'sp.product_caterogy_id', '=', 'fpc.id')
-            ->leftJoin('product_name', 'fpc.product_name_id', 'product_name.id')
             ->leftJoin('intermediate_category as ic', 'fpc.intermediate_code', '=', 'ic.intermediate_code')
+            // Tên bán thành phẩm, thống nhất với cột Chi tiết và trang Thực Thi Sản Xuất
+            ->leftJoin('product_name', 'ic.product_name_id', 'product_name.id')
             ->leftJoin('dosage as d', 'ic.dosage_id', '=', 'd.id')
             ->whereNotNull('sp.start')
             ->where('sp.stage_code', '<=', 7)
@@ -248,7 +249,8 @@ class DailyReportController extends Controller
             ->leftJoin('plan_master', 'sp.plan_master_id', 'plan_master.id')
             ->leftJoin('finished_product_category', 'sp.product_caterogy_id', '=', 'finished_product_category.id')
             ->leftJoin('intermediate_category', 'finished_product_category.intermediate_code', '=', 'intermediate_category.intermediate_code')
-            ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
+            // Tên bán thành phẩm (phòng sản xuất đang xử lý BTP), thống nhất với trang Thực Thi Sản Xuất
+            ->leftJoin('product_name', 'intermediate_category.product_name_id', 'product_name.id')
             ->leftJoin('dosage as d', 'intermediate_category.dosage_id', '=', 'd.id')
 
             ->where('sp.deparment_code', $production_code)
@@ -326,7 +328,8 @@ class DailyReportController extends Controller
             // Tên lô như dòng sản xuất (sp.title trống ở nhiều lô, vd. Cân NL)
             ->leftJoin('plan_master', 'sp.plan_master_id', 'plan_master.id')
             ->leftJoin('finished_product_category', 'sp.product_caterogy_id', '=', 'finished_product_category.id')
-            ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
+            ->leftJoin('intermediate_category', 'finished_product_category.intermediate_code', '=', 'intermediate_category.intermediate_code')
+            ->leftJoin('product_name', 'intermediate_category.product_name_id', 'product_name.id')
             ->whereNotNull('sp.actual_start_clearning')
             ->whereNotNull('sp.actual_end_clearning')
             ->whereRaw('(sp.actual_start_clearning < ? AND sp.actual_end_clearning > ?)', [$endDateStr, $startDateStr])

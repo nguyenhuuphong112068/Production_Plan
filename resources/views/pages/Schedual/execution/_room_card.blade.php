@@ -291,7 +291,7 @@
                         <span>Người vệ sinh <b>{{ $st->cycle && $st->cycle->cleaners ? implode(', ', $st->cycle->cleaners) : '—' }}</b></span>
                     </div>
                 </div>
-                <div class="exec-note"><i class="fas fa-info-circle"></i> Người kiểm tra phải khác người vệ sinh. Đạt → Phòng sạch (hạn tính từ lúc kết thúc VS), Không đạt → tiếp tục vệ sinh.</div>
+                <div class="exec-note"><i class="fas fa-info-circle"></i> Người kiểm tra phải khác người vệ sinh. Đạt → Đã Vệ Sinh (hạn tính từ lúc kết thúc VS), Không đạt → tiếp tục vệ sinh.</div>
             @endif
 
             {{-- ===== Hoạt động khác đang diễn ra (ghi vào Báo cáo ngày) ===== --}}
@@ -458,7 +458,7 @@
         <div class="exec-room-foot">
             {{-- Từ BĐSX đến KT phòng dành cho lô: không thêm hoạt động khác --}}
             @unless (in_array($st->state, $PES::BATCH_RUNNING_STATES, true))
-                <button type="button" class="js-act" data-act="activity" title="Khai báo hoạt động khác (ghi vào Báo cáo ngày)"><i class="fas fa-plus"></i> Hoạt động</button>
+                <button type="button" class="js-act" data-act="activity" title="Khai báo hoạt động khác (ghi vào Báo cáo ngày)"><i class="fas fa-plus"></i> Hoạt động khác</button>
             @endunless
             <button type="button" class="js-act" data-act="history"><i class="fas fa-history"></i> Lịch sử</button>
             @if ($canUndo)

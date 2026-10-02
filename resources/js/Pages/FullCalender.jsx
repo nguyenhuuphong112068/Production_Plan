@@ -189,6 +189,54 @@ const ScheduleTest = () => {
   const moldWarningEvents = useMemo(() => events.filter(e => e.mold_warning), [events]);
   // Lịch bị xếp sai thiết bị theo ma trận "Cảnh Báo Nguồn NL"
   const sourceWarningEvents = useMemo(() => events.filter(e => e.source_warning), [events]);
+
+  // Lịch trùng giờ: chỉ xét lô chưa hoàn thành (finished = 0), cùng phòng (resourceId)
+  // và cùng công đoạn (stage_code), tính cả vệ sinh, bỏ qua Cân NL (stage_code 1, 2).
+  // Vị trí lấy theo pendingChanges nếu có để thấy ngay khi vừa kéo thả, chưa cần lưu.
+  const [overlapIndex, setOverlapIndex] = useState(-1);
+  const [showOverlapMarks, setShowOverlapMarks] = useState(true);
+  const overlapInfo = useMemo(() => {
+    const pendingById = new Map((pendingChanges || []).map(p => [String(p.id), p]));
+    const groups = new Map();
+    events.forEach(e => {
+      if (Number(e.finished) !== 0) return;
+      const stage = Number(e.stage_code);
+      if (stage === 1 || stage === 2) return;
+      const p = pendingById.get(String(e.id));
+      const resourceId = p?.resourceId ?? e.resourceId;
+      const start = new Date(p?.start ?? e.start).getTime();
+      const end = new Date(p?.end ?? e.end).getTime();
+      if (!resourceId || !(end > start)) return;
+      const key = `${resourceId}|${stage}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push({ id: String(e.id), planId: String(e.plan_id), resourceId, start, end });
+    });
+
+    const ids = new Set();
+    const spots = []; // mỗi cặp trùng: event đến sau + thời điểm bắt đầu chồng
+    groups.forEach(list => {
+      list.sort((a, b) => a.start - b.start);
+      let active = [];
+      list.forEach(cur => {
+        active = active.filter(a => a.end > cur.start);
+        let hit = false;
+        active.forEach(a => {
+          if (a.planId === cur.planId) return; // sản xuất & vệ sinh của cùng một lô
+          ids.add(a.id);
+          hit = true;
+        });
+        if (hit) {
+          ids.add(cur.id);
+          spots.push({ id: cur.id, resourceId: cur.resourceId, start: cur.start });
+        }
+        active.push(cur);
+      });
+    });
+    spots.sort((a, b) => String(a.resourceId).localeCompare(String(b.resourceId)) || a.start - b.start);
+    return { ids, spots };
+  }, [events, pendingChanges]);
+  const overlapIds = showOverlapMarks ? overlapInfo.ids : null;
+
   const [resources, setResources] = useState([]);
 
   const [selectedStagesFilter, setSelectedStagesFilter] = useState(null);
@@ -727,6 +775,39 @@ const ScheduleTest = () => {
         }, 300);
       }, 100);
     }
+  };
+
+  // Lọc về các phòng có lịch trùng giờ rồi lần lượt nhảy tới từng chỗ trùng
+  const handleNextOverlap = () => {
+    const spots = overlapInfo.spots;
+    if (spots.length === 0) return;
+    if (!showOverlapMarks) setShowOverlapMarks(true);
+
+    const resourceIds = new Set(spots.map(s => String(s.resourceId)));
+    const affectedResources = resources.filter(r => resourceIds.has(String(r.id)));
+    const affectedStages = [...new Set(affectedResources.map(r => r.stage_name).filter(Boolean))];
+    const affectedTitles = [...new Set(affectedResources.map(r => r.title).filter(Boolean))];
+    setSelectedStagesFilter(affectedStages.length > 0 ? affectedStages : null);
+    setSelectedRoomsFilter(affectedTitles.length > 0 ? affectedTitles : null);
+
+    const nextIndex = overlapIndex + 1 >= spots.length ? 0 : overlapIndex + 1;
+    setOverlapIndex(nextIndex);
+
+    const spot = spots[nextIndex];
+    setTimeout(() => {
+      const api = calendarRef.current?.getApi();
+      if (api?.view?.scrollToResource) {
+        api.view.scrollToResource(spot.resourceId);
+      }
+      clearHighlights();
+      setTimeout(() => {
+        const el = document.querySelector(`.fc-event[data-event-id="${spot.id}"]`);
+        if (el) {
+          el.classList.add("highlight-current-event");
+          scrollToEvent(el);
+        }
+      }, 300);
+    }, 100);
   };
 
   const handleShowList = () => {
@@ -6895,6 +6976,7 @@ const ScheduleTest = () => {
     isFullscreen,
     showDetailHover,
     undoStack.length,
+    overlapIds,
   ];
 
   return (
@@ -6998,6 +7080,21 @@ const ScheduleTest = () => {
               <span className="font-bold text-sm">{moldWarningEvents.length} Lịch trùng khuôn</span>
             </div>
           )}
+          {overlapInfo.spots.length > 0 && (
+            <div
+              className="flex align-items-center gap-2 bg-red-100 text-red-800 px-3 py-1 border-round-2xl shadow-1 border-1 border-red-300 cursor-pointer hover:bg-red-200 transition-colors"
+              onClick={handleNextOverlap}
+              title="Click để lọc các phòng có lịch trùng giờ và nhảy lần lượt tới từng chỗ trùng"
+            >
+              <i className="pi pi-clock"></i>
+              <span className="font-bold text-sm">{overlapInfo.spots.length} Chỗ trùng giờ</span>
+              <i
+                className={`pi ${showOverlapMarks ? 'pi-eye' : 'pi-eye-slash'} ml-1 hover:text-red-600`}
+                title={showOverlapMarks ? 'Ẩn đánh dấu trùng giờ trên lịch' : 'Hiện đánh dấu trùng giờ trên lịch'}
+                onClick={(e) => { e.stopPropagation(); setShowOverlapMarks(v => !v); }}
+              ></i>
+            </div>
+          )}
           {sourceWarningEvents.length > 0 && (
             <div
               className="flex align-items-center gap-2 bg-orange-100 text-orange-800 px-3 py-1 border-round-2xl shadow-1 border-1 border-orange-300 cursor-pointer hover:bg-orange-200 transition-colors"
@@ -7051,6 +7148,11 @@ const ScheduleTest = () => {
             // Hiệu ứng bóng mờ màu vàng cho các thay đổi chưa lưu
             if (pendingChanges && pendingChanges.some(p => String(p.id) === String(arg.event.id))) {
               classes.push('fc-event-pending');
+            }
+
+            // Trùng giờ với lô khác cùng phòng + cùng công đoạn (xem overlapInfo)
+            if (overlapIds && overlapIds.has(String(arg.event.id))) {
+              classes.push('fc-event-overlap');
             }
 
             // Active Plan Master IDs focusing (logic from line 2956)
@@ -7645,7 +7747,7 @@ const ScheduleTest = () => {
 
         />
       </div>
-      <NoteModal show={showNoteModal} setShow={setShowNoteModal} />
+      <NoteModal show={showNoteModal} setShow={setShowNoteModal} showOverlapLegend />
 
       {/* <div className="modal-sidebar"> */}
       {authorization && (

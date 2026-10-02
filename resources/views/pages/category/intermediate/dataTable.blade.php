@@ -161,6 +161,11 @@
                                 ? ($quarantine_time_unit = 'ngày')
                                 : ($quarantine_time_unit = 'giờ');
 
+                            // Thời gian biệt trữ = 0 hoặc NULL thì hiển thị 'NA' thay vì '0 ngày/giờ'
+                            $quarantineText = fn($val) => is_null($val) || $val == 0
+                                ? 'NA'
+                                : $val . ' ' . $quarantine_time_unit;
+
                             $mmsRevision = $mmsRevisions[trim($data->intermediate_code)] ?? null;
                             $hasMmsRecipe = $mmsRevision !== null;
                             $hypothesisBomCount = $hypothesisBomCounts[$data->id] ?? 0;
@@ -268,7 +273,7 @@
                                 <div class="d-flex flex-column align-items-start">
                                     {{-- Biệt trữ từng công đoạn và biệt trữ tổng có thể cùng tồn tại --}}
                                     @if ($data->weight_1 && $data->weight_1 != '0')
-                                        <span>Cân NL: {{ $data->quarantine_weight . ' ' . $quarantine_time_unit }}</span>
+                                        <span>Cân NL: {{ $quarantineText($data->quarantine_weight) }}</span>
                                     @endif
                                     @if ($data->weight_2)
                                         <span>
@@ -280,19 +285,19 @@
                                         </span>
                                     @endif
                                     @if ($data->prepering && $data->prepering != '0')
-                                        <span>PC: {{ $data->quarantine_preparing . ' ' . $quarantine_time_unit }}</span>
+                                        <span>PC: {{ $quarantineText($data->quarantine_preparing) }}</span>
                                         @if ($data->quarantine_dry_granule !== null)
-                                            <span>Cốm SHK: {{ $data->quarantine_dry_granule + 0 }} {{ $quarantine_time_unit }}</span>
+                                            <span>Cốm SHK: {{ $quarantineText($data->quarantine_dry_granule) }}</span>
                                         @endif
                                     @endif
                                     @if ($data->blending && $data->blending != '0')
-                                        <span>THT: {{ $data->quarantine_blending . ' ' . $quarantine_time_unit }}</span>
+                                        <span>THT: {{ $quarantineText($data->quarantine_blending) }}</span>
                                     @endif
                                     @if ($data->forming && $data->forming != '0')
-                                        <span>ĐH: {{ $data->quarantine_forming . ' ' . $quarantine_time_unit }}</span>
+                                        <span>ĐH: {{ $quarantineText($data->quarantine_forming) }}</span>
                                     @endif
                                     @if ($data->coating && $data->coating != '0')
-                                        <span>BP: {{ $data->quarantine_coating . ' ' . $quarantine_time_unit }}</span>
+                                        <span>BP: {{ $quarantineText($data->quarantine_coating) }}</span>
                                     @endif
                                     @if ($data->quarantine_total > 0)
                                         <span class="text-danger font-weight-bold border-top mt-1 pt-1">

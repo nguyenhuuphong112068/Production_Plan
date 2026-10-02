@@ -190,6 +190,11 @@ class KcsTrackingController extends Controller
 
         $kcsDates = $this->effectiveKcsDates($datas, $mms['suggestions'], $records);
 
+        // Trong cùng năm/tháng kế hoạch (đã sắp ở batches()), xếp tiếp theo Ngày KCS rồi
+        // Số Lô. Phải làm bằng PHP vì Ngày KCS chỉ có sau khi tra MMS, không thể orderBy
+        // ngay trong câu truy vấn của batches().
+        $datas = $this->sortByKcsDate($datas, $kcsDates);
+
         if ($kcsMonth !== '') {
             $datas = $datas->filter(
                 fn($data) => str_starts_with((string) ($kcsDates[$data->id] ?? ''), $kcsMonth)
@@ -879,11 +884,53 @@ class KcsTrackingController extends Controller
             });
         }
 
+        // Xếp theo năm/tháng kế hoạch tại đây; Ngày KCS chỉ có sau khi đã tra MMS
+        // (xem sortByKcsDate() trong filteredData()) nên không thể orderBy ở query này.
         return $query->orderBy('pl.year', 'desc')
             ->orderBy('pl.month', 'desc')
-            ->orderBy('plan_master.expected_date', 'asc')
-            ->orderBy('plan_master.batch', 'asc')
             ->get();
+    }
+
+    /**
+     * Xếp lại danh sách lô trong cùng nhóm năm/tháng kế hoạch (đã do batches() đảm bảo)
+     * theo Ngày KCS tăng dần (lô KCS sớm hơn lên trên, lô chưa có Ngày KCS xuống cuối),
+     * rồi đến Số Lô tăng dần để phá vỡ đồng hạng khi trùng Ngày KCS.
+     *
+     * Dùng comparator riêng thay vì Collection::sortBy() vì cần so cùng lúc 4 tiêu chí
+     * (năm, tháng, Ngày KCS, Số Lô) mà chỉ 2 tiêu chí đầu đã được sắp sẵn ở SQL.
+     *
+     * @param  \Illuminate\Support\Collection  $datas
+     * @param  array<int, string>  $kcsDates  plan_master_id => 'Y-m-d'
+     */
+    private function sortByKcsDate($datas, array $kcsDates)
+    {
+        return $datas->sort(function ($a, $b) use ($kcsDates) {
+            $yearCompare = ((int) $b->plan_year) <=> ((int) $a->plan_year);
+            if ($yearCompare !== 0) {
+                return $yearCompare;
+            }
+
+            $monthCompare = ((int) $b->plan_month) <=> ((int) $a->plan_month);
+            if ($monthCompare !== 0) {
+                return $monthCompare;
+            }
+
+            $aKcs = $kcsDates[$a->id] ?? null;
+            $bKcs = $kcsDates[$b->id] ?? null;
+
+            // Chưa có Ngày KCS thì xuống cuối nhóm, không chen vào giữa các lô đã có ngày
+            $kcsCompare = match (true) {
+                $aKcs === $bKcs => 0,
+                $aKcs === null => 1,
+                $bKcs === null => -1,
+                default => $aKcs <=> $bKcs,
+            };
+            if ($kcsCompare !== 0) {
+                return $kcsCompare;
+            }
+
+            return strcmp((string) $a->batch, (string) $b->batch);
+        })->values();
     }
 
     /**

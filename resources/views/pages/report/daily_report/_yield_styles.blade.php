@@ -58,8 +58,8 @@
     #data_table_yield thead th:nth-child(6) { border-bottom-color: #CDC717; }
     #data_table_yield thead th + th { box-shadow: inset 1px 0 0 rgba(255, 255, 255, .15); }
     #data_table_yield td + td { border-left: 1px solid #e8edf3; }
-    #data_table_yield tr.yc-room-row > td:nth-child(3) { background: #f4fbf6; }
-    #data_table_yield tr.yc-room-row > td:nth-child(4) { background: #f3f7ff; }
+    #data_table_yield tr.yc-room-row > td:nth-child(3) { background: #c9f9c3; }
+    #data_table_yield tr.yc-room-row > td:nth-child(4) { background: #b3daf9; }
     #data_table_yield tr.yc-room-row > td:nth-child(5) { background: #fffaf0; }
     #data_table_yield tr.yc-stage > td + td { border-left-color: rgba(0, 58, 79, .15); }
 
@@ -116,9 +116,9 @@
     .yc-break b { color: #334155; font-variant-numeric: tabular-nums; }
 
     /* Lô theo lịch lý thuyết */
-    .yc-plans { margin-top: 10px; padding-top: 8px; border-top: 1px dashed #e2e8f0; color: #475569; font-size: 15.6px; line-height: 1.4; text-align: left; }
+    .yc-plans { margin-top: 10px; padding-top: 8px; border-top: 1px dashed rgba(0, 58, 79, .2); color: #475569; font-size: 15.6px; line-height: 1.4; text-align: left; }
     .yc-plan { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 10px; padding: 4px 0; }
-    .yc-plan + .yc-plan { border-top: 1px solid #f1f5f9; }
+    .yc-plan + .yc-plan { border-top: 1px solid rgba(0, 58, 79, .1); }
     .yc-plan-time { color: #64748b; white-space: nowrap; font-variant-numeric: tabular-nums; }
     .yc-plan-title { grid-column: 1 / -1; grid-row: 2; color: #334155; overflow-wrap: break-word; }
     .yc-plan-qty { color: #0f172a; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }

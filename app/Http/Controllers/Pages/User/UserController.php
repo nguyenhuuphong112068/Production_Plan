@@ -14,8 +14,8 @@ class UserController extends Controller
 
                 $groups = DB::table('stage_groups')->get();
                 $deparments = DB::table('deparments')->where('active', true)->get();
-                $roles = DB::table('roles')->get();
-               
+                $roles = DB::table('roles')->where('active', 1)->get();
+
                 $datas = DB::table('user_management')
                     ->where ('isActive',1)
                     ->orderBy('created_at','desc')

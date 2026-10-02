@@ -495,6 +495,20 @@ input:checked + .slider:before {
   z-index: 30;
 }
 
+/* Lô chưa hoàn thành bị trùng giờ với lô khác cùng phòng + cùng công đoạn
+   (overlapInfo trong FullCalender.jsx). Viền đỏ nét đứt + sọc chéo phủ lên màu
+   nền của sự kiện; dùng outline để không đè viền vàng của "chưa lưu". */
+.fc-event.fc-event-overlap {
+  outline: 2px dashed #dc2626;
+  outline-offset: -1px;
+  background-image: repeating-linear-gradient(
+    -45deg,
+    rgba(220, 38, 38, 0.35) 0 4px,
+    transparent 4px 9px
+  ) !important;
+  z-index: 5;
+}
+
 /* Ngăn ngừa sự kiện hover chập chờn khi di chuột qua lại giữa các element con của event */
 .custom-event-content * {
   pointer-events: none;

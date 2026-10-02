@@ -573,7 +573,7 @@
                             </a>
                         </li>
 
-                        @if (user_has_permission(session('user')['userId'], 'layout_finised', 'boolean'))
+                        @if (user_has_permission(session('user')['userId'], 'layout_production_execution', 'boolean'))
                             <li class="nav-item">
                                 <a href="{{ route('pages.Schedual.execution.index') }}"
                                     class="nav-link {{ str_contains(url()->current(), 'Schedual/execution') ? 'active' : '' }}">
