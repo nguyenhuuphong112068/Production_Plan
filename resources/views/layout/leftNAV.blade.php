@@ -65,6 +65,31 @@
         }
     }
 
+    /* Màn hình >= 992px: bấm ☰ thì AdminLTE gắn sidebar-collapse và thu
+       .main-sidebar còn 4.6rem (chỉ còn icon), nhưng .sidebar fixed 250px ở trên
+       không thu theo -> vẫn che nội dung + che luôn nút ☰. Cho thu theo, rê chuột
+       vào thì bung lại như AdminLTE gốc. */
+    @media (min-width: 992px) {
+        .main-sidebar .sidebar {
+            transition: width .3s ease-in-out, max-width .3s ease-in-out;
+        }
+
+        body.sidebar-collapse .main-sidebar .sidebar {
+            width: 4.6rem;
+            max-width: 4.6rem;
+        }
+
+        body.sidebar-collapse .main-sidebar:hover .sidebar {
+            width: 250px;
+            max-width: 250px;
+        }
+
+        /* Chữ menu bị thu về width 0; nếu cho xuống dòng thì từng ký tự dựng dọc */
+        body.sidebar-collapse .sidebar .nav-sidebar .nav-link p {
+            white-space: nowrap;
+        }
+    }
+
     /* Thanh cuộn mảnh, đồng nhất (Chrome/Edge) */
     .sidebar::-webkit-scrollbar {
         width: 6px;
@@ -106,7 +131,7 @@
     }
 </style>
 
-<aside class="main-sidebar sidebar-light-primary elevation-4" style="height: 100vh; width: 250px;">
+<aside class="main-sidebar sidebar-light-primary elevation-4" style="height: 100vh;">
     <div class="sidebar">
         <!-- Brand Logo -->
         <a href="{{ route('pages.general.home') }}"
