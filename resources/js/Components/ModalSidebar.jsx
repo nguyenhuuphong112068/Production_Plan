@@ -64,6 +64,15 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
     level: '110px',          // Ưu tiên
   };
 
+  // Khi đóng, sidebar chỉ bị dịch ra ngoài mép phải (translate-x-full). Desktop bị
+  // body{overflow-x:hidden} cắt đi, nhưng Chrome Android vẫn nới viewport cho vừa
+  // phần tràn rồi thu nhỏ trang => sidebar luôn hiện trên tablet. Nên sau khi trượt
+  // ra xong thì display:none hẳn.
+  const [parked, setParked] = useState(!visible);
+  useEffect(() => {
+    if (visible) setParked(false);
+  }, [visible]);
+
 
 
   useEffect(() => {
@@ -1721,11 +1730,14 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
       <div
         id="external-events"
         className={`absolute right-0 h-100 z-50 transition-transform duration-300 bg-white ${visible ? 'translate-x-0' : 'translate-x-full'}`}
+        onTransitionEnd={(e) => {
+          if (e.target === e.currentTarget && !visible) setParked(true);
+        }}
         style={{
           width: percentShow,
           maxWidth: "100%", // ✅ tối đa bằng content-wrapper
           boxShadow: "2px 0 10px rgba(0,0,0,0.3)",
-          display: "flex",
+          display: visible || !parked ? "flex" : "none",
           flexDirection: "column",
           top: "40px"
         }}
