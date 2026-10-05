@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Pages\Report;
 
 use App\Http\Controllers\Controller;
-use App\Services\DailyRoomTimelineService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -40,13 +39,6 @@ class DailyReportController extends Controller
         //dd($yield_theoryl_detial);
 
         $theory = $this->yield_theory($startDate, $endDate, 'resourceId');
-
-        // Dòng thời gian trong ngày của từng phòng: khoảng chuẩn bị / đang diễn ra + khoảng "Ngưng hoạt động" suy ra
-        $roomTimeline = app(DailyRoomTimelineService::class)->build(
-            $theory['yield_room']->pluck('resourceId')->all(),
-            $startDate,
-            collect($yield_actual_detial['actual_detail'] ?? [])
-        );
 
 
         $yieldsSubquery = DB::table('stage_plan as sp')
@@ -102,7 +94,6 @@ class DailyReportController extends Controller
             'sum_by_next_room' => $sum_by_next_room,
             'reportedDate'    => $displayDate,
             'explanation' => $explanation,
-            'roomTimeline' => $roomTimeline,
         ]);
     }
     public function yield_theoryl_detial($startDate, $endDate, $group_By, $production_code = null)
@@ -358,8 +349,6 @@ class DailyReportController extends Controller
         */
         $order_action = DB::table("room_status as rs")
             ->leftJoin('room', 'rs.room_id', 'room.id')
-            // Dòng do trang Thực Thi Sản Xuất tạo cho khoảng tạm dừng / vệ sinh không gắn lô: trạng thái phòng của khoảng đó
-            ->leftJoin('room_execution_log as rel', fn($j) => $j->on('rel.room_id', '=', 'rs.room_id')->on('rel.room_status_id', '=', 'rs.id'))
 
             ->whereNotNull('rs.start')
             ->whereNotNull('rs.end')
@@ -382,8 +371,7 @@ class DailyReportController extends Controller
                 DB::raw("'NA' as table_type"),
                 "rs.notification as note",
                 "rs.is_daily_report",
-                "rs.from_execution",
-                "rel.state as execution_state"
+                "rs.from_execution"
             )
             ->get();
 
@@ -411,7 +399,6 @@ class DailyReportController extends Controller
                     'note'          => $item->note ?? null,
                     'is_order_action' => $item->is_daily_report ?? 0,
                     'from_execution' => $item->from_execution ?? 0,
-                    'execution_state' => $item->execution_state ?? null,
                     'table_type'    => $item->table_type ?? 'NA',
                     'stage_code'    => $item->stage_code
                 ];

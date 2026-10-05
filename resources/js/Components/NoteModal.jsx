@@ -32,9 +32,6 @@ const LEGEND_GROUPS = [
     title: "Lịch thực tế",
     items: [
       { color: "#002af9ff", label: "Lịch Sản Xuất / Bảo Trì / Hiệu Chuẩn Thực Tế Đã Hoàn Tất" },
-      // 2 kiểu sọc trên lịch thực tế: giữ đồng bộ với GAP_STYLE (actualGapLayer) trong EventContent của FullCalender.jsx
-      { color: "#002af9ff", backgroundImage: "repeating-linear-gradient(45deg, rgba(134,239,172,0.95) 0 3px, rgba(220,252,231,0.85) 3px 6px)", label: "Khoảng Chuẩn Bị: Từ BĐSX Đến BĐCM Của Lần Xác Nhận Sản Lượng Đầu Tiên" },
-      { color: "#002af9ff", backgroundImage: "repeating-linear-gradient(135deg, rgba(30,41,59,0.85) 0 3px, rgba(203,213,225,0.9) 3px 6px)", label: "Khoảng Ngưng Sản Xuất Giữa 2 Lần Xác Nhận Sản Lượng" },
     ],
   },
   {

@@ -236,30 +236,28 @@ Route::prefix('/Schedual')
                                 Route::post('check_overlap', 'checkOverlap')->name('check_overlap');
                         });
 
-                // Thực thi sản xuất theo phòng (sẽ thay trang Xác nhận hoàn thành)
+                // Thực thi sản xuất theo phòng: Nhận phòng / Trả phòng
                 Route::prefix('/execution')
                         ->controller(ProductionExecutionController::class)
                         ->name('execution.')
                         ->group(function () {
                                 Route::get('', 'index')->name('index');
                                 Route::get('plans', 'plans')->name('plans');
-                                Route::get('history', 'history')->name('history');
-                                Route::get('room_label', 'roomLabel')->name('room_label');
-                                Route::get('equipment','equipment')->name('equipment');
-                                Route::get('equipment_label', 'equipmentLabel')->name('equipment_label');
-                                Route::post('start', 'start')->name('start');
-                                Route::post('execute', 'execute')->name('execute');
-                                Route::post('pause', 'pause')->name('pause');
-                                Route::post('resume', 'resume')->name('resume');
-                                Route::post('finish', 'finish')->name('finish');
-                                Route::post('clean_start', 'cleanStart')->name('clean_start');
-                                Route::post('clean_end', 'cleanEnd')->name('clean_end');
-                                Route::post('clean_check', 'cleanCheck')->name('clean_check');
-                                Route::post('mark_dirty', 'markDirty')->name('mark_dirty');
-                                Route::post('undo', 'undo')->name('undo');
-                                Route::post('activity', 'storeActivity')->name('activity');
-                                Route::post('activity_end', 'endActivity')->name('activity_end');
+                                Route::post('receive', 'receive')->name('receive');
+                                Route::post('release', 'release')->name('release');
+                                // Công tắc tịnh tuyến lịch: trang Xác nhận hoàn thành đang dùng
                                 Route::post('reroute_switch', 'rerouteSwitch')->name('reroute_switch');
+                        });
+
+                // Ghi nhận sản xuất: chỉ phòng người đăng nhập đang được phân công (role Executor chỉ vào được trang này)
+                Route::prefix('/record')
+                        ->controller(ProductionExecutionController::class)
+                        ->name('record.')
+                        ->group(function () {
+                                Route::get('', 'record')->name('index');
+                                Route::get('plans', 'plans')->name('plans');
+                                Route::post('receive', 'receive')->name('receive');
+                                Route::post('release', 'release')->name('release');
                         });
 
                 Route::prefix('/quarantine_room')

@@ -1,12 +1,12 @@
 {{-- Lưới card công đoạn → card phòng. Trả riêng khi tự làm mới (?partial=1). --}}
 @php
-    $ROS = \App\Services\RoomOccupancyService::class;
+    $PES = \App\Services\ProductionExecutionService::class;
 @endphp
 
 @forelse ($stages as $group => $rooms)
     @php
-        $meta = $ROS::STAGE_GROUPS[$group] ?? ['label' => $rooms->first()->stage, 'icon' => 'fa-industry', 'grad' => 'g-slate'];
-        $counts = $rooms->countBy(fn($r) => $r->st->state);
+        $meta = $PES::STAGE_GROUPS[$group] ?? ['label' => $rooms->first()->stage, 'icon' => 'fa-industry', 'grad' => 'g-slate'];
+        $counts = $rooms->countBy(fn($r) => $r->st->display);
     @endphp
     <div class="exec-stage" data-stage="{{ $group }}">
         <div class="exec-stage-head {{ $meta['grad'] }}" data-toggle-stage>
@@ -16,10 +16,10 @@
                 <small>{{ $rooms->count() }} phòng</small>
             </div>
             <div class="exec-stage-counts">
-                @foreach ($ROS::DISPLAY_ORDER as $s)
+                @foreach ($PES::DISPLAY_ORDER as $s)
                     @if ($counts->get($s))
-                        <span class="exec-count st-{{ $ROS::STATE_META[$s][0] }}" title="{{ $ROS::STATE_LABELS[$s] }}">
-                            <i class="fas {{ $ROS::STATE_META[$s][1] }}"></i> {{ $counts->get($s) }}
+                        <span class="exec-count st-{{ $PES::STATE_META[$s][0] }}" title="{{ $PES::STATE_LABELS[$s] }}">
+                            <i class="fas {{ $PES::STATE_META[$s][1] }}"></i> {{ $counts->get($s) }}
                         </span>
                     @endif
                 @endforeach

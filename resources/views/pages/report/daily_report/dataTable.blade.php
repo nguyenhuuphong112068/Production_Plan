@@ -11,7 +11,6 @@
         @php
 
             $update_daily_report = user_has_permission(session('user')['userId'], 'update_daily_report', 'boolean');
-            $PES = \App\Services\ProductionExecutionService::class;
 
             $stage_name = [
                 1 => 'Cân Nguyên Liệu',

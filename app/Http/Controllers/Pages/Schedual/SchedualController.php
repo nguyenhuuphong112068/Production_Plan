@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Pages\Schedual;
 
 use App\Http\Controllers\Controller;
+use App\Services\RoomOccupancyService;
 use App\Services\ScheduleRerouteService;
 use App\Services\SchedulingLock;
 use App\Support\LeadConfirmation;
@@ -701,8 +702,10 @@ class SchedualController extends Controller
         // 3️⃣ Ma trận cảnh báo nguồn NL: thiết bị được phép của từng lô, tải 1 lần cho cả vòng lặp
         $sourceWarningRules = $this->materialSourceWarningRules($event_plans, $production);
 
-        // Các lần xác nhận sản lượng (BĐCM → KT) của lô đã chạy: Gantt tô khoảng chuẩn bị và các khoảng ngưng trên lịch thực tế
-        $actualRunsByPlan = $this->actualRunsByPlan($event_plans);
+        // Lô đang giữ phòng (Nhận phòng ở trang Thực Thi Sản Xuất, chưa Trả phòng): đã có thanh "đang diễn ra"
+        // (running_events) nên không vẽ khối lịch lý thuyết sản xuất / vệ sinh của lô đó
+        $runningPlanIds = app(RoomOccupancyService::class)->runningRooms($production)
+            ->flatten()->pluck('id')->flip()->all();
 
         // 4️⃣ Gom nhóm theo plan_master_id
         $groupedPlans = $event_plans->groupBy('plan_master_id');
@@ -727,8 +730,10 @@ class SchedualController extends Controller
 
                 [$color_event,  $textColor,  $subtitle, $violation_colors, $mold_warning, $mold_code, $v_pre_id, $v_pre_end, $v_suc_id, $v_suc_start, $source_warning, $source_reminder] = $this->colorEvent($plan, $plans, $i, $room_code, $sourceWarningRules);
 
-                // 🎯 lịch chưa hoàn thành
-                if (($plan->start && ! $plan->actual_start && $plan->finished == 0)) {
+                $isRunning = isset($runningPlanIds[$plan->id]);
+
+                // 🎯 lịch chưa hoàn thành (kể cả lô đã Trả phòng mà chưa xác nhận ✓; lô đang giữ phòng thì không vẽ)
+                if ($plan->start && $plan->finished == 0 && !$isRunning) {
 
                     // biến riêng: $textColor còn được sự kiện vệ sinh bên dưới dùng lại
                     [$main_color, $main_text_color, $main_violation_colors, $is_overdue] = $this->applyOverdueColor(
@@ -790,8 +795,8 @@ class SchedualController extends Controller
                 }
 
                 // 🎯 lịch đã hoàn thành
-                if (($clearning && $plan->start_clearning && ! $plan->actual_start_clearning && $plan->yields >= 0 && $plan->finished == 0) ||
-                    ($clearning && $plan->actual_start_clearning && ! $plan->actual_start_clearning && $plan->yields >= 0 && $plan->finished == 0)
+                if (!$isRunning && (($clearning && $plan->start_clearning && ! $plan->actual_start_clearning && $plan->yields >= 0 && $plan->finished == 0) ||
+                    ($clearning && $plan->actual_start_clearning && ! $plan->actual_start_clearning && $plan->yields >= 0 && $plan->finished == 0))
                 ) {
 
                     [$clean_color, $clean_text_color,, $clean_overdue] = $this->applyOverdueColor(
@@ -877,7 +882,6 @@ class SchedualController extends Controller
                             'title' => $plan->title,
                             'start' => $plan->actual_start,
                             'end' => $plan->actual_end,
-                            'actual_runs' => $actualRunsByPlan[$plan->id] ?? null,
                             'resourceId' => $plan->resourceId,
                             'color' => '#002af9ff',
                             'textColor' => $textColor,
@@ -1016,7 +1020,6 @@ class SchedualController extends Controller
                             'title' => $plan->title,
                             'start' => $plan->actual_start,
                             'end' => $plan->actual_end,
-                            'actual_runs' => $actualRunsByPlan[$plan->id] ?? null,
                             'resourceId' => $plan->resourceId,
                             'color' => '#002af9ff',
                             'textColor' => $textColor,
@@ -1180,9 +1183,6 @@ class SchedualController extends Controller
                 $first->start = $group->min('start');
 
                 $first->end = $group->max('end');
-
-                // Các lần xác nhận là của từng lô, không khớp với thanh gộp → không tô chuẩn bị / ngưng
-                $first->actual_runs = null;
 
                 if (! $first->is_clearning) {
 
@@ -1431,52 +1431,6 @@ class SchedualController extends Controller
             })
             ->pluck('pm.id')
             ->all();
-    }
-
-    /**
-     * Các lần xác nhận sản lượng (bảng yields: BĐCM → KT, sản lượng) của những lô đang hiện lịch thực tế
-     * (actual_start + finished = 1), dạng plan_id => [[BĐCM, KT, sản lượng], ...] theo thứ tự thời gian.
-     * Gantt dùng để tô trên thanh thực tế: khoảng chuẩn bị (BĐSX → BĐCM lần đầu) và các khoảng ngưng giữa 2 lần xác nhận.
-     * Lô chạy liền một mạch (không có khoảng nào như vậy) thì không trả để khỏi nặng dữ liệu.
-     */
-    protected function actualRunsByPlan($plans): array
-    {
-        $actual = $plans->filter(fn($p) => $p->actual_start && $p->actual_end && $p->finished == 1)->keyBy('id');
-        if ($actual->isEmpty()) {
-            return [];
-        }
-
-        $result = [];
-        $rows = DB::table('yields')
-            ->whereIn('stage_plan_id', $actual->keys()->all())
-            ->whereNotNull('start')
-            ->whereNotNull('end')
-            ->orderBy('start')
-            ->get(['stage_plan_id', 'start', 'end', 'yield'])
-            ->groupBy('stage_plan_id');
-
-        foreach ($rows as $planId => $list) {
-            $runs = $list->map(fn($y) => [
-                Carbon::parse($y->start)->format('Y-m-d\TH:i:s'),
-                Carbon::parse($y->end)->format('Y-m-d\TH:i:s'),
-                round((float) $y->yield, 2),
-            ])->values()->all();
-
-            // Có khoảng chuẩn bị, khoảng ngưng giữa 2 lần, hoặc phần cuối không có xác nhận thì mới cần tô
-            $hasGap = strtotime($runs[0][0]) > strtotime($actual[$planId]->actual_start);
-            $lastEnd = strtotime($runs[0][1]);
-            foreach (array_slice($runs, 1) as $run) {
-                $hasGap = $hasGap || strtotime($run[0]) > $lastEnd;
-                $lastEnd = max($lastEnd, strtotime($run[1]));
-            }
-            $hasGap = $hasGap || $lastEnd < strtotime($actual[$planId]->actual_end);
-
-            if ($hasGap) {
-                $result[$planId] = $runs;
-            }
-        }
-
-        return $result;
     }
 
     protected function colorEvent($plan, $plans, $i, $room_code, array $sourceWarningRules = [])
@@ -2270,6 +2224,44 @@ class SchedualController extends Controller
                 ];
             }
 
+            // Phòng đang bận theo trang Thực Thi Sản Xuất: thanh bắt đầu lúc Nhận phòng, dài bằng thời lượng theo lịch đã sắp
+            // (KT vệ sinh - BĐ của lô; quá lịch thì tới hiện tại). JS tô phần đã diễn ra (tới bây giờ), phần chưa diễn ra để trống.
+            // Mảng riêng như personnel_events, không nằm trong events nên không bị kéo thả / sắp lịch / submit.
+            $runningEvents = [];
+            $now = now();
+            foreach (app(RoomOccupancyService::class)->runningRooms($production) as $roomId => $runPlans) {
+                $first = $runPlans->first();
+                $maintenance = $first->maintenance;
+                $label = $runPlans->count() > 1
+                    ? ($first->product_name ?? $first->title) . ' - ' . $runPlans->pluck('batch')->implode(', ')
+                    : $first->label;
+                $received = Carbon::parse($runPlans->min('actual_start'));
+                // Thời lượng giữ phòng theo lịch = KT vệ sinh − BĐ (lô không có vệ sinh: KT − BĐ)
+                $plannedSec = (int) $runPlans->max(fn($p) => $p->start && ($p->end_clearning ?? $p->end)
+                    ? max(0, Carbon::parse($p->start)->diffInSeconds(Carbon::parse($p->end_clearning ?? $p->end), false)) : 0);
+                $plannedEnd = $received->copy()->addSeconds($plannedSec);
+                $runningEvents[] = [
+                    'id' => 'running-' . $roomId,
+                    'resourceId' => (string) $roomId,
+                    'start' => $received->format('Y-m-d H:i:s'),
+                    'end' => $plannedEnd->max($now)->format('Y-m-d H:i:s'),
+                    'title' => ($maintenance ? '🔧 Đang bảo trì: ' : '▶ ') . $label,
+                    // Nền trong suốt: phần đã diễn ra do JS tô bằng fill_color, phần chưa diễn ra chỉ có viền
+                    'backgroundColor' => 'transparent',
+                    'textColor' => $maintenance ? '#9f1239' : '#78350f',
+                    'borderColor' => $maintenance ? '#e11d48' : '#d97706',
+                    'fill_color' => $maintenance ? '#fecdd3' : '#fde68a',
+                    'planned_end' => $plannedSec ? $plannedEnd->format('H:i d/m') : null,
+                    'editable' => false,
+                    'startEditable' => false,
+                    'durationEditable' => false,
+                    'resourceEditable' => false,
+                    'is_running' => true,
+                    'received_at' => $received->format('H:i d/m'),
+                    'display' => 'block',
+                ];
+            }
+
             $room_links = DB::table('room_links')
                 ->join('room as src', 'src.id', '=', 'room_links.source_room_id')
                 ->where('src.deparment_code', $production)
@@ -2302,6 +2294,7 @@ class SchedualController extends Controller
                 // Hiện menu "Lịch sử tịnh tuyến" (tính năng thử nghiệm)
                 'can_reroute' => ScheduleRerouteService::canUse(),
                 'personnel_events' => $personnelEvents,
+                'running_events' => $runningEvents,
                 'room_links' => $room_links,
                 'blister_molds' => $blister_molds,
                 'finished_product_molds' => $finished_product_molds,

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Pages\AuditTrail\AuditTrialController;
+use App\Http\Middleware\RestrictExecutor;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -192,6 +193,11 @@ class LoginController extends Controller
         }
 
         AuditTrialController::log('Login', 'NA', 0, 'NA', 'Đăng Nhập Thành Công');
+
+        // Người thực thi (role Executor) chỉ dùng trang Ghi Nhận Sản Xuất
+        if (RestrictExecutor::active()) {
+            return redirect()->route('pages.Schedual.record.index');
+        }
 
         return redirect()->route('pages.general.home');
     }

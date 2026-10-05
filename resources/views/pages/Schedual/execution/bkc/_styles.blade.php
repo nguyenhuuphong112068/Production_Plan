@@ -439,25 +439,6 @@
         .exec-plan-side .badge { display: inline-block; margin-bottom: 3px; }
         .exec-plan-empty { padding: 24px; text-align: center; color: #6b7785; }
 
-        /* Modal Nhận phòng: chữ lớn, rõ (tên sản phẩm, số lô, cỡ lô) */
-        #execReceiveModal .modal-title { font-size: 1.35rem; }
-        #execReceiveModal #execPlanHint { font-size: 1rem; }
-        #execReceiveModal .exec-plan-list { max-height: 62vh; }
-        #execReceiveModal .exec-plan { padding: 12px 16px; align-items: center; }
-        #execReceiveModal .exec-plan input { transform: scale(1.5); margin: 0 16px 0 4px; }
-        #execReceiveModal .exec-plan-name { font-size: 1.3rem; font-weight: 800; color: #0f172a; line-height: 1.3; }
-        #execReceiveModal .exec-plan-batch { font-size: 1.15rem; color: #1f2937; margin-top: 2px; }
-        #execReceiveModal .exec-plan-batch b { font-size: 1.3rem; color: #1d4ed8; letter-spacing: .5px; }
-        #execReceiveModal .exec-plan-meta { font-size: .95rem; color: #475569; margin-top: 2px; }
-        #execReceiveModal .exec-plan-side { min-width: 170px; margin-left: 16px; }
-        #execReceiveModal .exec-plan-size-label { font-size: .85rem; color: #64748b; text-transform: uppercase; letter-spacing: .5px; }
-        #execReceiveModal .exec-plan-size { font-size: 1.35rem; font-weight: 800; color: #0f172a; font-variant-numeric: tabular-nums; white-space: nowrap; }
-        #execReceiveModal .exec-plan-size small { font-size: .95rem; font-weight: 600; color: #475569; }
-        #execReceiveModal .exec-plan-side .badge { font-size: 1rem; padding: 6px 10px; }
-        #execReceiveModal .exec-plan-same { font-size: .85rem; }
-        #execReceiveModal .exec-now { font-size: 1rem; }
-        #execReceiveModal .modal-footer .btn { font-size: 1.1rem; padding: 8px 20px; }
-
         /* Nhật ký phòng: modal rộng 90% màn hình, chữ lớn hơn 20% cho dễ đọc */
         #execHistoryModal .modal-xl { max-width: 90vw; }
         .exec-history th, .exec-history td { font-size: .98rem; vertical-align: top; }

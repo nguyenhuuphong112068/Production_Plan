@@ -2,7 +2,7 @@
      Thực Thi Sản Xuất. Không cần đăng nhập; tự làm mới, đồng hồ chạy theo giây. Bộ lọc công đoạn lưu trên URL (?stage=)
      để màn hình treo tường mở thẳng đúng công đoạn. --}}
 @php
-    $ROS = \App\Services\RoomOccupancyService::class;
+    $PES = \App\Services\ProductionExecutionService::class;
 @endphp
 <!DOCTYPE html>
 <html lang="vi">
@@ -68,16 +68,16 @@
                     <button type="button" class="exec-pill js-filter-stage active" data-stage="all">Tất cả công đoạn</button>
                     @foreach ($stages as $group => $rooms)
                         <button type="button" class="exec-pill js-filter-stage" data-stage="{{ $group }}">
-                            {{ $ROS::STAGE_GROUPS[$group]['label'] ?? $rooms->first()->stage }}
+                            {{ $PES::STAGE_GROUPS[$group]['label'] ?? $rooms->first()->stage }}
                         </button>
                     @endforeach
                 </div>
 
                 <div class="exec-filters mt-2">
-                    @foreach ($ROS::DISPLAY_ORDER as $s)
-                        <button type="button" class="exec-filter-state st-{{ $ROS::STATE_META[$s][0] }}" data-state="{{ $s }}"
-                            title="Lọc phòng {{ $ROS::STATE_LABELS[$s] }}">
-                            <i class="fas {{ $ROS::STATE_META[$s][1] }}"></i> {{ $ROS::STATE_LABELS[$s] }} <b>{{ $stateCounts->get($s, 0) }}</b>
+                    @foreach ($PES::DISPLAY_ORDER as $s)
+                        <button type="button" class="exec-filter-state st-{{ $PES::STATE_META[$s][0] }}" data-state="{{ $s }}"
+                            title="Lọc phòng {{ $PES::STATE_LABELS[$s] }}">
+                            <i class="fas {{ $PES::STATE_META[$s][1] }}"></i> {{ $PES::STATE_LABELS[$s] }} <b>{{ $stateCounts->get($s, 0) }}</b>
                         </button>
                     @endforeach
                     <input type="search" id="execSearch" class="form-control form-control-sm exec-search"

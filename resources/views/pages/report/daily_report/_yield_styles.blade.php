@@ -126,16 +126,13 @@
     .yc-more > summary::-webkit-details-marker { display: none; }
     .yc-more[open] > summary { display: none; }
 
-    /* Phần trăm đáp ứng: vạch mốc 90% */
+    /* Phần trăm đáp ứng: chỉ hiển thị, không tô màu cảnh báo */
     .yc-pct-val { display: inline-block; padding: 3px 12px; border-radius: 999px; font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums; }
-    .yc-pct.ok .yc-pct-val { color: #15803d; background: #dcfce7; }
-    .yc-pct.low .yc-pct-val { color: #b91c1c; background: #fee2e2; }
+    .yc-pct.ok .yc-pct-val { color: #003A4F; background: #e8eef5; }
     .yc-pct.none .yc-pct-val { color: #94a3b8; background: #f1f5f9; }
     .yc-bar { position: relative; height: 7px; margin-top: 10px; border-radius: 4px; background: #e2e8f0; }
     .yc-bar > span { position: absolute; top: 0; bottom: 0; left: 0; border-radius: 4px; }
-    .yc-bar::after { content: ''; position: absolute; top: -3px; bottom: -3px; left: 90%; width: 2px; border-radius: 1px; background: #64748b; }
-    .yc-pct.ok .yc-bar > span { background: #22c55e; }
-    .yc-pct.low .yc-bar > span { background: #ef4444; }
+    .yc-pct.ok .yc-bar > span { background: #3b82f6; }
 
     /* Giải trình / lý do của công đoạn: 1 dòng gọn, có nội dung mới nổi bật */
     .yc-explain { display: flex; align-items: flex-start; }
@@ -184,6 +181,8 @@
     .dr-state-cleaning { color: #a16207; background: rgba(234, 179, 8, .16); }
     .dr-state-paused { color: #6d28d9; background: rgba(124, 58, 237, .10); }
     .dr-state-activity { color: #c2410c; background: rgba(249, 115, 22, .12); }
+    .dr-state-busy { color: #334155; background: rgba(71, 85, 105, .12); }
+    .dr-state-maintenance { color: #be123c; background: rgba(225, 29, 72, .10); }
     .dr-state-idle { color: #475569; background: #fff; border: 1px dashed #94a3b8; padding: 0 7px; }
 
     /* Màu từng loại trên dòng thời gian; khoảng ngưng hoạt động tô sọc */
@@ -192,6 +191,8 @@
     .dr-seg-cleaning { background: #eab308; }
     .dr-seg-paused { background: #8b5cf6; }
     .dr-seg-activity { background: #f97316; }
+    .dr-seg-busy { background: #64748b; }
+    .dr-seg-maintenance { background: #e11d48; }
     /* Không hoạt động (khoảng không có dữ liệu ghi nhận): 1 màu xám sọc chung cho mọi lý do */
     .dr-idle { background: repeating-linear-gradient(135deg, #94a3b8 0 3px, #e2e8f0 3px 6px); }
     .dr-dot { display: inline-block; width: 12px; height: 12px; margin-right: 7px; border-radius: 3px; flex-shrink: 0; }

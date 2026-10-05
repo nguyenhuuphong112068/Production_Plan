@@ -93,15 +93,15 @@
         transition: transform .2s;
     }
 
-    .reroute-switch input:checked + .reroute-slider {
+    .reroute-switch input:checked+.reroute-slider {
         background: #dc3545;
     }
 
-    .reroute-switch input:checked + .reroute-slider::before {
+    .reroute-switch input:checked+.reroute-slider::before {
         transform: translateX(20px);
     }
 
-    .reroute-switch input:focus-visible + .reroute-slider {
+    .reroute-switch input:focus-visible+.reroute-slider {
         box-shadow: 0 0 0 2px #80bdff;
     }
 
@@ -123,7 +123,6 @@
         max-width: 260px;
         word-break: break-word;
     }
-
 </style>
 
 <div class="content-wrapper">
@@ -201,16 +200,16 @@
                         <th>Số lô</th>
                         <th>Phòng Sản Xuất</th>
                         <th colspan="2">
-                            Thời Gian Sản Xuất <br>
-                            <span style="color: red; font-style:italic;">
-                                BĐSX: là thời gian bắt đầu sản xuất
+                            Thời Gian Nhận Phòng Sản Xuất <br>
+                            {{--  <span style="color: red; font-style:italic;">
+                                BĐ: là thời gian bắt đầu nhận phòng sản xuất
                             </span> <br>
                             <span style="color: red; font-style:italic;">
                                 BĐCM: là thời gian bắt đầu tạo ra sản lượng
                             </span> <br>
                             <span style="color: red; font-style:italic;">
                                 KT: là thời gian kết thúc 1 ca làm việc /ngày làm việc/kết lô
-                            </span>
+                            </span> --}}
                         </th>
 
 
@@ -221,18 +220,18 @@
                                 {{ '(ĐVL)' }}
                             @endif
                             <br>
-                            <span style="color: red; font-style:italic;">
+                            {{-- <span style="color: red; font-style:italic;">
                                 Lưu ý: trường hợp báo sl nhiều lần thì SL sẽ được tính cho khoảng thời gian BĐCM - KT.
                                 Không cộng dồn SL khi xác nhận nhiều lần
-                            </span>
+                            </span> --}}
                         </th>
                         {{-- <th class = "text-center">Đã Xác Nhận</th> --}}
                         <th class = "text-center" style = "width: 3%">Số Thùng</th>
                         <th>Ghi Chú</th>
-                        <th style = "width: 3%">Xác Nhận Sản Xuất</th>
+                        <th style = "width: 3%">Ghi Nhận Sản Xuất</th>
 
-                        <th colspan="2">Thời Gian Vệ Sinh</th>
-                        <th style = "width: 3%">Xác Nhận Toàn Bộ </th>
+                        <th colspan="2">Thời Gian nhận phòng Vệ Sinh</th>
+                        <th style = "width: 3%">Ghi Nhận Toàn Bộ </th>
 
                     </tr>
                 </thead>
@@ -253,9 +252,17 @@
 
                         {{-- Chưa có lịch lý thuyết (chưa sắp lịch) thì khóa toàn bộ dòng, trừ Cân NL / Cân NL Khác (stage 1, 2) --}}
                         @php
-                            $unscheduled = !in_array((int) $data->stage_code, [1, 2], true)
-                                && (empty($data->start) || empty($data->resourceId));
+                            $unscheduled =
+                                !in_array((int) $data->stage_code, [1, 2], true) &&
+                                (empty($data->start) || empty($data->resourceId));
                             $locked = $unscheduled ? 'disabled' : '';
+
+                            // Mốc đã ghi ở trang Thực Thi Sản Xuất (Nhận phòng / Trả phòng) chỉ hiển thị, không sửa:
+                            // actual_start + phòng (đã khóa theo $semi_finished như trước), actual_end_clearning (Trả phòng),
+                            // actual_end của lịch bảo trì (Trả phòng bảo trì). Server cũng giữ nguyên các giá trị này.
+                            $releasedClean = !empty($data->actual_end_clearning);
+                            $releasedMaint = (int) $data->stage_code === 8 && !empty($data->actual_end);
+                            $fmtInput = fn($t) => $t ? \Carbon\Carbon::parse($t)->format('Y-m-d\TH:i') : '';
                         @endphp
 
 
@@ -292,13 +299,19 @@
 
                             <td>
                                 @if (!$data->actual_start && $stageCode == 1)
-                                    <input style="color: red" type="text" class="time actual_batch {{ $data->need_confirm ? 'font-weight-bold' : '' }}"
-                                        id = "actual_batch" name="actual_batch" value = "{{ $data->batch }}" {{ $locked }}>
+                                    <input style="color: red" type="text"
+                                        class="time actual_batch {{ $data->need_confirm ? 'font-weight-bold' : '' }}"
+                                        id = "actual_batch" name="actual_batch" value = "{{ $data->batch }}"
+                                        {{ $locked }}>
                                 @else
                                     @if ($data->actual_batch)
-                                        <div style="color: blue" class = "text-center {{ $data->need_confirm ? 'font-weight-bold' : '' }}"> {{ $data->batch }} </div>
+                                        <div style="color: blue"
+                                            class = "text-center {{ $data->need_confirm ? 'font-weight-bold' : '' }}">
+                                            {{ $data->batch }} </div>
                                     @else
-                                        <div style="color: rgb(0, 0, 0)" class = "text-center {{ $data->need_confirm ? 'font-weight-bold' : '' }}"> {{ $data->batch }}
+                                        <div style="color: rgb(0, 0, 0)"
+                                            class = "text-center {{ $data->need_confirm ? 'font-weight-bold' : '' }}">
+                                            {{ $data->batch }}
                                         </div>
                                     @endif
                                 @endif
@@ -343,9 +356,12 @@
                                     <input type="datetime-local" class="time start_yield" id="start_yield"
                                         name="start_yield" {{ $locked }}
                                         value="{{ $data->max_yield_end ? \Carbon\Carbon::parse($data->max_yield_end)->format('Y-m-d\TH:i') : \Carbon\Carbon::parse($data->actual_start ?? $data->start)->format('Y-m-d\TH:i') }}">
-                                    <input type="hidden" class="max_yield_end" value="{{ $data->max_yield_end ? \Carbon\Carbon::parse($data->max_yield_end)->format('Y-m-d\TH:i') : '' }}">
+                                    <input type="hidden" class="max_yield_end"
+                                        value="{{ $data->max_yield_end ? \Carbon\Carbon::parse($data->max_yield_end)->format('Y-m-d\TH:i') : '' }}">
 
-                                    <input type="datetime-local" class="time" id = "end" name="end" {{ $locked }}
+                                    <input type="datetime-local" class="time" id = "end" name="end"
+                                        {{ $releasedMaint ? 'disabled' : $locked }}
+                                        @if ($releasedMaint) title="Đã ghi lúc Trả phòng ở trang Thực Thi Sản Xuất" @endif
                                         value = "{{ \Carbon\Carbon::parse($data->actual_end ?? $data->end)->format('Y-m-d\TH:i') }}">
                                 @else
                                     <input type="datetime-local" class="time start" id = "start" name="start"
@@ -354,9 +370,11 @@
                                     <input type="datetime-local" class="time start_yield" id="start_yield"
                                         name="start_yield" {{ $locked }}
                                         value="{{ $data->max_yield_end ? \Carbon\Carbon::parse($data->max_yield_end)->format('Y-m-d\TH:i') : \Carbon\Carbon::parse($data->actual_start ?? $data->start)->format('Y-m-d\TH:i') }}">
-                                    <input type="hidden" class="max_yield_end" value="{{ $data->max_yield_end ? \Carbon\Carbon::parse($data->max_yield_end)->format('Y-m-d\TH:i') : '' }}">
+                                    <input type="hidden" class="max_yield_end"
+                                        value="{{ $data->max_yield_end ? \Carbon\Carbon::parse($data->max_yield_end)->format('Y-m-d\TH:i') : '' }}">
 
-                                    <input type="datetime-local" class="time" id = "end" name="end" {{ $locked }}>
+                                    <input type="datetime-local" class="time" id = "end" name="end"
+                                        {{ $locked }}>
                                 @endif
 
                             </td>
@@ -408,8 +426,8 @@
                                     </button>  
                                 @else  {{ $finisedRow ? 'disabled' : '' }} --}}
                                 <button type="button" class="btn btn-success btn-semi-finised position-relative"
-                                    {{ $locked }}
-                                    data-id="{{ $data->id }}" data-toggle="modal" data-target="#finisedModal">
+                                    {{ $locked }} data-id="{{ $data->id }}" data-toggle="modal"
+                                    data-target="#finisedModal">
                                     <i class="fas fa-check"></i>
                                 </button>
                                 {{-- @endif --}}
@@ -420,19 +438,14 @@
                                 <div>KT: </div>
                             </td>
                             <td>
-                                @if (!empty($data->actual_start_clearning) || !empty($data->start_clearning))
-                                    <input type="datetime-local" class="time" id = "start_clearning"
-                                        name="start_clearning" {{ $locked }}
-                                        value="{{ \Carbon\Carbon::parse($data->start_clearning)->format('Y-m-d\TH:i') }}">
-                                    <input type="datetime-local" class="time" id = "end_clearning"
-                                        name="end_clearning" {{ $locked }}
-                                        value = "{{ \Carbon\Carbon::parse($data->end_clearning)->format('Y-m-d\TH:i') }}">
-                                @else
-                                    <input type="datetime-local" class="time" id = "start_clearning"
-                                        name="start_clearning" {{ $locked }}>
-                                    <input type="datetime-local" class="time" id = "end_clearning"
-                                        name="end_clearning" {{ $locked }}>
-                                @endif
+                                <input type="datetime-local" class="time" id = "start_clearning"
+                                    name="start_clearning" {{ $locked }}
+                                    value="{{ $fmtInput($data->actual_start_clearning ?? $data->start_clearning) }}">
+                                {{-- KT vệ sinh = lúc Trả phòng (trang Thực Thi Sản Xuất): chỉ hiển thị --}}
+                                <input type="datetime-local" class="time" id = "end_clearning"
+                                    name="end_clearning" {{ $releasedClean ? 'disabled' : $locked }}
+                                    @if ($releasedClean) title="Đã ghi lúc Trả phòng ở trang Thực Thi Sản Xuất" @endif
+                                    value = "{{ $fmtInput($data->actual_end_clearning ?? $data->end_clearning) }}">
 
                             </td>
 
@@ -472,12 +485,15 @@
             const production = $hint.data('production');
             $hint.toggleClass('text-muted', !on)
                 .toggleClass('text-danger', on)
-                .text((on
-                    ? 'Đang bật cho ' + production + ': bấm ✓✓ (xác nhận toàn bộ) ở trang này hoặc Kết thúc vệ sinh ở trang Thực Thi Sản Xuất sẽ tự dịch các lô liên quan trên lịch lý thuyết theo giờ vệ sinh thực tế, bất kể ai thao tác. Bấm ✓ không dịch lịch.'
-                    : 'Đang tắt cho ' + production + ': xác nhận hoàn thành không ảnh hưởng đến lịch lý thuyết.')
-                    + (lastChange ? ' (Đổi lần cuối: ' + lastChange + ')' : ''));
+                .text((on ?
+                        'Đang bật cho ' + production +
+                        ': bấm ✓✓ (xác nhận toàn bộ) ở trang này hoặc Kết thúc vệ sinh ở trang Thực Thi Sản Xuất sẽ tự dịch các lô liên quan trên lịch lý thuyết theo giờ vệ sinh thực tế, bất kể ai thao tác. Bấm ✓ không dịch lịch.' :
+                        'Đang tắt cho ' + production +
+                        ': xác nhận hoàn thành không ảnh hưởng đến lịch lý thuyết.') +
+                    (lastChange ? ' (Đổi lần cuối: ' + lastChange + ')' : ''));
         }
-        renderRerouteHint($('#realtimeRerouteToggle').is(':checked'), $('#realtimeRerouteHint').data('last-change'));
+        renderRerouteHint($('#realtimeRerouteToggle').is(':checked'), $('#realtimeRerouteHint').data(
+            'last-change'));
 
         $('#realtimeRerouteToggle').on('change', function() {
             const toggle = this;
@@ -486,7 +502,10 @@
             $.ajax({
                 url: "{{ route('pages.Schedual.execution.reroute_switch') }}",
                 type: 'post',
-                data: { _token: "{{ csrf_token() }}", enabled: on ? 1 : 0 },
+                data: {
+                    _token: "{{ csrf_token() }}",
+                    enabled: on ? 1 : 0
+                },
                 success: function(res) {
                     renderRerouteHint(res.enabled, res.last_change);
                 },
@@ -495,7 +514,8 @@
                     Swal.fire({
                         icon: 'warning',
                         title: 'Không lưu được công tắc',
-                        text: (xhr.responseJSON && xhr.responseJSON.message) || 'Có lỗi xảy ra'
+                        text: (xhr.responseJSON && xhr.responseJSON.message) ||
+                            'Có lỗi xảy ra'
                     });
                 },
                 complete: function() {
@@ -667,7 +687,9 @@
                         Swal.fire({
                             icon: "warning",
                             title: "Thời gian BĐCM không hợp lệ",
-                            html: "Thời gian BĐCM (Bắt đầu tạo ra sản lượng) phải lớn hơn hoặc bằng thời gian Kết thúc của lần xác nhận trước đó (" + maxYieldEndStr.replace('T', ' ') + ")!<br><br><b>Vui lòng kiểm tra lại!</b>",
+                            html: "Thời gian BĐCM (Bắt đầu tạo ra sản lượng) phải lớn hơn hoặc bằng thời gian Kết thúc của lần xác nhận trước đó (" +
+                                maxYieldEndStr.replace('T', ' ') +
+                                ")!<br><br><b>Vui lòng kiểm tra lại!</b>",
                             confirmButtonText: 'Kiểm tra lại',
                             confirmButtonColor: '#3085d6'
                         });
@@ -768,7 +790,9 @@
                         Swal.fire({
                             icon: "warning",
                             title: "Thời gian BĐCM không hợp lệ",
-                            html: "Thời gian BĐCM (Bắt đầu tạo ra sản lượng) phải lớn hơn hoặc bằng thời gian Kết thúc của lần xác nhận trước đó (" + maxYieldEndStr.replace('T', ' ') + ")!<br><br><b>Vui lòng kiểm tra lại!</b>",
+                            html: "Thời gian BĐCM (Bắt đầu tạo ra sản lượng) phải lớn hơn hoặc bằng thời gian Kết thúc của lần xác nhận trước đó (" +
+                                maxYieldEndStr.replace('T', ' ') +
+                                ")!<br><br><b>Vui lòng kiểm tra lại!</b>",
                             confirmButtonText: 'Kiểm tra lại',
                             confirmButtonColor: '#3085d6'
                         });
@@ -861,19 +885,23 @@
                     },
                     success: function(res) {
 
-                        const rerouteCount = (res && res.reroute_count) ? res.reroute_count : 0;
+                        const rerouteCount = (res && res.reroute_count) ? res
+                            .reroute_count : 0;
                         const cleaningMoved = !!(res && res.reroute_cleaning_moved);
 
                         if (rerouteCount > 0 || cleaningMoved) {
                             const delta = res.reroute_delta || 0;
                             const direction = delta < 0 ? 'sớm' : 'trễ';
                             // ✓ (semi-finised): lô chưa xong vệ sinh, chỉ báo đang trễ
-                            const lead = actionType === 'finised' ? 'Lô hoàn thành' : 'Lô đang';
+                            const lead = actionType === 'finised' ? 'Lô hoàn thành' :
+                                'Lô đang';
                             Swal.fire({
                                 icon: 'success',
                                 title: 'Hoàn Thành',
                                 html: `${lead} ${direction} <b>${Math.abs(delta)} phút</b> so với lịch lý thuyết.<br>` +
-                                    (cleaningMoved ? `Đã dời vệ sinh của lô ra sau giờ kết thúc sản xuất.<br>` : '') +
+                                    (cleaningMoved ?
+                                        `Đã dời vệ sinh của lô ra sau giờ kết thúc sản xuất.<br>` :
+                                        '') +
                                     `Đã tịnh tuyến <b>${rerouteCount}</b> lô liên quan.<br>` +
                                     `<small>Xem chi tiết: chuột phải lên lô trên Lịch Sản Xuất → "Lịch sử tịnh tuyến".</small>`,
                                 confirmButtonText: 'Đóng',
@@ -928,7 +956,8 @@
                 Swal.fire({
                     icon: 'warning',
                     title: 'Cảnh báo thời gian',
-                    html: warnings.join('<br>') + '<br><br><b>Có nhầm lẫn gì không? Bạn vẫn muốn tiếp tục xác nhận?</b>',
+                    html: warnings.join('<br>') +
+                        '<br><br><b>Có nhầm lẫn gì không? Bạn vẫn muốn tiếp tục xác nhận?</b>',
                     showCancelButton: true,
                     confirmButtonText: 'Vẫn tiếp tục',
                     cancelButtonText: 'Kiểm tra lại',

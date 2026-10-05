@@ -257,6 +257,32 @@ class SchedualFinisedController extends Controller
                 $now = now();
 
                 /* ===============================
+                1.5 MỐC ĐÃ GHI Ở TRANG THỰC THI SẢN XUẤT: GIỮ NGUYÊN, KHÔNG CHO SỬA
+                - Đã có actual_start (Nhận phòng / ✓ trước đó): giữ actual_start và phòng
+                - Đã có actual_end_clearning (Trả phòng): giữ KT vệ sinh
+                - Lịch bảo trì đã có actual_end (Trả phòng bảo trì): giữ KT
+                =============================== */
+
+                $current = DB::table('stage_plan')->where('id', $request->id)
+                        ->first(['stage_code', 'resourceId', 'actual_start', 'actual_end', 'actual_end_clearning']);
+                $lockedEndCleaning = false;
+                if ($current) {
+                        if ($current->actual_start) {
+                                $actualStart = Carbon::parse($current->actual_start);
+                                if ($current->resourceId) {
+                                        $request->merge(['resourceId' => $current->resourceId]);
+                                }
+                        }
+                        if ($current->actual_end_clearning) {
+                                $actualEndCleaning = Carbon::parse($current->actual_end_clearning);
+                                $lockedEndCleaning = true;
+                        }
+                        if ((int) $current->stage_code === 8 && $current->actual_end) {
+                                $actualEnd = Carbon::parse($current->actual_end);
+                        }
+                }
+
+                /* ===============================
                 2. VALIDATE THỜI GIAN CƠ BẢN
                 =============================== */
 
@@ -274,7 +300,13 @@ class SchedualFinisedController extends Controller
                 if ($actualStart && $actualEnd && $actualEnd->lte($actualStart))
                         return response()->json(['message' => '❌ Thời gian kết thúc phải lớn hơn thời gian bắt đầu'], 422);
 
-                if ($actualStart && $actualStartYield && $actualStartYield->lt($actualStart))
+                // Đã Trả phòng thì sản xuất phải kết thúc trước lúc trả phòng
+                if ($lockedEndCleaning && $actualEnd && $actualEnd->gt($actualEndCleaning))
+                        return response()->json(['message' => '❌ Thời gian kết thúc sản xuất phải trước lúc Trả phòng ('
+                                . $actualEndCleaning->format('H:i d/m/Y') . ')'], 422);
+
+                // So theo phút: actual_start từ Nhận phòng có giây, ô BĐCM trên trình duyệt chỉ tới phút
+                if ($actualStart && $actualStartYield && $actualStartYield->lt($actualStart->copy()->startOfMinute()))
                         return response()->json(['message' => '❌ Thời gian chạy máy phải lớn hơn thời gian bắt đầu sản xuất'], 422);
 
                 if ($actualEnd && $actualStartYield && $actualStartYield->gte($actualEnd)) {
@@ -295,6 +327,10 @@ class SchedualFinisedController extends Controller
 
                         if ($actualEndCleaning->gt($now))
                                 return response()->json(['message' => '❌ Thời gian kết thúc vệ sinh lớn hơn hiện tại'], 422);
+
+                        if ($actualStartCleaning->gte($actualEndCleaning))
+                                return response()->json(['message' => '❌ Thời gian bắt đầu vệ sinh phải nhỏ hơn thời gian kết thúc vệ sinh'
+                                        . ($lockedEndCleaning ? ' (lúc Trả phòng ' . $actualEndCleaning->format('H:i d/m/Y') . ')' : '')], 422);
                 } else {
 
                         if (!$actualStart || !$actualEnd)
@@ -344,7 +380,7 @@ class SchedualFinisedController extends Controller
                 if ($actualStartYield && $actualEnd) {
 
                         // phải nằm trong khoảng production
-                        if ($actualStartYield->lt($actualStart) || $actualEnd->gt($actualEnd))
+                        if ($actualStartYield->lt($actualStart->copy()->startOfMinute()) || $actualEnd->gt($actualEnd))
                                 return response()->json(['message' => '❌ Thời gian Yield phải nằm trong khoảng sản xuất'], 422);
 
                         // không overlap

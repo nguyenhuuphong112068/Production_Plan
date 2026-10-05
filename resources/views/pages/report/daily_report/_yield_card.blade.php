@@ -2,24 +2,15 @@
      (giải trình / lý do theo công đoạn, diễn biến trong ngày theo phòng). --}}
 @include('pages.report.daily_report._yield_styles')
 @php
-    $TL = \App\Services\DailyRoomTimelineService::class;
     $shiftStart = \Carbon\Carbon::createFromFormat('d/m/Y H:i:s', $reportedDate . ' 06:00:00');
     $shiftEnd = $shiftStart->copy()->addDay();
     $viewedUntil = now()->lt($shiftEnd) && now()->gt($shiftStart) ? now() : null;
 
-    // Loại khoảng đã ghi nhận → [hậu tố class màu, icon, nhãn]
-    $kinds = [
-        'producing' => ['producing', 'fa-cog', 'Sản Xuất'],
-        'preparing' => ['preparing', 'fa-clipboard-check', 'Chuẩn Bị'],
-        'cleaning' => ['cleaning', 'fa-broom', 'Vệ Sinh'],
-        'paused' => ['paused', 'fa-pause-circle', 'Tạm Dừng SX'],
-        'activity' => ['activity', 'fa-bolt', 'Hoạt động khác'],
-    ];
-
-    // % đáp ứng → [class màu, chữ, độ dài thanh]; không có lý thuyết lẫn thực tế thì không đánh giá
+    // % đáp ứng → [class màu, chữ, độ dài thanh]; chỉ hiển thị, không cảnh báo theo ngưỡng.
+    // Không có lý thuyết lẫn thực tế thì không đánh giá
     $pctView = fn($lt, $tt, $percent) => $lt == 0 && $tt == 0
         ? ['none', '—', 0]
-        : [$percent < 90 ? 'low' : 'ok', number_format($percent, 2) . '%', min(100, max(0, $percent))];
+        : ['ok', number_format($percent, 2) . '%', min(100, max(0, $percent))];
 
     $dayLT = collect($yield_theoryl_detial['yield_day'] ?? []);
     $dayTT = collect($yield_actual_detial['yield_day'] ?? []);
@@ -52,18 +43,6 @@
     </div>
 
     <div class="card-body">
-        {{-- Chú thích màu dòng thời gian ở cột Chi tiết --}}
-        <div class="yc-legend">
-            <div class="yc-legend-row">
-                <span class="yc-legend-group">Chú thích</span>
-                @foreach ($kinds as [$cls, $icon, $label])
-                    <span class="yc-lg"><i class="yc-sw dr-seg-{{ $cls }}"></i>{{ $label }}</span>
-                @endforeach
-                {{-- Khoảng không có dữ liệu ghi nhận: 1 màu chung, lý do suy ra ghi ở từng dòng --}}
-                <span class="yc-lg"><i class="yc-sw dr-idle"></i>Không hoạt động</span>
-            </div>
-        </div>
-
         <table id="data_table_yield" class="table yc-table">
             <thead>
                 <tr>
@@ -132,7 +111,7 @@
                         </td>
                         <td class="yc-pct {{ $pctCls }}">
                             <span class="yc-pct-val">{{ $pctText }}</span>
-                            <div class="yc-bar" title="Vạch mốc: 90%"><span style="width: {{ $pctBar }}%"></span></div>
+                            <div class="yc-bar"><span style="width: {{ $pctBar }}%"></span></div>
                         </td>
                         <td>
                             <div class="yc-explain">
@@ -173,7 +152,6 @@
 
                             $plans = collect($itemLT['theory_items'] ?? []);
                             $detail = $actualDetail->where('resourceId', $resourceId);
-                            $tl = $roomTimeline[$resourceId] ?? null;
                         @endphp
 
                         <tr class="yc-room-row stage-child stage-{{ $stage_code }}">
@@ -221,9 +199,9 @@
                             </td>
                             <td class="yc-pct {{ $pctCls }}">
                                 <span class="yc-pct-val">{{ $pctText }}</span>
-                                <div class="yc-bar" title="Vạch mốc: 90%"><span style="width: {{ $pctBar }}%"></span></div>
+                                <div class="yc-bar"><span style="width: {{ $pctBar }}%"></span></div>
                             </td>
-                            <td class="dr-detail-cell">
+                            <td class="dr-detail-cell text-left" style="background:#d7eaff; font-size:14px;">
                                 @include('pages.report.daily_report._yield_detail')
                             </td>
                         </tr>
@@ -234,21 +212,3 @@
     </div>
 </div>
 
-<script>
-    // Bấm 1 đoạn trên dòng thời gian → tô dòng chi tiết tương ứng (và ngược lại); bấm lại để bỏ tô
-    document.addEventListener('click', function(e) {
-        if (e.target.closest('button, a, form')) return;
-        const el = e.target.closest('.dr-seg, .dr-item');
-        const cell = el && el.closest('.dr-detail-cell');
-        if (!cell) return;
-        const i = el.dataset.i;
-        const on = !el.classList.contains('is-hl');
-        cell.querySelectorAll('.is-hl').forEach(x => x.classList.remove('is-hl'));
-        if (!on) return;
-        cell.querySelectorAll(`.dr-seg[data-i="${i}"], .dr-item[data-i="${i}"]`).forEach(x => x.classList.add('is-hl'));
-        if (el.classList.contains('dr-seg')) {
-            const row = cell.querySelector(`.dr-item[data-i="${i}"]`);
-            if (row) row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }
-    });
-</script>
