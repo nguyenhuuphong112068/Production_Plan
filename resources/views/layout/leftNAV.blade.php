@@ -47,6 +47,24 @@
         /* nằm trên các phần khác */
     }
 
+    /* Màn hình < 992px (tablet/điện thoại): AdminLTE ẩn menu bằng cách đẩy
+       .main-sidebar sang trái và nút ☰ chỉ bật/tắt class sidebar-open. Nhưng
+       .sidebar ở trên bị ghim position:fixed; left:0 nên không đi theo -> menu
+       luôn hiện, bấm ☰ không có tác dụng. Cho .sidebar tự trượt theo sidebar-open.
+       Chỉ áp dụng dưới 992px nên máy tính không bị ảnh hưởng. */
+    @media (max-width: 991.98px) {
+        .main-sidebar .sidebar {
+            transform: translateX(-100%);
+            transition: transform .3s ease-in-out;
+            /* nằm trên lớp phủ #sidebar-overlay (1037) để bấm được menu */
+            z-index: 1039;
+        }
+
+        body.sidebar-open .main-sidebar .sidebar {
+            transform: translateX(0);
+        }
+    }
+
     /* Thanh cuộn mảnh, đồng nhất (Chrome/Edge) */
     .sidebar::-webkit-scrollbar {
         width: 6px;

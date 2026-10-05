@@ -1731,7 +1731,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
         id="external-events"
         className={`absolute right-0 h-100 z-50 transition-transform duration-300 bg-white ${visible ? 'translate-x-0' : 'translate-x-full'}`}
         onTransitionEnd={(e) => {
-          if (e.target === e.currentTarget && !visible) setParked(true);
+          if (e.target === e.currentTarget && e.propertyName === 'transform' && !visible) setParked(true);
         }}
         style={{
           width: percentShow,

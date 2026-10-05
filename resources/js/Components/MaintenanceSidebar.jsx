@@ -36,6 +36,13 @@ const MaintenanceSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
   const [isCanceling, setIsCanceling] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
+  // Khi đóng sidebar chỉ dịch ra ngoài mép phải; Chrome Android vẫn tính phần đó
+  // vào bề rộng trang nên trượt ra xong thì display:none hẳn (giống ModalSidebar).
+  const [parked, setParked] = useState(!visible);
+  useEffect(() => {
+    if (visible) setParked(false);
+  }, [visible]);
+
   const handleCancelConfirm = async () => {
     if (cancelMode === 'resource' && !cancelResourceId) {
       Swal.fire('Cảnh báo', 'Vui lòng chọn phòng máy cần hủy lịch.', 'warning');
@@ -432,10 +439,13 @@ const MaintenanceSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
 
       <div id="external-events"
         className={`fixed right-0 h-full z-50 bg-white shadow-2xl ${visible ? 'translate-x-0' : 'translate-x-full'} transition-transform duration-300`}
+        onTransitionEnd={(e) => {
+          if (e.target === e.currentTarget && e.propertyName === 'transform' && !visible) setParked(true);
+        }}
         style={{
           width: percentShow,
           maxWidth: "calc(100vw - 250px)",
-          display: "flex",
+          display: visible || !parked ? "flex" : "none",
           flexDirection: "column",
           top: "40px",
           height: 'calc(100vh - 40px)',
