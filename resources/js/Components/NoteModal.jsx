@@ -35,6 +35,13 @@ const LEGEND_GROUPS = [
     ],
   },
   {
+    title: "Thực thi sản xuất (Nhận / Trả phòng)",
+    items: [
+      { color: "#fde68a", label: "▶ Phòng Đang Bận: Từ Lúc Nhận Phòng, Dài Theo Lịch (Phần Đã Diễn Ra Tô Màu)" },
+      { color: "#ddd6fe", label: "⏳ Đã Trả Phòng – Chờ Xác Nhận Hoàn Thành (Nhận → Trả Phòng)" },
+    ],
+  },
+  {
     title: "Bảo trì - Hiệu chuẩn",
     items: [
       { color: "#003A4F", label: "Lịch Bảo Trì Thiết Bị" },

@@ -26,6 +26,7 @@ import {
     formatDateShort,
 } from '../Components/wipCoverageShared';
 import WipCoverageDayDetailModal from '../Components/WipCoverageDayDetailModal';
+import WipCoverageByRoom from '../Components/WipCoverageByRoom';
 
 const WipCoverage = () => {
     const [allGroups, setAllGroups] = useState([]);
@@ -41,6 +42,21 @@ const WipCoverage = () => {
     const [showFlows, setShowFlows] = useState(false);
     // Con số đang xem chi tiết lô: { date, groupCode, kind, groupLabel } | null
     const [dayModal, setDayModal] = useState(null);
+    // 'stage' = theo công đoạn tiếp theo, 'room' = theo phòng tiếp theo.
+    // Mặc định mở tab phòng; tab phòng giữ nguyên sau lần tính đầu để chuyển qua lại không phải chờ
+    // (?group=DG nhắm vào một công đoạn nên vẫn mở tab công đoạn)
+    const [tab, setTab] = useState(() => {
+        const params = new URLSearchParams(window.location.search);
+        return params.get('tab') === 'stage' || params.get('group') ? 'stage' : 'room';
+    });
+    const [roomOpened, setRoomOpened] = useState(tab === 'room');
+    const [roomReload, setRoomReload] = useState(0);
+    const [roomLoading, setRoomLoading] = useState(false);
+
+    const switchTab = (next) => {
+        setTab(next);
+        if (next === 'room') setRoomOpened(true);
+    };
 
     const openDayModal = useCallback((date, groupCode, kind, groupLabelText) => {
         setDayModal({ date, groupCode, kind, groupLabel: groupLabelText });
@@ -217,7 +233,9 @@ const WipCoverage = () => {
         <div style={styles.page}>
             <div style={styles.header}>
                 <div>
-                    <h2 style={styles.h1}>Tồn kho lý thuyết theo công đoạn</h2>
+                    <h2 style={styles.h1}>
+                        {tab === 'room' ? 'Tồn kho lý thuyết theo phòng' : 'Tồn kho lý thuyết theo công đoạn'}
+                    </h2>
                     <p style={styles.lede}>
                         Lượng bán thành phẩm đang chờ để bước vào Định hình, Bao phim hoặc Đóng gói,
                         tính lại tại 06:00 từng ngày theo lịch lý thuyết đã sắp. Mỗi công đoạn đích là
@@ -226,18 +244,58 @@ const WipCoverage = () => {
                     </p>
                 </div>
                 <div style={styles.headerRight}>
-                    {meta && (
+                    {tab === 'stage' && meta && (
                         <span style={styles.stamp}>
                             {meta.source === 'live' ? 'Tính lúc ' : 'Chốt '}
                             {formatDate(meta.snapshot_at)}
                             {meta.snapshot_at ? ` ${String(meta.snapshot_at).slice(11, 16)}` : ''}
                         </span>
                     )}
-                    <button type="button" style={styles.btn} onClick={() => load(true)} disabled={loading}>
-                        {loading ? 'Đang tính…' : 'Tính lại theo hiện tại'}
-                    </button>
+                    {tab === 'stage' ? (
+                        <button type="button" style={styles.btn} onClick={() => load(true)} disabled={loading}>
+                            {loading ? 'Đang tính…' : 'Tính lại theo hiện tại'}
+                        </button>
+                    ) : (
+                        <button
+                            type="button"
+                            style={styles.btn}
+                            onClick={() => setRoomReload((n) => n + 1)}
+                            disabled={roomLoading}
+                        >
+                            {roomLoading ? 'Đang tính…' : 'Tính lại theo hiện tại'}
+                        </button>
+                    )}
                 </div>
             </div>
+
+            <div style={styles.viewTabs}>
+                {[
+                    ['room', 'Theo phòng tiếp theo'],
+                    ['stage', 'Theo công đoạn tiếp theo'],
+                ].map(([key, text]) => (
+                    <button
+                        type="button"
+                        key={key}
+                        onClick={() => switchTab(key)}
+                        style={{ ...styles.viewTab, ...(tab === key ? styles.viewTabActive : null) }}
+                    >
+                        {text}
+                    </button>
+                ))}
+            </div>
+
+            {roomOpened && (
+                <div style={{ display: tab === 'room' ? 'block' : 'none' }}>
+                    <WipCoverageByRoom
+                        reloadKey={roomReload}
+                        onOpenDay={setDayModal}
+                        onLoadingChange={setRoomLoading}
+                    />
+                </div>
+            )}
+
+            {tab === 'stage' && (
+            <>
 
             {/* ── Phần chính: tồn đang chờ MỖI công đoạn theo từng ngày ── */}
             <div style={styles.box}>
@@ -791,6 +849,8 @@ const WipCoverage = () => {
                     </DataTable>
                 </div>
             )}
+            </>
+            )}
 
             <WipCoverageDayDetailModal request={dayModal} onHide={() => setDayModal(null)} />
         </div>
@@ -831,6 +891,21 @@ const styles = {
         padding: '6px 12px',
         cursor: 'pointer',
     },
+
+    viewTabs: { display: 'flex', gap: 2, borderBottom: '1px solid #e2e8f0', marginBottom: 14 },
+    viewTab: {
+        font: 'inherit',
+        fontSize: 13,
+        fontWeight: 600,
+        color: '#64748b',
+        background: 'none',
+        border: 'none',
+        borderBottom: '2px solid transparent',
+        marginBottom: -1,
+        padding: '7px 14px',
+        cursor: 'pointer',
+    },
+    viewTabActive: { color: '#0e7490', borderBottomColor: '#0e7490' },
 
     box: { border: '1px solid #e2e8f0', borderRadius: 8, background: '#fff', padding: 14 },
     box2: {

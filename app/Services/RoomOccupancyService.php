@@ -71,6 +71,7 @@ class RoomOccupancyService
     // Ghi vào audittriallog.new_values của dòng Nhận phòng khi lô chưa gán phòng được gán vào phòng (để hoàn tác bỏ gán)
     const ASSIGNED_MARK = ' · gán phòng';
     const REROUTE_AUDIT = 'Tịnh tuyến khi Trả phòng';
+    const REROUTE_RECEIVE_AUDIT = 'Tịnh tuyến khi Nhận phòng';
 
     // Công đoạn được nhận phòng cho nhiều lô cùng lúc (Cân NL, Cân NL Khác): các lô phải cùng mã BTP
     const GROUP_STAGES = [1, 2];
@@ -409,6 +410,35 @@ class RoomOccupancyService
             ->all();
     }
 
+    /**
+     * Lô / lịch bảo trì đã Trả phòng nhưng chưa xác nhận hoàn thành (Gantt vẽ màu riêng "chờ xác nhận"):
+     * lô sản xuất chưa xác nhận vệ sinh ✓✓ (actual_start_clearning NULL), lịch bảo trì chưa finished = 1.
+     * Chỉ lô nhận phòng từ TRACK_FROM, có khoảng Nhận → Trả phòng giao với [$from, $to]. Mỗi dòng có thêm ->released_at.
+     */
+    public function awaitingConfirmation(string $deparmentCode, $from, $to): Collection
+    {
+        $ids = $this->roomQuery()->where('deparment_code', $deparmentCode)->pluck('id')->all();
+        if (!$ids) {
+            return collect();
+        }
+
+        $rows = DB::table('stage_plan')
+            ->whereIn('resourceId', $ids)
+            ->where('active', 1)
+            ->where('actual_start', '>=', self::TRACK_FROM)
+            ->where('actual_start', '<=', $to)
+            ->whereRaw('(' . self::RELEASE_SQL . ') >= ?', [$from])
+            ->where(fn($q) => $q
+                ->where(fn($q2) => $q2->where('stage_code', self::MAINTENANCE_STAGE)->where('finished', 0))
+                ->orWhere(fn($q2) => $q2->where('stage_code', '!=', self::MAINTENANCE_STAGE)->whereNull('actual_start_clearning')))
+            ->selectRaw('id, (' . self::RELEASE_SQL . ') AS released_at')
+            ->pluck('released_at', 'id');
+
+        return $this->planDetails($rows->keys()->all())
+            ->each(fn($p) => $p->released_at = $rows[$p->id])
+            ->values();
+    }
+
     /** Lần trả phòng gần nhất của từng phòng */
     private function releasedAt(array $roomIds): array
     {
@@ -465,6 +495,7 @@ class RoomOccupancyService
                 'sp.actual_start',
                 'sp.actual_end',
                 'sp.actual_start_clearning',
+                'sp.actual_end_clearning',
                 'sp.start_clearning',
                 'sp.Theoretical_yields',
                 'pn.name as product_name',
@@ -606,15 +637,24 @@ class RoomOccupancyService
      * Nhận phòng: ghi actual_start = giờ hệ thống cho lô / lịch bảo trì đã chọn. Chọn nhiều: phòng cân (lô cùng mã BTP)
      * hoặc nhiều lịch bảo trì (mỗi dòng 1 thiết bị). Lô nhận ở phòng cân mà chưa gán phòng thì gán vào phòng này.
      * $department: phòng ban người bấm, quyết định loại lịch được nhận (maintenanceTypesFor).
+     * Sau khi lưu: lô sản xuất bắt đầu trễ từ 30 phút thì tịnh tuyến chỉ đẩy trễ (ScheduleRerouteService::rerouteOnReceive);
+     * reroute = null khi không dịch lô nào.
+     *
+     * @return array{message: string, reroute: ?array}
      */
-    public function receive(int $roomId, array $stagePlanIds, ?string $department): string
+    public function receive(int $roomId, array $stagePlanIds, ?string $department): array
+    {
+        return $this->withRerouteLock($roomId, fn() => $this->receiveLocked($roomId, $stagePlanIds, $department));
+    }
+
+    private function receiveLocked(int $roomId, array $stagePlanIds, ?string $department): array
     {
         $stagePlanIds = array_values(array_unique(array_map('intval', array_filter($stagePlanIds))));
         if (!$stagePlanIds) {
             throw new ProductionExecutionException('❌ Chọn lô / lịch cần nhận phòng');
         }
 
-        return DB::transaction(function () use ($roomId, $stagePlanIds, $department) {
+        [$message, $deparmentCode, $productionIds] = DB::transaction(function () use ($roomId, $stagePlanIds, $department) {
             [$room] = $this->lockState($roomId, [self::READY]);
 
             $plans = $this->candidateQuery($room, $department)->whereIn('sp.id', $stagePlanIds)->lockForUpdate()
@@ -656,14 +696,25 @@ class RoomOccupancyService
                     . (in_array($id, $assigned) ? self::ASSIGNED_MARK : ''));
             }
 
-            return '✅ Đã nhận phòng ' . $room->code . ' lúc ' . $now->format('H:i') . ' cho ' . $labels->implode(', ');
+            return [
+                '✅ Đã nhận phòng ' . $room->code . ' lúc ' . $now->format('H:i') . ' cho ' . $labels->implode(', '),
+                $room->deparment_code,
+                $maintenance ? [] : $plans->pluck('id')->all(),
+            ];
         });
+
+        // Bắt đầu trễ từ 30 phút: đẩy lịch các lô sau theo giờ kết thúc dự kiến (công tắc tịnh tuyến phải bật)
+        $reroute = $this->rerouteAfter($productionIds, $deparmentCode, 'rerouteOnReceive', self::REROUTE_RECEIVE_AUDIT);
+
+        return ['message' => $message, 'reroute' => $reroute && ($reroute['count'] || $reroute['error']) ? $reroute : null];
     }
 
     /**
      * Trả phòng = giờ hệ thống cho mọi dòng đang giữ phòng.
      * - Phòng Bận: lô sản xuất ghi actual_end_clearning; lịch bảo trì ghi actual_end (lịch có vệ sinh → Chờ VS Sau BT).
      * - Đang VS Sau BT: ghi actual_end_clearning cho các lịch bảo trì → Sẵn Sàng.
+     * Lịch BT / TI / HC không có trang Xác nhận hoàn thành: lần trả phòng cuối (HC: trả phòng; BT / TI: trả phòng vệ sinh
+     * sau BT) coi như xác nhận hoàn thành tạm thời như nút ✅ ở Lịch HC-BT (finished = 1, finished_date, finished_by).
      * Sau khi lưu, nếu công tắc tịnh tuyến của phân xưởng đang bật thì dịch lịch lý thuyết theo giờ trả phòng của lô sản xuất
      * (ScheduleRerouteService::rerouteOnRelease). Lỗi tịnh tuyến không làm hỏng việc trả phòng đã lưu.
      *
@@ -671,15 +722,25 @@ class RoomOccupancyService
      */
     public function release(int $roomId): array
     {
+        return $this->withRerouteLock($roomId, fn() => $this->releaseLocked($roomId));
+    }
+
+    private function releaseLocked(int $roomId): array
+    {
         [$message, $deparmentCode, $productionIds] = DB::transaction(function () use ($roomId) {
             [$room, $state, $plans] = $this->lockState($roomId, [self::BUSY, self::CLEANING]);
 
             $now = now();
             foreach ($plans as $p) {
                 $column = $state === self::CLEANING || !$p->maintenance ? 'actual_end_clearning' : 'actual_end';
-                DB::table('stage_plan')->where('id', $p->id)->update([$column => $now]);
+                $finish = $p->maintenance && ($state === self::CLEANING || !$p->title_clearning);
+                DB::table('stage_plan')->where('id', $p->id)->update([$column => $now] + ($finish ? [
+                    'finished'      => 1,
+                    'finished_date' => $now,
+                    'finished_by'   => session('user')['fullName'] ?? null,
+                ] : []));
                 AuditTrialController::log($state === self::CLEANING ? 'Trả phòng vệ sinh sau BT' : 'Trả phòng', 'stage_plan', $p->id, 'NA',
-                    'Phòng ' . $room->code . ' · ' . $column . ' ' . $now->format('Y-m-d H:i:s') . ' · ' . $p->label);
+                    'Phòng ' . $room->code . ' · ' . $column . ' ' . $now->format('Y-m-d H:i:s') . ($finish ? ' · xác nhận hoàn thành' : '') . ' · ' . $p->label);
             }
 
             $after = $this->stateOf($this->planDetails(
@@ -694,33 +755,36 @@ class RoomOccupancyService
             ];
         });
 
-        return ['message' => $message, 'reroute' => $this->rerouteAfterRelease($productionIds, $deparmentCode)];
+        return ['message' => $message, 'reroute' => $this->rerouteAfter($productionIds, $deparmentCode, 'rerouteOnRelease', self::REROUTE_AUDIT)];
     }
 
     /**
-     * Tịnh tuyến lịch theo giờ trả phòng cho các lô vừa trả (công tắc của phân xưởng phải đang bật).
-     * null = không chạy (tắt công tắc / không có lô sản xuất); gộp kết quả nếu nhiều lô.
+     * Tịnh tuyến lịch cho các lô vừa Nhận phòng (rerouteOnReceive) / Trả phòng (rerouteOnRelease), công tắc của phân xưởng
+     * phải đang bật. null = không chạy (tắt công tắc / không có lô sản xuất); gộp kết quả nếu nhiều lô.
+     * Mã lần chạy ghi audittriallog ($auditAction) để Hoàn tác thao tác khôi phục luôn lịch đã tịnh tuyến.
      */
-    private function rerouteAfterRelease(array $stagePlanIds, string $deparmentCode): ?array
+    private function rerouteAfter(array $stagePlanIds, string $deparmentCode, string $method, string $auditAction): ?array
     {
         if (!$stagePlanIds || !RealtimeRerouteSwitch::enabled($deparmentCode)) {
             return null;
         }
 
-        $result = ['count' => 0, 'delta' => 0, 'cleaning_moved' => false, 'error' => false];
+        $result = ['trigger' => $method === 'rerouteOnReceive' ? 'receive' : 'release', 'count' => 0, 'delta' => 0, 'cleaning_moved' => false, 'error' => false];
         foreach ($stagePlanIds as $id) {
             try {
-                $r = app(ScheduleRerouteService::class)->rerouteOnRelease((int) $id);
+                $r = $method === 'rerouteOnRelease'
+                    // Lô đã đẩy lịch lúc Nhận phòng: Trả phòng so với giờ kết thúc dự kiến của lần đó
+                    ? app(ScheduleRerouteService::class)->rerouteOnRelease((int) $id, $this->lastRerouteRun((int) $id, self::REROUTE_RECEIVE_AUDIT))
+                    : app(ScheduleRerouteService::class)->{$method}((int) $id);
                 if ($r['run_code']) {
-                    // Để hoàn tác Trả phòng khôi phục luôn lịch đã tịnh tuyến
-                    AuditTrialController::log(self::REROUTE_AUDIT, 'stage_plan', $id, 'NA', $r['run_code']);
+                    AuditTrialController::log($auditAction, 'stage_plan', $id, 'NA', $r['run_code']);
                 }
                 $result['count'] += count($r['changes']);
                 $result['delta'] = $result['delta'] ?: $r['delta_minutes'];
                 $result['cleaning_moved'] = $result['cleaning_moved'] || $r['source_cleaning_moved'];
             } catch (\Throwable $e) {
                 $result['error'] = true;
-                Log::error('[Reroute] Tịnh tuyến khi Trả phòng thất bại cho stage_plan ' . $id, [
+                Log::error('[Reroute] ' . $auditAction . ' thất bại cho stage_plan ' . $id, [
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                 ]);
@@ -749,10 +813,29 @@ class RoomOccupancyService
 
     /**
      * Hoàn tác thao tác mới nhất của phòng (Nhận phòng / Nhận phòng vệ sinh sau BT / Trả phòng), trong UNDO_SECONDS,
-     * chỉ người đã bấm. Trả phòng: lịch đã tịnh tuyến cũng được khôi phục (lô nào đã bị đổi lịch lần nữa thì giữ nguyên).
+     * chỉ người đã bấm. Nhận phòng / Trả phòng: lịch đã tịnh tuyến cũng được khôi phục (lô nào đã bị đổi lịch lần nữa thì giữ nguyên).
      * Không hoàn tác được khi lô đã đi tiếp ở trang Xác nhận hoàn thành (✓ sau Nhận phòng, ✓✓ sau Trả phòng).
      */
     public function undo(int $roomId): string
+    {
+        return $this->withRerouteLock($roomId, fn() => $this->undoLocked($roomId));
+    }
+
+    /**
+     * Nhận phòng / Trả phòng / Hoàn tác có thể tịnh tuyến lịch: giữ khóa tịnh tuyến của phân xưởng (RerouteLock) từ lúc lưu
+     * tới khi tịnh tuyến xong, phòng khác bấm cùng lúc thì chờ. Chờ quá RerouteLock::WAIT_SECONDS: thao tác không được lưu,
+     * người dùng phải bấm lại (user chọn, 06/10/2026).
+     */
+    private function withRerouteLock(int $roomId, callable $fn)
+    {
+        try {
+            return RerouteLock::run(DB::table('room')->where('id', $roomId)->value('deparment_code'), $fn);
+        } catch (RerouteBusyException $e) {
+            throw new ProductionExecutionException($e->getMessage(), 423);
+        }
+    }
+
+    private function undoLocked(int $roomId): string
     {
         return DB::transaction(function () use ($roomId) {
             [$room, $state] = $this->lockState($roomId, [self::READY, self::BUSY, self::CLEAN_WAIT, self::CLEANING]);
@@ -763,7 +846,7 @@ class RoomOccupancyService
                     . (self::UNDO_SECONDS / 60) . ' phút. Đã tải lại thông tin phòng.', 409);
             }
 
-            $plans = DB::table('stage_plan')->whereIn('id', $undo->plan_ids)->get(['id', 'stage_code', 'finished', 'actual_end', 'actual_start_clearning', 'title']);
+            $plans = DB::table('stage_plan')->whereIn('id', $undo->plan_ids)->get(['id', 'stage_code', 'finished', 'actual_end', 'actual_start_clearning', 'title', 'title_clearning']);
             $labels = $this->planDetails($undo->plan_ids)->pluck('label', 'id');
             $note = '';
 
@@ -777,6 +860,7 @@ class RoomOccupancyService
                             throw new ProductionExecutionException("❌ Lô \"$name\" đã được xác nhận ở trang Xác nhận hoàn thành, không hoàn tác Nhận phòng được", 409);
                         }
                         $update = ['actual_start' => null] + (in_array($p->id, $undo->assigned) ? ['resourceId' => null] : []);
+                        $note .= $this->undoReroute((int) $p->id, self::REROUTE_RECEIVE_AUDIT);
                         break;
                     case 'Nhận phòng vệ sinh sau BT':
                         $update = ['actual_start_clearning' => null];
@@ -785,11 +869,12 @@ class RoomOccupancyService
                         if ($p->actual_start_clearning) {
                             throw new ProductionExecutionException("❌ Lô \"$name\" đã xác nhận vệ sinh (✓✓), không hoàn tác Trả phòng được", 409);
                         }
-                        $update = [$maint ? 'actual_end' : 'actual_end_clearning' => null];
-                        $note .= $this->undoReroute((int) $p->id);
+                        $update = [$maint ? 'actual_end' : 'actual_end_clearning' => null]
+                            + ($maint && !$p->title_clearning ? self::UNFINISH : []);
+                        $note .= $this->undoReroute((int) $p->id, self::REROUTE_AUDIT);
                         break;
                     default: // Trả phòng vệ sinh sau BT
-                        $update = ['actual_end_clearning' => null];
+                        $update = ['actual_end_clearning' => null] + self::UNFINISH;
                 }
 
                 DB::table('stage_plan')->where('id', $p->id)->update($update);
@@ -801,12 +886,29 @@ class RoomOccupancyService
         });
     }
 
-    /** Khôi phục lịch đã tịnh tuyến lúc Trả phòng của 1 lô (mã lần chạy lưu ở audittriallog); trả đoạn ghi chú cho thông báo */
-    private function undoReroute(int $stagePlanId): string
+    /** Hoàn tác lần trả phòng cuối của lịch bảo trì: bỏ xác nhận hoàn thành tạm thời đi kèm */
+    private const UNFINISH = ['finished' => 0, 'finished_date' => null, 'finished_by' => null];
+
+    /** Mã lần tịnh tuyến gần nhất của 1 lô theo thao tác ($auditAction), lưu ở audittriallog.new_values */
+    private function lastRerouteRun(int $stagePlanId, string $auditAction): ?string
+    {
+        return DB::table('audittriallog')
+            ->where('table_Audit', 'stage_plan')
+            ->where('action', $auditAction)
+            ->where('record_Id_AuditTrial', $stagePlanId)
+            ->orderByDesc('id')
+            ->value('new_values');
+    }
+
+    /**
+     * Khôi phục lịch đã tịnh tuyến lúc Nhận phòng / Trả phòng ($auditAction) của 1 lô (mã lần chạy lưu ở audittriallog);
+     * trả đoạn ghi chú cho thông báo
+     */
+    private function undoReroute(int $stagePlanId, string $auditAction): string
     {
         $code = DB::table('audittriallog')
             ->where('table_Audit', 'stage_plan')
-            ->where('action', self::REROUTE_AUDIT)
+            ->where('action', $auditAction)
             ->where('record_Id_AuditTrial', $stagePlanId)
             ->where('created_at', '>=', now()->subSeconds(self::UNDO_SECONDS + 10))
             ->orderByDesc('id')
@@ -820,7 +922,7 @@ class RoomOccupancyService
 
             return " · đã khôi phục lịch tịnh tuyến ({$r['restored']} lô" . ($r['skipped'] ? ", bỏ qua {$r['skipped']} lô đã đổi lịch" : '') . ')';
         } catch (\Throwable $e) {
-            Log::error('[Reroute] Hoàn tác tịnh tuyến khi hoàn tác Trả phòng thất bại cho stage_plan ' . $stagePlanId, ['error' => $e->getMessage()]);
+            Log::error('[Reroute] Hoàn tác "' . $auditAction . '" thất bại cho stage_plan ' . $stagePlanId, ['error' => $e->getMessage()]);
 
             return ' · không khôi phục được lịch tịnh tuyến (đã ghi log)';
         }

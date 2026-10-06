@@ -112,42 +112,6 @@ class WipCoverageService
         ];
     }
 
-    /**
-     * Sổ nhập xuất từng lô theo nhóm đích kèm chuỗi tồn từng ngày, dùng cho
-     * plugin Kiểm soát tồn BTP khi sắp lịch tự động (app/Plugins/WipControl).
-     *
-     * @return array{days: array, ledgers: array, series: array}
-     */
-    public function ledgers(string $productionCode, Carbon $at, int $horizonDays = self::DEFAULT_HORIZON_DAYS): array
-    {
-        $at = $at->copy();
-        $horizonDays = max(1, min(180, $horizonDays));
-
-        $rows = $this->loadStagePlans($productionCode, $at, $horizonDays);
-        $lookup = $this->buildLookups($rows);
-        $days = $this->buildDayWindows($at, $horizonDays);
-
-        $byPlanMaster = [];
-        foreach ($rows as $row) {
-            $byPlanMaster[$row->plan_master_id][] = $row;
-        }
-        unset($rows);
-
-        $ledgers = $this->buildLedgers($byPlanMaster, $lookup);
-
-        return [
-            'days'    => $days,
-            'ledgers' => $ledgers,
-            'series'  => $this->buildSeries($days, $ledgers),
-        ];
-    }
-
-    /** Lượng của một lô trong sổ còn nằm trong kho tại một mốc, xem lotStockAt */
-    public function lotStockAtMoment(array $lot, string $at): float
-    {
-        return $this->lotStockAt($lot, $at);
-    }
-
     /** Tên hiển thị của một nhóm đích, kể cả nhóm chưa rõ công đoạn sau */
     public static function groupName(string $code): string
     {
@@ -801,9 +765,6 @@ class WipCoverageService
                     'stage_code'        => (int) $outRow->stage_code,   // công đoạn hiện đang giữ lô, tức nguồn
                     'qty_dvl'           => $qtyDvl,
                     'entry'             => $entry,   // null nghĩa là chưa sắp lịch và chưa chạy, không bao giờ nhập kho
-                    'entry_end'         => (int) ($outRow->finished ?? 0) === 1
-                        ? ($outRow->actual_end ?? $outRow->end ?? null)
-                        : ($outRow->end ?? null),   // lúc công đoạn nguồn chạy xong, plugin WipControl dùng
                     'exits'             => $exits,
                     'splits'            => $splits,
                 ];

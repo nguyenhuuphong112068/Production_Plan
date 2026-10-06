@@ -37,6 +37,53 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
   const [isShowLine, setIsShowLine] = useState(false);
   const [selectedLine, setSelectedLine] = useState("S16");
 
+  // Khóa thực thi sản xuất thủ công: chặn Nhận / Trả phòng (trang Thực Thi / Ghi Nhận Sản Xuất) của phân xưởng
+  // trong lúc sắp lịch thủ công, tránh tịnh tuyến lịch lúc Trả phòng xung đột. Lưu ở scheduling_locks (tự mở khi không sắp lịch thêm 10 phút).
+  const [execLock, setExecLock] = useState(null);
+  const [execLockSaving, setExecLockSaving] = useState(false);
+
+  useEffect(() => {
+    if (!visible || isMaintenance) return;
+    const load = () => axios.get('/Schedual/executionLock').then(res => setExecLock(res.data)).catch(() => setExecLock(null));
+    load();
+    // Khóa có thể tự mở (không hoạt động) hoặc do người khác bật / tắt: cập nhật lại mỗi phút
+    const timer = setInterval(load, 60000);
+    return () => clearInterval(timer);
+  }, [visible, isMaintenance]);
+
+  // Gantt báo server vừa tự bật khóa (người sắp lịch quên khóa mà sửa lịch thủ công)
+  useEffect(() => {
+    const onChange = e => setExecLock(e.detail);
+    window.addEventListener('execLockChanged', onChange);
+    return () => window.removeEventListener('execLockChanged', onChange);
+  }, []);
+
+  const handleToggleExecLock = () => {
+    if (!execLock || execLockSaving) return;
+    const lock = !execLock.locked;
+    Swal.fire({
+      icon: 'question',
+      title: lock ? 'Khóa thực thi sản xuất?' : 'Mở khóa thực thi sản xuất?',
+      html: lock
+        ? 'Tạm dừng <b>Nhận phòng / Trả phòng</b> ở trang Thực Thi và Ghi Nhận Sản Xuất của phân xưởng trong lúc bạn sắp lịch thủ công, để tịnh tuyến lịch không xung đột.<br><small>Nếu quên tắt: tự mở khi không còn thao tác sắp lịch thủ công trong 10 phút.</small>'
+        : 'Cho phép Nhận phòng / Trả phòng trở lại.',
+      showCancelButton: true,
+      confirmButtonText: lock ? 'Khóa' : 'Mở khóa',
+      cancelButtonText: 'Hủy',
+      confirmButtonColor: lock ? '#dc2626' : '#16a34a',
+    }).then(r => {
+      if (!r.isConfirmed) return;
+      setExecLockSaving(true);
+      axios.put('/Schedual/executionLock', { locked: lock ? 1 : 0 })
+        .then(res => {
+          setExecLock(res.data);
+          Swal.fire({ toast: true, position: 'top-end', icon: 'success', titleText: res.data.message, timer: 3000, showConfirmButton: false });
+        })
+        .catch(err => Swal.fire({ icon: 'warning', title: 'Không thực hiện được', text: err.response?.data?.message || 'Có lỗi xảy ra' }))
+        .finally(() => setExecLockSaving(false));
+    });
+  };
+
 
   const columnWidths100 = {
     code: '8%',                // Mã sản phẩm
@@ -1747,6 +1794,23 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
         <div className="p-4 border-b">
           <Row className="align-items-center">
             <Col md={4} className='d-flex justify-content-start'>
+
+              {!isMaintenance && execLock && (
+                <div
+                  className={`fc-event px-3 py-1 border rounded text-md text-center cursor-pointer mr-3 ${execLock.locked
+                    ? 'bg-red-100 border-red-500 text-red-700'
+                    : 'bg-gray-100 border-gray-400 text-gray-700'}`}
+                  title={execLock.locked
+                    ? `Đang khóa Nhận / Trả phòng (bởi ${execLock.locked_by || '?'} lúc ${execLock.locked_at}, tự mở lúc ${execLock.expires_at} nếu không sắp lịch thêm). Bấm để mở khóa`
+                    : 'Khóa Nhận / Trả phòng ở trang Thực Thi Sản Xuất trong lúc sắp lịch thủ công'}
+                  onClick={handleToggleExecLock}
+                  style={{ whiteSpace: 'nowrap' }}
+                >
+                  {execLockSaving
+                    ? <i className="fas fa-spinner fa-spin fa-lg"></i>
+                    : (execLock.locked ? <><i className="fas fa-lock"></i> Đang khóa TTSX</> : <><i className="fas fa-lock-open"></i> Khóa TTSX</>)}
+                </div>
+              )}
 
               {percentShow === "100%" && stageFilter <= 7 ? (
                 <>

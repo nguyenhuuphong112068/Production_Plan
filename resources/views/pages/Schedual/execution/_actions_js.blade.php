@@ -11,10 +11,27 @@
             }
 
             /* ---------- Gửi thao tác ---------- */
+            // Hộp chờ trong lúc server xử lý (Trả phòng có thể chạy tịnh tuyến lịch, mất vài giây); phản hồi về thì Swal mới thay thế
+            const LOADING_TEXT = {
+                [R.receive]: ['Đang nhận phòng...', 'Đang ghi giờ nhận phòng'],
+                [R.release]: ['Đang xử lý dời lịch...', 'Đang trả phòng và tịnh tuyến lại lịch lý thuyết (nếu đang bật), vui lòng chờ'],
+                [R.receiveCleaning]: ['Đang nhận phòng vệ sinh...', 'Đang ghi giờ bắt đầu vệ sinh'],
+                [R.undo]: ['Đang hoàn tác...', 'Đang khôi phục trạng thái phòng và lịch đã dời (nếu có), vui lòng chờ'],
+            };
+
             function send(url, data, $modal) {
                 if (busy) return;
                 busy = true;
                 const $btn = $modal ? $modal.find('.js-submit').prop('disabled', true) : $();
+                const [loadingTitle, loadingText] = LOADING_TEXT[url] || ['Đang xử lý...', ''];
+                Swal.fire({
+                    title: loadingTitle,
+                    text: loadingText,
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    showConfirmButton: false,
+                    didOpen: () => Swal.showLoading(),
+                });
 
                 $.ajax({
                         url,
@@ -62,13 +79,17 @@
                     });
             }
 
-            // Trả phòng khi công tắc tịnh tuyến của phân xưởng đang bật: kết quả dịch lịch lý thuyết theo giờ trả phòng
+            // Công tắc tịnh tuyến của phân xưởng đang bật: kết quả dịch lịch lý thuyết
+            // - Trả phòng: dịch 2 chiều theo giờ trả phòng
+            // - Nhận phòng: lô bắt đầu trễ từ 30 phút → chỉ đẩy trễ theo giờ kết thúc dự kiến (server chỉ gửi khi có dịch / lỗi)
             function showReroute(res) {
                 const r = res.reroute;
+                const receive = r.trigger === 'receive';
+                const done = receive ? 'Đã nhận phòng' : 'Đã trả phòng';
                 if (r.error) {
                     return Swal.fire({
                         icon: 'warning',
-                        title: 'Đã trả phòng',
+                        title: done,
                         text: res.message + '. Tịnh tuyến lịch bị lỗi (đã ghi log), lịch lý thuyết chưa được dịch.'
                     });
                 }
@@ -82,11 +103,13 @@
                         showConfirmButton: false
                     });
                 }
+                const what = receive ?
+                    `Lô bắt đầu trễ <b>${Math.abs(r.delta)} phút</b> so với lịch lý thuyết.<br>Đã đẩy lịch <b>${r.count}</b> lô liên quan theo giờ kết thúc dự kiến (thời lượng lý thuyết); khi Trả phòng lịch được chỉnh lại theo giờ thực tế.<br>` :
+                    `Lô hoàn thành ${r.delta < 0 ? 'sớm' : 'trễ'} <b>${Math.abs(r.delta)} phút</b> so với lịch lý thuyết.<br>Đã tịnh tuyến <b>${r.count}</b> lô liên quan.<br>`;
                 Swal.fire({
-                    icon: 'success',
-                    title: 'Đã trả phòng',
-                    html: `${esc(res.message)}<br>Lô hoàn thành ${r.delta < 0 ? 'sớm' : 'trễ'} <b>${Math.abs(r.delta)} phút</b> so với lịch lý thuyết.<br>` +
-                        `Đã tịnh tuyến <b>${r.count}</b> lô liên quan.<br>` +
+                    icon: receive ? 'info' : 'success',
+                    title: done,
+                    html: `${esc(res.message)}<br>${what}` +
                         '<small>Xem chi tiết: chuột phải lên lô trên Lịch Sản Xuất → "Lịch sử tịnh tuyến".</small>',
                     confirmButtonText: 'Đóng',
                 });

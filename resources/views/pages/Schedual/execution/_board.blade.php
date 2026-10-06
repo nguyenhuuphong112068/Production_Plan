@@ -3,6 +3,11 @@
     $ROS = \App\Services\RoomOccupancyService::class;
 @endphp
 
+{{-- Phân xưởng đang sắp lịch tự động / khóa thủ công: Nhận / Trả phòng bị chặn (server trả 423) --}}
+@if ($lockMessage = \App\Services\SchedulingLock::executionBlock($production))
+    <div class="alert alert-warning font-weight-bold mb-3"><i class="fas fa-lock"></i> {{ $lockMessage }}</div>
+@endif
+
 @forelse ($stages as $group => $rooms)
     @php
         $meta = $ROS::STAGE_GROUPS[$group] ?? ['label' => $rooms->first()->stage, 'icon' => 'fa-industry', 'grad' => 'g-slate'];

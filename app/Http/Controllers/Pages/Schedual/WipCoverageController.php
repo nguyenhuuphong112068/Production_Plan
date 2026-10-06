@@ -74,6 +74,7 @@ class WipCoverageController extends Controller
             'date'       => 'required|date_format:Y-m-d',
             'group_code' => 'required|string|max:8',
             'kind'       => 'required_unless:group_code,SUPPLY|nullable|string|in:stock,in,out',
+            'room_key'   => 'nullable|string|max:16',
         ]);
 
         $productionCode = session('user')['production_code'];
@@ -85,7 +86,8 @@ class WipCoverageController extends Controller
             WipCoverageService::DEFAULT_HORIZON_DAYS,
             $request->group_code,
             $request->date,
-            $request->kind ?? 'stock'
+            $request->kind ?? 'stock',
+            $request->room_key
         );
 
         return response()->json([
@@ -94,6 +96,28 @@ class WipCoverageController extends Controller
             'group_code' => $request->group_code,
             'kind'       => $kind,
         ] + $result);
+    }
+
+    /**
+     * Tồn theo phòng tiếp theo. Không có bản chốt riêng nên luôn tính tại chỗ;
+     * trang chỉ gọi khi người dùng mở tab này.
+     */
+    public function roomView()
+    {
+        if (! $this->canView()) {
+            return response()->json(['success' => false, 'message' => 'Bạn không có quyền xem chức năng này.'], 403);
+        }
+
+        $productionCode = session('user')['production_code'];
+
+        return response()->json([
+            'success'         => true,
+            'production_code' => $productionCode,
+        ] + $this->service->computeByRoom(
+            $productionCode,
+            Carbon::now(),
+            WipCoverageService::DEFAULT_HORIZON_DAYS
+        ));
     }
 
     /** Danh sách mã bán thành phẩm đang tồn của một nhóm đích */

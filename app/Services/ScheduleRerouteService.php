@@ -12,7 +12,10 @@ use Illuminate\Support\Str;
  * Tịnh tuyến lịch lý thuyết theo xác nhận hoàn thành.
  *
  * Chạy khi bấm [Trả phòng] ở trang Thực Thi Sản Xuất / Ghi Nhận Sản Xuất (rerouteOnRelease, từ 06/10/2026): dịch 2 chiều
- * theo giờ Trả phòng (= actual_end_clearning), lô chưa cần xác nhận ✓. Nút ✓✓ ở trang Xác nhận hoàn thành KHÔNG còn dịch lịch
+ * theo giờ Trả phòng (= actual_end_clearning), lô chưa cần xác nhận ✓.
+ * Và khi bấm [Nhận phòng] trễ từ RECEIVE_MIN_LATE_SECONDS (rerouteOnReceive, từ 06/10/2026): CHỈ ĐẨY TRỄ theo giờ kết thúc
+ * dự kiến = giờ kết thúc lý thuyết + độ trễ bắt đầu. Lúc Trả phòng, lô đã tịnh tuyến khi Nhận phòng được so với giờ dự kiến
+ * đó (không phải giờ lý thuyết gốc), nên chỉ bù phần chênh còn lại theo 2 chiều. Nút ✓✓ ở trang Xác nhận hoàn thành KHÔNG còn dịch lịch
  * (reroute() giữ lại, hiện không nơi nào gọi); ✓ cũng không dịch (rerouteAfterProduction() không nơi nào gọi).
  *
  * Khi một lô được xác nhận hoàn thành, giờ kết thúc thực tế thường lệch so với lý thuyết.
@@ -66,6 +69,15 @@ class ScheduleRerouteService
     /** [Trả phòng] (trang Thực Thi / Ghi Nhận Sản Xuất): giờ trả phòng = giờ kết thúc vệ sinh thực tế, lô có thể chưa ✓. */
     public const TRIGGER_RELEASE = 'release';
 
+    /** [Nhận phòng]: dự kiến theo thời lượng lý thuyết từ giờ nhận phòng, chỉ đẩy trễ. */
+    public const TRIGGER_RECEIVE = 'receive';
+
+    /** [Nhận phòng] trễ dưới ngưỡng này so với giờ bắt đầu lý thuyết thì không tịnh tuyến (khoảng trống trên lịch hấp thụ). */
+    public const RECEIVE_MIN_LATE_SECONDS = 1800;
+
+    /** Đầu câu lý do (ghi vào lịch sử đổi lịch của các lô bị dịch) của lần tịnh tuyến khi Nhận phòng. */
+    public const RECEIVE_REASON_PREFIX = 'Tịnh tuyến theo Nhận phòng';
+
     public const SOURCE_CLEANING_REASON = 'Dời vệ sinh của chính lô ra sau giờ kết thúc sản xuất thực tế';
 
     /**
@@ -81,6 +93,13 @@ class ScheduleRerouteService
 
     /** @var array<int, array> */
     private array $nodes = [];
+
+    /**
+     * Lần chạy đang đẩy lịch trễ hơn (delta > 0): các lô bị lan tới mà đang trùng giờ với lô đứng trước CÙNG PHÒNG + CÙNG
+     * CÔNG ĐOẠN thì được giãn ra (bắt đầu sau khi lô trước xong), thứ tự các lô trên phòng giữ nguyên. Dịch sớm hơn
+     * (delta < 0) vẫn giữ nguyên lượng chồng lấn gốc.
+     */
+    private bool $spreadOverlaps = false;
 
     /** @var array<int, array<int, int>> resourceId => danh sách id theo thứ tự trên phòng */
     private array $roomOrder = [];
@@ -123,14 +142,56 @@ class ScheduleRerouteService
      *
      * @return array{run_code: ?string, delta_minutes: int, changes: array, source_cleaning_moved: bool}
      */
-    public function rerouteOnRelease(int $stagePlanId): array
+    public function rerouteOnRelease(int $stagePlanId, ?string $receiveRunCode = null): array
     {
         $source = $this->loadSource($stagePlanId, false);
         if (! $source || ! $source->actual_end_clearning) {
             return $this->emptyResult();
         }
 
-        return $this->run($source, self::TRIGGER_RELEASE, Carbon::parse($source->actual_end_clearning)->getTimestamp());
+        // Đã đẩy lịch lúc Nhận phòng: so với giờ kết thúc dự kiến khi đó, các lô sau được kéo về / đẩy thêm đúng phần chênh
+        return $this->run($source, self::TRIGGER_RELEASE, Carbon::parse($source->actual_end_clearning)->getTimestamp(),
+            $receiveRunCode ? $this->receiveProjectedFinish($source, $receiveRunCode) : null);
+    }
+
+    /**
+     * [Nhận phòng]: lô bắt đầu trễ từ RECEIVE_MIN_LATE_SECONDS so với giờ bắt đầu lý thuyết thì đẩy các lô sau theo giờ
+     * kết thúc dự kiến = giờ kết thúc lý thuyết (gồm vệ sinh) + độ trễ. Chỉ đẩy trễ, không kéo sớm: giờ kết thúc mới là dự
+     * đoán, phần chênh được bù ở lúc Trả phòng.
+     *
+     * @return array{run_code: ?string, delta_minutes: int, changes: array, source_cleaning_moved: bool}
+     */
+    public function rerouteOnReceive(int $stagePlanId): array
+    {
+        $source = $this->loadSource($stagePlanId, false);
+        if (! $source || ! $source->actual_start || $source->actual_end_clearning) {
+            return $this->emptyResult();
+        }
+
+        $late = Carbon::parse($source->actual_start)->getTimestamp() - Carbon::parse($source->start)->getTimestamp();
+        if ($late < self::RECEIVE_MIN_LATE_SECONDS) {
+            return $this->emptyResult();
+        }
+
+        $theoryFinish = Carbon::parse($source->end_clearning ?? $source->end)->getTimestamp();
+
+        return $this->run($source, self::TRIGGER_RECEIVE, $theoryFinish + $late);
+    }
+
+    /**
+     * Giờ kết thúc dự kiến đã dùng khi tịnh tuyến lúc Nhận phòng ($runCode: mã lần chạy, RoomOccupancyService lưu ở
+     * audittriallog). null nếu lần chạy đó đã hoàn tác hết.
+     */
+    private function receiveProjectedFinish(object $source, string $runCode): ?int
+    {
+        $minutes = DB::table('stage_plan_reroute_log')
+            ->where('run_code', $runCode)
+            ->where('source_stage_plan_id', $source->id)
+            ->whereNull('undone_at')
+            ->value('source_delta_minutes');
+
+        return $minutes === null ? null
+            : Carbon::parse($source->end_clearning ?? $source->end)->getTimestamp() + (int) $minutes * 60;
     }
 
     /**
@@ -153,11 +214,25 @@ class ScheduleRerouteService
     }
 
     /**
-     * @param  int  $actualTs  TRIGGER_FINISHED: giờ kết thúc thực tế của lô; TRIGGER_PRODUCTION: giờ kết thúc sản xuất thực tế
+     * @param  int  $actualTs  TRIGGER_FINISHED: giờ kết thúc thực tế của lô; TRIGGER_PRODUCTION: giờ kết thúc sản xuất thực tế;
+     *                         TRIGGER_RECEIVE: giờ kết thúc dự kiến
+     * @param  ?int $baselineFinish  mốc so sánh thay cho giờ kết thúc lý thuyết (Trả phòng sau khi đã tịnh tuyến lúc Nhận phòng)
      */
-    private function run(object $source, string $trigger, int $actualTs): array
+    /** Đọc → tính → ghi trong khóa tịnh tuyến của phân xưởng (RerouteLock): các lần tịnh tuyến chạy lần lượt */
+    private function run(object $source, string $trigger, int $actualTs, ?int $baselineFinish = null): array
     {
-        $theoryFinish = Carbon::parse($source->end_clearning ?? $source->end)->getTimestamp();
+        return RerouteLock::run($source->deparment_code, function () use ($source, $trigger, $baselineFinish, $actualTs) {
+            // Đọc lại lô gốc sau khi có khóa: lần tịnh tuyến trước có thể vừa dời vệ sinh của chính lô này
+            $fresh = DB::table('stage_plan')->where('id', $source->id)->first();
+
+            return $this->runUnlocked($fresh ?: $source, $trigger, $actualTs, $baselineFinish);
+        });
+    }
+
+    private function runUnlocked(object $source, string $trigger, int $actualTs, ?int $baselineFinish = null): array
+    {
+        $plannedFinish = Carbon::parse($source->end_clearning ?? $source->end)->getTimestamp();
+        $theoryFinish = $baselineFinish ?? $plannedFinish;
 
         $windowStart = $this->at(min(
             Carbon::parse($source->start)->getTimestamp(),
@@ -167,6 +242,7 @@ class ScheduleRerouteService
 
         $this->loadGraph($windowStart, $windowEnd);
         $this->loadOffRanges($windowStart, $windowEnd->copy()->addDays(self::WINDOW_DAYS));
+        $this->spreadOverlaps = false;
 
         if (! isset($this->nodes[$source->id])) {
             return $this->emptyResult();
@@ -183,13 +259,22 @@ class ScheduleRerouteService
         // Độ lệch giờ kết thúc của lô gốc => quyết định dịch các lô sau
         $delta = $actualFinish - $theoryFinish;
 
-        // Độ lệch báo cho người dùng / ghi lý do: ✓ = sản xuất trễ bao nhiêu so với giờ kết thúc sản xuất lý thuyết
-        $reportDelta = $trigger === self::TRIGGER_PRODUCTION
-            ? $actualTs - Carbon::parse($source->end)->getTimestamp()
-            : $delta;
+        // Đẩy lịch trễ hơn thì giãn luôn các lô trùng giờ bị lan tới
+        $this->spreadOverlaps = $delta >= self::MIN_SHIFT_SECONDS;
 
-        // ✓ chỉ dịch khi lô trễ; ✓✓ dịch cả 2 chiều
-        $propagate = $trigger === self::TRIGGER_PRODUCTION ? $delta >= self::MIN_SHIFT_SECONDS : abs($delta) >= self::MIN_SHIFT_SECONDS;
+        // Độ lệch báo cho người dùng / ghi lý do: ✓ = sản xuất trễ bao nhiêu so với giờ kết thúc sản xuất lý thuyết;
+        // Trả phòng luôn so với giờ lý thuyết gốc (mốc dự kiến lúc Nhận phòng chỉ dùng để dịch);
+        // Nhận phòng = độ trễ bắt đầu (receiveProjectedFinish đọc lại số này từ source_delta_minutes)
+        $reportDelta = match ($trigger) {
+            self::TRIGGER_PRODUCTION => $actualTs - Carbon::parse($source->end)->getTimestamp(),
+            self::TRIGGER_RELEASE    => $actualTs - $plannedFinish,
+            default                  => $delta,
+        };
+
+        // ✓ và Nhận phòng chỉ dịch khi lô trễ; ✓✓ và Trả phòng dịch cả 2 chiều
+        $propagate = in_array($trigger, [self::TRIGGER_PRODUCTION, self::TRIGGER_RECEIVE], true)
+            ? $delta >= self::MIN_SHIFT_SECONDS
+            : abs($delta) >= self::MIN_SHIFT_SECONDS;
 
         // Vệ sinh của lô gốc vẫn dời dù phần trễ đã được hấp thụ hết (vệ sinh vốn dừng qua ngày nghỉ)
         $sourceChange = $this->sourceCleaningChange($source, $sourceCleaning);
@@ -295,6 +380,13 @@ class ScheduleRerouteService
      * @return array{restored: int, skipped: int}
      */
     public function undo(string $runCode): array
+    {
+        $department = DB::table('stage_plan_reroute_log')->where('run_code', $runCode)->value('deparment_code');
+
+        return RerouteLock::run($department, fn() => $this->undoUnlocked($runCode));
+    }
+
+    private function undoUnlocked(string $runCode): array
     {
         $logs = DB::table('stage_plan_reroute_log')
             ->where('run_code', $runCode)
@@ -702,10 +794,18 @@ class ScheduleRerouteService
             for ($i = 0; $i < $idx; $i++) {
                 $p = $this->nodes[$order[$i]];
                 $c = $this->constraintFrom($p, $origStart);
+
+                // Đẩy trễ: lô đang trùng giờ với lô trước cùng phòng + cùng công đoạn thì bắt đầu sau khi lô trước xong
+                // (không giữ phần chồng lấn gốc nữa). Thứ tự không đổi vì mọi lô trước trên phòng đều là ràng buộc.
+                $spread = $this->spreadOverlaps && $this->overlapsSameStage($n, $p);
+                if ($spread) {
+                    $c = max($c, $p['curFinish']);
+                }
+
                 if ($c > $earliest) {
                     $earliest = $c;
                     $earliestId = $p['id'];
-                    $earliestType = 'room';
+                    $earliestType = $spread && $c > $this->constraintFrom($p, $origStart) ? 'spread' : 'room';
                 }
             }
 
@@ -748,6 +848,18 @@ class ScheduleRerouteService
         }
 
         return [$newStart, $reasonId, $reasonType];
+    }
+
+    /**
+     * Lô $n và lô trước $p (cùng phòng) trùng giờ theo lịch gốc, cùng công đoạn (trừ Cân NL / Cân NL Khác và bảo trì,
+     * giống quy tắc tô lịch trùng giờ trên Gantt)?
+     */
+    private function overlapsSameStage(array $n, array $p): bool
+    {
+        return $n['stage'] === $p['stage']
+            && ! in_array($n['stage'], self::SKIP_STAGES, true)
+            && $n['stage'] !== self::MAINTENANCE_STAGE
+            && $p['origFinish'] > $n['origStart'];
     }
 
     /**
@@ -1124,6 +1236,14 @@ class ScheduleRerouteService
         $confirmedAt = Carbon::parse($source->finished_date ?? now())->format('H:i d/m/Y');
         $lag = ($deltaSeconds < 0 ? 'sớm ' : 'trễ ') . $this->durationText($deltaSeconds);
 
+        if ($trigger === self::TRIGGER_RECEIVE) {
+            $received = Carbon::parse($source->actual_start)->format('H:i d/m/Y');
+            $text = self::RECEIVE_REASON_PREFIX . ": {$batch}" . ($where !== '' ? " ({$where})" : '')
+                . ", nhận phòng lúc {$received}, bắt đầu {$lag}, dự kiến theo thời lượng lý thuyết";
+
+            return Str::limit($text, 250, '...');
+        }
+
         if ($trigger === self::TRIGGER_RELEASE) {
             $released = Carbon::parse($source->actual_end_clearning)->format('H:i d/m/Y');
             $text = "Tịnh tuyến theo Trả phòng: {$batch}" . ($where !== '' ? " ({$where})" : '') . ", trả phòng lúc {$released}, {$lag}";
@@ -1166,7 +1286,11 @@ class ScheduleRerouteService
         }
 
         $title = $this->nodes[$reasonId]['title'] ?? ('#' . $reasonId);
-        $label = $reasonType === 'stage' ? 'công đoạn trước' : 'cùng phòng';
+        $label = match ($reasonType) {
+            'stage' => 'công đoạn trước',
+            'spread' => 'cùng phòng, giãn lô trùng giờ',
+            default => 'cùng phòng',
+        };
 
         return "Theo lô \"{$title}\" ({$label})";
     }

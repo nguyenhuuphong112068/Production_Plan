@@ -28,7 +28,6 @@ import CalendarSearchBox from '../Components/CalendarSearchBox';
 import EventFontSizeInput from '../Components/EventFontSizeInput';
 import ModalSidebar from '../Components/ModalSidebar';
 import NoteModal from '../Components/NoteModal';
-import { wipControlSectionHtml, initWipControl, collectWipControl, hasWipLimits, runWipControl } from '../Plugins/WipControl';
 
 //import History from '../Components/History';
 //import { CheckAuthorization } from '../Components/CheckAuthorization';
@@ -5043,190 +5042,203 @@ const ScheduleTest = () => {
 
     let selectedDates = [...offDays];
 
-    // Tạm ẩn "Sửa lỗi tự động" trong modal; đổi thành true để hiện lại (vẫn chỉ cho userID 1)
-    const SHOW_AUTO_FIX = false;
-
     Swal.fire({
       title: 'Sắp Lịch Tự Động',
       html: `
-      <style>
-        .asm { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; text-align: left; font-size: 13px; }
-        .asm-card { border: 1px solid #e3e6ea; border-radius: 8px; background: #fff; padding: 14px 16px; box-shadow: 0 1px 3px rgba(0,0,0,.06); display: flex; flex-direction: column; gap: 14px; min-width: 0; }
-        .asm-title { font-weight: 700; font-size: 14px; color: #1f3b57; border-bottom: 2px solid #3085d6; padding-bottom: 6px; margin: 0; }
-        .asm-section { display: flex; flex-direction: column; gap: 6px; }
-        .asm-section + .asm-section { border-top: 1px dashed #e3e6ea; padding-top: 12px; }
-        .asm-label { font-weight: 600; color: #333; margin: 0; }
-        .asm-hint { font-size: 11px; color: #7f8c8d; margin: 0; }
-        .asm input.swal2-input, .asm select.swal2-input { margin: 0 !important; width: 100% !important; height: 32px; font-size: 13px; padding: 0 8px; box-shadow: none; }
-        .asm-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 32px; }
-        .asm-row .asm-label { flex: 1; }
-        .asm-row .switch { flex: 0 0 60px; margin: 0 34px 0 48px; }
-        .asm-wait { width: 100%; border-collapse: collapse; }
-        .asm-wait th { font-weight: 600; font-size: 12px; color: #555; text-align: center; padding: 0 4px 4px; }
-        .asm-wait td { padding: 3px 4px; }
-        .asm-wait td:first-child { white-space: nowrap; font-weight: 600; color: #333; }
-        .asm .sort-option { display: flex; gap: 8px; justify-content: stretch; }
-        .asm .sort-option .sort-card { flex: 1; margin: 0; text-align: center; }
-        .asm-btns { display: flex; gap: 8px; }
-        .asm-btns .btn { flex: 1; font-size: 13px; }
-        .asm-warn { color: #c0392b; font-weight: 600; margin: 0; background: #fdecea; border-radius: 6px; padding: 8px 10px; }
-      </style>
+      <div class="cfg-wrapper">
 
-      <div class="asm">
-
-        <!-- ① Phạm vi sắp lịch -->
-        <div class="asm-card">
-          <h5 class="asm-title">① Phạm vi sắp lịch</h5>
-
-          <div class="asm-section">
-            <label class="asm-label" for="schedule-date">Ngày bắt đầu sắp lịch</label>
-            <input id="schedule-date" type="date" class="swal2-input" name="start_date"
-                   value="${new Date().toISOString().split('T')[0]}">
+        <!-- Cột trái -->
+        <div class="cfg-card cfg-left">
+          <div class="cfg-row">
+            <label class="cfg-label" for="schedule-date">Ngày bắt đầu sắp lịch:</label>
+            <input id="schedule-date" type="date"
+                  class="swal2-input cfg-input cfg-input--half"
+                  name="start_date"
+                  value="${new Date().toISOString().split('T')[0]}">
           </div>
-
-          <div class="asm-section">
-            <label class="asm-label">Kiểu sắp lịch</label>
-            <div class="sort-option">
-              <label class="sort-card">
-                <input type="radio" name="sortType" value="stage" checked>
-                <span> Theo Công Đoạn</span>
-              </label>
-              <label class="sort-card">
-                <input type="radio" name="sortType" value="line">
-                <span> Theo Line</span>
-              </label>
+          <hr/>
+          <label class="cfg-label">Thời Gian Chờ Kết Quả Kiểm Nghiệm (ngày)</label>
+          <div class="cfg-row cfg-grid-2">
+            <div class="cfg-col">
+              <label class="cfg-label">Trộn Hoàn Tất Lô Thẩm Định</label>
+              <input type="number" class="swal2-input cfg-input cfg-input--full" value="1">
+              <label class="cfg-label">Định Hình Lô Thẩm Định</label>
+              <input type="number" class="swal2-input cfg-input cfg-input--full" value="5">
+              <label class="cfg-label">Bao Phim Lô Thẩm Định</label>
+              <input type="number" class="swal2-input cfg-input cfg-input--full" value="5">
+              <label class="cfg-label">Đóng Gói Lô Thẩm Định</label>
+              <input type="number" class="swal2-input cfg-input cfg-input--full" value="5">
             </div>
 
-            <div id="stepper-container" style="margin-top: 8px;"></div>
-
-            <div id="Stage_line" style="display:none;">
-              <label class="asm-label" for="lines">Chọn Line sắp lịch</label>
-              <select id="lines" class="swal2-input" name="lines">
-                <option value="">-- Chọn Line --</option>
-              </select>
+            <div class="cfg-col">
+              <label class="cfg-label">Trộn Hoàn Tất Lô Thương Mại</label>
+              <input type="number" class="swal2-input cfg-input cfg-input--full" value="0">
+              <label class="cfg-label">Định Hình Lô Thương Mại</label>
+              <input type="number" class="swal2-input cfg-input cfg-input--full" value="0">
+              <label class="cfg-label">Bao Phim Lô Thương Mại</label>
+              <input type="number" class="swal2-input cfg-input cfg-input--full" value="0">
+              <label class="cfg-label">Đóng Gói Lô Thương Mại</label>
+              <input type="number" class="swal2-input cfg-input cfg-input--full" value="0">
             </div>
           </div>
+        <hr/>
+
+        <div style="text-align:center">
+          <div class="sort-option">
+            <label class="sort-card">
+              <input type="radio" name="sortType" value="stage" checked>
+              <span> Sắp Lich Theo Công Đoạn</span>
+            </label>
+
+            <label class="sort-card">
+              <input type="radio" name="sortType" value="line">
+              <span> Sắp Lich Theo Line</span>
+            </label>
+
+
+            
+          </div>
+        </div>
+
+
+        <div id="stepper-container" style="margin-top: 15px;"></div>
+
+        <div id="Stage_line" class="response-date-wrap text-center" style="display:none;">
+          <label class="cfg-label">Chọn Line Sắp Lịch</label>
+          <select id="lines" class="swal2-input response-date-input" name="lines">
+            <option value="">-- Chọn Line --</option>
+          </select>
+        </div>
 
           ${hasEmptyPermission
-          ? `<p class="asm-warn">
+          ? `<p style="color:red;font-weight:600;margin-top:10px;">
                 ⚠️ Một hoặc nhiều sản phẩm chưa được định mức!<br>
                 Bạn cần định mức đầy đủ trước khi chạy Auto Scheduler.
               </p>`
           : ''
         }
-
-          <div class="asm-section">
-            <label class="asm-label" for="reason">Lý do chạy Auto Scheduler</label>
-            <input id="reason" type="text" class="swal2-input" name="reason" placeholder="Nhập lý do..." required>
+          <hr/>
+          <div class="cfg-row">
+            <label class="cfg-label" for="prev_orderBy">Thứ tự công đoạn từ ĐH -> ĐG theo :</label>
+            <label class="switch">
+              <input id="prev_orderBy" type="checkbox" checked>
+              <span class="slider round"></span>
+              <span class="switch-labels">
+                <span class="off">KHCĐ</span>
+                <span class="on">CĐT</span>
+              </span>
+            </label>
           </div>
 
-          <div class="asm-row" style="display:none;">
-            <label class="asm-label" for="work-sunday">Làm Chủ Nhật</label>
+          <div class="cfg-row">
+            <label class="cfg-label" for="limit_mold_change">Hạn chế xuống khuôn (ĐG):</label>
+            <label class="switch">
+              <input id="limit_mold_change" type="checkbox" checked>
+              <span class="slider round"></span>
+              <span class="switch-labels">
+                <span class="off">No</span>
+                <span class="on">Yes</span>
+              </span>
+            </label>
+          </div>
+
+          <div class="cfg-row" id="mold_tolerance_row">
+            <label class="cfg-label" for="mold_change_tolerance">Cho phép trễ tối đa để giữ khuôn (giờ):</label>
+            <input id="mold_change_tolerance" type="number" min="0" step="1" value="72"
+                   class="swal2-input cfg-input cfg-input--full" name="mold_change_tolerance">
+          </div>
+
+        </div>
+
+        <!-- Cột phải -->
+        <div class="cfg-card cfg-right">
+          <div class="cfg-row" style="display:none;">
+            <label class="cfg-label" for="work-sunday">Làm Chủ Nhật:</label>
             <label class="switch">
               <input id="work-sunday" type="checkbox">
               <span class="slider round"></span>
-              <span class="switch-labels"><span class="off">No</span><span class="on">Yes</span></span>
+              <span class="switch-labels">
+                <span class="off">No</span>
+                <span class="on">Yes</span>
+              </span>
             </label>
           </div>
+
+          <hr/>
+
+          <div class="cfg-row">
+            <label class="cfg-label" for="calendar-container">Ngày Không Sắp Lịch:</label>
+            <div id="calendar-container" style="margin-top: 15px;"></div>
+          </div>
+
+          <hr/>
+
+          <div class="cfg-row">
+            <label class="cfg-label" for="reason">Lý do chạy Auto Scheduler:</label>
+            <input id="reason" type="text"
+                  class="swal2-input cfg-input cfg-input--full"
+                  name="reason"
+                  placeholder="Nhập lý do..."
+                  required>
+          </div>
+
+          <hr/>
+          <div class="cfg-row">
+            <label class="cfg-label">Phân Bổ Khuôn (Auto):</label>
+            <div style="display: flex; gap: 8px; margin-top: 8px;">
+              <button type="button" id="btn-allocate-missing" class="btn btn-info" style="flex: 1; font-size: 13px; color: white;">Bổ sung khuôn thiếu</button>
+              <button type="button" id="btn-allocate-all" class="btn btn-warning" style="flex: 1; font-size: 13px;">Làm mới & Phân bổ</button>
+            </div>
+          </div>
+          <hr/>
+
+          
+          <div class="cfg-row">
+             
+
+              <button type="button" id="btn-backup" class="btn btn-primary mx-2">Tạo bản sao lưu</button>
+              <button type="button" id="btn-restore" class="btn btn-success mx-2">Khôi phục</button>
+
+              <div class="response-date-wrap text-center" style="display:block;">
+                <label class="cfg-label">Chọn Mã bản sao lưu </label>
+                <select id="retoreList" class="swal2-input response-date-input" name="bkc_code">
+                  <option value="">-- Chọn mã cần khôi phục --</option>
+                </select>
+              </div>
+          </div>
+
+
         </div>
 
-        <!-- ② Ràng buộc -->
-        <div class="asm-card">
-          <h5 class="asm-title">② Ràng buộc sắp lịch</h5>
+        <!-- Cột công cụ sửa lỗi -->
+        <div class="cfg-card cfg-tools" style="min-width:220px;flex:0 0 220px;display:flex;flex-direction:column">
+          <h5 style="color:#c0392b;font-weight:700;margin-bottom:14px;border-bottom:2px solid #e74c3c;padding-bottom:8px;font-size:14px">
+            🔧 Sửa Lỗi Tự Động
+          </h5>
+          <div style="display:flex;flex-direction:column;gap:12px;flex:1">
 
-          <div class="asm-section">
-            <label class="asm-label">Thời gian chờ kết quả kiểm nghiệm (ngày)</label>
-            <table class="asm-wait">
-              <thead><tr><th></th><th>Lô thẩm định</th><th>Lô thương mại</th></tr></thead>
-              <tbody>
-                <tr><td>Trộn hoàn tất</td>
-                  <td><input type="number" class="swal2-input" value="1"></td>
-                  <td><input type="number" class="swal2-input" value="0"></td></tr>
-                <tr><td>Định hình</td>
-                  <td><input type="number" class="swal2-input" value="5"></td>
-                  <td><input type="number" class="swal2-input" value="0"></td></tr>
-                <tr><td>Bao phim</td>
-                  <td><input type="number" class="swal2-input" value="5"></td>
-                  <td><input type="number" class="swal2-input" value="0"></td></tr>
-                <tr><td>Đóng gói</td>
-                  <td><input type="number" class="swal2-input" value="5"></td>
-                  <td><input type="number" class="swal2-input" value="0"></td></tr>
-              </tbody>
-            </table>
-          </div>
-
-          <div class="asm-section">
-            <div class="asm-row">
-              <label class="asm-label" for="prev_orderBy">Thứ tự công đoạn ĐH → ĐG theo</label>
-              <label class="switch">
-                <input id="prev_orderBy" type="checkbox" checked>
-                <span class="slider round"></span>
-                <span class="switch-labels"><span class="off">KHCĐ</span><span class="on">CĐT</span></span>
-              </label>
-            </div>
-
-            <div class="asm-row">
-              <label class="asm-label" for="limit_mold_change">Hạn chế xuống khuôn (ĐG)</label>
-              <label class="switch">
-                <input id="limit_mold_change" type="checkbox" checked>
-                <span class="slider round"></span>
-                <span class="switch-labels"><span class="off">No</span><span class="on">Yes</span></span>
-              </label>
-            </div>
-
-            <div class="asm-row" id="mold_tolerance_row">
-              <label class="asm-label" for="mold_change_tolerance">Trễ tối đa để giữ khuôn (giờ)</label>
-              <input id="mold_change_tolerance" type="number" min="0" step="1" value="72"
-                     class="swal2-input" name="mold_change_tolerance" style="flex:0 0 134px;width:134px !important">
-            </div>
-          </div>
-
-          ${wipControlSectionHtml()}
-        </div>
-
-        <!-- ③ Ngày nghỉ & công cụ -->
-        <div class="asm-card">
-          <h5 class="asm-title">③ Ngày nghỉ & công cụ</h5>
-
-          <div class="asm-section">
-            <label class="asm-label" for="calendar-container">Ngày không sắp lịch</label>
-            <div id="calendar-container"></div>
-          </div>
-
-          <div class="asm-section">
-            <label class="asm-label">Phân bổ khuôn (Auto)</label>
-            <div class="asm-btns">
-              <button type="button" id="btn-allocate-missing" class="btn btn-info" style="color: white;">Bổ sung khuôn thiếu</button>
-              <button type="button" id="btn-allocate-all" class="btn btn-warning">Làm mới & Phân bổ</button>
-            </div>
-          </div>
-
-          <div class="asm-section">
-            <label class="asm-label" for="retoreList">Sao lưu / Khôi phục lịch</label>
-            <select id="retoreList" class="swal2-input" name="bkc_code">
-              <option value="">-- Chọn mã cần khôi phục --</option>
-            </select>
-            <div class="asm-btns">
-              <button type="button" id="btn-backup" class="btn btn-primary">Tạo bản sao lưu</button>
-              <button type="button" id="btn-restore" class="btn btn-success">Khôi phục</button>
-            </div>
-          </div>
-
-          ${(SHOW_AUTO_FIX && userID == 1) ? `
-          <div class="asm-section">
-            <label class="asm-label" style="color:#c0392b">🔧 Sửa lỗi tự động</label>
+            ${(userID == 1) ? `
             <button type="button" id="btn-optimize-schedule"
-              style="background:#27ae60;color:white;border:none;border-radius:6px;padding:10px;text-align:left;cursor:pointer;font-size:12px;line-height:1.5;transition:opacity .2s"
+              style="background:#27ae60;color:white;border:none;border-radius:6px;padding:12px 10px;text-align:left;cursor:pointer;font-size:12px;line-height:1.5;transition:opacity .2s"
               onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
               <div style="font-weight:700;font-size:13px">🚀 Sửa lịch tự động</div>
               <div style="opacity:.9;margin-top:3px">Dồn lịch, điền khoảng trống, tự động sửa các lỗi (đen, chồng chất) theo mốc Pha Chế</div>
             </button>
-            <p class="asm-hint">⚠️ Sau khi sửa lỗi, nhấn <b>Đóng</b> rồi nhấn 💾 để lưu.</p>
+            ` : ''}
+            <!--
+            <button type="button" id="btn-fix-pass2"
+              style="background:#27ae60;color:white;border:none;border-radius:6px;padding:12px 10px;text-align:left;cursor:pointer;font-size:12px;line-height:1.5;transition:opacity .2s"
+              onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+              <div style="font-weight:700;font-size:13px">🚀 Tối Ưu Hóa (Pass 2)</div>
+              <div style="opacity:.9;margin-top:3px">Xếp lại lịch ưu tiên tuyệt đối cho các chiến dịch quá hạn biệt trữ</div>
+            </button>
+            -->
+
+
           </div>
-          ` : ''}
-          <!--
-          <button type="button" id="btn-fix-pass2">🚀 Tối Ưu Hóa (Pass 2): xếp lại lịch ưu tiên tuyệt đối cho các chiến dịch quá hạn biệt trữ</button>
-          -->
+          <div style="margin-top:14px;font-size:11px;color:#7f8c8d;border-top:1px solid #eee;padding-top:10px;line-height:1.5">
+            ⚠️ Sau khi sửa lỗi, nhấn <b>Đóng</b> rồi nhấn 💾 để lưu.
+          </div>
         </div>
 
       </div>
@@ -5410,9 +5422,6 @@ const ScheduleTest = () => {
         limitMoldEl?.addEventListener('change', () => {
           toleranceRow.style.display = limitMoldEl.checked ? '' : 'none';
         });
-
-        // Plugin Kiểm soát tồn BTP: nạp Max đã lưu của phân xưởng
-        initWipControl();
 
 
         // ------------- Thêm soure cho Lines ------------- //
@@ -5709,7 +5718,7 @@ const ScheduleTest = () => {
         formValues.selectedDates = selectedDates;
         formValues.selectedStep = activeStepText ?? "PC";
 
-        formValues.wip_control = collectWipControl();
+
 
         if (!formValues.start_date) {
           Swal.showValidationMessage('Vui lòng chọn ngày!');
@@ -5751,16 +5760,6 @@ const ScheduleTest = () => {
               if (typeof data === "string") {
                 data = data.replace(/^<!--.*?-->/, "").trim();
                 data = JSON.parse(data);
-              }
-
-              // Plugin Kiểm soát tồn BTP: có Max thì đo tồn và lùi lô vượt Max ngay sau khi sắp lịch
-              if (hasWipLimits(result.value.wip_control) && result.value.runType !== 'line' && result.value.selectedStep !== 'CNL' && endpoint === '/Schedual/scheduleAll') {
-                runWipControl({
-                  ...result.value,
-                  startDate: toLocalISOString(activeStart),
-                  endDate: toLocalISOString(activeEnd),
-                }).finally(() => setLoading(v => !v));
-                return;
               }
 
               Swal.fire({
@@ -5979,7 +5978,12 @@ const ScheduleTest = () => {
           setLoading(!loading);
           Swal.close();
 
-          showDeleteResult(data);
+          Swal.fire({
+            icon: 'success',
+            title: 'Đã xóa lịch thành công',
+            showConfirmButton: false,
+            timer: 1500
+          });
         })
         .catch(err => {
           Swal.close();
@@ -5991,25 +5995,6 @@ const ScheduleTest = () => {
           });
           console.error("API error:", err.response?.data || err.message);
         });
-    });
-  };
-
-  // Kết quả xóa lịch: server giữ nguyên lịch đang thực thi (đã Nhận phòng) / đã hoàn thành → báo cho người dùng
-  const showDeleteResult = (data) => {
-    if (data?.kept_message) {
-      Swal.fire({
-        icon: 'info',
-        title: 'Đã xóa lịch',
-        text: data.kept_message,
-        confirmButtonText: 'Đã hiểu',
-      });
-      return;
-    }
-    Swal.fire({
-      icon: 'success',
-      title: 'Đã xóa lịch thành công',
-      showConfirmButton: false,
-      timer: 1500
     });
   };
 
@@ -6055,7 +6040,12 @@ const ScheduleTest = () => {
             setSumBatchByStage(data.sumBatchByStage);
             setPlan(data.plan);
 
-            showDeleteResult(data);
+            Swal.fire({
+              icon: 'success',
+              title: 'Đã xóa lịch thành công',
+              showConfirmButton: false,
+              timer: 1500
+            });
           })
 
           .catch((error) => {

@@ -36,7 +36,8 @@ function MomentCell({ value }) {
  * Modal xem lô: bấm vào một con số trên bảng ngày (tồn, nhập, xuất, hoặc
  * lượng Pha chế nhập vào) là xem được ngay lô nào gộp lại thành số đó.
  *
- * request = { date, groupCode, kind, groupLabel } | null — null nghĩa là đóng.
+ * request = { date, groupCode, kind, groupLabel, roomKey? } | null — null nghĩa là đóng.
+ * roomKey có mặt khi mở từ tab "theo phòng tiếp theo": chỉ lấy phần hàng của phòng đó.
  * Component tự gọi API khi request đổi, không giữ cache giữa các lần mở vì
  * dữ liệu tính trực tiếp (không đọc bản chốt) nên luôn mới nhất tại lúc bấm.
  */
@@ -58,6 +59,7 @@ const WipCoverageDayDetailModal = ({ request, onHide }) => {
                 date: request.date,
                 group_code: request.groupCode,
                 kind: request.kind,
+                room_key: request.roomKey || null,
             })
             .then(({ data }) => {
                 if (!data.success) {

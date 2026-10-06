@@ -3775,39 +3775,10 @@ class SchedualController extends Controller
         ]);
     }
 
-    /**
-     * Xóa lịch không đụng tới lịch đang thực thi (đã Nhận phòng ở trang Thực Thi Sản Xuất: có actual_start) hay đã hoàn thành
-     * (finished = 1): mất resourceId thì phòng hiện Sẵn sàng dù lô còn trong phòng, lô quay lại lịch chờ sắp. Trả câu thông báo
-     * các lịch được giữ nguyên trong $ids (null nếu không có). Lịch bảo trì (stage 8) không bao giờ bị xóa ở deActiveAll nên bỏ qua.
-     */
-    private function keptOnDelete($ids, bool $withMaintenance = false): ?string
-    {
-        $rows = DB::table('stage_plan')
-            ->whereIn('id', collect($ids)->all())
-            ->when(!$withMaintenance, fn($q) => $q->where('stage_code', '!=', 8))
-            ->where(fn($q) => $q->whereNotNull('actual_start')->orWhere('finished', 1))
-            ->get(['id', 'finished']);
-
-        $running = $rows->filter(fn($r) => (int) $r->finished === 0)->pluck('id')->all();
-        $done = $rows->count() - count($running);
-
-        $msg = [];
-        if ($running) {
-            $msg[] = 'Giữ nguyên ' . count($running) . ' lịch đang thực thi (đã Nhận phòng): '
-                . app(RoomOccupancyService::class)->planDetails($running)->pluck('label')->implode('; ');
-        }
-        if ($done) {
-            $msg[] = 'Giữ nguyên ' . $done . ' lịch đã hoàn thành';
-        }
-
-        return $msg ? implode('. ', $msg) : null;
-    }
-
     public function deActive(Request $request)
     {
 
         $items = collect($request->input('ids'));
-        $targetIds = collect();
 
         try {
 
@@ -3820,12 +3791,10 @@ class SchedualController extends Controller
                 if ($stageCode <= 2 || $stageCode >= 8) {
 
                     // chỉ cóa cân k xóa các công đoạn khác
-                    $targetIds = $targetIds->merge(explode(',', $rowId));
 
                     DB::table('stage_plan')
                         ->whereIn('id', explode(',', $rowId))
                         ->where('finished', 0)
-                        ->whereNull('actual_start') // lịch đang thực thi (đã Nhận phòng) giữ nguyên
                         ->update([
                             'start' => null,
                             'end' => null,
@@ -3852,15 +3821,8 @@ class SchedualController extends Controller
 
                     $plan = DB::table('stage_plan')->where('id', $rowId)->first();
 
-                    $targetIds = $targetIds->merge(DB::table('stage_plan')
-                        ->where('plan_master_id', $plan->plan_master_id)
-                        ->where('stage_code', '>=', $stageCode)
-                        ->where('stage_code', '!=', 8)
-                        ->pluck('id'));
-
                     DB::table('stage_plan')
                         ->where('finished', 0)
-                        ->whereNull('actual_start') // lịch đang thực thi (đã Nhận phòng) giữ nguyên, kể cả công đoạn sau bị xóa lan tỏa
                         ->where('plan_master_id', $plan->plan_master_id)
                         ->where('stage_code', '>=', $stageCode)
                         ->where('stage_code', '!=', 8) // CHẶN: không xóa lan tỏa tới bảo trì
@@ -3909,7 +3871,6 @@ class SchedualController extends Controller
             'plan' => $plan_waiting,
             'resources' => $resources,
             'sumBatchByStage' => $sumBatchByStage,
-            'kept_message' => $this->keptOnDelete($targetIds->unique(), true),
         ]);
     }
 
@@ -4029,15 +3990,9 @@ class SchedualController extends Controller
                 $ids = $ids->merge($relatedIds)->unique();
             }
 
-            // Lịch đang thực thi (đã Nhận phòng) và lịch đã hoàn thành giữ nguyên — kể cả khi bị gộp theo chiến dịch
-            // hay theo công đoạn sau của lô (2 bước đó không lọc finished)
-            $keptMessage = $this->keptOnDelete($ids);
-
             DB::table('stage_plan')
                 ->whereIn('id', $ids)
                 ->where('stage_code', '!=', 8) // CHẶN: không xóa trắng công đoạn bảo trì
-                ->where('finished', 0)
-                ->whereNull('actual_start')
                 ->update([
                     'start' => null,
                     'end' => null,
@@ -4076,7 +4031,6 @@ class SchedualController extends Controller
             'events' => $events,
             'plan' => $plan_waiting,
             'sumBatchByStage' => $sumBatchByStage,
-            'kept_message' => $keptMessage,
         ]);
     }
 
@@ -4224,8 +4178,6 @@ class SchedualController extends Controller
 
         try {
             $result = app(ScheduleRerouteService::class)->undo($runCode);
-        } catch (\App\Services\RerouteBusyException $e) {
-            return response()->json(['message' => $e->getMessage()], 423);
         } catch (\Throwable $e) {
             Log::error('[Reroute] Hoàn tác thất bại', ['run_code' => $runCode, 'error' => $e->getMessage()]);
 
@@ -7757,16 +7709,6 @@ class SchedualController extends Controller
         }
     }
 
-    /**
-     * Mốc sớm nhất bổ sung cho một lô khi sắp lịch tự động, mặc định không có.
-     * Plugin Kiểm soát tồn BTP (app/Plugins/WipControl) ghi đè hàm này để lùi
-     * đầu nguồn của các lô làm tồn bán thành phẩm vượt giới hạn.
-     */
-    protected function extraEarliestStart($task): ?Carbon
-    {
-        return null;
-    }
-
     protected function sheduleNotCampaing($task, $stageCode, int $waite_time = 0, ?Carbon $start_date = null, ?string $Line = null)
     {
         $pm = DB::table('plan_master')->where('id', $task->plan_master_id)->first();
@@ -7828,11 +7770,6 @@ class SchedualController extends Controller
 
                 $candidates[] = Carbon::parse($task->after_parkaging_date);
             }
-        }
-
-        if ($extraEarliest = $this->extraEarliestStart($task)) {
-
-            $candidates[] = $extraEarliest;
         }
 
         if ($task->predecessor_code != null) {
@@ -8379,14 +8316,6 @@ class SchedualController extends Controller
             if (! empty($firstTask->after_parkaging_date)) {
 
                 $candidates[] = Carbon::parse($firstTask->after_parkaging_date);
-            }
-        }
-
-        foreach ($campaignTasks as $campaignTask) {
-
-            if ($extraEarliest = $this->extraEarliestStart($campaignTask)) {
-
-                $candidates[] = $extraEarliest;
             }
         }
 

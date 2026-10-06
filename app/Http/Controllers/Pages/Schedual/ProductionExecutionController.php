@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Pages\Schedual;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Pages\AuditTrail\AuditTrialController;
+use App\Http\Middleware\AutoLockExecution;
 use App\Http\Middleware\RestrictExecutor;
 use App\Services\ProductionExecutionException;
 use App\Services\RealtimeRerouteSwitch;
@@ -137,6 +139,9 @@ class ProductionExecutionController extends Controller
                 if (!$this->can('execution_receive')) {
                         return response()->json(['message' => self::PERMISSION_DENIED['execution_receive']], 403);
                 }
+                if ($block = SchedulingLock::executionBlock($room->deparment_code)) {
+                        return response()->json(['message' => $block], 423);
+                }
 
                 $fmt = fn($t) => $t ? Carbon::parse($t)->format('H:i d/m/Y') : null;
 
@@ -248,9 +253,9 @@ class ProductionExecutionController extends Controller
                                 . ', không được thao tác trên phòng của phân xưởng ' . $room->deparment_code], 403);
                 }
 
-                $lock = SchedulingLock::active(session('user.production_code'));
-                if ($lock) {
-                        return response()->json(['message' => SchedulingLock::message($lock)], 423);
+                // Phân xưởng đang sắp lịch tự động, hoặc người sắp lịch đang khóa thủ công (nút ở sidebar lịch chờ sắp trên Gantt)
+                if ($block = SchedulingLock::executionBlock($room->deparment_code)) {
+                        return response()->json(['message' => $block], 423);
                 }
 
                 try {
@@ -266,6 +271,62 @@ class ProductionExecutionController extends Controller
                 $payload = is_array($result) ? $result : ['message' => $result];
 
                 return response()->json($payload + ['html' => $this->cardHtml($room->id)]);
+        }
+
+        /**
+         * Trạng thái khóa thực thi sản xuất của phân xưởng (nút ở sidebar lịch chờ sắp trên Gantt).
+         */
+        public function executionLockStatus()
+        {
+                return response()->json($this->executionLockPayload(session('user')['production_code']));
+        }
+
+        /**
+         * Người sắp lịch bật/tắt khóa thủ công: chặn Nhận / Trả phòng (trang Thực Thi / Ghi Nhận) của phân xưởng trong lúc
+         * sắp lịch thủ công, tránh tịnh tuyến lịch lúc Trả phòng xung đột. Quyền như trên Gantt: Admin / Schedualer của
+         * chính phân xưởng đang xem.
+         */
+        public function executionLockToggle(Request $request)
+        {
+                $production = session('user')['production_code'];
+                $department = DB::table('user_management')->where('userName', session('user')['userName'])->value('deparment');
+                if (!in_array(session('user')['userGroup'] ?? null, ['Admin', 'Schedualer'], true) || $department !== $production) {
+                        return response()->json(['message' => '❌ Chỉ người sắp lịch của phân xưởng ' . $production . ' được khóa thực thi sản xuất'], 403);
+                }
+
+                SchedulingLock::setManual($production, $request->boolean('locked'), session('user')['fullName']);
+                AuditTrialController::log($request->boolean('locked') ? 'Khóa thực thi sản xuất' : 'Mở khóa thực thi sản xuất',
+                        'scheduling_locks', 0, 'NA', 'Phân xưởng ' . $production);
+
+                return response()->json($this->executionLockPayload($production) + [
+                        'message' => $request->boolean('locked')
+                                ? '🔒 Đã khóa Nhận / Trả phòng của ' . $production . ' (tự mở khi không sắp lịch thêm ' . SchedulingLock::MANUAL_IDLE_MINUTES . ' phút)'
+                                : '🔓 Đã mở khóa Nhận / Trả phòng của ' . $production,
+                ]);
+        }
+
+        /**
+         * Gantt gọi khi vừa có thay đổi kéo thả chưa lưu: PXV1 tự bật khóa nếu người sắp lịch quên (AutoLockExecution).
+         */
+        public function executionLockAuto(Request $request)
+        {
+                $justLocked = AutoLockExecution::lockIfNeeded($request->input('source', 'kéo thả chưa lưu'));
+
+                return response()->json($this->executionLockPayload(session('user')['production_code']) + ['just_locked' => $justLocked]);
+        }
+
+        private function executionLockPayload(string $production): array
+        {
+                $manual = SchedulingLock::manual($production);
+                $auto = SchedulingLock::active($production);
+
+                return [
+                        'locked'      => (bool) $manual,
+                        'locked_by'   => $manual->manual_by ?? null,
+                        'locked_at'   => $manual ? Carbon::parse($manual->manual_at)->format('H:i d/m') : null,
+                        'expires_at'  => $manual ? SchedulingLock::manualExpiresAt($manual)->format('H:i d/m') : null,
+                        'auto_locked' => (bool) $auto,
+                ];
         }
 
         /**
