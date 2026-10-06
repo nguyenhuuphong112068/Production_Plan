@@ -56,21 +56,21 @@ class CreateExecutorUsers extends Command
             return self::FAILURE;
         }
 
-        // Phân xưởng chính + tổ chính (tổ xuất hiện nhiều nhất trong các dòng is_main=1 của PX đó)
+        // Phân xưởng chính + tổ chính (tổ xuất hiện nhiều nhất trong các dòng is_main=1 của PX đó).
+        // Dòng active=1 được ưu tiên; nhân viên chỉ còn dòng đã tắt thì mới lấy theo dòng đã tắt.
         $mains = DB::table('employee_assignments')
             ->where('is_main', 1)
-            ->where('active', 1)
             ->whereIn('production_code', $departments)
             ->orderByDesc('active')
             ->orderByDesc('id')
-            ->get(['employees_id', 'production_code', 'group_id']);
+            ->get(['employees_id', 'production_code', 'group_id', 'active']);
 
         $px = [];
         $groupCount = [];
         foreach ($mains as $m) {
             $px[$m->employees_id] ??= $m->production_code;
             if ($m->production_code === $px[$m->employees_id] && $m->group_id > 0) {
-                $groupCount[$m->employees_id][$m->group_id] = ($groupCount[$m->employees_id][$m->group_id] ?? 0) + 1;
+                $groupCount[$m->employees_id][$m->group_id] = ($groupCount[$m->employees_id][$m->group_id] ?? 0) + ($m->active ? 1000 : 1);
             }
         }
 

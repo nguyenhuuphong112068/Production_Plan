@@ -479,7 +479,7 @@
     $(document).ready(function() {
         document.body.style.overflowY = "auto";
 
-        // Công tắc lưu DB theo phân xưởng: bật thì mọi ✓✓ của phân xưởng (ai bấm cũng vậy) đều dịch lịch
+        // Công tắc lưu DB theo phân xưởng: bật thì mọi lần Trả phòng của phân xưởng (ai bấm cũng vậy) đều dịch lịch
         function renderRerouteHint(on, lastChange) {
             const $hint = $('#realtimeRerouteHint');
             const production = $hint.data('production');
@@ -487,7 +487,7 @@
                 .toggleClass('text-danger', on)
                 .text((on ?
                         'Đang bật cho ' + production +
-                        ': bấm ✓✓ (xác nhận toàn bộ) ở trang này hoặc Kết thúc vệ sinh ở trang Thực Thi Sản Xuất sẽ tự dịch các lô liên quan trên lịch lý thuyết theo giờ vệ sinh thực tế, bất kể ai thao tác. Bấm ✓ không dịch lịch.' :
+                        ': bấm [Trả phòng] ở trang Thực Thi Sản Xuất / Ghi Nhận Sản Xuất sẽ tự dịch các lô liên quan trên lịch lý thuyết theo giờ trả phòng, bất kể ai thao tác. Bấm ✓ / ✓✓ ở trang này không dịch lịch.' :
                         'Đang tắt cho ' + production +
                         ': xác nhận hoàn thành không ảnh hưởng đến lịch lý thuyết.') +
                     (lastChange ? ' (Đổi lần cuối: ' + lastChange + ')' : ''));

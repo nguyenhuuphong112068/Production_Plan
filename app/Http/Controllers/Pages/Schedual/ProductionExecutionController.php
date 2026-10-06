@@ -200,7 +200,7 @@ class ProductionExecutionController extends Controller
                 return $this->act($request, fn() => $this->service->receiveCleaning((int) $request->room_id));
         }
 
-        /** Trả phòng: actual_end_clearning (bảo trì: actual_end) = giờ hệ thống */
+        /** Trả phòng: actual_end_clearning (bảo trì: actual_end) = giờ hệ thống; công tắc phân xưởng bật thì tịnh tuyến lịch */
         public function release(Request $request)
         {
                 return $this->act($request, fn() => $this->service->release((int) $request->room_id));
@@ -228,7 +228,7 @@ class ProductionExecutionController extends Controller
                 }
 
                 try {
-                        $message = $fn();
+                        $result = $fn();
                 } catch (ProductionExecutionException $e) {
                         return response()->json([
                                 'message' => $e->getMessage(),
@@ -236,7 +236,10 @@ class ProductionExecutionController extends Controller
                         ], $e->getCode() ?: 422);
                 }
 
-                return response()->json(['message' => $message, 'html' => $this->cardHtml($room->id)]);
+                // Thao tác trả về chuỗi thông báo, hoặc mảng có 'message' + dữ liệu thêm (Trả phòng: kết quả tịnh tuyến lịch)
+                $payload = is_array($result) ? $result : ['message' => $result];
+
+                return response()->json($payload + ['html' => $this->cardHtml($room->id)]);
         }
 
         /**

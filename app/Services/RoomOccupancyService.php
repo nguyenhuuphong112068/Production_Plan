@@ -6,6 +6,7 @@ use App\Http\Controllers\Pages\AuditTrail\AuditTrialController;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Trang "Thực Thi Sản Xuất" (bản tinh gọn 10/2026): phòng chỉ có 2 trạng thái, ghi thẳng vào stage_plan.
@@ -587,10 +588,14 @@ class RoomOccupancyService
      * Trả phòng = giờ hệ thống cho mọi dòng đang giữ phòng.
      * - Phòng Bận: lô sản xuất ghi actual_end_clearning; lịch bảo trì ghi actual_end (lịch có vệ sinh → Chờ VS Sau BT).
      * - Đang VS Sau BT: ghi actual_end_clearning cho các lịch bảo trì → Sẵn Sàng.
+     * Sau khi lưu, nếu công tắc tịnh tuyến của phân xưởng đang bật thì dịch lịch lý thuyết theo giờ trả phòng của lô sản xuất
+     * (ScheduleRerouteService::rerouteOnRelease). Lỗi tịnh tuyến không làm hỏng việc trả phòng đã lưu.
+     *
+     * @return array{message: string, reroute: ?array}
      */
-    public function release(int $roomId): string
+    public function release(int $roomId): array
     {
-        return DB::transaction(function () use ($roomId) {
+        [$message, $deparmentCode, $productionIds] = DB::transaction(function () use ($roomId) {
             [$room, $state, $plans] = $this->lockState($roomId, [self::BUSY, self::CLEANING]);
 
             $now = now();
@@ -605,9 +610,44 @@ class RoomOccupancyService
                 $this->openPlans([$room->id], $this->releasedAt([$room->id]))->get($room->id, collect())->pluck('id')->all()
             )->values());
 
-            return '✅ Đã trả phòng ' . $room->code . ' lúc ' . $now->format('H:i')
-                . ($after === self::CLEAN_WAIT ? ' · phòng chuyển sang ' . self::STATE_LABELS[self::CLEAN_WAIT] : '');
+            return [
+                '✅ Đã trả phòng ' . $room->code . ' lúc ' . $now->format('H:i')
+                    . ($after === self::CLEAN_WAIT ? ' · phòng chuyển sang ' . self::STATE_LABELS[self::CLEAN_WAIT] : ''),
+                $room->deparment_code,
+                $state === self::BUSY ? $plans->where('maintenance', false)->pluck('id')->all() : [],
+            ];
         });
+
+        return ['message' => $message, 'reroute' => $this->rerouteAfterRelease($productionIds, $deparmentCode)];
+    }
+
+    /**
+     * Tịnh tuyến lịch theo giờ trả phòng cho các lô vừa trả (công tắc của phân xưởng phải đang bật).
+     * null = không chạy (tắt công tắc / không có lô sản xuất); gộp kết quả nếu nhiều lô.
+     */
+    private function rerouteAfterRelease(array $stagePlanIds, string $deparmentCode): ?array
+    {
+        if (!$stagePlanIds || !RealtimeRerouteSwitch::enabled($deparmentCode)) {
+            return null;
+        }
+
+        $result = ['count' => 0, 'delta' => 0, 'cleaning_moved' => false, 'error' => false];
+        foreach ($stagePlanIds as $id) {
+            try {
+                $r = app(ScheduleRerouteService::class)->rerouteOnRelease((int) $id);
+                $result['count'] += count($r['changes']);
+                $result['delta'] = $result['delta'] ?: $r['delta_minutes'];
+                $result['cleaning_moved'] = $result['cleaning_moved'] || $r['source_cleaning_moved'];
+            } catch (\Throwable $e) {
+                $result['error'] = true;
+                Log::error('[Reroute] Tịnh tuyến khi Trả phòng thất bại cho stage_plan ' . $id, [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+            }
+        }
+
+        return $result;
     }
 
     /** Nhận phòng vệ sinh sau bảo trì: actual_start_clearning = giờ hệ thống cho các lịch bảo trì đã xong đang chờ vệ sinh */

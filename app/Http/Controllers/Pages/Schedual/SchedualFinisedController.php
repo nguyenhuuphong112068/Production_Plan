@@ -3,8 +3,6 @@
 namespace App\Http\Controllers\Pages\Schedual;
 
 use App\Http\Controllers\Controller;
-use App\Services\RealtimeRerouteSwitch;
-use App\Services\ScheduleRerouteService;
 use App\Services\SchedulingLock;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -533,28 +531,9 @@ class SchedualFinisedController extends Controller
                         }
                 });
 
-                /* ===============================
-                6. TỊNH TUYẾN LỊCH LÝ THUYẾT THEO GIỜ HOÀN THÀNH THỰC TẾ
-                Lỗi ở bước này không được làm hỏng xác nhận hoàn thành đã lưu.
-                =============================== */
-
+                // Tịnh tuyến lịch lý thuyết không còn chạy ở ✓✓ (từ 06/10/2026): chạy lúc [Trả phòng] ở trang Thực Thi Sản Xuất /
+                // Ghi Nhận Sản Xuất (RoomOccupancyService::release). Giữ các khóa reroute_* trong phản hồi cho JS cũ.
                 $reroute = ['run_code' => null, 'delta_minutes' => 0, 'changes' => [], 'source_cleaning_moved' => false];
-
-                // Tính năng thử nghiệm: chỉ chạy khi công tắc "Xác nhận và điều chỉnh lịch theo thời gian thực"
-                // của phân xưởng đang bật (bảng schedule_reroute_settings). Chỉ user được phép
-                // (ScheduleRerouteService::ALLOWED_USER_IDS) mới bật/tắt được; đang bật thì ai xác nhận cũng dịch lịch.
-                // Chỉ dịch khi ✓✓ (finised: đã xác nhận vệ sinh); ✓ (semi-finised, xác nhận 1 phần) không dịch lịch.
-                if ($request->actionType === 'finised'
-                        && RealtimeRerouteSwitch::enabled(session('user.production_code'))) {
-                        try {
-                                $reroute = app(ScheduleRerouteService::class)->reroute((int) $request->id);
-                        } catch (\Throwable $e) {
-                                Log::error('[Reroute] Tịnh tuyến thất bại cho stage_plan ' . $request->id, [
-                                        'error' => $e->getMessage(),
-                                        'trace' => $e->getTraceAsString(),
-                                ]);
-                        }
-                }
 
                 if ($request->ajax() || $request->wantsJson()) {
                         return response()->json([

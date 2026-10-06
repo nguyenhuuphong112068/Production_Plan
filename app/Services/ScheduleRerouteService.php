@@ -11,8 +11,9 @@ use Illuminate\Support\Str;
 /**
  * Tịnh tuyến lịch lý thuyết theo xác nhận hoàn thành.
  *
- * Chạy khi bấm ✓✓ (xác nhận toàn bộ) trên trang xác nhận hoàn thành: dịch 2 chiều theo giờ kết thúc vệ sinh
- * thực tế (reroute). Nút ✓ (xác nhận 1 phần) không dịch lịch; rerouteAfterProduction() giữ lại nhưng hiện không nơi nào gọi.
+ * Chạy khi bấm [Trả phòng] ở trang Thực Thi Sản Xuất / Ghi Nhận Sản Xuất (rerouteOnRelease, từ 06/10/2026): dịch 2 chiều
+ * theo giờ Trả phòng (= actual_end_clearning), lô chưa cần xác nhận ✓. Nút ✓✓ ở trang Xác nhận hoàn thành KHÔNG còn dịch lịch
+ * (reroute() giữ lại, hiện không nơi nào gọi); ✓ cũng không dịch (rerouteAfterProduction() không nơi nào gọi).
  *
  * Khi một lô được xác nhận hoàn thành, giờ kết thúc thực tế thường lệch so với lý thuyết.
  * Service này dịch chuyển (2 chiều) các lô chịu ảnh hưởng, giữ nguyên thứ tự lô:
@@ -61,6 +62,9 @@ class ScheduleRerouteService
 
     /** Nút ✓✓ "Xác nhận toàn bộ": đã có giờ vệ sinh thực tế. */
     public const TRIGGER_FINISHED = 'finished';
+
+    /** [Trả phòng] (trang Thực Thi / Ghi Nhận Sản Xuất): giờ trả phòng = giờ kết thúc vệ sinh thực tế, lô có thể chưa ✓. */
+    public const TRIGGER_RELEASE = 'release';
 
     public const SOURCE_CLEANING_REASON = 'Dời vệ sinh của chính lô ra sau giờ kết thúc sản xuất thực tế';
 
@@ -112,6 +116,21 @@ class ScheduleRerouteService
         }
 
         return $this->run($source, self::TRIGGER_FINISHED, Carbon::parse($actualFinishRaw)->getTimestamp());
+    }
+
+    /**
+     * [Trả phòng]: tịnh tuyến 2 chiều theo giờ trả phòng (actual_end_clearning vừa ghi). Lô chưa xác nhận ✓ vẫn chạy.
+     *
+     * @return array{run_code: ?string, delta_minutes: int, changes: array, source_cleaning_moved: bool}
+     */
+    public function rerouteOnRelease(int $stagePlanId): array
+    {
+        $source = $this->loadSource($stagePlanId, false);
+        if (! $source || ! $source->actual_end_clearning) {
+            return $this->emptyResult();
+        }
+
+        return $this->run($source, self::TRIGGER_RELEASE, Carbon::parse($source->actual_end_clearning)->getTimestamp());
     }
 
     /**
@@ -201,11 +220,12 @@ class ScheduleRerouteService
         return ['run_code' => $runCode, 'changes' => array_values($changes), 'source_cleaning_moved' => (bool) $sourceChange] + $result;
     }
 
-    private function loadSource(int $stagePlanId): ?object
+    /** $requireFinished = false: Trả phòng, lô có thể chưa xác nhận ✓ */
+    private function loadSource(int $stagePlanId, bool $requireFinished = true): ?object
     {
         $source = DB::table('stage_plan')->where('id', $stagePlanId)->first();
 
-        if (! $source || (int) $source->finished !== 1 || ! $source->start || ! $source->end) {
+        if (! $source || ($requireFinished && (int) $source->finished !== 1) || ! $source->start || ! $source->end) {
             return null;
         }
 
@@ -1103,6 +1123,13 @@ class ScheduleRerouteService
         $where = implode(', ', array_filter([$info->stage_name ?? null, ($info->room_code ?? null) ? 'phòng ' . $info->room_code : null]));
         $confirmedAt = Carbon::parse($source->finished_date ?? now())->format('H:i d/m/Y');
         $lag = ($deltaSeconds < 0 ? 'sớm ' : 'trễ ') . $this->durationText($deltaSeconds);
+
+        if ($trigger === self::TRIGGER_RELEASE) {
+            $released = Carbon::parse($source->actual_end_clearning)->format('H:i d/m/Y');
+            $text = "Tịnh tuyến theo Trả phòng: {$batch}" . ($where !== '' ? " ({$where})" : '') . ", trả phòng lúc {$released}, {$lag}";
+
+            return Str::limit($text, 250, '...');
+        }
 
         if ($trigger === self::TRIGGER_PRODUCTION) {
             $head = 'Tịnh tuyến theo xác nhận sản xuất';

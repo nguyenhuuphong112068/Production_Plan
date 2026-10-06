@@ -26,6 +26,7 @@
                     .done(res => {
                         replaceCard(res.html);
                         if ($modal) $modal.modal('hide');
+                        if (res.reroute) return showReroute(res);
                         Swal.fire({
                             toast: true,
                             position: 'top-end',
@@ -59,6 +60,36 @@
                         busy = false;
                         $btn.prop('disabled', false);
                     });
+            }
+
+            // Trả phòng khi công tắc tịnh tuyến của phân xưởng đang bật: kết quả dịch lịch lý thuyết theo giờ trả phòng
+            function showReroute(res) {
+                const r = res.reroute;
+                if (r.error) {
+                    return Swal.fire({
+                        icon: 'warning',
+                        title: 'Đã trả phòng',
+                        text: res.message + '. Tịnh tuyến lịch bị lỗi (đã ghi log), lịch lý thuyết chưa được dịch.'
+                    });
+                }
+                if (!r.count && !r.cleaning_moved) {
+                    return Swal.fire({
+                        toast: true,
+                        position: 'top-end',
+                        icon: 'success',
+                        titleText: res.message + ' · Lịch không cần dịch',
+                        timer: 3000,
+                        showConfirmButton: false
+                    });
+                }
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Đã trả phòng',
+                    html: `${esc(res.message)}<br>Lô hoàn thành ${r.delta < 0 ? 'sớm' : 'trễ'} <b>${Math.abs(r.delta)} phút</b> so với lịch lý thuyết.<br>` +
+                        `Đã tịnh tuyến <b>${r.count}</b> lô liên quan.<br>` +
+                        '<small>Xem chi tiết: chuột phải lên lô trên Lịch Sản Xuất → "Lịch sử tịnh tuyến".</small>',
+                    confirmButtonText: 'Đóng',
+                });
             }
 
             /* ---------- Nhận phòng ---------- */
