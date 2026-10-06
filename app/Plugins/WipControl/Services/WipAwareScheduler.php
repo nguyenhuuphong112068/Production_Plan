@@ -114,6 +114,20 @@ class WipAwareScheduler extends SchedualController
         return $this->backup_schedualer()->getData()->bkcCode ?? null;
     }
 
+    /**
+     * Các khoảng nghỉ lõi đã nạp từ "Ngày không sắp lịch" (06:00 → 06:00, ngày liền nhau đã gộp).
+     * Lõi không cho lô BẮT ĐẦU trong khoảng này (skipOffTime) nhưng cho chạy xuyên qua.
+     *
+     * @return array<int, array{0: int, 1: int}>
+     */
+    public function offRanges(): array
+    {
+        return array_map(fn($r) => [
+            Carbon::parse($r['start'])->getTimestamp(),
+            Carbon::parse($r['end'])->getTimestamp(),
+        ], $this->offDate);
+    }
+
     /** Campaign đang bị quá hạn biệt trữ, giống Pass 2 dùng làm VIP */
     public function overdueCampaignCodes(): array
     {

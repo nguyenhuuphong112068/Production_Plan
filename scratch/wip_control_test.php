@@ -17,7 +17,7 @@ session()->put('user', ['production_code' => $prod, 'fullName' => 'TEST WipContr
 
 $req = Request::create('/x', 'POST', [
     'selectedStep' => 'ĐG', 'runType' => 'stage', 'start_date' => Carbon::now()->toDateString(),
-    'reason' => 'test', 'selectedDates' => [], 'work_sunday' => false, 'prev_orderBy' => true,
+    'reason' => 'test', 'selectedDates' => DB::table('off_days')->where('off_date', '>=', date('Y-m-d'))->pluck('off_date')->all(), 'work_sunday' => false, 'prev_orderBy' => true,
     'limit_mold_change' => true, 'mold_change_tolerance' => 72,
 ]);
 
@@ -56,7 +56,9 @@ $integrity = function () use ($prod) {
     foreach ($byRoom as $room => $rs) { $rs = $rs->sortBy('start')->values(); for ($i = 1; $i < count($rs); $i++) if ($rs[$i]->start < ($rs[$i-1]->end_clearning ?: $rs[$i-1]->end) && !$rs[$i]->overlap && !$rs[$i-1]->overlap) $overlap[] = $rs[$i-1]->id . '-' . $rs[$i]->id; }
     $byCode = $rows->keyBy('code'); $prec = [];
     foreach ($rows as $r) if ($r->predecessor_code && isset($byCode[$r->predecessor_code]) && $r->start < $byCode[$r->predecessor_code]->end) $prec[] = $r->id;
-    return ['overlap' => $overlap, 'prec' => $prec];
+    $offR = DB::table('off_days')->where('off_date', '>=', date('Y-m-d'))->pluck('off_date')->map(fn($d) => [strtotime("$d 06:00"), strtotime("$d 06:00") + 86400]);
+    $inOff = []; foreach ($rows as $r) { $t = strtotime($r->start); foreach ($offR as [$a, $b]) if ($t >= $a && $t < $b && $r->stage_code <= 6) $inOff[] = $r->id; }
+    return ['overlap' => $overlap, 'prec' => $prec, 'off' => $inOff];
 };
 $ib = $integrity();
 DB::beginTransaction();
@@ -67,6 +69,8 @@ try {
     echo "Chạy: " . round(microtime(true) - $t, 1) . "s, peak mem " . round(memory_get_peak_usage(true)/1048576) . "MB\n";
     $ia = $integrity();
     echo "Đè giờ cùng phòng: trước " . count($ib['overlap']) . ", sau " . count($ia['overlap']) . ", MỚI: " . json_encode(array_values(array_diff($ia['overlap'], $ib['overlap']))) . "
+";
+    echo "Lô BẮT ĐẦU trong ngày nghỉ (PC→BP): trước " . count($ib['off']) . ", sau " . count($ia['off']) . ", MỚI: " . json_encode(array_values(array_diff($ia['off'], $ib['off']))) . "
 ";
     echo "Công đoạn sau bắt đầu trước khi công đoạn trước xong: trước " . count($ib['prec']) . ", sau " . count($ia['prec']) . ", MỚI: " . json_encode(array_values(array_diff($ia['prec'], $ib['prec']))) . "
 ";

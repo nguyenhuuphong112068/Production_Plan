@@ -5115,11 +5115,6 @@ const ScheduleTest = () => {
           : ''
         }
 
-          <div class="asm-section">
-            <label class="asm-label" for="reason">Lý do chạy Auto Scheduler</label>
-            <input id="reason" type="text" class="swal2-input" name="reason" placeholder="Nhập lý do..." required>
-          </div>
-
           <div class="asm-row" style="display:none;">
             <label class="asm-label" for="work-sunday">Làm Chủ Nhật</label>
             <label class="switch">
@@ -5156,15 +5151,6 @@ const ScheduleTest = () => {
           </div>
 
           <div class="asm-section">
-            <div class="asm-row">
-              <label class="asm-label" for="prev_orderBy">Thứ tự công đoạn ĐH → ĐG theo</label>
-              <label class="switch">
-                <input id="prev_orderBy" type="checkbox" checked>
-                <span class="slider round"></span>
-                <span class="switch-labels"><span class="off">KHCĐ</span><span class="on">CĐT</span></span>
-              </label>
-            </div>
-
             <div class="asm-row">
               <label class="asm-label" for="limit_mold_change">Hạn chế xuống khuôn (ĐG)</label>
               <label class="switch">
@@ -5687,6 +5673,8 @@ const ScheduleTest = () => {
         document.querySelectorAll('.swal2-input').forEach(input => {
           formValues[input.name] = input.value;
         });
+        // Đã bỏ ô lý do: lịch sử thay đổi ghi lý do mặc định
+        formValues.reason = 'Lập Lịch Tự Động';
 
         const activeStep = document.querySelector('li[data-p-active="true"]');
         const activeStepText = activeStep ? activeStep.querySelector('span.p-stepper-title')?.textContent : null;
@@ -5695,8 +5683,8 @@ const ScheduleTest = () => {
         const workSunday = document.getElementById('work-sunday');
         formValues.work_sunday = workSunday.checked;
 
-        const prev_orderBy = document.getElementById('prev_orderBy');
-        formValues.prev_orderBy = prev_orderBy.checked;
+        // Thứ tự công đoạn ĐH → ĐG luôn theo công đoạn trước (CĐT)
+        formValues.prev_orderBy = true;
 
         const limitMoldChange = document.getElementById('limit_mold_change');
         formValues.limit_mold_change = limitMoldChange?.checked ?? false;

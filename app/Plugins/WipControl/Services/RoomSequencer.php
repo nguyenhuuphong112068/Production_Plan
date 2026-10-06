@@ -26,8 +26,8 @@ use Illuminate\Support\Facades\DB;
  *  - lô cố định (đã chạy, bảo trì, công đoạn khác, bị khoá) là bức tường, độ dời
  *    phải được khoảng trống hấp thụ hết trước khi chạm tới.
  *
- * Độ dài lô giữ nguyên khi dời (giống tịnh tuyến khi đẩy trễ: được chạy trong
- * ngày nghỉ). Loại vệ sinh không tính lại khi đổi chỗ.
+ * Độ dài lô giữ nguyên khi dời; lô không được BẮT ĐẦU trong ngày nghỉ (nhảy tới
+ * cuối khoảng nghỉ như skipOffTime của lõi) nhưng được chạy xuyên qua. Loại vệ sinh không tính lại khi đổi chỗ.
  */
 class RoomSequencer
 {
@@ -50,14 +50,34 @@ class RoomSequencer
     /** @var array<int, array> roomId => trình tự đã nạp */
     private array $cache = [];
 
-    public function __construct(string $productionCode, int $at, int $windowEnd, callable $lockOf, callable $deadline, callable $wait)
+    /** @var array<int, array{0: int, 1: int}> khoảng nghỉ: không được BẮT ĐẦU lô trong đó */
+    private array $offRanges;
+
+    public function __construct(string $productionCode, int $at, int $windowEnd, callable $lockOf, callable $deadline, callable $wait, array $offRanges = [])
     {
+        $this->offRanges = $offRanges;
         $this->productionCode = $productionCode;
         $this->at = $at;
         $this->windowEnd = $windowEnd;
         $this->lockOf = $lockOf;
         $this->deadline = $deadline;
         $this->wait = $wait;
+    }
+
+    /** Giờ bắt đầu rơi vào ngày nghỉ thì nhảy tới cuối khoảng nghỉ (giống skipOffTime của lõi: được chạy xuyên qua, không được bắt đầu) */
+    private function skipOff(int $ts): int
+    {
+        do {
+            $moved = false;
+            foreach ($this->offRanges as [$from, $to]) {
+                if ($ts >= $from && $ts < $to) {
+                    $ts = $to;
+                    $moved = true;
+                }
+            }
+        } while ($moved);
+
+        return $ts;
     }
 
     public function forget(int $roomId): void
@@ -212,13 +232,13 @@ class RoomSequencer
     public function shiftPlan(array $seq, int $from, int $delta, ?int $stopBefore = null): ?array
     {
         $changes = [];
-        $s = $delta;
         $n = $stopBefore ?? count($seq);
+        $prevOccEnd = null;
 
         for ($j = $from; $j < $n; $j++) {
-            if ($j > $from) {
-                $s = max(0, $s - max(0, $seq[$j]['start'] - $seq[$j - 1]['occ_end']));
-            }
+            // Lô đầu dời Δ, lô sau chỉ dời khi bị lô trước (đã dời) đè lên; rơi vào ngày nghỉ thì nhảy qua
+            $newStart = $j === $from ? $seq[$j]['start'] + $delta : max($seq[$j]['start'], $prevOccEnd);
+            $s = $this->skipOff($newStart) - $seq[$j]['start'];
             if ($s <= 0) {
                 return $changes;
             }
@@ -226,6 +246,7 @@ class RoomSequencer
                 return null;
             }
             $changes[$seq[$j]['id']] = $s;
+            $prevOccEnd = $seq[$j]['occ_end'] + $s;
         }
 
         return $changes;
@@ -265,22 +286,36 @@ class RoomSequencer
             return null;
         }
 
+        // Khối đưa lên bắt đầu đúng chỗ dòng $c, rơi vào ngày nghỉ thì nhảy qua
         $offset = $seq[$c]['start'] - $seq[$n1]['start'];   // âm
         $changes = [];
-
+        $prevOccEnd = null;
         for ($k = $n1; $k <= $n2; $k++) {
             $newStart = $seq[$k]['start'] + $offset;
-            if ($seq[$k]['lock'] !== null || $newStart < $seq[$k]['ready'] || $newStart < $this->at) {
+            if ($prevOccEnd !== null) {
+                $newStart = max($newStart, $prevOccEnd);
+            }
+            $newStart = $this->skipOff($newStart);
+            if ($seq[$k]['lock'] !== null || $newStart < $seq[$k]['ready'] || $newStart < $this->at || $newStart >= $seq[$k]['start']) {
                 return null;
             }
-            $changes[$seq[$k]['id']] = $offset;
+            $changes[$seq[$k]['id']] = $newStart - $seq[$k]['start'];
+            $prevOccEnd = $seq[$k]['occ_end'] + $changes[$seq[$k]['id']];
         }
 
-        // Các dòng từ $c tới trước $n1 dời trễ đúng bằng độ dài khối đưa lên
-        $length = $seq[$n2]['occ_end'] - $seq[$n1]['start'];
-        $shift = $this->shiftPlan($seq, $c, $length, $n1);
+        // Các dòng từ $c tới trước $n1 dời trễ ra sau khối vừa đưa lên
+        $shift = $this->shiftPlan($seq, $c, $prevOccEnd - $seq[$c]['start'], $n1);
         if ($shift === null) {
             return null;
+        }
+
+        // Nhảy qua ngày nghỉ có thể làm các dòng đó dài ra, không được đè dòng ngay sau chỗ cũ của khối
+        if ($n2 + 1 < count($seq)) {
+            for ($j = $c; $j < $n1; $j++) {
+                if ($seq[$j]['occ_end'] + ($shift[$seq[$j]['id']] ?? 0) > $seq[$n2 + 1]['start']) {
+                    return null;
+                }
+            }
         }
 
         return $changes + $shift;

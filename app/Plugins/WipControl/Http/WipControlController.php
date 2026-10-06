@@ -51,7 +51,7 @@ class WipControlController extends Controller
             'DG' => $this->number($wip['max_dg'] ?? null),
         ];
         $iterations = max(1, min($maxIterations, (int) ($wip['iterations'] ?? config('wip_control.default_iterations', 5))));
-        $lockValidation = filter_var($wip['lock_validation'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        $lockValidation = false;   // lô thẩm định luôn được lùi (đã bỏ tuỳ chọn trên modal)
         $prioritize = filter_var($wip['prioritize_non_coated'] ?? true, FILTER_VALIDATE_BOOLEAN);
 
         // Lưu làm giá trị mặc định cho lần sau, độc lập với wip_stock_limits

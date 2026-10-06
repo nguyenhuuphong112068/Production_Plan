@@ -80,14 +80,6 @@ export function wipControlSectionHtml() {
             <span class="switch-labels"><span class="off">No</span><span class="on">Yes</span></span>
           </label>
         </div>
-        <div class="asm-row">
-          <label class="asm-label" for="wip-lock-val" style="font-weight:500">Không lùi lô thẩm định</label>
-          <label class="switch">
-            <input id="wip-lock-val" type="checkbox">
-            <span class="slider round"></span>
-            <span class="switch-labels"><span class="off">No</span><span class="on">Yes</span></span>
-          </label>
-        </div>
       </div>
     </div>`;
 }
@@ -116,7 +108,6 @@ export function initWipControl() {
       const it = document.getElementById('wip-iterations');
       it.max = data.max_iterations ?? 10;
       it.value = data.iterations ?? 5;
-      document.getElementById('wip-lock-val').checked = !!data.lock_validation;
       document.getElementById('wip-prioritize').checked = data.prioritize_non_coated !== false;
 
       // Đã từng cài Max thì bật sẵn
@@ -140,7 +131,7 @@ export function collectWipControl() {
     values[g.key] = v === '' || v === undefined ? null : Number(v);
   });
   values.iterations = Number(document.getElementById('wip-iterations')?.value) || 5;
-  values.lock_validation = !!document.getElementById('wip-lock-val')?.checked;
+  values.lock_validation = false;   // lô thẩm định luôn được lùi
   values.prioritize_non_coated = !!document.getElementById('wip-prioritize')?.checked;
 
   return values;

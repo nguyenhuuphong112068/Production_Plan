@@ -489,7 +489,8 @@ class WipThrottleService
             function (int $stage, int $pm) use ($info) {
                 $info($pm);
                 return $this->waitSeconds($stage, $pm);
-            }
+            },
+            $this->freshScheduler()->offRanges()
         );
 
         $shifted = [];   // pm => [stage => giây đã dời trong vòng]
