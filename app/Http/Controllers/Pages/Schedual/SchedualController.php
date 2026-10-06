@@ -2232,9 +2232,13 @@ class SchedualController extends Controller
             foreach (app(RoomOccupancyService::class)->runningRooms($production) as $roomId => $runPlans) {
                 $first = $runPlans->first();
                 $maintenance = $first->maintenance;
-                $label = $runPlans->count() > 1
-                    ? ($first->product_name ?? $first->title) . ' - ' . $runPlans->pluck('batch')->implode(', ')
-                    : $first->label;
+                // Bảo trì: tiêu đề nhóm thiết bị; đã có actual_end là đang chờ / đang vệ sinh sau bảo trì
+                $cleaningAfter = $maintenance && $runPlans->every(fn($p) => $p->actual_end);
+                $label = $maintenance
+                    ? $first->title
+                    : ($runPlans->count() > 1
+                        ? ($first->product_name ?? $first->title) . ' - ' . $runPlans->pluck('batch')->implode(', ')
+                        : $first->label);
                 $received = Carbon::parse($runPlans->min('actual_start'));
                 // Thời lượng giữ phòng theo lịch = KT vệ sinh − BĐ (lô không có vệ sinh: KT − BĐ)
                 $plannedSec = (int) $runPlans->max(fn($p) => $p->start && ($p->end_clearning ?? $p->end)
@@ -2245,7 +2249,7 @@ class SchedualController extends Controller
                     'resourceId' => (string) $roomId,
                     'start' => $received->format('Y-m-d H:i:s'),
                     'end' => $plannedEnd->max($now)->format('Y-m-d H:i:s'),
-                    'title' => ($maintenance ? '🔧 Đang bảo trì: ' : '▶ ') . $label,
+                    'title' => ($cleaningAfter ? '🧹 Vệ sinh sau BT: ' : ($maintenance ? '🔧 Đang bảo trì: ' : '▶ ')) . $label,
                     // Nền trong suốt: phần đã diễn ra do JS tô bằng fill_color, phần chưa diễn ra chỉ có viền
                     'backgroundColor' => 'transparent',
                     'textColor' => $maintenance ? '#9f1239' : '#78350f',

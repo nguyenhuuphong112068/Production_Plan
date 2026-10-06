@@ -7,6 +7,9 @@
     $plans = $st->plans;
     $plan = $plans->first();
     $busy = $st->state === $ROS::BUSY;
+    $cleanWait = $st->state === $ROS::CLEAN_WAIT; // bảo trì xong, chờ nhận phòng vệ sinh
+    $cleaning = $st->state === $ROS::CLEANING;    // đang vệ sinh sau bảo trì
+    $maint = $plan && $plan->maintenance;
     [$stateClass, $stateIcon] = $ROS::STATE_META[$st->state];
 
     $fmt = fn($t) => $t ? \Carbon\Carbon::parse($t)->format('H:i d/m') : '—';
@@ -29,12 +32,16 @@
     };
     $sinceSec = $st->since ? max(0, (int) $st->since->diffInSeconds(now(), false)) : 0;
 
-    if ($busy) {
-        // Thời lượng giữ phòng theo lịch: bắt đầu lô → hết vệ sinh theo lịch (không có vệ sinh thì tới KT theo lịch)
-        $planEnd = $plans->max(fn($p) => $p->end_clearning ?? $p->end);
-        $planned = $plan->start && $planEnd ? max(0, (int) \Carbon\Carbon::parse($plan->start)->diffInSeconds(\Carbon\Carbon::parse($planEnd), false)) : 0;
+    if ($plan) {
+        $title = $maint ? $plan->title : ($plan->product_name ?? $plan->title) . ((int) $plan->stage_code === 7 && $plan->market ? ' - ' . $plan->market : '');
+    }
+    if ($busy || $cleaning) {
+        // Thời lượng theo lịch: lô sản xuất BĐ → hết vệ sinh (không có vệ sinh thì tới KT); bảo trì BĐ → KT bảo trì;
+        // vệ sinh sau bảo trì BĐ → KT vệ sinh theo lịch
+        $planStart = $cleaning ? $plans->min(fn($p) => $p->start_clearning ?? $p->end) : $plan->start;
+        $planEnd = $cleaning ? $plans->max('end_clearning') : ($maint ? $plans->max('end') : $plans->max(fn($p) => $p->end_clearning ?? $p->end));
+        $planned = $planStart && $planEnd ? max(0, (int) \Carbon\Carbon::parse($planStart)->diffInSeconds(\Carbon\Carbon::parse($planEnd), false)) : 0;
         $pct = $planned ? min(100, round($sinceSec / $planned * 100)) : 0;
-        $title = $plan->maintenance ? $plan->title : ($plan->product_name ?? $plan->title) . ((int) $plan->stage_code === 7 && $plan->market ? ' - ' . $plan->market : '');
     }
 
     // Dữ liệu cho JS khi bấm nút
@@ -45,6 +52,8 @@
         'weighing' => in_array((int) $room->stage_code, $ROS::GROUP_STAGES, true),
         'plans'    => $plans->pluck('label')->values(),
         'since'    => $st->since ? $fmt($st->since) : null,
+        // Trạng thái sau khi Trả phòng (hộp xác nhận): bảo trì có vệ sinh → Chờ VS Sau BT
+        'after'    => $ROS::STATE_LABELS[$busy && $maint && $plans->every(fn($p) => $p->title_clearning) ? $ROS::CLEAN_WAIT : $ROS::READY],
     ];
 
     // Nhân sự đang được phân công (Lịch Công Tác): nhãn A, B, C... theo đúng thứ tự hiển thị bên Lịch Công Tác → Sản Xuất
@@ -56,7 +65,7 @@
 
 <div class="col-xl-4 col-md-6 mb-3 exec-room-col" id="exec-room-{{ $room->id }}" data-state="{{ $st->state }}"
     data-search="{{ $search }}" @unless ($readonly) data-ctx="{{ json_encode($ctx, JSON_UNESCAPED_UNICODE) }}" @endunless>
-    <div class="exec-room st-{{ $stateClass }} {{ $busy ? 'is-active' : '' }}">
+    <div class="exec-room st-{{ $stateClass }} {{ $busy || $cleaning ? 'is-active' : '' }}">
 
         <div class="exec-room-head">
             <div class="exec-room-title">
@@ -66,15 +75,28 @@
                     <div class="exec-room-equip" title="{{ $room->main_equiment_name }}">{{ $room->main_equiment_name }}</div>
                 @endif
             </div>
-            <span class="exec-chip"><i class="fas {{ $stateIcon }}"></i> {{ $st->label }}</span>
+            <div class="exec-room-tools">
+                <span class="exec-chip"><i class="fas {{ $stateIcon }}"></i> {{ $st->label }}</span>
+                @unless ($publicView ?? false)
+                    <button type="button" class="exec-hist-btn js-history" data-room-id="{{ $room->id }}"
+                        data-room="{{ $room->code }} - {{ $room->name }}" title="Lịch sử nhận trả phòng">
+                        <i class="fas fa-history"></i>
+                    </button>
+                @endunless
+            </div>
         </div>
 
         <div class="exec-room-body">
-            @if ($busy)
-                {{-- ===== Phòng bận: lô / lịch bảo trì đang giữ phòng, đồng hồ chạy theo giây ===== --}}
+            @if ($busy || $cleaning || $cleanWait)
+                {{-- ===== Phòng bận / sau bảo trì: lô / lịch bảo trì đang giữ phòng, đồng hồ chạy theo giây ===== --}}
                 <div class="exec-live">
+                    @if (!$busy)
+                        <div class="exec-live-label">
+                            <i class="fas fa-broom"></i> Vệ sinh sau bảo trì{{ $plan->title_clearning ? ' (' . $plan->title_clearning . ')' : '' }}
+                        </div>
+                    @endif
                     <div class="exec-live-product">
-                        @if ($plan->maintenance)
+                        @if ($maint)
                             <i class="fas fa-tools"></i>
                         @endif
                         {{ $title }}
@@ -82,7 +104,17 @@
                             <span class="exec-live-tag" title="Lô thẩm định"><i class="fas fa-check-circle"></i> TĐ</span>
                         @endif
                     </div>
-                    @if ($plans->count() > 1)
+                    @if ($maint)
+                        {{-- Lịch bảo trì: mỗi dòng 1 thiết bị --}}
+                        <div class="exec-live-batch"><b>{{ $plans->count() }} thiết bị</b>{{ $plan->due ? ' · tới hạn ' . $plan->due : '' }}</div>
+                        <div class="exec-group">
+                            @foreach ($plans as $b)
+                                <div class="exec-group-row">
+                                    <span class="exec-group-batch"><i class="fas fa-wrench"></i> {{ $b->equipment_label }}</span>
+                                </div>
+                            @endforeach
+                        </div>
+                    @elseif ($plans->count() > 1)
                         <div class="exec-live-batch"><b>{{ $plans->count() }} lô</b> cân chung · {{ $plan->intermediate_code }}</div>
                         <div class="exec-group">
                             @foreach ($plans as $b)
@@ -93,15 +125,20 @@
                                 </div>
                             @endforeach
                         </div>
-                    @elseif (!$plan->maintenance)
+                    @else
                         <div class="exec-live-batch">
                             Lô <b>{{ $plan->batch }}</b> · {{ $plan->intermediate_code }}{{ $plan->finished_product_code ? ' / ' . $plan->finished_product_code : '' }}
                         </div>
                     @endif
 
+                    @if ($cleanWait)
+                        <div class="exec-live-foot">
+                            <span>Kết thúc bảo trì <b>{{ $fmt($st->since) }}</b> · chờ <b class="js-since" data-since="{{ $iso($st->since) }}"></b></span>
+                        </div>
+                    @else
                     <div class="exec-live-stats">
                         <div class="exec-live-stat">
-                            <div class="exec-live-label" title="Tính từ lúc nhận phòng">Thời gian sử dụng phòng</div>
+                            <div class="exec-live-label" title="Tính từ lúc nhận phòng">{{ $cleaning ? 'Thời gian vệ sinh' : ($maint ? 'Thời gian bảo trì' : 'Thời gian sử dụng phòng') }}</div>
                             <div class="exec-live-big {{ $sinceSec >= 86400 ? 'long' : '' }} js-clock"
                                 data-since="{{ $iso($st->since) }}" data-base="0" data-planned="{{ $planned }}">{{ $clock($sinceSec) }}</div>
                             {{-- So với thời lượng giữ phòng theo lịch; cùng quy tắc với JS clocks() --}}
@@ -123,9 +160,10 @@
                     @endif
 
                     <div class="exec-live-foot">
-                        <span>Nhận phòng <b>{{ $fmt($st->since) }}</b></span>
-                        <span>Lịch <b>{{ $fmt($plan->start) }} → {{ $fmt($planEnd) }}</b></span>
+                        <span>{{ $cleaning ? 'Nhận phòng vệ sinh' : 'Nhận phòng' }} <b>{{ $fmt($st->since) }}</b></span>
+                        <span>Lịch <b>{{ $fmt($planStart) }} → {{ $fmt($planEnd) }}</b></span>
                     </div>
+                    @endif
                 </div>
             @endif
 
@@ -144,7 +182,7 @@
                         </div>
                     @endforeach
                 </div>
-            @elseif ($busy)
+            @elseif ($st->state !== $ROS::READY)
                 <div class="exec-staff empty" title="Không có ai được phân công tại phòng này vào lúc này trên Lịch Công Tác → Sản Xuất">
                     <i class="fas fa-user-slash"></i> Chưa phân công nhân sự lúc này
                 </div>
@@ -153,9 +191,13 @@
 
         @unless ($readonly)
             <div class="exec-room-actions">
-                @if ($busy)
+                @if ($busy || $cleaning)
                     <button type="button" class="btn btn-exec btn-exec-stop js-act" data-act="release">
                         <i class="fas fa-sign-out-alt"></i> Trả phòng
+                    </button>
+                @elseif ($cleanWait)
+                    <button type="button" class="btn btn-exec btn-exec-clean js-act" data-act="receive_cleaning">
+                        <i class="fas fa-broom"></i> Nhận phòng vệ sinh sau BT
                     </button>
                 @else
                     <button type="button" class="btn btn-exec btn-exec-go js-act" data-act="receive">

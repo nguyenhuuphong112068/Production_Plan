@@ -64,7 +64,10 @@ class ProductionExecutionController extends Controller
                 $production = session('user')['production_code'];
                 $employee = DB::table('employees')->where('code', session('user')['userName'])->first(['id', 'code', 'name']);
                 $assignments = $employee ? $this->service->assignmentsOf($employee->code, $production) : collect();
-                $rooms = $this->service->board($production, $assignments->pluck('room_id')->unique()->values()->all());
+                // Phòng đang được phân công + phòng mình đã Nhận phòng mà chưa Trả phòng (dù đã hết ca)
+                $rooms = $this->service->board($production, $assignments->pluck('room_id')
+                        ->merge($this->service->heldRoomIdsOf(session('user')['userName'], $production))
+                        ->unique()->values()->all());
 
                 $data = [
                         'stages'      => $rooms->groupBy('stage_group'),
@@ -102,6 +105,7 @@ class ProductionExecutionController extends Controller
                         'stages'     => $rooms->groupBy('stage_group'),
                         'production' => $production,
                         'readonly'   => true,
+                        'publicView' => true, // không đăng nhập: không có nút Lịch sử
                 ];
 
                 if ($request->boolean('partial')) {
@@ -114,7 +118,10 @@ class ProductionExecutionController extends Controller
                 ]);
         }
 
-        /** Lô / lịch bảo trì nhận phòng được (modal Nhận phòng) */
+        /**
+         * Lô / lịch bảo trì nhận phòng được (modal Nhận phòng), theo phòng ban người đăng nhập:
+         * EN chỉ lịch BT/TI, QA chỉ lịch HC, phòng ban khác chỉ lô sản xuất (RoomOccupancyService::MAINTENANCE_TYPES_BY_DEPARTMENT).
+         */
         public function plans(Request $request)
         {
                 $room = $this->ownRoom($request->room_id);
@@ -124,16 +131,21 @@ class ProductionExecutionController extends Controller
 
                 $fmt = fn($t) => $t ? Carbon::parse($t)->format('H:i d/m/Y') : null;
 
-                return response()->json($this->service->candidatePlans($room)->map(fn($p) => [
+                return response()->json($this->service->candidatePlans($room, $this->department())->map(fn($p) => [
                         'id'          => $p->id,
-                        'product'     => $p->maintenance ? $p->title : ($p->product_name ?? $p->title),
+                        // Lịch bảo trì: mỗi dòng 1 thiết bị → tên thiết bị; tiêu đề nhóm + ngày tới hạn ở dòng phụ
+                        'product'     => $p->maintenance ? $p->equipment_label : ($p->product_name ?? $p->title),
                         'maintenance' => $p->maintenance,
+                        'type_label'  => $p->maintenance ? (RoomOccupancyService::MAINTENANCE_TYPE_LABELS[$p->maintenance_type] ?? $p->maintenance_type) : null,
+                        'group'       => $p->maintenance ? $p->title . ($p->due ? ' · Tới hạn ' . $p->due : '') : null,
                         'market'      => $p->stage_code == 7 ? $p->market : null,
                         'batch'       => $p->batch,
                         'codes'       => trim(($p->intermediate_code ?? '') . ' / ' . ($p->finished_product_code ?? ''), ' /'),
                         'btp'         => $p->intermediate_code,
-                        // Cân NL: lô cùng lịch lý thuyết + cùng BTP được chọn theo nhau
-                        'plan_key'    => $p->start ? $p->start . '|' . $p->end . '|' . $p->intermediate_code : null,
+                        // Chọn theo nhau: Cân NL - lô cùng lịch lý thuyết + cùng BTP; bảo trì - thiết bị cùng nhóm lịch
+                        'plan_key'    => !$p->start ? null : ($p->maintenance
+                                ? 'M|' . $p->start . '|' . $p->end . '|' . $p->title
+                                : $p->start . '|' . $p->end . '|' . $p->intermediate_code),
                         'start'       => $fmt($p->start),
                         'end'         => $fmt($p->end),
                         'theory'      => round((float) $p->Theoretical_yields, 2),
@@ -142,13 +154,50 @@ class ProductionExecutionController extends Controller
                 ])->values());
         }
 
+        /** Lịch sử Nhận / Trả phòng của 1 phòng (modal Lịch sử trên card phòng, chỉ xem) */
+        public function history(Request $request)
+        {
+                $room = $this->ownRoom($request->room_id);
+                if (!$room) {
+                        return response()->json(['message' => $this->roomDeniedMessage()], 403);
+                }
+
+                $fmt = fn($t) => $t ? Carbon::parse($t)->format('H:i d/m/Y') : null;
+
+                return response()->json([
+                        'room'  => $room->code . ' - ' . $room->name,
+                        'since' => Carbon::parse(RoomOccupancyService::TRACK_FROM)->format('d/m/Y'),
+                        'rows'  => $this->service->history($room->id)->map(fn($h) => [
+                                'labels'         => $h->labels,
+                                'maintenance'    => $h->maintenance,
+                                'received_at'    => $fmt($h->received_at),
+                                'received_by'    => $h->received_by,
+                                'maint_end_at'   => $fmt($h->maint_end_at),
+                                'maint_end_by'   => $h->maint_end_by,
+                                'clean_start_at' => $fmt($h->clean_start_at),
+                                'clean_start_by' => $h->clean_start_by,
+                                'released_at'    => $fmt($h->released_at),
+                                'released_by'    => $h->released_by,
+                                // Thời gian giữ phòng (đang giữ thì tới hiện tại), phút
+                                'minutes'        => (int) Carbon::parse($h->received_at)->diffInMinutes($h->released_at ? Carbon::parse($h->released_at) : now()),
+                        ]),
+                ]);
+        }
+
         /** Nhận phòng: actual_start = giờ hệ thống */
         public function receive(Request $request)
         {
                 return $this->act($request, fn() => $this->service->receive(
                         (int) $request->room_id,
-                        (array) $request->input('stage_plan_ids', [])
+                        (array) $request->input('stage_plan_ids', []),
+                        $this->department()
                 ));
+        }
+
+        /** Nhận phòng vệ sinh sau bảo trì: actual_start_clearning = giờ hệ thống */
+        public function receiveCleaning(Request $request)
+        {
+                return $this->act($request, fn() => $this->service->receiveCleaning((int) $request->room_id));
         }
 
         /** Trả phòng: actual_end_clearning (bảo trì: actual_end) = giờ hệ thống */
@@ -235,15 +284,22 @@ class ProductionExecutionController extends Controller
                         ->where('active', 1)
                         ->first();
 
-                // Trang Ghi Nhận / role Executor: chỉ phòng đang được phân công lúc bấm nút (không tin danh sách trên trình duyệt)
+                // Trang Ghi Nhận / role Executor: chỉ phòng đang được phân công lúc bấm nút, hoặc phòng mình đã Nhận phòng
+                // mà chưa Trả phòng (để trả được phòng khi đã hết ca) — không tin danh sách trên trình duyệt
                 if ($room && $this->recordMode()) {
-                        $assigned = $this->service->assignmentsOf(session('user')['userName'], $room->deparment_code)->pluck('room_id');
+                        $assigned = $this->service->assignmentsOf(session('user')['userName'], $room->deparment_code)->pluck('room_id')
+                                ->merge($this->service->heldRoomIdsOf(session('user')['userName'], $room->deparment_code));
                         if (!$assigned->contains($room->id)) {
                                 return null;
                         }
                 }
 
                 return $room;
+        }
+
+        private function department(): ?string
+        {
+                return session('user')['department'] ?? null;
         }
 
         private function recordMode(): bool

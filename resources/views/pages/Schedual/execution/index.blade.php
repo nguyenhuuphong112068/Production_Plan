@@ -64,6 +64,7 @@
 @section('model')
     <div class="exec-page">
         @include('pages.Schedual.execution._receive_modal')
+        @include('pages.Schedual.execution._history_modal')
     </div>
 @endsection
 
@@ -77,6 +78,8 @@
                 plans: @json(route('pages.Schedual.execution.plans')),
                 receive: @json(route('pages.Schedual.execution.receive')),
                 release: @json(route('pages.Schedual.execution.release')),
+                receiveCleaning: @json(route('pages.Schedual.execution.receive_cleaning')),
+                history: @json(route('pages.Schedual.execution.history')),
             };
             const STATE_META = @json($ROS::STATE_META);
             const STATE_LABELS = @json($ROS::STATE_LABELS);

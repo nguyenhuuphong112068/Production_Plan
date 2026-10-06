@@ -30,7 +30,8 @@
 
         .rec-body { padding: 14px 14px 40px; }
         .rec-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
-        .rec-shifts { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+        .rec-shifts { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+        .rec-bar .rec-shifts { margin-left: 8px; padding-left: 14px; border-left: 1px solid #cbd5e1; }
         .rec-shifts-label { font-weight: 700; color: var(--navy); }
         .rec-shift { background: #fff; border: 1px solid #d5dde6; border-radius: 999px; padding: 3px 12px; font-size: .85rem; }
         .rec-offline { color: #b91c1c; font-weight: 700; }
@@ -70,6 +71,8 @@
                     <i class="fas fa-sync-alt"></i>
                 </button>
                 <span class="exec-updated">Cập nhật lúc <span id="execUpdatedAt">{{ now()->format('H:i') }}</span> · tự làm mới mỗi phút</span>
+                {{-- Dải ca đang phân công (_record_body) được afterRender() chuyển lên cùng dòng này --}}
+                <span id="recShiftsSlot"></span>
             </div>
 
             <div id="execBoard">
@@ -78,6 +81,7 @@
         </div>
 
         @include('pages.Schedual.execution._receive_modal')
+        @include('pages.Schedual.execution._history_modal')
     </div>
 
     <script src="{{ asset('dataTable/plugins/jquery/jquery.min.js') }}"></script>
@@ -90,6 +94,8 @@
                 plans: @json(route('pages.Schedual.record.plans')),
                 receive: @json(route('pages.Schedual.record.receive')),
                 release: @json(route('pages.Schedual.record.release')),
+                receiveCleaning: @json(route('pages.Schedual.record.receive_cleaning')),
+                history: @json(route('pages.Schedual.record.history')),
             };
 
             @include('pages.Schedual.execution._live_js')
@@ -103,6 +109,9 @@
             const collapsed = new Set(); // công đoạn đang thu gọn, giữ qua các lần tự làm mới
 
             function afterRender() {
+                // Dải ca render cùng lưới phòng (đổi ca thì đổi theo) → đưa lên dòng "Cập nhật lúc"
+                const $shifts = $('#execBoard .rec-shifts');
+                $('#recShiftsSlot').html($shifts.length ? $shifts.detach() : '');
                 $('.exec-stage').each(function() {
                     $(this).toggleClass('collapsed', collapsed.has($(this).attr('data-stage')));
                 });

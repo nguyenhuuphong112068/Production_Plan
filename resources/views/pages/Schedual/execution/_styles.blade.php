@@ -131,6 +131,22 @@
         .exec-room-name { font-weight: 700; color: var(--navy); margin-top: 4px; line-height: 1.25; }
         .exec-room-equip { font-size: .75rem; color: #6b7785; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
+        .exec-room-tools { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+        .exec-hist-btn {
+            width: 28px; height: 28px; border-radius: 50%; border: 1px solid #d5dde6; background: #fff; color: #475569;
+            display: inline-flex; align-items: center; justify-content: center; font-size: .8rem; padding: 0; cursor: pointer;
+        }
+        .exec-hist-btn:hover, .exec-hist-btn:focus { background: var(--navy); border-color: var(--navy); color: #fff; outline: none; }
+        .exec-mh-hist { background: #334155; color: #fff; }
+        .exec-mh-hist .close { color: #fff; opacity: .85; }
+        .exec-hist-wrap { max-height: 65vh; overflow-y: auto; }
+        .exec-hist { font-size: .85rem; margin: 0; }
+        .exec-hist thead th { position: sticky; top: 0; background: #f1f5f9; z-index: 1; font-size: .75rem; text-transform: uppercase; color: #475569; border-top: 0; }
+        .exec-hist td { vertical-align: top; }
+        .exec-hist .h-time { font-weight: 700; white-space: nowrap; }
+        .exec-hist .h-by { display: block; font-size: .75rem; color: #64748b; }
+        .exec-hist .h-open { color: #2563eb; font-weight: 700; }
+        .exec-hist tr.is-open td { background: #eff6ff; }
         .exec-chip {
             background: var(--sc-bg); color: var(--sc); border: 1px solid var(--sc); border-radius: 999px;
             padding: 3px 9px; font-size: .7rem; font-weight: 800; text-transform: uppercase; white-space: nowrap; flex-shrink: 0;
@@ -213,6 +229,7 @@
         }
         .st-preparing .exec-live { --lv-bg: #ecfeff; --lv-bd: #bae6f0; --lv-acc: #06b6d4; --lv-ink: #083344; --lv-strong: #0e7490; }
         .st-paused .exec-live { --lv-bg: #f6f3ff; --lv-bd: #e2dafb; --lv-acc: #8b5cf6; --lv-ink: #2e1065; --lv-strong: #6d28d9; --lv-seg: #7c3aed; --lv-run: #a78bfa; }
+        .st-dirty .exec-live { --lv-bg: #fff4ed; --lv-bd: #fed7b5; --lv-acc: #ea580c; --lv-ink: #431407; --lv-strong: #c2410c; }
         .st-cleaning .exec-live { --lv-bg: #fff8eb; --lv-bd: #fde3b5; --lv-acc: #f59e0b; --lv-ink: #451a03; --lv-strong: #b45309; }
         .st-checking .exec-live { --lv-bg: #f4fbe8; --lv-bd: #d3ebb0; --lv-acc: #65a30d; --lv-ink: #1a2e05; --lv-strong: #4d7c0f; }
         .st-checking .exec-chip i:first-child { animation: exec-blink 1.6s ease-in-out infinite; }
