@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Services\UserRoleSync;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -13,6 +14,8 @@ use Illuminate\Support\Facades\Hash;
  *   employee_assignments.production_code của dòng is_main=1.
  * - userName = employees.code; đã có trong user_management thì bỏ qua.
  * - Mật khẩu ban đầu = MSNV, bắt đổi mật khẩu ở lần đăng nhập đầu tiên.
+ * - Mỗi lần chạy đều bù dòng user_role còn thiếu cho mọi user userGroup = 'Executor' (user tạo bằng cách khác,
+ *   vd. import user_management, không có user_role thì PermissionHelper không cấp quyền của role).
  */
 class CreateExecutorUsers extends Command
 {
@@ -115,6 +118,8 @@ class CreateExecutorUsers extends Command
             return $this->fixGroups($toCreate);
         }
 
+        $this->backfillUserRoles($roleId);
+
         $byPx = collect($toCreate)->countBy('px');
         $this->table(['PX', 'Sẽ tạo'], $byPx->map(fn ($n, $k) => [$k, $n])->values()->all());
         $this->info('Bỏ qua (đã có tài khoản): ' . $skipped);
@@ -144,7 +149,7 @@ class CreateExecutorUsers extends Command
                     'prepareBy' => 'Tạo tự động (users:create-executors)',
                     'created_at' => now(),
                 ]);
-                DB::table('user_role')->insert(['user_id' => $userId, 'role_id' => $roleId]);
+                UserRoleSync::assign($userId, [$roleId]);
                 $bar->advance();
             }
         });
@@ -154,6 +159,26 @@ class CreateExecutorUsers extends Command
         $this->info('Đã tạo ' . count($toCreate) . ' tài khoản Executor.');
 
         return self::SUCCESS;
+    }
+
+    /** user_management.userGroup = 'Executor' mà chưa có dòng user_role của role Executor → thêm */
+    private function backfillUserRoles(int $roleId): void
+    {
+        $missing = DB::table('user_management as u')
+            ->where('u.userGroup', 'Executor')
+            ->whereNotExists(fn ($q) => $q->from('user_role as ur')->whereColumn('ur.user_id', 'u.id')->where('ur.role_id', $roleId))
+            ->pluck('u.id');
+
+        if ($missing->isEmpty()) {
+            return;
+        }
+        if ($this->option('dry-run')) {
+            $this->warn("Thiếu user_role: {$missing->count()} user Executor (dry-run: chưa bù).");
+            return;
+        }
+
+        DB::table('user_role')->insertOrIgnore($missing->map(fn ($id) => ['user_id' => $id, 'role_id' => $roleId])->all());
+        $this->info("Đã bù user_role cho {$missing->count()} user Executor.");
     }
 
     // Tổ chính: tổ có nhiều dòng phân công nhất (mỗi phòng 1 dòng)

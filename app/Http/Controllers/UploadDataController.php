@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use App\Services\UserRoleSync;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 // use mysqli;
@@ -294,7 +295,14 @@ class UploadDataController extends Controller
             }
         }
 
-        return back()->with('success', "✅ Đã import $inserted dòng vào bảng [$table] thành công!");
+        // Import user không kèm user_role → thêm user_role theo userGroup cho user chưa có role (UserRoleSync)
+        $note = '';
+        if ($table === 'user_management') {
+            $filled = UserRoleSync::fillMissingFromUserGroup();
+            $note = $filled ? " Đã thêm user_role cho $filled user theo userGroup." : '';
+        }
+
+        return back()->with('success', "✅ Đã import $inserted dòng vào bảng [$table] thành công!" . $note);
     }
 
 

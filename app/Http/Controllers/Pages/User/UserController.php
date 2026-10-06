@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Pages\User;
 
 use App\Http\Controllers\Controller;
+use App\Services\UserRoleSync;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -102,14 +103,8 @@ class UserController extends Controller
                         'created_at' => now(),
                 ]);
 
-                $rolesToInsert = [];
-                foreach ($userGroups as $role_id) {
-                    $rolesToInsert[] = [
-                        'user_id' => $user_id,
-                        'role_id' => $role_id
-                    ];
-                }
-                DB::table('user_role')->insert($rolesToInsert);
+                // user_role + userGroup (role chính) ghi cùng lúc
+                UserRoleSync::assign($user_id, $userGroups);
 
                 return redirect()->back()->with('success', 'Đã thêm thành công!');    
         }
@@ -146,11 +141,9 @@ class UserController extends Controller
                 } 
                 
                 $userGroups = $request->userGroup;
-                $primaryRoleName = DB::table('roles')->where('id', $userGroups[0])->value('name');
 
                 $updateData = [
                     'fullName' => $request->fullName,
-                    'userGroup' => $primaryRoleName,
                     'deparment' => $request->deparment,
                     'groupName' => $request->groupName,
                     'mail' => $request->mail,
@@ -165,16 +158,8 @@ class UserController extends Controller
 
                 DB::table('user_management')->where('id', $request->id)->update($updateData);
 
-                // Sync roles
-                DB::table('user_role')->where('user_id', $request->id)->delete();
-                $rolesToInsert = [];
-                foreach ($userGroups as $role_id) {
-                    $rolesToInsert[] = [
-                        'user_id' => $request->id,
-                        'role_id' => $role_id
-                    ];
-                }
-                DB::table('user_role')->insert($rolesToInsert);
+                // user_role + userGroup (role chính) ghi cùng lúc
+                UserRoleSync::assign((int) $request->id, $userGroups);
 
                 return redirect()->back()->with('success', 'Đã cập nhật thành công!');   
         }

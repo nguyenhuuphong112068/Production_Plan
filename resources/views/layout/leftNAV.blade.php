@@ -626,7 +626,7 @@
                             </li>
                         @endif
 
-                        @if (user_has_permission(session('user')['userId'], 'layout_production_record', 'boolean'))
+                        {{-- @if (user_has_permission(session('user')['userId'], 'layout_production_record', 'boolean'))
                             <li class="nav-item">
                                 <a href="{{ route('pages.Schedual.record.index') }}"
                                     class="nav-link {{ str_contains(url()->current(), 'Schedual/record') ? 'active' : '' }}">
@@ -634,7 +634,7 @@
                                     <p>Ghi Nhận Sản Xuất</p>
                                 </a>
                             </li>
-                        @endif
+                        @endif --}}
 
                         {{-- @if (user_has_permission(session('user')['userId'], 'layout_report', 'boolean'))
                             <li class="nav-item">
