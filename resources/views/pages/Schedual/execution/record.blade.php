@@ -95,6 +95,7 @@
                 receive: @json(route('pages.Schedual.record.receive')),
                 release: @json(route('pages.Schedual.record.release')),
                 receiveCleaning: @json(route('pages.Schedual.record.receive_cleaning')),
+                undo: @json(route('pages.Schedual.record.undo')),
                 history: @json(route('pages.Schedual.record.history')),
             };
 

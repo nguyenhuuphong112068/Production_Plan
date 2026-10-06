@@ -191,7 +191,8 @@ const ScheduleTest = () => {
   const sourceWarningEvents = useMemo(() => events.filter(e => e.source_warning), [events]);
 
   // Lịch trùng giờ: chỉ xét lô chưa hoàn thành (finished = 0), cùng phòng (resourceId)
-  // và cùng công đoạn (stage_code), tính cả vệ sinh, bỏ qua Cân NL (stage_code 1, 2).
+  // và cùng công đoạn (stage_code), tính cả vệ sinh, bỏ qua Cân NL (stage_code 1, 2)
+  // và sự kiện BT - HC - TI (stage_code 8).
   // Vị trí lấy theo pendingChanges nếu có để thấy ngay khi vừa kéo thả, chưa cần lưu.
   const [overlapIndex, setOverlapIndex] = useState(-1);
   const [showOverlapMarks, setShowOverlapMarks] = useState(true);
@@ -201,7 +202,7 @@ const ScheduleTest = () => {
     events.forEach(e => {
       if (Number(e.finished) !== 0) return;
       const stage = Number(e.stage_code);
-      if (stage === 1 || stage === 2) return;
+      if (stage === 1 || stage === 2 || stage === 8) return;
       const p = pendingById.get(String(e.id));
       const resourceId = p?.resourceId ?? e.resourceId;
       const start = new Date(p?.start ?? e.start).getTime();

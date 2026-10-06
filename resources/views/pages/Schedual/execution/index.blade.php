@@ -79,6 +79,7 @@
                 receive: @json(route('pages.Schedual.execution.receive')),
                 release: @json(route('pages.Schedual.execution.release')),
                 receiveCleaning: @json(route('pages.Schedual.execution.receive_cleaning')),
+                undo: @json(route('pages.Schedual.execution.undo')),
                 history: @json(route('pages.Schedual.execution.history')),
             };
             const STATE_META = @json($ROS::STATE_META);

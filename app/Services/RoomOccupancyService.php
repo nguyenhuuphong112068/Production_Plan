@@ -59,6 +59,19 @@ class RoomOccupancyService
 
     const MAINTENANCE_TYPE_LABELS = ['BT' => 'Bảo trì', 'TI' => 'Tiện ích', 'HC' => 'Hiệu chuẩn'];
 
+    // Hoàn tác (06/10/2026): chỉ thao tác MỚI NHẤT của phòng, do chính người đó bấm, trong 2 phút. Quyền = quyền của thao tác gốc.
+    const UNDO_SECONDS = 120;
+    const UNDO_ACTIONS = [
+        'Nhận phòng'                => 'execution_receive',
+        'Nhận phòng vệ sinh sau BT' => 'execution_receive_cleaning',
+        'Trả phòng'                 => 'execution_release',
+        'Trả phòng vệ sinh sau BT'  => 'execution_release',
+    ];
+    const UNDO_PREFIX = 'Hoàn tác ';
+    // Ghi vào audittriallog.new_values của dòng Nhận phòng khi lô chưa gán phòng được gán vào phòng (để hoàn tác bỏ gán)
+    const ASSIGNED_MARK = ' · gán phòng';
+    const REROUTE_AUDIT = 'Tịnh tuyến khi Trả phòng';
+
     // Công đoạn được nhận phòng cho nhiều lô cùng lúc (Cân NL, Cân NL Khác): các lô phải cùng mã BTP
     const GROUP_STAGES = [1, 2];
 
@@ -182,6 +195,67 @@ class RoomOccupancyService
             $room->stage_group = in_array((int) $room->stage_code, self::GROUP_STAGES, true) ? 1 : (int) $room->stage_code;
             $room->staff = $staff->get($room->id, collect());
         }
+
+        $undos = $this->pendingUndos($ids, $rooms->mapWithKeys(fn($r) => [$r->id => $r->st->state])->all());
+        foreach ($rooms as $room) {
+            $room->undo = $undos[$room->id] ?? null;
+        }
+    }
+
+    /**
+     * Thao tác hoàn tác được của từng phòng (room id => {action, plan_ids, until, permission, assigned}).
+     * Điều kiện: là thao tác mới nhất của phòng (audittriallog, kể cả dòng "Hoàn tác ..."), do người đang đăng nhập bấm,
+     * trong UNDO_SECONDS, và trạng thái hiện tại của phòng đúng là kết quả của thao tác đó.
+     * stage_plan không có cột người / giờ thao tác nên đọc từ audittriallog.
+     */
+    private function pendingUndos(array $roomIds, array $states): array
+    {
+        $user = session('user')['userName'] ?? null;
+        if (!$user || !$roomIds) {
+            return [];
+        }
+
+        $actions = array_keys(self::UNDO_ACTIONS);
+        $rows = DB::table('audittriallog as a')
+            ->join('stage_plan as sp', 'sp.id', '=', 'a.record_Id_AuditTrial')
+            ->where('a.table_Audit', 'stage_plan')
+            ->where('a.created_at', '>=', now()->subSeconds(self::UNDO_SECONDS))
+            ->whereIn('a.action', array_merge($actions, array_map(fn($x) => self::UNDO_PREFIX . $x, $actions)))
+            ->whereIn('sp.resourceId', $roomIds)
+            ->orderByDesc('a.created_at')
+            ->orderByDesc('a.id')
+            ->get(['a.action', 'a.userName', 'a.created_at', 'a.new_values', 'a.record_Id_AuditTrial as plan_id', 'sp.resourceId']);
+
+        $expected = [
+            'Nhận phòng'                => [self::BUSY],
+            'Nhận phòng vệ sinh sau BT' => [self::CLEANING],
+            'Trả phòng'                 => [self::READY, self::CLEAN_WAIT],
+            'Trả phòng vệ sinh sau BT'  => [self::READY],
+        ];
+
+        $result = [];
+        foreach ($rows->groupBy('resourceId') as $roomId => $list) {
+            $first = $list->first();
+            if (!isset(self::UNDO_ACTIONS[$first->action]) || $first->userName !== $user
+                || !in_array($states[$roomId] ?? null, $expected[$first->action], true)) {
+                continue;
+            }
+
+            // Cùng lượt thao tác: cùng hành động + người, gần nhau vài giây (phòng cân nhiều lô, bảo trì nhiều thiết bị)
+            $t = Carbon::parse($first->created_at);
+            $group = $list->filter(fn($r) => $r->action === $first->action && $r->userName === $user
+                && abs(Carbon::parse($r->created_at)->diffInSeconds($t)) <= 5);
+
+            $result[$roomId] = (object) [
+                'action'     => $first->action,
+                'plan_ids'   => $group->pluck('plan_id')->unique()->values()->all(),
+                'assigned'   => $group->filter(fn($r) => str_contains((string) $r->new_values, self::ASSIGNED_MARK))->pluck('plan_id')->all(),
+                'until'      => $t->copy()->addSeconds(self::UNDO_SECONDS),
+                'permission' => self::UNDO_ACTIONS[$first->action],
+            ];
+        }
+
+        return $result;
     }
 
     /**
@@ -575,9 +649,11 @@ class RoomOccupancyService
             }
 
             $labels = $this->planDetails($stagePlanIds)->pluck('label', 'id');
+            $assigned = $plans->whereNull('resourceId')->pluck('id')->all();
             foreach ($labels as $id => $label) {
                 AuditTrialController::log('Nhận phòng', 'stage_plan', $id, 'NA',
-                    'Phòng ' . $room->code . ' · actual_start ' . $now->format('Y-m-d H:i:s') . ' · ' . $label);
+                    'Phòng ' . $room->code . ' · actual_start ' . $now->format('Y-m-d H:i:s') . ' · ' . $label
+                    . (in_array($id, $assigned) ? self::ASSIGNED_MARK : ''));
             }
 
             return '✅ Đã nhận phòng ' . $room->code . ' lúc ' . $now->format('H:i') . ' cho ' . $labels->implode(', ');
@@ -635,6 +711,10 @@ class RoomOccupancyService
         foreach ($stagePlanIds as $id) {
             try {
                 $r = app(ScheduleRerouteService::class)->rerouteOnRelease((int) $id);
+                if ($r['run_code']) {
+                    // Để hoàn tác Trả phòng khôi phục luôn lịch đã tịnh tuyến
+                    AuditTrialController::log(self::REROUTE_AUDIT, 'stage_plan', $id, 'NA', $r['run_code']);
+                }
                 $result['count'] += count($r['changes']);
                 $result['delta'] = $result['delta'] ?: $r['delta_minutes'];
                 $result['cleaning_moved'] = $result['cleaning_moved'] || $r['source_cleaning_moved'];
@@ -665,6 +745,85 @@ class RoomOccupancyService
 
             return '✅ Đã nhận phòng ' . $room->code . ' vệ sinh sau BT lúc ' . $now->format('H:i');
         });
+    }
+
+    /**
+     * Hoàn tác thao tác mới nhất của phòng (Nhận phòng / Nhận phòng vệ sinh sau BT / Trả phòng), trong UNDO_SECONDS,
+     * chỉ người đã bấm. Trả phòng: lịch đã tịnh tuyến cũng được khôi phục (lô nào đã bị đổi lịch lần nữa thì giữ nguyên).
+     * Không hoàn tác được khi lô đã đi tiếp ở trang Xác nhận hoàn thành (✓ sau Nhận phòng, ✓✓ sau Trả phòng).
+     */
+    public function undo(int $roomId): string
+    {
+        return DB::transaction(function () use ($roomId) {
+            [$room, $state] = $this->lockState($roomId, [self::READY, self::BUSY, self::CLEAN_WAIT, self::CLEANING]);
+
+            $undo = $this->pendingUndos([$room->id], [$room->id => $state])[$room->id] ?? null;
+            if (!$undo) {
+                throw new ProductionExecutionException('⚠️ Không còn hoàn tác được: chỉ hoàn tác thao tác mới nhất của phòng, do chính bạn bấm, trong '
+                    . (self::UNDO_SECONDS / 60) . ' phút. Đã tải lại thông tin phòng.', 409);
+            }
+
+            $plans = DB::table('stage_plan')->whereIn('id', $undo->plan_ids)->get(['id', 'stage_code', 'finished', 'actual_end', 'actual_start_clearning', 'title']);
+            $labels = $this->planDetails($undo->plan_ids)->pluck('label', 'id');
+            $note = '';
+
+            foreach ($plans as $p) {
+                $name = $labels[$p->id] ?? $p->title;
+                $maint = (int) $p->stage_code === self::MAINTENANCE_STAGE;
+
+                switch ($undo->action) {
+                    case 'Nhận phòng':
+                        if ((int) $p->finished === 1 || $p->actual_end) {
+                            throw new ProductionExecutionException("❌ Lô \"$name\" đã được xác nhận ở trang Xác nhận hoàn thành, không hoàn tác Nhận phòng được", 409);
+                        }
+                        $update = ['actual_start' => null] + (in_array($p->id, $undo->assigned) ? ['resourceId' => null] : []);
+                        break;
+                    case 'Nhận phòng vệ sinh sau BT':
+                        $update = ['actual_start_clearning' => null];
+                        break;
+                    case 'Trả phòng':
+                        if ($p->actual_start_clearning) {
+                            throw new ProductionExecutionException("❌ Lô \"$name\" đã xác nhận vệ sinh (✓✓), không hoàn tác Trả phòng được", 409);
+                        }
+                        $update = [$maint ? 'actual_end' : 'actual_end_clearning' => null];
+                        $note .= $this->undoReroute((int) $p->id);
+                        break;
+                    default: // Trả phòng vệ sinh sau BT
+                        $update = ['actual_end_clearning' => null];
+                }
+
+                DB::table('stage_plan')->where('id', $p->id)->update($update);
+                AuditTrialController::log(self::UNDO_PREFIX . $undo->action, 'stage_plan', $p->id, 'NA',
+                    'Phòng ' . $room->code . ' · ' . implode(', ', array_keys($update)) . ' = NULL · ' . $name);
+            }
+
+            return '✅ Đã hoàn tác ' . mb_strtolower($undo->action) . ' ' . $room->code . $note;
+        });
+    }
+
+    /** Khôi phục lịch đã tịnh tuyến lúc Trả phòng của 1 lô (mã lần chạy lưu ở audittriallog); trả đoạn ghi chú cho thông báo */
+    private function undoReroute(int $stagePlanId): string
+    {
+        $code = DB::table('audittriallog')
+            ->where('table_Audit', 'stage_plan')
+            ->where('action', self::REROUTE_AUDIT)
+            ->where('record_Id_AuditTrial', $stagePlanId)
+            ->where('created_at', '>=', now()->subSeconds(self::UNDO_SECONDS + 10))
+            ->orderByDesc('id')
+            ->value('new_values');
+        if (!$code) {
+            return '';
+        }
+
+        try {
+            $r = app(ScheduleRerouteService::class)->undo((string) $code);
+
+            return " · đã khôi phục lịch tịnh tuyến ({$r['restored']} lô" . ($r['skipped'] ? ", bỏ qua {$r['skipped']} lô đã đổi lịch" : '') . ')';
+        } catch (\Throwable $e) {
+            Log::error('[Reroute] Hoàn tác tịnh tuyến khi hoàn tác Trả phòng thất bại cho stage_plan ' . $stagePlanId, ['error' => $e->getMessage()]);
+
+            return ' · không khôi phục được lịch tịnh tuyến (đã ghi log)';
+        }
     }
 
     /**

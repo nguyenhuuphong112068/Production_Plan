@@ -45,6 +45,15 @@
                         (planned - sec < 60 ? 'đúng lịch' : 'còn ' + dur((planned - sec) * 1000)));
                     $(this).closest('.exec-live').find('.exec-progress > div').css('width', Math.min(100, sec / planned * 100) + '%');
                 });
+                // Nút Hoàn tác: đếm ngược thời gian còn được hoàn tác, hết hạn thì bỏ nút (server cũng chặn)
+                $('.js-undo').each(function() {
+                    const left = Math.ceil((new Date($(this).attr('data-until')) - now) / 1000);
+                    if (left <= 0) {
+                        $(this).remove();
+                        return;
+                    }
+                    $(this).find('.js-undo-left').text(`${Math.floor(left / 60)}:${pad(left % 60)}`);
+                });
                 // Giờ hệ thống trong modal / đầu trang (thời gian ghi nhận = lúc bấm nút)
                 $('.js-now').text(`${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())} ${pad(now.getDate())}/${pad(now.getMonth() + 1)}`);
             }

@@ -247,6 +247,7 @@ Route::prefix('/Schedual')
                                 Route::post('receive', 'receive')->name('receive');
                                 Route::post('release', 'release')->name('release');
                                 Route::post('receive_cleaning', 'receiveCleaning')->name('receive_cleaning');
+                                Route::post('undo', 'undo')->name('undo');
                                 // Công tắc tịnh tuyến lịch: trang Xác nhận hoàn thành đang dùng
                                 Route::post('reroute_switch', 'rerouteSwitch')->name('reroute_switch');
                         });
@@ -262,6 +263,7 @@ Route::prefix('/Schedual')
                                 Route::post('receive', 'receive')->name('receive');
                                 Route::post('release', 'release')->name('release');
                                 Route::post('receive_cleaning', 'receiveCleaning')->name('receive_cleaning');
+                                Route::post('undo', 'undo')->name('undo');
                         });
 
                 Route::prefix('/quarantine_room')

@@ -238,6 +238,22 @@
                 });
             }
 
+            /* ---------- Hoàn tác thao tác vừa rồi (trong 2 phút, đếm ngược ở _live_js) ---------- */
+            function confirmUndo(label) {
+                Swal.fire({
+                    icon: 'question',
+                    title: 'Hoàn tác ' + label + '?',
+                    html: 'Phòng <b>' + esc(ctx.room) + '</b> sẽ trở về trạng thái trước đó (giờ đã ghi bị xóa).<br>' +
+                        '<small>Nếu đã Trả phòng và có tịnh tuyến lịch thì lịch cũng được khôi phục.</small>',
+                    showCancelButton: true,
+                    confirmButtonText: 'Hoàn tác',
+                    cancelButtonText: 'Không',
+                    confirmButtonColor: '#dc2626',
+                }).then(r => {
+                    if (r.isConfirmed) send(R.undo, {}, null);
+                });
+            }
+
             /* ---------- Lịch sử nhận trả phòng (chỉ xem) ---------- */
             function openHistory(roomId, roomName) {
                 const $m = $('#execHistoryModal');
@@ -286,5 +302,7 @@
                         return confirmRelease();
                     case 'receive_cleaning':
                         return confirmReceiveCleaning();
+                    case 'undo':
+                        return confirmUndo($(this).data('label'));
                 }
             });

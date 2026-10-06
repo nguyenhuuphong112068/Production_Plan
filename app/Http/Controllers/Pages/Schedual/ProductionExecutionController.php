@@ -20,6 +20,12 @@ use Illuminate\Support\Facades\DB;
  */
 class ProductionExecutionController extends Controller
 {
+        private const PERMISSION_DENIED = [
+                'execution_receive'          => '❌ Bạn không có quyền Nhận phòng (Thực Thi SX: Nhận Phòng)',
+                'execution_receive_cleaning' => '❌ Bạn không có quyền Nhận phòng vệ sinh sau bảo trì',
+                'execution_release'          => '❌ Bạn không có quyền Trả phòng (Thực Thi SX: Trả Phòng)',
+        ];
+
         public function __construct(private RoomOccupancyService $service) {}
 
         public function index(Request $request)
@@ -128,6 +134,9 @@ class ProductionExecutionController extends Controller
                 if (!$room) {
                         return response()->json(['message' => $this->roomDeniedMessage()], 403);
                 }
+                if (!$this->can('execution_receive')) {
+                        return response()->json(['message' => self::PERMISSION_DENIED['execution_receive']], 403);
+                }
 
                 $fmt = fn($t) => $t ? Carbon::parse($t)->format('H:i d/m/Y') : null;
 
@@ -191,27 +200,44 @@ class ProductionExecutionController extends Controller
                         (int) $request->room_id,
                         (array) $request->input('stage_plan_ids', []),
                         $this->department()
-                ));
+                ), 'execution_receive');
         }
 
         /** Nhận phòng vệ sinh sau bảo trì: actual_start_clearning = giờ hệ thống */
         public function receiveCleaning(Request $request)
         {
-                return $this->act($request, fn() => $this->service->receiveCleaning((int) $request->room_id));
+                return $this->act($request, fn() => $this->service->receiveCleaning((int) $request->room_id), 'execution_receive_cleaning');
         }
 
         /** Trả phòng: actual_end_clearning (bảo trì: actual_end) = giờ hệ thống; công tắc phân xưởng bật thì tịnh tuyến lịch */
         public function release(Request $request)
         {
-                return $this->act($request, fn() => $this->service->release((int) $request->room_id));
+                return $this->act($request, fn() => $this->service->release((int) $request->room_id), 'execution_release');
+        }
+
+        /**
+         * Hoàn tác thao tác mới nhất của phòng trong 2 phút (RoomOccupancyService::undo). Quyền = quyền của thao tác gốc
+         * (Nhận phòng / Nhận phòng vệ sinh sau BT / Trả phòng).
+         */
+        public function undo(Request $request)
+        {
+                $room = $this->service->room((int) $request->room_id);
+                $permission = $room->undo->permission ?? 'execution_receive';
+
+                return $this->act($request, fn() => $this->service->undo((int) $request->room_id), $permission);
         }
 
         /**
          * Chạy 1 thao tác và trả về thông báo + HTML card phòng mới để trình duyệt thay tại chỗ.
          * Thao tác ghi vào stage_plan nên chờ nếu phân xưởng đang sắp lịch tự động.
          */
-        private function act(Request $request, callable $fn)
+        private function act(Request $request, callable $fn, string $permission)
         {
+                // Quyền thao tác (bảng permissions, nhóm Lịch Sản Xuất - Thực Thi); kiểm tra ở server, không chỉ ẩn nút
+                if (!$this->can($permission)) {
+                        return response()->json(['message' => self::PERMISSION_DENIED[$permission]], 403);
+                }
+
                 $room = $this->ownRoom($request->room_id);
                 if (!$room) {
                         return response()->json(['message' => $this->roomDeniedMessage(), 'gone' => $this->recordMode()], 403);
@@ -298,6 +324,11 @@ class ProductionExecutionController extends Controller
                 }
 
                 return $room;
+        }
+
+        private function can(string $permission): bool
+        {
+                return user_has_permission(session('user')['userId'] ?? 0, $permission, 'boolean');
         }
 
         private function department(): ?string

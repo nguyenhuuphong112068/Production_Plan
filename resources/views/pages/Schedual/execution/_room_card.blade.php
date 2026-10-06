@@ -189,22 +189,47 @@
             @endif
         </div>
 
+        {{-- Nút theo quyền (bảng permissions): Nhận phòng / Nhận phòng vệ sinh sau BT / Trả phòng; không có quyền thì không hiện nút --}}
         @unless ($readonly)
-            <div class="exec-room-actions">
-                @if ($busy || $cleaning)
-                    <button type="button" class="btn btn-exec btn-exec-stop js-act" data-act="release">
-                        <i class="fas fa-sign-out-alt"></i> Trả phòng
-                    </button>
-                @elseif ($cleanWait)
-                    <button type="button" class="btn btn-exec btn-exec-clean js-act" data-act="receive_cleaning">
-                        <i class="fas fa-broom"></i> Nhận phòng vệ sinh sau BT
-                    </button>
-                @else
-                    <button type="button" class="btn btn-exec btn-exec-go js-act" data-act="receive">
-                        <i class="fas fa-door-open"></i> Nhận phòng
-                    </button>
-                @endif
-            </div>
+            @php
+                $uid = session('user')['userId'] ?? 0;
+                $canRelease = user_has_permission($uid, 'execution_release', 'boolean');
+                $canReceiveCleaning = user_has_permission($uid, 'execution_receive_cleaning', 'boolean');
+                $canReceive = user_has_permission($uid, 'execution_receive', 'boolean');
+                // Hoàn tác thao tác vừa rồi của chính mình trong 2 phút (quyền = quyền của thao tác gốc)
+                $undo = $room->undo ?? null;
+                $undoLeft = $undo ? (int) now()->diffInSeconds($undo->until, false) : 0;
+                $canUndo = $undoLeft > 0 && user_has_permission($uid, $undo->permission, 'boolean');
+            @endphp
+            @if ((($busy || $cleaning) && $canRelease) || ($cleanWait && $canReceiveCleaning) || (!$busy && !$cleaning && !$cleanWait && $canReceive) || $canUndo)
+                <div class="exec-room-actions">
+                    @if ($busy || $cleaning)
+                        @if ($canRelease)
+                            <button type="button" class="btn btn-exec btn-exec-stop js-act" data-act="release">
+                                <i class="fas fa-sign-out-alt"></i> Trả phòng
+                            </button>
+                        @endif
+                    @elseif ($cleanWait)
+                        @if ($canReceiveCleaning)
+                            <button type="button" class="btn btn-exec btn-exec-clean js-act" data-act="receive_cleaning">
+                                <i class="fas fa-broom"></i> Nhận phòng vệ sinh sau BT
+                            </button>
+                        @endif
+                    @elseif ($canReceive)
+                        <button type="button" class="btn btn-exec btn-exec-go js-act" data-act="receive">
+                            <i class="fas fa-door-open"></i> Nhận phòng
+                        </button>
+                    @endif
+                    @if ($canUndo)
+                        <button type="button" class="btn btn-exec btn-exec-undo js-act js-undo" data-act="undo"
+                            data-label="{{ mb_strtolower($undo->action) }}" data-until="{{ $undo->until->format('Y-m-d\TH:i:s') }}"
+                            title="Hoàn tác {{ mb_strtolower($undo->action) }} vừa rồi, chỉ trong 2 phút">
+                            <i class="fas fa-undo-alt"></i> Hoàn tác
+                            (<span class="js-undo-left">{{ sprintf('%d:%02d', intdiv($undoLeft, 60), $undoLeft % 60) }}</span>)
+                        </button>
+                    @endif
+                </div>
+            @endif
         @endunless
     </div>
 </div>
