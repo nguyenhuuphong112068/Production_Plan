@@ -26,10 +26,7 @@ class WipControlController extends Controller
             'max_dh'          => $row && $row->max_dh_dvl !== null ? (float) $row->max_dh_dvl : null,
             'max_bp'          => $row && $row->max_bp_dvl !== null ? (float) $row->max_bp_dvl : null,
             'max_dg'          => $row && $row->max_dg_dvl !== null ? (float) $row->max_dg_dvl : null,
-            'iterations'      => $row->max_iterations ?? (int) config('wip_control.default_iterations', 5),
             'lock_validation' => (bool) ($row->lock_validation ?? false),
-            'prioritize_non_coated' => (bool) ($row->prioritize_non_coated ?? true),
-            'max_iterations'  => (int) config('wip_control.max_iterations', 10),
         ]);
     }
 
@@ -43,16 +40,16 @@ class WipControlController extends Controller
         $userName = session('user.fullName');
 
         $wip = (array) $request->input('wip_control', []);
-        $maxIterations = (int) config('wip_control.max_iterations', 10);
 
         $limits = [
             'DH' => $this->number($wip['max_dh'] ?? null),
             'BP' => $this->number($wip['max_bp'] ?? null),
             'DG' => $this->number($wip['max_dg'] ?? null),
         ];
-        $iterations = max(1, min($maxIterations, (int) ($wip['iterations'] ?? config('wip_control.default_iterations', 5))));
+        // Số vòng lặp và đệm an toàn cố định theo cấu hình plugin, người dùng không chỉnh trên modal
+        $iterations = (int) config('wip_control.default_iterations', 10);
         $lockValidation = false;   // lô thẩm định luôn được lùi (đã bỏ tuỳ chọn trên modal)
-        $prioritize = filter_var($wip['prioritize_non_coated'] ?? true, FILTER_VALIDATE_BOOLEAN);
+        $pullBuffer = (int) config('wip_control.safety_buffer_hours', 24);
 
         // Lưu làm giá trị mặc định cho lần sau, độc lập với wip_stock_limits
         $values = [
@@ -61,7 +58,8 @@ class WipControlController extends Controller
             'max_dg_dvl'      => $limits['DG'],
             'max_iterations'  => $iterations,
             'lock_validation' => $lockValidation ? 1 : 0,
-            'prioritize_non_coated' => $prioritize ? 1 : 0,
+            'pull_buffer_hours' => $pullBuffer,
+            'bp_strategy'     => 'gate_shift',   // chỉ còn chế độ ngưng nguồn, cho BP lùi
             'updated_by'      => $userName,
             'updated_at'      => now(),
         ];
@@ -111,7 +109,7 @@ class WipControlController extends Controller
                 'limits'          => $limits,
                 'iterations'      => $iterations,
                 'lock_validation' => $lockValidation,
-                'prioritize_non_coated' => $prioritize,
+                'pull_buffer_hours' => $pullBuffer,
                 'selected_step'   => $stepCode,
                 'start_date'      => $startDate,
                 'request'         => $request,

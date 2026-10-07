@@ -65,7 +65,7 @@ DB::beginTransaction();
 try {
     $t = microtime(true);
     $r = app(WipThrottleService::class)->run(['production_code' => $prod, 'limits' => $limits, 'iterations' => $iter,
-        'lock_validation' => false, 'prioritize_non_coated' => getenv('NOMIX') ? false : true, 'selected_step' => 7, 'start_date' => Carbon::now()->setTime(6,0), 'request' => $req]);
+        'lock_validation' => false, 'prioritize_non_coated' => getenv('NOMIX') ? false : true, 'pull_mode' => (bool) getenv('PULL'), 'gate_mode' => getenv('GATE') ?: null, 'pull_buffer_hours' => getenv('BUFFER') !== false ? (int) getenv('BUFFER') : 24, 'selected_step' => 7, 'start_date' => Carbon::now()->setTime(6,0), 'request' => $req]);
     echo "Chạy: " . round(microtime(true) - $t, 1) . "s, peak mem " . round(memory_get_peak_usage(true)/1048576) . "MB\n";
     $ia = $integrity();
     echo "Đè giờ cùng phòng: trước " . count($ib['overlap']) . ", sau " . count($ia['overlap']) . ", MỚI: " . json_encode(array_values(array_diff($ia['overlap'], $ib['overlap']))) . "
@@ -87,12 +87,41 @@ try {
 "; }
         foreach (DB::table('stage_plan')->whereIn('id', $w)->get(['id','plan_master_id','stage_code','resourceId','start','end','end_clearning','overlap']) as $r) echo "AFTER " . json_encode($r) . "
 "; }
+    $rv = 0; foreach ($trace as $t) { if ($t[0] === 'revert') $rv++; if (str_starts_with((string) $t[0], 'broken')) $bk[$t[0]] = ($bk[$t[0]] ?? 0) + 1; if ($t[0] === 'pull') { echo "  hỏng: " . json_encode($bk ?? []) . "
+"; $bk = []; } if (in_array($t[0], ['pull', 'pull_retry', 'pull_resequence'], true)) { echo "PULL " . json_encode($t) . " (trả về trước đó: $rv)
+"; $rv = 0; } if ($t[0] === 'unschedule') echo "UNSCHED top {$t[1]}: " . count($t[2]) . " lô
+"; } echo "trả về sau cùng: $rv
+";
+    if (getenv('SHOWLATE')) foreach ($trace as $t) if ($t[0] === 'late') echo "LATE " . json_encode($t, JSON_UNESCAPED_UNICODE) . "
+";
     foreach ($trace as $t) if ($t[0] === 'mix_try') echo "MIX thử x{$t[1]}: {$t[2]} lô, trả về {$t[3]}
 ";
     foreach ($trace as $t) if ($t[0] === 'mix') echo "MIX: lùi {$t[1]} lô bao phim, kéo {$t[2]} lô không bao phim, ngân sách {$t[3]}h / dùng {$t[4]}h (CĐ {$t[5]})
 ";
     foreach ($trace as $t) { if (in_array(11381, (array) ($t[2] ?? $t[1]))) echo "TRACE 11381: " . json_encode($t) . "
 "; }
+    if ($dd = getenv('DIAG')) {
+        // Thành phần tồn Chờ BP lúc 06:00 ngày DIAG sau khi chạy: đã vào kho / còn dư thời gian / đã sát BP
+        $cov = app(App\Services\WipCoverageService::class); $atD = Carbon::now()->setTime(6, 0);
+        $lots = $cov->ledgers($prod, $atD, 30)['ledgers']['BP'] ?? []; $m = "$dd 06:00:00"; $cls = [];
+        foreach ($lots as $l) { $q = $cov->lotStockAtMoment($l, $m); if ($q <= 0) continue; $pm = $l['plan_master_id'];
+            $dh = DB::table('stage_plan')->where('plan_master_id', $pm)->where('stage_code', 5)->where('active', 1)->first(['start','end','actual_start','finished','resourceId']);
+            $bp = DB::table('stage_plan')->where('plan_master_id', $pm)->where('stage_code', 6)->where('active', 1)->value('start');
+            if (strtotime($l['entry']) < $atD->getTimestamp() || $dh->actual_start || $dh->finished) $k = 'đã vào kho / ĐH đã chạy';
+            elseif (! $bp) $k = 'chưa có lịch BP';
+            else { $slack = (strtotime($bp) - strtotime($dh->end)) / 3600; $k = $slack <= 48 ? 'ĐH xong ≤ 48h trước BP' : ($slack <= 120 ? 'dư 2–5 ngày' : 'dư > 5 ngày');
+                if ($slack > 48) echo "  DƯ {$l['batch']} ĐH@{$dh->resourceId} {$dh->start}→{$dh->end} BP {$bp} " . round($slack) . "h " . number_format($q) . "
+"; }
+            $cls[$k] = ($cls[$k] ?? 0) + $q; }
+        foreach ($cls as $k => $q) printf("DIAG %s: %.1f tr
+", $k, $q / 1e6);
+    }
+    $bs = $r['bp_shifted'] ?? []; unset($r['bp_shifted']);
+    echo "BP/ĐG bị đẩy lùi: " . count($bs) . " dòng (" . count(array_unique(array_column($bs, 'plan_master_id'))) . " lô), trễ ngày cần hàng: " . count(array_filter($bs, fn($x) => $x['late'])) . ", lỗi bước ngưng nguồn: " . json_encode($r['gate_error'] ?? null, JSON_UNESCAPED_UNICODE). ", cảnh báo: " . json_encode($r["gate_warnings"] ?? [], JSON_UNESCAPED_UNICODE) . "
+";
+    $hrs = []; foreach ($bs as $x) if ($x['stage'] === 6) $hrs[] = (strtotime($x['new_start']) - strtotime($x['old_start'])) / 3600;
+    if ($hrs) echo "  BP lùi: " . count($hrs) . " lô, trung bình " . round(array_sum($hrs) / count($hrs)) . "h, lớn nhất " . round(max($hrs)) . "h
+";
     $delayed = $r['delayed']; unset($r['delayed']);
     echo json_encode($r, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) . "\n";
     echo "Kéo sớm: " . count($r["pulled"] ?? []) . "

@@ -56,7 +56,7 @@
                                                                         - <span class="text-info">Cỡ lô:
                                                                             {{ number_format((float) ($ic->intermediateCategory->batch_size ?? 0), 0, ',', '.') }}
                                                                             {{ $ic->intermediateCategory->unit_batch_size ?? '' }}
-                                                                            | ĐVL:
+                                                                            | ĐV:
                                                                             {{ number_format((float) ($ic->intermediateCategory->batch_qty ?? 0), 0, ',', '.') }}
                                                                             {{ $ic->intermediateCategory->unit_batch_qty ?? '' }}</span>
                                                                     </div>

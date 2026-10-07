@@ -183,7 +183,7 @@
                                                                                 Thuyết</span>
                                                                             <span
                                                                                 class="info-box-number">{{ number_format($room->san_luong_ly_thuyet) }}
-                                                                                {{ $room->stage_code >= 5 ? 'ĐVL' : 'Kg' }}</span>
+                                                                                {{ $room->stage_code >= 5 ? 'ĐV' : 'Kg' }}</span>
                                                                         </div>
                                                                     </div>
                                                                 </div>
@@ -209,7 +209,7 @@
                                                                             @endphp
                                                                             <span
                                                                                 class="info-box-number">{{ number_format($room->san_luong_thuc_te) }}
-                                                                                {{ $room->stage_code >= 5 ? 'ĐVL' : 'Kg' }}
+                                                                                {{ $room->stage_code >= 5 ? 'ĐV' : 'Kg' }}
                                                                                 #
                                                                                 {{ $room->stage_code >= 4 ? $H : 'NA' }}
                                                                             </span>

@@ -96,7 +96,7 @@
                             </td>
 
                             <td>
-                                {{ $data->yields }} {{ $stageCode <= 4 ? '(Kg)' : '(ĐVL)' }}
+                                {{ $data->yields }} {{ $stageCode <= 4 ? '(Kg)' : '(ĐV)' }}
                             </td>
                             <td>
                                 {{ $data->number_of_boxes }}

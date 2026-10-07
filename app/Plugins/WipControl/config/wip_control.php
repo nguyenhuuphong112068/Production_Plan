@@ -8,8 +8,8 @@
 return [
     'enabled' => env('WIP_CONTROL_ENABLED', true),
 
-    // Số vòng lặp mặc định và trần người dùng được phép nhập
-    'default_iterations' => 5,
+    // Số vòng lặp mỗi lần chạy (không chỉnh trên modal) và trần
+    'default_iterations' => 10,
     'max_iterations'     => 10,
 
     // Dừng sớm khi tổng lượng vượt không giảm sau bấy nhiêu vòng liên tiếp

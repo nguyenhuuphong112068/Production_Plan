@@ -6259,7 +6259,7 @@ const ScheduleTest = () => {
                 <strong style="color:#991b1b;">Target cả tháng chưa đạt 100%</strong>
               </div>
               <div style="color:#b91c1c;">
-                Hiện tại: <b>${Number(checkResult.total_theory).toLocaleString()}</b> / Target: <b>${Number(checkResult.target_month).toLocaleString()}</b> ĐVL
+                Hiện tại: <b>${Number(checkResult.total_theory).toLocaleString()}</b> / Target: <b>${Number(checkResult.target_month).toLocaleString()}</b> ĐV
                 <strong style="color:#dc2626;float:right;font-size:1.05rem;">(${checkResult.month_pct}%)</strong>
               </div>
             </div>`
@@ -6275,8 +6275,8 @@ const ScheduleTest = () => {
                 <table style="width:100%;border-collapse:collapse;font-size:.84rem;">
                   <thead style="position: sticky; top: 0; background: #f8fafc; z-index: 1; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><tr>
                     <th style="padding:10px;text-align:left;border-bottom:1px solid #e2e8f0;color:#475569;font-weight:600;">Ngày</th>
-                    <th style="padding:10px;text-align:right;border-bottom:1px solid #e2e8f0;color:#475569;font-weight:600;">SL LT (ĐVL)</th>
-                    <th style="padding:10px;text-align:right;border-bottom:1px solid #e2e8f0;color:#475569;font-weight:600;">Target (ĐVL)</th>
+                    <th style="padding:10px;text-align:right;border-bottom:1px solid #e2e8f0;color:#475569;font-weight:600;">SL LT (ĐV)</th>
+                    <th style="padding:10px;text-align:right;border-bottom:1px solid #e2e8f0;color:#475569;font-weight:600;">Target (ĐV)</th>
                     <th style="padding:10px;text-align:center;border-bottom:1px solid #e2e8f0;color:#475569;font-weight:600;">% Đạt</th>
                   </tr></thead>
                   <tbody>${violationRows}</tbody>

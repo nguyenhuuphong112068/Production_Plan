@@ -132,7 +132,7 @@
       @foreach (collect($stageTimeSeries)->sortKeys()  as $stage_code => $data)
           <div class="card card-success mb-4">
             <div class="card-header border-transparent">
-              <h3 class="card-title">Tổng Lượng {{ $stage_name[$stage_code] }} Biệt Trữ Lý Thuyết {{$stage_code <5 ? '(Kg)': '(ĐVL)'}}</h3>
+              <h3 class="card-title">Tổng Lượng {{ $stage_name[$stage_code] }} Biệt Trữ Lý Thuyết {{$stage_code <5 ? '(Kg)': '(ĐV)'}}</h3>
                 <div class="card-tools">
                     <button type="button" class="btn btn-tool" data-card-widget="collapse">
                       <i class="fas fa-minus"></i>

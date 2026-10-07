@@ -153,7 +153,7 @@ const WipCoverageDayDetailModal = ({ request, onHide }) => {
                             body={(row) => (
                                 <span style={{ fontVariantNumeric: 'tabular-nums' }}>
                                     <span style={styles.qtyMain}>{formatFull(row.qty_dvl)}</span>{' '}
-                                    <span style={styles.qtyUnit}>{row.unit || 'ĐVL'}</span>
+                                    <span style={styles.qtyUnit}>{row.unit || 'ĐV'}</span>
                                     {row.qty_kg !== null && row.qty_kg !== undefined && (
                                         <div style={styles.qtyKg}>{formatKg(row.qty_kg)} Kg</div>
                                     )}
@@ -165,7 +165,7 @@ const WipCoverageDayDetailModal = ({ request, onHide }) => {
                     <div style={{ ...styles.footer, background: `${accent}0d`, borderColor: `${accent}33` }}>
                         <span style={styles.footerCount}>{rows.length} lô</span>
                         <span style={styles.footerTotal}>
-                            Tổng <b style={{ color: accent }}>{formatFull(totalDvl)}</b> ĐVL
+                            Tổng <b style={{ color: accent }}>{formatFull(totalDvl)}</b> ĐV
                             {isSupply && totalKg !== null && (
                                 <>
                                     {' '}

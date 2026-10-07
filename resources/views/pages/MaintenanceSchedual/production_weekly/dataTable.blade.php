@@ -317,7 +317,7 @@
                                                                             <span class="badge badge-warning ml-1"
                                                                                 style="color: #000;">SL:
                                                                                 {{ (float) $e->yields }}
-                                                                                {{ $e->stage_code <= 4 ? 'Kg' : 'ĐVL' }}
+                                                                                {{ $e->stage_code <= 4 ? 'Kg' : 'ĐV' }}
                                                                                 {{ $e->yields_batch_qty > 0 ? '(' . $e->yields_batch_qty . ')' : '' }}</span>
                                                                         @endif
                                                                     @endif

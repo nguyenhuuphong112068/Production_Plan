@@ -132,7 +132,7 @@
                                                             <span class="info-box-icon bg-success"><i class="fas fa-crosshairs" style="color: white;"></i></span>
                                                             <div class="info-box-content">
                                                                 <span class="info-box-text">Sản Lượng Lý Thuyết</span>
-                                                                <span class="info-box-number">{{ number_format($stage->san_luong_ly_thuyet) }} {{$stage->stage_code >=5?"ĐVL":"Kg"}}</span>
+                                                                <span class="info-box-number">{{ number_format($stage->san_luong_ly_thuyet) }} {{$stage->stage_code >=5?"ĐV":"Kg"}}</span>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -142,7 +142,7 @@
                                                             <span class="info-box-icon bg-primary"><i class="fas fa-flag-checkered"></i></span>
                                                             <div class="info-box-content">
                                                                 <span class="info-box-text">Sản Lượng Thực Tế</span>
-                                                                <span class="info-box-number">{{number_format($stage->san_luong_thuc_te)}} {{$stage->stage_code >=5?"ĐVL":"Kg"}}</span>
+                                                                <span class="info-box-number">{{number_format($stage->san_luong_thuc_te)}} {{$stage->stage_code >=5?"ĐV":"Kg"}}</span>
                                                             </div>
                                                         </div>
                                                     </div>

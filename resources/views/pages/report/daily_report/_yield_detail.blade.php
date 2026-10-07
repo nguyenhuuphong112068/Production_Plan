@@ -57,7 +57,7 @@
             ({{ $r->start->format('H:i') }} - {{ $r->end->format('H:i') }} = <b>{{ intdiv($minutes, 60) }}h{{ $minutes % 60 }}p</b>)
             @if ($d->yields)
                 || <b>{{ 'Sản Lượng: ' . number_format($d->yields, 2) }} {{ $d->unit }}
-                    {{ $d->yields_batch_qty ? "# $d->yields_batch_qty  ĐVL" : '' }}</b>
+                    {{ $d->yields_batch_qty ? "# $d->yields_batch_qty  ĐV" : '' }}</b>
             @endif
             @if ($d->note && $d->note != 'NA')
                 || <b>{{ 'Ghi Chú: ' . $d->note }}</b>

@@ -60,7 +60,7 @@
                                         <td>
                                             @if ($data->yields > 0)
                                                 {{ number_format($data->yields, 2) }}
-                                                {{ $data->stage_code <= 4 ? '(Kg)' : '(ĐVL)' }} #
+                                                {{ $data->stage_code <= 4 ? '(Kg)' : '(ĐV)' }} #
                                             @endif
                                             {{ $data->number_of_boxes . ' (Thùng)' }}
                                         </td>
@@ -132,7 +132,7 @@
                                     <td>
                                         {{ $data->stage_code <= 5
                                             ? number_format($data->sum_yields, 2) . ' Kg'
-                                            : number_format($data->sum_yields, 0) . ' ĐVL' }}
+                                            : number_format($data->sum_yields, 0) . ' ĐV' }}
                                     </td>
 
                                     <td class="text-center align-middle">
@@ -199,7 +199,7 @@
                                   <td>${item.product_name ?? ''} </td>
                                   <td>${item.batch ?? ''}</td>
                                   <td>${(item.pre_room ?? '')}</td>
-                                  <td>${(item.yields ?? '') + (item.stage_code <= 4 ? " Kg" : " ĐVL")}</td>
+                                  <td>${(item.yields ?? '') + (item.stage_code <= 4 ? " Kg" : " ĐV")}</td>
                                   <td>${stageNameMap[item.next_stage] ?? ''}</td>
                                 
                                   <td>${moment(item.next_start).format('hh:mm DD/MM/YYYY') ?? ''}</td>

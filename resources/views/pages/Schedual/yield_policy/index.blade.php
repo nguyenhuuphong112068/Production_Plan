@@ -626,7 +626,7 @@
             @endphp
             <div class="yp-summary-row">
                 <div class="yp-stat-card {{ $theoryCardColor }}">
-                    <div class="label">Tổng SL Lý Thuyết (ĐVL)</div>
+                    <div class="label">Tổng SL Lý Thuyết (ĐV)</div>
                     <div class="value">{{ number_format($totalTheoryDvl, 0, '.', ',') }}</div>
                     <div class="sub">Đơn vị lớn nhất</div>
                     <div class="icon"><i class="fas fa-box-open"></i></div>
@@ -641,7 +641,7 @@
                     <div class="icon"><i class="fas fa-check-circle"></i></div>
                 </div>
                 <div class="yp-stat-card {{ $summary['days_fail'] > 0 ? 'red' : 'green' }}">
-                    <div class="label">Target Tháng (ĐVL)</div>
+                    <div class="label">Target Tháng (ĐV)</div>
                     <div class="value">
                         @if ($policy && $policy->target_month_dvl)
                             {{ number_format($policy->target_month_dvl, 0, '.', ',') }}
@@ -678,12 +678,12 @@
                     </div>
 
                     <div class="yp-field-group">
-                        <label>Target cả tháng — ĐVL</label>
+                        <label>Target cả tháng — ĐV</label>
                         <div class="input-wrap">
                             <input type="number" id="pol_month_dvl" step="1" min="0"
-                                value="{{ $policy->target_month_dvl ?? '' }}" placeholder="Nhập target/tháng ĐVL..."
+                                value="{{ $policy->target_month_dvl ?? '' }}" placeholder="Nhập target/tháng ĐV..."
                                 {{ !$can_set_yield_policy ? 'disabled' : '' }}>
-                            <span class="unit-badge">ĐVL</span>
+                            <span class="unit-badge">ĐV</span>
                         </div>
                     </div>
 
@@ -691,12 +691,12 @@
 
 
                     <div class="yp-field-group">
-                        <label>Target mỗi ngày — ĐVL</label>
+                        <label>Target mỗi ngày — ĐV</label>
                         <div class="input-wrap">
                             <input type="number" id="pol_daily_dvl" step="1" min="0"
-                                value="{{ $policy->target_daily_dvl ?? '' }}" placeholder="Nhập target/ngày ĐVL..."
+                                value="{{ $policy->target_daily_dvl ?? '' }}" placeholder="Nhập target/ngày ĐV..."
                                 {{ !$can_set_yield_policy ? 'disabled' : '' }}>
-                            <span class="unit-badge">ĐVL/ngày</span>
+                            <span class="unit-badge">ĐV/ngày</span>
                         </div>
                     </div>
 
@@ -821,7 +821,7 @@
                 <div class="yp-chart-card" style="display:flex; flex-direction:column;">
                     <h5>
                         <span><i class="fas fa-chart-bar" style="color:#7c3aed;margin-right:8px;"></i>Biểu Đồ SL Lý Thuyết
-                            vs Target (ĐVL)</span>
+                            vs Target (ĐV)</span>
                     </h5>
                     <div style="position:relative;flex:1;min-height:300px;">
                         <canvas id="yieldChart"></canvas>
@@ -863,8 +863,8 @@
                             <tr>
                                 <th>Ngày</th>
                                 <th>Thứ</th>
-                                <th>SL LT (ĐVL)</th>
-                                <th>Target Ngày (ĐVL)</th>
+                                <th>SL LT (ĐV)</th>
+                                <th>Target Ngày (ĐV)</th>
                                 <th>% Đạt</th>
                                 <th>Trạng Thái</th>
                                 <th></th>
@@ -1045,7 +1045,7 @@
                         labels,
                         datasets: [{
                                 type: 'bar',
-                                label: `SL Lý Thuyết (ĐVL)`,
+                                label: `SL Lý Thuyết (ĐV)`,
                                 data: theory,
                                 backgroundColor: barColors,
                                 borderRadius: 5,
@@ -1086,7 +1086,7 @@
                             tooltip: {
                                 callbacks: {
                                     label: ctx => {
-                                        return ` ${ctx.dataset.label}: ${ctx.parsed.y?.toLocaleString('vi-VN')} ĐVL`;
+                                        return ` ${ctx.dataset.label}: ${ctx.parsed.y?.toLocaleString('vi-VN')} ĐV`;
                                     }
                                 }
                             }

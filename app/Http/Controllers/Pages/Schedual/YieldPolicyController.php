@@ -349,7 +349,7 @@ class YieldPolicyController extends Controller
             $dayStartStr = $dayStart->format('Y-m-d H:i:s');
             $dayEndStr   = $dayEnd->format('Y-m-d H:i:s');
 
-            // SL lý thuyết ĐVL (chỉ tính ở stage_code = 7 - Công đoạn cuối ĐGSC-ĐGTC)
+            // SL lý thuyết ĐV (chỉ tính ở stage_code = 7 - Công đoạn cuối ĐGSC-ĐGTC)
             $dvlRow = DB::table('stage_plan as sp')
                 ->leftJoin('plan_master', 'sp.plan_master_id', '=', 'plan_master.id')
                 ->join('room as r', 'sp.resourceId', '=', 'r.id')

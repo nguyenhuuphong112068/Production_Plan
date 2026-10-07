@@ -338,7 +338,7 @@ const WipCoverage = () => {
                                 tickFormatter={formatDvl}
                                 width={62}
                                 label={{
-                                    value: 'ĐVL',
+                                    value: 'ĐV',
                                     angle: -90,
                                     position: 'insideLeft',
                                     fontSize: 11,
@@ -380,7 +380,7 @@ const WipCoverage = () => {
                                                 );
                                             })}
                                             <div style={styles.tipTotal}>
-                                                Tổng cả phân xưởng <b>{formatFull(total)}</b> ĐVL
+                                                Tổng cả phân xưởng <b>{formatFull(total)}</b> ĐV
                                             </div>
                                             <div style={{ ...styles.tipRow, marginTop: 4 }}>
                                                 <span
@@ -430,7 +430,7 @@ const WipCoverage = () => {
                             <span style={{ ...styles.statDot, background: colorOfGroup(g.group_code) }} />
                             <span style={styles.statName}>{groupLabel(g)}</span>
                             <span style={styles.statCell}>
-                                hiện tại <b>{formatFull(g.stock_dvl)}</b> ĐVL · {g.stock_lots} lô
+                                hiện tại <b>{formatFull(g.stock_dvl)}</b> ĐV · {g.stock_lots} lô
                             </span>
                             <span style={styles.statCell}>
                                 thấp nhất <b>{formatDvl(g.lowest_stock_dvl)}</b>
@@ -474,7 +474,7 @@ const WipCoverage = () => {
                         <span style={{ ...styles.statDot, background: SUPPLY_COLOR }} />
                         <span style={styles.statName}>Pha chế nhập vào</span>
                         <span style={styles.statCell}>
-                            cả kỳ <b>{formatFull(supplyTotal.dvl)}</b> ĐVL ·{' '}
+                            cả kỳ <b>{formatFull(supplyTotal.dvl)}</b> ĐV ·{' '}
                             <b>{formatKg(supplyTotal.kg)}</b> Kg · {supplyTotal.lots} lô
                         </span>
                         <span style={styles.statCell}>
@@ -486,7 +486,7 @@ const WipCoverage = () => {
                     </div>
                     {naGroup && naGroup.stock_dvl > 0 && (
                         <div style={styles.naNote}>
-                            {formatFull(naGroup.stock_dvl)} ĐVL ({naGroup.stock_lots} lô) chưa lần ra được
+                            {formatFull(naGroup.stock_dvl)} ĐV ({naGroup.stock_lots} lô) chưa lần ra được
                             công đoạn sau qua dữ liệu kế hoạch — chưa cộng vào ba công đoạn ở trên.
                         </div>
                     )}
@@ -510,7 +510,7 @@ const WipCoverage = () => {
                                     title="Sản lượng Pha chế đổ vào dây chuyền trong ngày — nguồn cấp bán thành phẩm cho mọi công đoạn sau"
                                 >
                                     Pha chế nhập vào
-                                    <div style={styles.thUnit}>ĐVL · Kg</div>
+                                    <div style={styles.thUnit}>ĐV · Kg</div>
                                 </th>
                                 {groups.map((g) => (
                                     <th
@@ -562,7 +562,7 @@ const WipCoverage = () => {
                                         }
                                         title={
                                             row.supply_dvl > 0
-                                                ? `${formatFull(row.supply_dvl)} ĐVL · ${formatKg(
+                                                ? `${formatFull(row.supply_dvl)} ĐV · ${formatKg(
                                                       row.supply_kg
                                                   )} Kg · ${row.supply_lots} lô — bấm để xem từng lô`
                                                 : 'Không có mẻ Pha chế nào trong ngày'
@@ -608,11 +608,11 @@ const WipCoverage = () => {
                                                         (breach === 'low'
                                                             ? `Dưới giới hạn dưới (${formatFull(
                                                                   limits[c].min_stock_dvl
-                                                              )} ĐVL) — thiếu hàng cho công đoạn sau. `
+                                                              )} ĐV) — thiếu hàng cho công đoạn sau. `
                                                             : breach === 'high'
                                                             ? `Trên giới hạn trên (${formatFull(
                                                                   limits[c].max_stock_dvl
-                                                              )} ĐVL) — ứ hàng, công đoạn sau không tiêu thụ kịp. `
+                                                              )} ĐV) — ứ hàng, công đoạn sau không tiêu thụ kịp. `
                                                             : isLow
                                                             ? 'Mức tồn thấp nhất trong kỳ. '
                                                             : isHigh
@@ -744,7 +744,7 @@ const WipCoverage = () => {
                                             background: active ? hue : '#fff',
                                             borderColor: active ? hue : '#e2e8f0',
                                         }}
-                                        title={`${groupLabel(g)} — ${formatFull(g.stock_dvl)} ĐVL`}
+                                        title={`${groupLabel(g)} — ${formatFull(g.stock_dvl)} ĐV`}
                                     >
                                         {groupLabel(g)}
                                         <span
@@ -781,7 +781,7 @@ const WipCoverage = () => {
                                             <th style={styles.thSmall}>Công đoạn</th>
                                             <th style={styles.thSmall}>Bắt đầu</th>
                                             <th style={{ ...styles.thSmall, textAlign: 'right' }}>
-                                                Lượng (ĐVL)
+                                                Lượng (ĐV)
                                             </th>
                                         </tr>
                                     </thead>
@@ -811,7 +811,7 @@ const WipCoverage = () => {
                                 <span style={{ fontVariantNumeric: 'tabular-nums' }}>
                                     {formatFull(row.stock_dvl)}{' '}
                                     <span style={{ color: '#94a3b8', fontSize: 11 }}>
-                                        {row.unit || 'ĐVL'}
+                                        {row.unit || 'ĐV'}
                                     </span>
                                 </span>
                             )}

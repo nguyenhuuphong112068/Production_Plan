@@ -83,7 +83,7 @@ class StatisticProductController extends Controller
                     DB::raw('
                         CASE 
                             WHEN sp.stage_code <= 4 THEN "Kg"
-                            ELSE "ĐVL"
+                            ELSE "ĐV"
                         END as unit
                     ')
                 )

@@ -14,13 +14,18 @@ import Swal from 'sweetalert2';
 const GROUPS = [
   { key: 'max_dh', label: 'Tồn chờ Định hình (ĐH)' },
   { key: 'max_bp', label: 'Tồn chờ Bao phim (BP)' },
-  { key: 'max_dg', label: 'Tồn chờ Đóng gói (ĐG)' },
+  { key: 'max_dg', label: 'Tồn chờ Đóng gói / Ép vỉ (ĐG)' },
 ];
 
 const GROUP_NAMES = { DH: 'Chờ Định hình', BP: 'Chờ Bao phim', DG: 'Chờ Đóng gói' };
 
-const METHODS = { mix: 'Ngưng nguồn (PC→ĐH)', swap: 'Đổi chỗ', stretch: 'Giãn lịch', reschedule: 'Sắp lại lô' };
-const PULL_METHODS = { mix: 'Ưu tiên ko bao phim (PC→ĐG)', swap: 'Đổi chỗ ĐH' };
+const METHODS = {
+  gate: 'Ngưng nguồn (chờ tồn giảm)',
+  swap: 'Đổi chỗ',
+  stretch: 'Giãn lịch',
+  reschedule: 'Sắp lại lô',
+};
+const PULL_METHODS = { gate: 'Ngưng nguồn: chạy thay', swap: 'Đổi chỗ' };
 
 const STAGE_SHORT = { 3: 'PC', 4: 'THT', 5: 'ĐH', 6: 'BP', 7: 'ĐG' };
 
@@ -68,18 +73,10 @@ export function wipControlSectionHtml() {
             <label class="asm-label" for="wip-${g.key}" style="font-weight:500">${g.label}</label>
             <input id="wip-${g.key}" type="number" min="0" step="1" placeholder="Không giới hạn" class="wip-input" style="${input}">
           </div>`).join('')}
-        <div class="asm-row">
-          <label class="asm-label" for="wip-iterations" style="font-weight:500">Số vòng lặp tối đa</label>
-          <input id="wip-iterations" type="number" min="1" max="10" step="1" value="5" class="wip-input" style="${input}">
-        </div>
-        <div class="asm-row">
-          <label class="asm-label" for="wip-prioritize" style="font-weight:500" title="Khi chờ BP vượt Max: lùi PC→ĐH của lô bao phim tới sát giờ BP, kéo lô không bao phim (PC→ĐG) lên lấp chỗ">Ưu tiên lô không bao phim</label>
-          <label class="switch">
-            <input id="wip-prioritize" type="checkbox" checked>
-            <span class="slider round"></span>
-            <span class="switch-labels"><span class="off">No</span><span class="on">Yes</span></span>
-          </label>
-        </div>
+        <p class="asm-hint">
+          Ngưng nguồn: lô chỉ vào công đoạn nguồn khi tồn nhóm nó sắp vào còn dưới Max, phòng chạy thay lô đi nhóm không cài Max hoặc để trống; lô vì thế trễ thì công đoạn sau lùi theo.<br/>
+          Chờ ĐH → ngưng THT (PC). Chờ BP → ngưng ĐH lô bao phim. Chờ ĐG → ngưng BP và ĐH lô không bao phim. Cài 1, 2 hoặc cả 3 nhóm.
+        </p>
       </div>
     </div>`;
 }
@@ -105,10 +102,6 @@ export function initWipControl() {
         if (el && data[g.key] !== null && data[g.key] !== undefined) el.value = Math.round(data[g.key]);
       });
 
-      const it = document.getElementById('wip-iterations');
-      it.max = data.max_iterations ?? 10;
-      it.value = data.iterations ?? 5;
-      document.getElementById('wip-prioritize').checked = data.prioritize_non_coated !== false;
 
       // Đã từng cài Max thì bật sẵn
       const hasLimit = GROUPS.some((g) => data[g.key] !== null && data[g.key] !== undefined);
@@ -130,9 +123,7 @@ export function collectWipControl() {
     const v = document.getElementById(`wip-${g.key}`)?.value?.trim();
     values[g.key] = v === '' || v === undefined ? null : Number(v);
   });
-  values.iterations = Number(document.getElementById('wip-iterations')?.value) || 5;
   values.lock_validation = false;   // lô thẩm định luôn được lùi
-  values.prioritize_non_coated = !!document.getElementById('wip-prioritize')?.checked;
 
   return values;
 }
@@ -172,7 +163,7 @@ function groupTable(title, summary) {
             <tr>
               <td>${GROUP_NAMES[g.group] ?? esc(g.name)}</td>
               <td style="text-align:right">${fmt(g.max)}</td>
-              <td style="text-align:right;${g.peak > g.max ? 'color:#c0392b;font-weight:700' : ''}">${fmt(g.peak)}${g.peak_date ? ` <small>(${fmtTime(g.peak_date)})</small>` : ''}</td>
+              <td style="text-align:right;${g.peak > g.max ? 'color:#c0392b;font-weight:700' : ''}">${fmt(g.peak)}${g.peak_date ? ` <small>(${fmtTime(g.peak_date)})</small>` : ''}${g.peak_stuck ? `<br/><small style="color:#7f8c8d;font-weight:400" title="Hàng đã vào kho trước ngày sắp lịch: lùi lịch không bớt được">đã vào kho: ${fmt(g.peak_stuck)}</small>` : ''}</td>
               <td style="text-align:center">${g.violation_days}</td>
             </tr>`).join('')}
         </tbody>
@@ -213,6 +204,9 @@ function showReport(data) {
       <td>${fmtTime(d.expected_date)}${d.late ? ' <b style="color:#c0392b">TRỄ</b>' : ''}${d.no_consumer ? ' <small style="color:#7f8c8d">(công đoạn sau chưa có lịch)</small>' : ''}</td>
     </tr>`).join('');
 
+  const shifted = data.bp_shifted ?? [];
+  const shiftedLate = shifted.filter((s) => s.late);
+
   const reasons = Object.entries(data.skipped_by_reason ?? {})
     .sort((a, b) => b[1] - a[1])
     .map(([reason, count]) => `<li>${esc(reason)}: <b>${count}</b> lô</li>`).join('');
@@ -220,6 +214,9 @@ function showReport(data) {
   const warnings = [];
   if (late.length) warnings.push(`<b style="color:#c0392b">${late.length} lô xong phần đã lùi sau ngày cần hàng</b>${late.every((d) => d.no_consumer) ? ' (đều là lô công đoạn sau chưa có lịch)' : ''}.`);
   if (unscheduled.length) warnings.push(`<b style="color:#e67e22">${unscheduled.length} lô chưa sắp lại được</b>, cần xử lý tay.`);
+  if (data.gate_warnings?.length) warnings.push(`<b style="color:#e67e22">Dữ liệu bất thường (giữ nguyên, cần kiểm tra Nhận / Trả phòng):</b><br/>${data.gate_warnings.map(esc).join('<br/>')}`);
+  if (data.gate_error) warnings.push(`<b style="color:#c0392b">Không ngưng nguồn được:</b> ${esc(data.gate_error)}. Lịch giữ nguyên ở bước này.`);
+  if (shifted.length) warnings.push(`<b style="color:#e67e22">${new Set(shifted.map((s) => s.plan_master_id)).size} lô bị lùi công đoạn sau theo</b>${shiftedLate.length ? `, <b style="color:#c0392b">${new Set(shiftedLate.map((s) => s.plan_master_id)).size} lô xong sau ngày cần hàng</b>` : ''}: xem bảng bên dưới.`);
   if (data.new_overdue?.length) warnings.push(`Campaign mới bị quá hạn biệt trữ: <b>${data.new_overdue.map(esc).join(', ')}</b>.`);
   if (delayed.length) warnings.push('Công đoạn tiêu thụ trở về sau giữ nguyên lịch. Đổi chỗ / giãn lịch chỉ dời lô trong cùng phòng; lô "Sắp lại lô" có thể đã lùi Pha chế: kiểm tra và chạy lại lịch <b>Cân NL (CNL)</b>.');
   if ((data.pulled ?? []).length) warnings.push(`${data.pulled.length} lô được kéo lên sớm (đi sang nhóm không cài Max): tồn của nhóm đó sẽ tăng.`);
@@ -241,7 +238,7 @@ function showReport(data) {
         ${rounds ? `
           <div style="font-weight:700;margin:6px 0 4px">Từng vòng</div>
           <table class="table table-sm table-bordered" style="font-size:12px;max-width:820px">
-            <thead><tr><th>Vòng</th><th>Số ngày vượt</th><th>Tổng lượng vượt (viên)</th><th>Ưu tiên ko BP (lùi / kéo)</th><th>Đổi chỗ</th><th>Giãn lịch</th><th>Sắp lại lô</th><th>Trả về lịch cũ</th></tr></thead>
+            <thead><tr><th>Vòng</th><th>Số ngày vượt</th><th>Tổng lượng vượt (viên)</th><th>Ngưng nguồn (lùi / chạy thay)</th><th>Đổi chỗ</th><th>Giãn lịch</th><th>Sắp lại lô</th><th>Trả về lịch cũ</th></tr></thead>
             <tbody>${rounds}</tbody>
           </table>` : ''}
         ${delayed.length ? `
@@ -255,12 +252,21 @@ function showReport(data) {
             </table>
           </div>` : ''}
         ${(data.pulled ?? []).length ? `
-          <div style="font-weight:700;margin:10px 0 4px">Lô không bao phim được kéo lên sớm (${data.pulled.length})</div>
+          <div style="font-weight:700;margin:10px 0 4px">Lô được kéo lên sớm / chạy thay (${data.pulled.length})</div>
           <div style="max-height:220px;overflow:auto">
             <table class="table table-sm table-bordered" style="font-size:12px;max-width:820px">
-              <thead style="position:sticky;top:0;background:#fff"><tr><th>Số lô</th><th>Sản phẩm</th><th>Cách kéo</th><th>Bắt đầu ĐH cũ</th><th>Bắt đầu ĐH mới</th><th>Ngày cần hàng</th></tr></thead>
-              <tbody>${data.pulled.map((p) => `<tr><td>${esc(p.batch)}</td><td>${esc(p.product_name ?? '')}</td><td>${PULL_METHODS[p.method] ?? esc(p.method)}</td>
+              <thead style="position:sticky;top:0;background:#fff"><tr><th>Số lô</th><th>Sản phẩm</th><th>Cách kéo</th><th>Bắt đầu cũ</th><th>Bắt đầu mới</th><th>Ngày cần hàng</th></tr></thead>
+              <tbody>${data.pulled.map((p) => `<tr><td>${esc(p.batch)}</td><td>${esc(p.product_name ?? '')}</td><td>${PULL_METHODS[p.method] ?? esc(p.method)}${p.stage ? ` <small>(${STAGE_SHORT[p.stage] ?? p.stage})</small>` : ''}</td>
                 <td>${p.old_start ? fmtTime(p.old_start) : '<i>chưa có lịch</i>'}</td><td>${fmtTime(p.new_start)}</td><td>${fmtTime(p.expected_date)}</td></tr>`).join('')}</tbody>
+            </table>
+          </div>` : ''}
+        ${shifted.length ? `
+          <div style="font-weight:700;margin:10px 0 4px">Công đoạn sau bị lùi theo (${shifted.length})</div>
+          <div style="max-height:260px;overflow:auto">
+            <table class="table table-sm table-bordered" style="font-size:12px;max-width:900px">
+              <thead style="position:sticky;top:0;background:#fff"><tr><th>Số lô</th><th>Sản phẩm</th><th>Công đoạn</th><th>Bắt đầu cũ</th><th>Bắt đầu mới</th><th>Xong công đoạn cuối</th><th>Ngày cần hàng</th></tr></thead>
+              <tbody>${shifted.map((s) => `<tr style="${s.late ? 'background:#fdecea' : ''}"><td>${esc(s.batch)}</td><td>${esc(s.product_name ?? '')}</td><td>${STAGE_SHORT[s.stage] ?? s.stage}</td>
+                <td>${fmtTime(s.old_start)}</td><td>${fmtTime(s.new_start)}</td><td>${fmtTime(s.last_end)}</td><td>${fmtTime(s.expected_date)}${s.late ? ' <b style="color:#c0392b">TRỄ</b>' : ''}</td></tr>`).join('')}</tbody>
             </table>
           </div>` : ''}
         ${reasons ? `

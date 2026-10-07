@@ -32,7 +32,7 @@
                         <th>Mã Phòng</th>
                         <th>Tên Phòng</th>
                         <th>Thiết Bị Chính</th>
-                        <th>Công Suất (ĐVL/Giờ)</th>
+                        <th>Công Suất (ĐV/Giờ)</th>
                         <th>Công Đoạn</th>
                         <th>Loại Máy Ép Vỉ</th>
                         <th>Tổ Quản Lý</th>

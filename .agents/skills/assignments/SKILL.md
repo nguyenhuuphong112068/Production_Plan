@@ -111,7 +111,7 @@ Kỹ năng này tài liệu hóa quy trình quản lý nhân sự và phân côn
 - ⚠️ **Đính chính quy tắc cũ:** tài liệu trước đây mô tả "với `month = N` thì `day21..day31` thuộc tháng `N-1`, muốn lấy ngày 21-31 của tháng `M` phải gọi `month = M + 1`". Quy tắc này **sai**. Đối chiếu trực tiếp API cũ với API mới (bộ phận 6, tháng 7 và tháng 8/2026) cho thấy `day1..day31` của payload `month = N` **đều thuộc chính tháng `N`** (khớp 100% cả `shift` lẫn `is_holiday`; giả thuyết lệch tháng chỉ khớp ~19-26%). Hệ quả: code cũ đã đọc ngày 21-31 từ payload của **tháng sau**, tức hiển thị sai lịch trực ở 1/3 cuối mỗi tháng. Việc chuyển sang API mới đồng thời sửa luôn lỗi này.
 - **Bảng ánh xạ mã Bộ phận (Department Mapping):**
     - `EN` (Kỹ Thuật): **3**
-    - `PXTN` (Phân xưởng Thuốc Nước): **6**
+    - `PXTN` (Phân xưởng Nước): **6**
     - `PXV1` (Phân xưởng Viên 1): **15**
     - `WH` (Kho): **17**
     - `PXVH` (Phân xưởng Viên H): **30**

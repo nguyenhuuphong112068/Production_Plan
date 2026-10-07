@@ -423,7 +423,7 @@ class SchedualController extends Controller
                 DB::raw('
                         CASE
                                 WHEN sp.stage_code <= 4 THEN "Kg"
-                                ELSE "ĐVL"
+                                ELSE "ĐV"
                         END as unit
                         ')
             )
@@ -446,7 +446,7 @@ class SchedualController extends Controller
                 DB::raw('
                         CASE
                                 WHEN sp.stage_code <= 4 THEN "Kg"
-                                ELSE "ĐVL"
+                                ELSE "ĐV"
                         END as unit
                         ')
             )
@@ -6853,6 +6853,7 @@ class SchedualController extends Controller
             ->where('sp.finished', 0)
             ->where('sp.active', 1)
             ->where('sp.not_schedule', 0)
+            ->whereNotExists($this->laterStageStarted('sp'))
             ->whereNull('sp.start')
             ->whereNotNull('plan_master.after_weigth_date')
             ->whereIn('sp.campaign_code', $vipCampaigns)
@@ -7009,6 +7010,7 @@ class SchedualController extends Controller
             ->where('sp.stage_code', $stageCode)
             ->where('sp.finished', 0)
             ->where('sp.not_schedule', 0)
+            ->whereNotExists($this->laterStageStarted('sp'))
             ->where('sp.active', 1)
             ->whereNull('sp.start')
             ->whereNotNull('plan_master.after_weigth_date')
@@ -7155,6 +7157,7 @@ class SchedualController extends Controller
             ->where('sp.stage_code', $stageCode)
             ->where('sp.finished', 0)
             ->where('sp.not_schedule', 0)
+            ->whereNotExists($this->laterStageStarted('sp'))
             ->where('sp.active', 1)
             ->whereNull('sp.start')
             ->whereNotNull('prev.start')
@@ -7264,6 +7267,7 @@ class SchedualController extends Controller
                     ->whereNotIn('prev.stage_code', [1, 2]);
             })
             ->where('sp.not_schedule', 0)
+            ->whereNotExists($this->laterStageStarted('sp'))
             ->where('sp.stage_code', $stageCode)
             ->where('sp.finished', 0)
             ->where('sp.active', 1)
@@ -7395,6 +7399,7 @@ class SchedualController extends Controller
                 ->where('sp.active', 1)
                 ->whereNull('sp.start')
                 ->where('sp.not_schedule', 0)
+                ->whereNotExists($this->laterStageStarted('sp'))
                 ->whereNotNull('plan_master.after_weigth_date')
                 ->when($promotionalFilter !== null, function ($q) use ($promotionalFilter) {
                     $q->where('plan_master.promotional_products', $promotionalFilter);
@@ -7450,6 +7455,7 @@ class SchedualController extends Controller
                 ->where('sp.active', 1)
                 ->whereNull('sp.start')
                 ->where('sp.not_schedule', 0)
+                ->whereNotExists($this->laterStageStarted('sp'))
                 ->whereNotNull('plan_master.after_weigth_date')
                 ->when($stageCode == 7, function ($q) {
 
@@ -7557,6 +7563,7 @@ class SchedualController extends Controller
             ->leftJoin('stage_plan as next', 'next.code', '=', 'sp.nextcessor_code')
             ->where('sp.active', 1)
             ->where('sp.not_schedule', 0)
+            ->whereNotExists($this->laterStageStarted('sp'))
             ->where('next.active', 1)
             ->whereIn('sp.stage_code', [1,  2])
             ->whereNull('sp.start')
@@ -7650,6 +7657,7 @@ class SchedualController extends Controller
                 })
                 ->whereNotNull('prev.start')
                 ->where('sp.not_schedule', 0)
+                ->whereNotExists($this->laterStageStarted('sp'))
                 ->whereIn('sp.id', $stage_plan_ids)
                 ->whereNotNull('plan_master.after_weigth_date')
                 ->when($stageCode == 7, function ($q) {
@@ -7755,6 +7763,33 @@ class SchedualController extends Controller
 
             $this->order_by++;
         }
+    }
+
+    /**
+     * Điều kiện loại công đoạn mà công đoạn SAU nó trên dòng chảy của lô đã nhận phòng hoặc đã
+     * hoàn thành (vd bấm Nhận phòng thử nghiệm, ghi nhận sai lô): hàng đã đi qua nên không sắp
+     * lịch tự động công đoạn này nữa, kể cả khi dòng vẫn còn.
+     *
+     * "Sau" đi theo liên kết công đoạn kế tiếp (nextcessor_code), không theo số công đoạn: Cân NL
+     * khác (2) đi thẳng tới Bao phim (6) nên chỉ bị loại khi BP / ĐG đã chạy, không phải khi PC
+     * đã chạy. Từ công đoạn kế tiếp trở đi (3 → 7) dòng chảy là tuyến tính nên xét mọi công đoạn
+     * có số ≥ công đoạn kế tiếp của cùng lô (lô con đóng gói thì là lô của dòng kế tiếp).
+     */
+    protected function laterStageStarted(string $alias): \Closure
+    {
+        return function ($q) use ($alias) {
+            $q->select(DB::raw(1))
+                ->from('stage_plan as next_sp')
+                ->join('stage_plan as later_sp', function ($join) {
+                    $join->on('later_sp.plan_master_id', '=', 'next_sp.plan_master_id')
+                        ->on('later_sp.stage_code', '>=', 'next_sp.stage_code');
+                })
+                ->whereColumn('next_sp.code', $alias . '.nextcessor_code')
+                ->where('next_sp.active', 1)
+                ->whereBetween('later_sp.stage_code', [3, 7])
+                ->where('later_sp.active', 1)
+                ->where(fn($w) => $w->where('later_sp.finished', 1)->orWhereNotNull('later_sp.actual_start'));
+        };
     }
 
     /**
@@ -8917,6 +8952,7 @@ class SchedualController extends Controller
                 ->where('sp.active', 1)
                 ->where('sp.finished', 0)
                 ->where('sp.not_schedule', 0)
+                ->whereNotExists($this->laterStageStarted('sp'))
                 ->whereNull('sp.start')  // Chỉ sắp task chưa có lịch
                 ->whereNotNull('plan_master.after_weigth_date')
                 ->where('sp.deparment_code', session('user.production_code'))

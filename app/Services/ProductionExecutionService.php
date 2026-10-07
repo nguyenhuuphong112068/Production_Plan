@@ -453,7 +453,7 @@ class ProductionExecutionService
             ->get();
 
         foreach ($rows as $row) {
-            $row->unit = $row->stage_code <= 4 ? 'Kg' : 'ĐVL';
+            $row->unit = $row->stage_code <= 4 ? 'Kg' : 'ĐV';
             $row->label = ($row->product_name ?? $row->title) . ' - ' . $row->batch;
         }
 
@@ -1279,7 +1279,7 @@ class ProductionExecutionService
         ];
         $product = fn($r) => $r->product_name ?: $r->plan_title;
         $label = fn($r) => trim(($r->product_name ?: $r->plan_title) . ($r->batch ? ' - ' . $r->batch : ''), ' -');
-        $unit = fn($r) => (int) $r->stage_code <= 4 ? 'Kg' : 'ĐVL';
+        $unit = fn($r) => (int) $r->stage_code <= 4 ? 'Kg' : 'ĐV';
 
         /* --- 1. Trạng thái phòng --- */
         $logQuery = DB::table('room_execution_log as l')

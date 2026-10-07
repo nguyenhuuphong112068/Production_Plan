@@ -37,3 +37,15 @@ CREATE TABLE IF NOT EXISTS `wip_control_runs` (
 ALTER TABLE `wip_control_settings`
   ADD COLUMN `prioritize_non_coated` TINYINT(1) NOT NULL DEFAULT 1
   COMMENT '1 = khi chờ BP vượt Max: ngưng nguồn lô bao phim, kéo lô không bao phim lên' AFTER `lock_validation`;
+
+-- Chế độ "ĐH bao phim theo nhịp BP" (migration 2026_10_06_170000)
+ALTER TABLE `wip_control_settings`
+  ADD COLUMN `pull_mode` TINYINT(1) NOT NULL DEFAULT 0
+  COMMENT '1 = lô bao phim PC→ĐH vừa kịp giờ BP, năng lực dư cho lô không bao phim' AFTER `prioritize_non_coated`,
+  ADD COLUMN `pull_buffer_hours` SMALLINT UNSIGNED NOT NULL DEFAULT 24
+  COMMENT 'Đệm an toàn: ĐH xong trước giờ BP (đã trừ thời gian chờ) bấy nhiêu giờ' AFTER `pull_mode`;
+
+-- Cách giảm tồn chờ BP (migration 2026_10_07_090000)
+ALTER TABLE `wip_control_settings`
+  ADD COLUMN `bp_strategy` VARCHAR(20) NOT NULL DEFAULT 'mix'
+  COMMENT 'none | mix | pull | gate_shift | gate_keep' AFTER `pull_buffer_hours`;

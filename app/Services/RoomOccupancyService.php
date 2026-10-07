@@ -522,7 +522,7 @@ class RoomOccupancyService
                 $row->equipment_label = '[' . $row->maintenance_type . '] ' . ($row->equipment ?: $row->title)
                     . ($row->inst_id ? ' (' . $row->inst_id . ')' : '');
             }
-            $row->unit = $row->stage_code <= 4 ? 'Kg' : 'ĐVL';
+            $row->unit = $row->stage_code <= 4 ? 'Kg' : 'ĐV';
             $row->label = $row->maintenance
                 ? $row->equipment_label
                 : ($row->batch ? ($row->product_name ?? $row->title) . ' - ' . $row->batch : $row->title);

@@ -249,7 +249,7 @@ const WipCoverageByRoom = ({ reloadKey, onOpenDay, onLoadingChange }) => {
                                                 </div>
                                             ))}
                                             <div style={styles.tipTotal}>
-                                                Tổng <b>{formatFull(d.total)}</b> ĐVL
+                                                Tổng <b>{formatFull(d.total)}</b> ĐV
                                             </div>
                                         </div>
                                     );
@@ -345,7 +345,7 @@ const WipCoverageByRoom = ({ reloadKey, onOpenDay, onLoadingChange }) => {
                                                           })
                                                     : undefined
                                             }
-                                            title={`${roomLabel(r)} · ${formatDate(p.date)}: ${formatFull(v)} ĐVL · ${
+                                            title={`${roomLabel(r)} · ${formatDate(p.date)}: ${formatFull(v)} ĐV · ${
                                                 p.stock_lots
                                             } lô · +${formatDvl(p.in_dvl)} / −${formatDvl(p.out_dvl)}`}
                                         >

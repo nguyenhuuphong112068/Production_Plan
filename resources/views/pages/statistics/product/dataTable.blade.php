@@ -169,7 +169,7 @@
                                                                                     Lượng Lý Thuyết</span>
                                                                                 <span
                                                                                     class="info-box-number">{{ number_format($product->san_luong_ly_thuyet) }}
-                                                                                    {{ $product->stage_code >= 5 ? 'ĐVL' : 'Kg' }}</span>
+                                                                                    {{ $product->stage_code >= 5 ? 'ĐV' : 'Kg' }}</span>
                                                                             </div>
                                                                         </div>
                                                                     </div>
@@ -191,7 +191,7 @@
                                                                                 @endphp
                                                                                 <span
                                                                                     class="info-box-number">{{ number_format($product->san_luong_thuc_te) }}
-                                                                                    {{ $product->stage_code >= 5 ? 'ĐVL' : 'Kg' }}
+                                                                                    {{ $product->stage_code >= 5 ? 'ĐV' : 'Kg' }}
                                                                                     # {{ $H }}% </span>
                                                                             </div>
                                                                         </div>

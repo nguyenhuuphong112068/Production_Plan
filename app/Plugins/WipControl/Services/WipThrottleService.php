@@ -10,7 +10,8 @@ use Illuminate\Support\Facades\DB;
 /**
  * Lùi đầu nguồn để tồn bán thành phẩm không vượt Max.
  *
- * Mỗi vòng:
+ * Vòng đầu: ngưng nguồn theo ngưỡng cho từng nhóm có cài Max (gateSteps, xem ở đó).
+ * Mỗi vòng sau đó (và cho Max chờ ĐH / chờ ĐG):
  *   1. Đo tồn chờ ĐH / BP / ĐG từng ngày (06:00) theo lịch hiện tại bằng
  *      WipCoverageService, lấy các ngày vượt Max.
  *   2. Với mỗi ngày vượt, chọn các lô đang nằm trong kho hôm đó, ưu tiên lô có
@@ -29,8 +30,13 @@ use Illuminate\Support\Facades\DB;
  */
 class WipThrottleService
 {
+    private const STAGE_NAMES = [3 => 'PC', 4 => 'THT', 5 => 'ĐH', 6 => 'BP', 7 => 'ĐG'];
+
     /** Công đoạn tiêu thụ tồn của từng nhóm đích */
     public const CONSUMER_STAGE = ['DH' => 5, 'BP' => 6, 'DG' => 7];
+
+    /** Nhóm tồn theo công đoạn tiêu thụ */
+    private const GROUP_OF_STAGE = [5 => 'DH', 6 => 'BP', 7 => 'DG'];
 
     /** Hạn bắt đầu của từng công đoạn trên plan_master, giống scanOverdueTasks */
     private const STAGE_DEADLINES = [
@@ -58,7 +64,19 @@ class WipThrottleService
     private Carbon $at;
     private array $limits;
     private bool $lockValidation;
-    private bool $prioritizeNonCoated = false;
+
+    private ?string $gateError = null;
+
+    /** @var array<int, string> dòng có dữ liệu bất thường gặp khi ngưng nguồn: id => mô tả */
+    private array $gateWarnings = [];
+
+    /** @var array<int, array> dòng công đoạn sau bị đẩy lùi theo (chế độ ngưng nguồn): id => [...] */
+    private array $bpShifted = [];
+
+    /** Bước ngưng nguồn đang chạy: công đoạn nguồn lớn nhất (dòng sau nó bị lùi là "lùi theo") và nhóm ghi nhận */
+    private int $gateStage = 5;
+    private string $gateGroup = 'BP';
+    private int $pullBufferHours = 24;
     private array $waits;
     private array $overdueCampaigns = [];
 
@@ -79,9 +97,6 @@ class WipThrottleService
 
     /** @var array<int, array> lô được kéo lên sớm khi đổi chỗ: plan_master_id => [stage, old_start] */
     private array $pulled = [];
-
-    /** @var array<int, array<int, int>> lô kéo lên không được xếp muộn hơn cũ: pm => [stage => giờ bắt đầu cũ] */
-    private array $noLater = [];
 
     /** @var array<int, int> số lần lô sắp lại không kịp và phải trả về lịch cũ */
     private array $failures = [];
@@ -114,7 +129,7 @@ class WipThrottleService
         $this->selectedStep = $opt['selected_step'];
         $this->startDate = $opt['start_date'];
         $this->lockValidation = $opt['lock_validation'];
-        $this->prioritizeNonCoated = (bool) ($opt['prioritize_non_coated'] ?? false);
+        $this->pullBufferHours = (int) ($opt['pull_buffer_hours'] ?? config('wip_control.safety_buffer_hours', 24));
         $this->waits = WipAwareScheduler::waitTimes($this->request);
 
         $now = Carbon::now();
@@ -198,8 +213,8 @@ class WipThrottleService
             // này tự huỷ, lịch quay về đúng như trước vòng, không để dòng nào bị khoá treo
             DB::beginTransaction();
             try {
-                // Bước 0 (chỉ vòng đầu): ưu tiên lô không bao phim, ngưng nguồn lô bao phim
-                $mix = $round === 1 ? $this->mixStep($measure, $round) : ['delayed' => 0, 'pulled' => 0, 'reverted' => 0];
+                // Bước 0 (chỉ vòng đầu): ngưng nguồn theo ngưỡng cho từng nhóm có cài Max
+                $mix = $round === 1 ? $this->gateSteps($round) : ['delayed' => 0, 'pulled' => 0, 'reverted' => 0];
                 if ($mix['delayed'] + $mix['pulled'] > 0) {
                     // Lịch vừa đổi nhiều: đo lại trước khi đổi chỗ / giãn
                     unset($measure);
@@ -297,10 +312,23 @@ class WipThrottleService
         foreach ($this->limits as $group => $max) {
             $peak = 0.0;
             $peakDate = null;
-            foreach ($measure['series'][$group] ?? [] as $point) {
+            $peakIndex = null;
+            foreach ($measure['series'][$group] ?? [] as $i => $point) {
                 if ((float) $point['stock_dvl'] > $peak) {
                     $peak = (float) $point['stock_dvl'];
                     $peakDate = $point['date'];
+                    $peakIndex = $i;
+                }
+            }
+
+            // Phần tồn ngày đỉnh là hàng đã vào kho trước ngày sắp lịch: lùi gì cũng không bớt
+            $stuck = 0.0;
+            if ($peakIndex !== null) {
+                $moment = $measure['days'][$peakIndex]['start']->format('Y-m-d H:i:s');
+                foreach ($measure['ledgers'][$group] ?? [] as $lot) {
+                    if (! empty($lot['entry']) && strtotime($lot['entry']) < $this->at->getTimestamp()) {
+                        $stuck += $this->coverage->lotStockAtMoment($lot, $moment);
+                    }
                 }
             }
 
@@ -312,6 +340,7 @@ class WipThrottleService
                 'max'            => $max,
                 'peak'           => round($peak, 2),
                 'peak_date'      => $peakDate,
+                'peak_stuck'     => round($stuck, 2),
                 'violation_days' => count($days),
                 'excess'         => round(array_sum(array_column($days, 'excess')), 2),
                 'first_date'     => $days[0]['date'] ?? null,
@@ -651,296 +680,649 @@ class WipThrottleService
     }
 
     /**
-     * Bước 0: ưu tiên lô KHÔNG bao phim, ngưng nguồn lô bao phim (chỉ khi cài Max chờ BP).
-     *
-     *  1. Lô bao phim có ĐH rơi vào những ngày chờ BP vượt Max: lùi PC → ĐH (phần chưa chạy)
-     *     tới mốc vừa kịp trước giờ BP của chính nó; BP, ĐG giữ nguyên. Ngày cần hàng
-     *     muộn nhất trước, đủ bù phần vượt lớn nhất.
-     *  2. Lô không bao phim chưa chạy công đoạn nào, đã có ngày NL và ngày nhận bao bì,
-     *     ĐH đang xếp sau những ngày vượt (hoặc chưa có lịch): kéo cả chuỗi PC → ĐG lên,
-     *     ngày cần hàng sớm nhất trước, chỉ đủ lấp số giờ PC vừa giải phóng ở bước 1.
-     *  3. Sắp lại lô không bao phim TRƯỚC (lô bao phim tạm khoá), rồi lô bao phim với mốc
-     *     "vừa kịp". Nhóm nào sắp lại không kịp / không xếp được thì trả về lịch cũ.
+     * Chế độ "Ngưng nguồn theo ngưỡng" cho từng nhóm có cài Max, xét từ cuối dây chuyền
+     * về đầu nguồn để bước sau biết giờ tiêu thụ mới của bước trước:
+     *  1. Max chờ ĐG: phòng BP (lô vào kho chờ ĐG khi BP bắt đầu);
+     *  2. Max chờ BP và / hoặc chờ ĐG: phòng ĐH (lô bao phim vào chờ BP, lô không bao phim
+     *     vào chờ ĐG khi ĐH bắt đầu);
+     *  3. Max chờ ĐH: phòng THT (hoặc PC với lô không có THT), lô vào chờ ĐH khi bắt đầu.
+     * Mỗi bước trong một savepoint riêng: lỗi thì huỷ riêng bước đó.
      *
      * @return array{delayed: int, pulled: int, reverted: int}
      */
-    private function mixStep(array $measure, int $round): array
+    private function gateSteps(int $round): array
     {
+        $steps = [];
+        if (isset($this->limits['DG'])) {
+            $steps[] = [6];
+        }
+        if (isset($this->limits['BP']) || isset($this->limits['DG'])) {
+            $steps[] = [5];
+        }
+        if (isset($this->limits['DH'])) {
+            $steps[] = [3, 4];
+        }
+        foreach ($steps as $stages) {
+            $this->gateStep($round, $stages);
+        }
+
         $result = ['delayed' => 0, 'pulled' => 0, 'reverted' => 0];
-        if (! $this->prioritizeNonCoated || ! isset($this->limits['BP'])) {
-            return $result;
-        }
-
-        $days = array_values(array_filter($measure['violations'], fn($v) => $v['group'] === 'BP'));
-        if ($days === []) {
-            return $result;
-        }
-
-        $from = $days[0]['day_start'];
-        $to = date('Y-m-d H:i:s', strtotime(end($days)['day_start']) + 86400);
-        $peakExcess = max(array_column($days, 'excess'));
-        $minShift = (int) config('wip_control.min_shift_minutes', 60) * 60;
-        $maxGroup = (int) config('wip_control.max_group_lots', 40);
-        $buffer = (int) (config('wip_control.safety_buffer_hours', 24) * 3600);
-
-        $coated = DB::table('stage_plan')->where('deparment_code', $this->productionCode)
-            ->where('stage_code', 6)->where('active', 1)->distinct()->pluck('plan_master_id')->flip()->all();
-
-        // ---------------- 1. Lô bao phim cần ngưng nguồn
-        $dhRows = DB::table('stage_plan')
-            ->where('deparment_code', $this->productionCode)->where('stage_code', 5)->where('active', 1)
-            ->where('finished', 0)->whereNull('actual_start')
-            ->where('start', '>=', max($from, $this->at->format('Y-m-d H:i:s')))->where('start', '<', $to)
-            ->get(['plan_master_id', 'Theoretical_yields as qty']);
-        $seeds = $dhRows->filter(fn($r) => isset($coated[$r->plan_master_id]))->keyBy('plan_master_id');
-        $this->loadInfo($seeds->keys()->all());
-
-        $bpStart = DB::table('stage_plan')->whereIn('plan_master_id', $seeds->keys()->all())->where('stage_code', 6)
-            ->where('active', 1)->whereNotNull('start')->pluck('start', 'plan_master_id');
-        $dhEnd = DB::table('stage_plan')->whereIn('plan_master_id', $seeds->keys()->all())->where('stage_code', 5)
-            ->where('active', 1)->pluck('end', 'plan_master_id');
-
-        // Lùi được bao nhiêu mà ĐH vẫn xong (cộng thời gian chờ + đệm) trước giờ BP
-        $slack = function (int $pm) use (&$bpStart, &$dhEnd, $buffer) {
-            if (! isset($bpStart[$pm]) || empty($dhEnd[$pm])) {
-                return 0;
-            }
-            $s = strtotime($bpStart[$pm]) - $this->waitSeconds(6, $pm) - $buffer - strtotime($dhEnd[$pm]);
-            return min($s, $this->maxShift($pm, 5));
-        };
-
-        $hintsBefore = $this->hints;
-
-        $order = $seeds->keys()->all();
-        usort($order, fn($a, $b) => strcmp($this->info[$b]['expected_date'] ?? '9999', $this->info[$a]['expected_date'] ?? '9999'));
-
-        $movedA = [];
-        $groupOf = [];
-        $groupPlan = [];
-        $covered = 0.0;
-        foreach ($order as $seed) {
-            if ($covered >= $peakExcess) {
-                break;
-            }
-            if (isset($movedA[$seed])) {
-                continue;
-            }
-            if (($lock = $this->lockOf($seed, 5)) !== null) {
-                $this->skip($seed, $lock);
-                continue;
-            }
-
-            $members = $this->closure($seed, 5, $maxGroup);
-            if ($members === null) {
-                $this->skip($seed, 'Campaign / nhóm lô con quá lớn (> ' . $maxGroup . ' lô)');
-                continue;
-            }
-
-            $missing = array_diff($members, array_keys($bpStart->all()));
-            if ($missing !== []) {
-                $bpStart = $bpStart->union(DB::table('stage_plan')->whereIn('plan_master_id', $missing)->where('stage_code', 6)
-                    ->where('active', 1)->whereNotNull('start')->pluck('start', 'plan_master_id'));
-                $dhEnd = $dhEnd->union(DB::table('stage_plan')->whereIn('plan_master_id', $missing)->where('stage_code', 5)
-                    ->where('active', 1)->pluck('end', 'plan_master_id'));
-            }
-
-            $delta = PHP_INT_MAX;
-            $blocked = null;
-            foreach ($members as $m) {
-                if (isset($movedA[$m]) || ! isset($coated[$m])) {
-                    $blocked = 'Cùng campaign với lô không bao phim / lô đã chọn';
-                    break;
-                }
-                if (($lock = $this->lockOf($m, 5)) !== null) {
-                    $blocked = $m === $seed ? $lock : 'Cùng campaign với lô ' . $this->info[$m]['batch'] . ' (' . $lock . ')';
-                    break;
-                }
-                $delta = min($delta, $slack($m));
-            }
-            if ($blocked !== null) {
-                $this->skip($seed, $blocked);
-                continue;
-            }
-            if ($delta < $minShift) {
-                $this->skip($seed, 'Ngưng nguồn: không còn dư thời gian trước giờ BP');
-                continue;
-            }
-
-            $groupHead = null;
-            foreach ($members as $m) {
-                $head = $this->headStart($m, 5);
-                $groupHead = $groupHead === null || $head->lt($groupHead) ? $head : $groupHead;
-            }
-            $groupPlan[$seed] = ['head' => $groupHead, 'delta' => $delta, 'members' => $members];
-            foreach ($members as $m) {
-                $this->hints[$m] = $groupHead->copy()->addSeconds($delta);
-                $movedA[$m] = 5;
-                $groupOf[$m] = $seed;
-                $covered += (float) ($seeds[$m]->qty ?? 0);
-                $this->moved[$m] ??= [
-                    'old_head'     => (string) DB::table('stage_plan')->where('plan_master_id', $m)->where('stage_code', 5)->where('active', 1)->value('start'),
-                    'old_last_end' => $this->info[$m]['last_end'],
-                    'seed'         => $m === $seed,
-                    'group'        => 'BP',
-                    'date'         => $days[0]['date'],
-                    'round'        => $round,
-                    'top'          => 5,
-                    'stage'        => 5,
-                    'method'       => 'mix',
-                ];
+        foreach ($this->moved as $m) {
+            if (($m['method'] ?? null) === 'gate') {
+                $result['delayed']++;
             }
         }
-
-        if ($movedA === []) {
-            return $result;
-        }
-
-        // ---- Lùi lô bao phim TRƯỚC và kiểm tra ngay: chỉ lô lùi được mới giải phóng năng lực
-        $snapA = $this->unschedule($movedA);
-        $this->reschedule($movedA, $snapA);
-        $revA = $this->validateRound($movedA, $groupOf, $snapA, $hintsBefore, $round);
-        $keptA = array_diff(array_keys($movedA), $revA);
-        $result['delayed'] = count($keptA);
-        $result['reverted'] = count($revA);
-        if ($keptA === []) {
-            return $result;
-        }
-
-        // Ngân sách: số giờ PC (theo lịch cũ) của các lô bao phim vừa lùi; PC đã chạy hết thì tính giờ ĐH
-        $oldHours = function (int $stage) use ($snapA, $keptA) {
-            $h = 0.0;
-            foreach ($keptA as $pm) {
-                foreach ($snapA[$pm] ?? [] as $row) {
-                    if ((int) $row->stage_code === $stage && $row->start && $row->end) {
-                        $h += (strtotime($row->end) - strtotime($row->start)) / 3600;
-                    }
-                }
-            }
-            return $h;
-        };
-        $budgetStage = 3;
-        $budget = $oldHours(3);
-        if ($budget <= 0) {
-            $budgetStage = 5;
-            $budget = $oldHours(5);
-        }
-
-        // ---------------- 2. Lô không bao phim kéo lên
-        $toDate = substr($to, 0, 10);
-        $pool = DB::table('stage_plan as sp')
-            ->join('plan_master as pm', 'sp.plan_master_id', '=', 'pm.id')
-            ->where('sp.deparment_code', $this->productionCode)->where('sp.stage_code', 5)->where('sp.active', 1)
-            ->where('pm.active', 1)->where('sp.finished', 0)->whereNull('sp.actual_start')->where('sp.not_schedule', 0)
-            ->where(fn($q) => $q->whereNull('sp.start')->orWhere('sp.start', '>=', $to))
-            ->whereNotNull('pm.after_weigth_date')->where('pm.after_weigth_date', '<=', $toDate)
-            ->whereNotNull('pm.after_parkaging_date')
-            ->orderBy('pm.expected_date')
-            ->pluck('sp.plan_master_id')
-            ->reject(fn($pm) => isset($coated[$pm]))
-            ->values()->all();
-        $this->loadInfo($pool);
-
-        // Giờ của một lô ở công đoạn tính ngân sách: theo lịch đang có, chưa có lịch thì theo định mức
-        $cost = function (int $pm) use ($budgetStage) {
-            $row = DB::table('stage_plan as sp')->join('plan_master as pm', 'sp.plan_master_id', '=', 'pm.id')
-                ->leftJoin('finished_product_category as fpc', 'pm.product_caterogy_id', '=', 'fpc.id')
-                ->where('sp.plan_master_id', $pm)->where('sp.stage_code', $budgetStage)->where('sp.active', 1)
-                ->first(['sp.start', 'sp.end', 'fpc.intermediate_code']);
-            if ($row === null) {
-                return 0.0;   // lô không có công đoạn này thì không tốn giờ ở đó
-            }
-            if ($row->start && $row->end) {
-                return (strtotime($row->end) - strtotime($row->start)) / 3600;
-            }
-            $min = DB::table('quota')->where('intermediate_code', $row->intermediate_code)->where('stage_code', $budgetStage)
-                ->selectRaw('MIN(TIME_TO_SEC(p_time) + TIME_TO_SEC(m_time)) / 3600 AS h')->value('h');
-            // Không ước tính được thì coi như không vừa ngân sách, để không kéo quá tay
-            return $min === null ? INF : (float) $min;
-        };
-
-        $movedB = [];
-        $groupB = [];
-        $used = 0.0;
-        foreach ($pool as $seed) {
-            if ($used >= $budget) {
-                break;
-            }
-            if (isset($movedB[$seed]) || isset($movedA[$seed])) {
-                continue;
-            }
-            $members = $this->closure($seed, 7, $maxGroup);
-            if ($members === null) {
-                continue;
-            }
-
-            $ok = true;
-            $groupCost = 0.0;
-            foreach ($members as $m) {
-                $info = $this->info[$m];
-                if (isset($coated[$m]) || isset($movedA[$m]) || isset($movedB[$m]) || $info['lock'] !== null) {
-                    $ok = false;
-                    break;
-                }
-                foreach ($info['rows'] as $row) {
-                    if ($this->started($row)) {
-                        $ok = false;
-                        break 2;
-                    }
-                }
-                $groupCost += $cost($m);
-            }
-            if (! $ok || $groupCost <= 0 || $used + $groupCost > $budget * 1.1) {
-                continue;
-            }
-
-            $used += $groupCost;
-            foreach ($members as $m) {
-                $movedB[$m] = 7;
-                $groupB[$m] = $seed;
+        foreach ($this->pulled as $p) {
+            if (($p['method'] ?? null) === 'gate') {
+                $result['pulled']++;
             }
         }
-
-        $this->debug('mix', count($keptA), count($movedB), round($budget, 1), round($used, 1), $budgetStage);
-        if ($movedB === []) {
-            return $result;
-        }
-
-        // ---------------- 3. Sắp lại cả chuỗi PC → ĐG của lô không bao phim, các dòng khác tạm khoá
-        $hintsBeforeB = $this->hints;
-        $snapB = $this->unschedule($movedB);
-        foreach ($snapB as $pm => $rows) {
-            foreach ($rows as $row) {
-                if ($row->start && in_array((int) $row->stage_code, [5, 7], true)) {
-                    $this->noLater[$pm][(int) $row->stage_code] = strtotime($row->start);
-                }
-            }
-        }
-
-        $parked = $this->parkPendingRows($snapB, 7);
-        try {
-            $this->freshScheduler(7)->rescheduleUnscheduled($this->request, $this->startDate, 7);
-        } finally {
-            foreach (array_chunk($parked, 1000) as $chunk) {
-                DB::table('stage_plan')->whereIn('id', $chunk)->update(['not_schedule' => 0]);
-            }
-        }
-
-        $revB = $this->validateRound($movedB, $groupB, $snapB, $hintsBeforeB, $round);
-        foreach (array_diff(array_keys($movedB), $revB) as $m) {
-            $old = null;
-            foreach ($snapB[$m] ?? [] as $row) {
-                if ((int) $row->stage_code === 5) {
-                    $old = $row->start;
-                }
-            }
-            $this->pulled[$m] = ['stage' => 5, 'old_start' => $old, 'method' => 'mix', 'round' => $round];
-        }
-        $this->noLater = [];
-
-        $result['pulled'] = count($movedB) - count($revB);
-        $result['reverted'] += count($revB);
 
         return $result;
+    }
+
+    /**
+     * Một bước ngưng nguồn: xếp lại giờ các lô chưa chạy trong khung ở phòng của công đoạn
+     * nguồn $stages bằng mô phỏng WipGate. Lô vào nhóm có Max chỉ bắt đầu khi tồn nhóm đó
+     * cộng lượng của lô ≤ Max; lúc ngưng, phòng chạy lô đi nhóm không cài Max đã sẵn sàng
+     * (công đoạn trước xong), không có thì để trống. Lô giữ phòng và thời lượng; không bắt
+     * đầu trong ngày nghỉ; lô đi nhóm không cài Max luôn kịp công đoạn sau.
+     * Lô có Max chỉ chạy khi tồn cho phép, kể cả khi vì thế xong trễ giờ công đoạn sau: khi đó
+     * phòng công đoạn sau chạy trước lô khác đã có hàng, không được thì công đoạn sau của lô
+     * đó (và các lô sau cùng phòng...) bị đẩy lùi theo.
+     * Sau đó lùi các công đoạn phía trước của lô có Max về sát giờ mới (xếp theo hạn, dồn sát hạn).
+     * Lỗi giữa chừng thì huỷ cả bước, lịch giữ nguyên.
+     *
+     * @param array<int, int> $stages [6] = BP, [5] = ĐH, [3, 4] = PC/THT (dòng ra của nhóm Pha chế)
+     */
+    private function gateStep(int $round, array $stages): void
+    {
+        $atTs = $this->at->getTimestamp();
+        $horizonDays = (int) config('wip_control.horizon_days', 30);
+        $horizonEnd = $this->at->copy()->addDays($horizonDays)->getTimestamp();
+        $buffer = $this->pullBufferHours * 3600;
+        $stageName = implode('/', array_map(fn($s) => self::STAGE_NAMES[$s], $stages));
+        $label = 'Kiểm soát tồn BTP (ngưng nguồn ' . $stageName . ')';
+        $offRanges = $this->freshScheduler()->offRanges();
+        $this->gateStage = max($stages);
+        $this->info = [];   // bước trước vừa đổi lịch
+
+        // Mỗi lô vào kho nhóm nào ở công đoạn nào, bao nhiêu viên (theo sổ tồn)
+        $ledgers = $this->coverage->ledgers($this->productionCode, $this->at, $horizonDays)['ledgers'];
+        $groupOf = [];   // pm => [stage => [nhóm, lượng]]
+        foreach (array_keys(self::CONSUMER_STAGE) as $g) {
+            foreach ($ledgers[$g] ?? [] as $l) {
+                $groupOf[(int) $l['plan_master_id']][(int) $l['stage_code']] = [$g, (float) $l['qty_dvl']];
+            }
+        }
+
+        // Lô chưa chạy trong khung (thêm 15 ngày để lô cuối khung còn chỗ dời)
+        $rows = DB::table('stage_plan')
+            ->where('deparment_code', $this->productionCode)->whereIn('stage_code', $stages)->where('active', 1)
+            ->where('finished', 0)->whereNull('actual_start')->whereNotNull('start')->whereNotNull('resourceId')
+            ->where('overlap', 0)
+            ->where('start', '>=', date('Y-m-d H:i:s', $atTs))->where('start', '<', date('Y-m-d H:i:s', $horizonEnd + 15 * 86400))
+            ->get(['id', 'plan_master_id', 'stage_code', 'resourceId', 'start', 'end', 'end_clearning', 'code', 'predecessor_code']);
+
+        // Công đoạn sau và công đoạn trước của từng dòng
+        $succ = [];   // code => [[stage, pm, start]]
+        $succStage = [];   // code => công đoạn sau gần nhất (kể cả chưa có lịch)
+        $succStarted = [];
+        foreach (array_chunk($rows->pluck('code')->filter()->all(), 1000) as $chunk) {
+            foreach (DB::table('stage_plan')->whereIn('predecessor_code', $chunk)->where('active', 1)
+                ->get(['predecessor_code', 'stage_code', 'plan_master_id', 'start', 'finished', 'actual_start']) as $r) {
+                $succStage[$r->predecessor_code] = min($succStage[$r->predecessor_code] ?? 99, (int) $r->stage_code);
+                if ($r->start === null) {
+                    continue;
+                }
+                $succ[$r->predecessor_code][] = [(int) $r->stage_code, (int) $r->plan_master_id, strtotime($r->start)];
+                if ((int) $r->finished === 1 || ! empty($r->actual_start)) {
+                    $succStarted[$r->predecessor_code] = true;
+                }
+            }
+        }
+
+        // PC của lô có THT không sinh tồn (tồn tính từ THT): để nguyên làm khối cố định, lùi theo ở bước dồn sát hạn
+        $rows = $rows->filter(fn($r) => (int) $r->stage_code !== 3 || ($succStage[$r->code] ?? 99) !== 4)->values();
+
+        $this->loadInfo($rows->pluck('plan_master_id')->map(fn($pm) => (int) $pm)->unique()->values()->all());
+        $rows = $rows->filter(function ($r) use ($succStarted) {
+            $pm = (int) $r->plan_master_id;
+            $lock = $this->info[$pm]['lock'] ?? null;
+            if ($lock !== null) {
+                $this->skip($pm, $lock);
+                return false;
+            }
+            // Công đoạn sau đã nhận phòng / đã xong mà công đoạn này chưa chạy là dữ liệu bất thường:
+            // giữ nguyên, không dời (dời thì phải đẩy cả lô đang chạy)
+            if (isset($succStarted[$r->code])) {
+                $name = self::STAGE_NAMES[(int) $r->stage_code];
+                $this->gateWarnings[(int) $r->id] = 'Lô ' . ($this->info[$pm]['batch'] ?? $pm)
+                    . ': công đoạn sau đã nhận phòng / đã xong nhưng ' . $name . ' chưa chạy, giữ nguyên lịch ' . $name;
+                $this->skip($pm, 'Công đoạn sau đã chạy trước ' . $name . ' (dữ liệu bất thường)');
+                return false;
+            }
+            return true;
+        })->values();
+        if ($rows->isEmpty()) {
+            return;
+        }
+
+        $predEnd = [];
+        foreach (array_chunk($rows->pluck('predecessor_code')->filter()->all(), 1000) as $chunk) {
+            foreach (DB::table('stage_plan')->whereIn('code', $chunk)->where('active', 1)
+                ->get(['code', 'end', 'actual_end', 'finished']) as $r) {
+                $end = (int) $r->finished === 1 && $r->actual_end ? $r->actual_end : $r->end;
+                if ($end) {
+                    $predEnd[$r->code] = max($predEnd[$r->code] ?? 0, strtotime($end));
+                }
+            }
+        }
+
+        // Nhóm tồn của từng dòng; chỉ nhóm có cài Max mới là cổng
+        $gateOfRow = [];   // id => [nhóm|null, lượng]
+        $simKey = [];      // pm => [stage => true] dòng đang được xếp lại
+        foreach ($rows as $r) {
+            $pm = (int) $r->plan_master_id;
+            $stage = (int) $r->stage_code;
+            [$g, $q] = $groupOf[$pm][$stage] ?? [self::GROUP_OF_STAGE[$succStage[$r->code] ?? 0] ?? null, 0.0];
+            $gateOfRow[(int) $r->id] = [$g !== null && isset($this->limits[$g]) ? $g : null, $q];
+            $simKey[$pm][$stage] = true;
+        }
+
+        // Tồn cố định của các nhóm có Max: mọi lô trong sổ trừ dòng đang được xếp lại
+        $events = [];
+        foreach (array_keys($this->limits) as $g) {
+            $events[$g] = [];
+            foreach ($ledgers[$g] ?? [] as $l) {
+                if (isset($simKey[(int) $l['plan_master_id']][(int) $l['stage_code']]) || $l['entry'] === null) {
+                    continue;
+                }
+                $events[$g][] = [strtotime($l['entry']), (float) $l['qty_dvl']];
+                foreach ($l['exits'] as $e) {
+                    $events[$g][] = [strtotime($e['start']), -(float) $l['qty_dvl'] * $e['weight']];
+                }
+            }
+        }
+        unset($ledgers, $groupOf);
+
+        // Khối cố định trong các phòng: mọi dòng khác không được xếp lại
+        $ids = $rows->pluck('id')->flip()->all();
+        $blocks = [];
+        foreach (DB::table('stage_plan')->whereIn('resourceId', $rows->pluck('resourceId')->unique()->all())
+            ->where('active', 1)->where('finished', 0)->where('overlap', 0)->whereNotNull('start')
+            ->whereRaw('COALESCE(end_clearning, end) > ?', [date('Y-m-d H:i:s', $atTs)])
+            ->get(['id', 'resourceId', 'start', 'end', 'end_clearning']) as $b) {
+            if (! isset($ids[$b->id])) {
+                $blocks[(int) $b->resourceId][] = [strtotime($b->start), strtotime($b->end_clearning ?: $b->end)];
+            }
+        }
+
+        $lots = [];
+        $byId = [];
+        $gatedPm = [];   // pm => nhóm, lô có cổng: lùi công đoạn phía trước về sát giờ mới
+        foreach ($rows as $r) {
+            $pm = (int) $r->plan_master_id;
+            $stage = (int) $r->stage_code;
+            $start = strtotime($r->start);
+            $dur = strtotime($r->end) - $start;
+            [$gate, $q] = $gateOfRow[(int) $r->id];
+            $consumer = $gate !== null ? self::CONSUMER_STAGE[$gate] : null;
+
+            $limit = null;
+            $exit = null;
+            foreach ($succ[$r->code] ?? [] as [$sStage, $spm, $sStart]) {
+                $l = $sStart - $this->waitSeconds($sStage, $spm) - ($sStage === $consumer ? $buffer : 0);
+                $limit = $limit === null ? $l : min($limit, $l);
+                if ($sStage === $consumer) {
+                    $exit = $exit === null ? $sStart : min($exit, $sStart);
+                }
+            }
+            $due = $limit === null ? PHP_INT_MAX : $limit - $dur;
+            if (($deadline = $this->info[$pm]['deadlines'][$stage] ?? null) !== null) {
+                $due = min($due, $deadline);
+            }
+
+            $pe = $r->predecessor_code ? ($predEnd[$r->predecessor_code] ?? null) : null;
+            $ready = $pe === null ? $start : min($start, max($atTs, $pe + $this->waitSeconds($stage, $pm)));
+
+            $lots[] = [
+                'id' => (int) $r->id, 'pm' => $pm, 'room' => (int) $r->resourceId, 'old' => $start,
+                'occ' => strtotime($r->end_clearning ?: $r->end) - $start, 'dur' => $dur, 'gate' => $gate,
+                'ready' => $ready, 'due' => max($start, $due), 'qty' => $gate !== null ? $q : 0.0,
+                'exit' => $exit, 'lag' => $consumer !== null ? $dur + $this->waitSeconds($consumer, $pm) : 0,
+            ];
+            $byId[(int) $r->id] = $r;
+            if ($gate !== null) {
+                $gatedPm[$pm] = $gate;
+            }
+        }
+        if ($gatedPm === []) {
+            return;   // không lô nào vào nhóm có Max: không có gì để ngưng
+        }
+
+        try {
+            $plan = WipGate::plan($lots, $events, $blocks, $offRanges, $this->limits, $atTs, $horizonEnd);
+        } catch (\RuntimeException $e) {
+            $this->gateFailed($stageName, $e->getMessage());
+            return;
+        }
+        $this->debug('gate', $stageName, count($lots), count($plan));
+        unset($events, $blocks);
+
+        $info = function (int $pm) {
+            $this->loadInfo([$pm]);
+            return $this->info[$pm];
+        };
+        $sequencer = new RoomSequencer(
+            $this->productionCode,
+            $atTs,
+            $horizonEnd + 30 * 86400,
+            fn(int $pm) => $info($pm)['lock'],
+            fn(int $pm, int $stage) => $info($pm)['deadlines'][$stage] ?? null,
+            function (int $stage, int $pm) use ($info) {
+                $info($pm);
+                return $this->waitSeconds($stage, $pm);
+            },
+            $offRanges
+        );
+
+        // Lỗi thì trả lại đúng kết quả các bước trước
+        $saved = [$this->moved, $this->pulled, $this->bpShifted, $this->gateWarnings];
+        DB::beginTransaction();   // savepoint: lỗi thì huỷ riêng bước này
+        try {
+            $changes = [];
+            foreach ($plan as $id => $newStart) {
+                $d = $newStart - strtotime($byId[$id]->start);
+                if ($d !== 0) {
+                    $changes[$id] = $d;
+                }
+            }
+            $sequencer->apply($changes, $label);
+
+            $push = [];
+            foreach ($changes as $id => $d) {
+                $r = $byId[$id];
+                $pm = (int) $r->plan_master_id;
+                $group = $gateOfRow[$id][0] ?? array_key_first($this->limits);
+                $this->recordRoomMove(['pm' => $pm, 'stage' => (int) $r->stage_code, 'start' => strtotime($r->start)], $d, 'gate', $group,
+                    substr($r->start, 0, 10), $round, true);
+                if ($d > 0) {
+                    // Xong trễ hơn lúc công đoạn sau bắt đầu (cộng thời gian chờ) thì đẩy công đoạn sau lùi theo
+                    $newEnd = strtotime($r->end) + $d;
+                    foreach (DB::table('stage_plan')->where('predecessor_code', $r->code)->where('active', 1)->whereNotNull('start')
+                        ->get(['id', 'stage_code', 'plan_master_id', 'start']) as $sx) {
+                        $need = $newEnd + $this->waitSeconds((int) $sx->stage_code, (int) $sx->plan_master_id);
+                        if (strtotime($sx->start) < $need) {
+                            $push[(int) $sx->id] = max($push[(int) $sx->id] ?? 0, $need);
+                        }
+                    }
+                }
+            }
+            $this->gateGroup = array_key_first($this->limits);
+            $this->repairSuccessors($push, $label, $offRanges, $atTs, $horizonEnd);
+
+            // Lùi các công đoạn phía trước của lô có cổng về sát giờ mới: ĐH → THT, PC; THT → PC.
+            // BP không lùi ĐH ở đây: ĐH do bước sau xếp lại (hoặc nhóm chờ BP không cài Max)
+            $blockIs = function (array $seq, int $a, int $b, int $stage, bool $wantGated) use ($gatedPm): bool {
+                for ($k = $a; $k <= $b; $k++) {
+                    if ($seq[$k]['stage'] !== $stage || isset($gatedPm[$seq[$k]['pm']]) !== $wantGated) {
+                        return false;
+                    }
+                }
+                return true;
+            };
+            $upstream = min($stages) === 5 ? [4, 3] : (in_array(4, $stages, true) ? [3] : []);
+            foreach ($upstream as $stage) {
+                $rooms = DB::table('stage_plan')
+                    ->where('deparment_code', $this->productionCode)->where('stage_code', $stage)->where('active', 1)
+                    ->where('finished', 0)->whereNull('actual_start')->whereNotNull('resourceId')
+                    ->whereBetween('start', [date('Y-m-d H:i:s', $atTs), date('Y-m-d H:i:s', $horizonEnd)])
+                    ->distinct()->pluck('resourceId')->map(fn($id) => (int) $id)->all();
+                foreach ($rooms as $roomId) {
+                    $this->pullOrderAndJustify($sequencer, $roomId, $stage, $gatedPm, $blockIs, $atTs, $horizonEnd, $round, $label, 'gate');
+                }
+            }
+            DB::commit();
+        } catch (\RuntimeException $e) {
+            DB::rollBack();
+            [$this->moved, $this->pulled, $this->bpShifted, $this->gateWarnings] = $saved;
+            $this->info = [];
+            $this->gateFailed($stageName, $e->getMessage());
+        }
+    }
+
+    private function gateFailed(string $stageName, string $message): void
+    {
+        $this->debug('gate_failed', $stageName, $message);
+        $this->gateError = ($this->gateError !== null ? $this->gateError . '; ' : '') . $stageName . ': ' . $message;
+    }
+
+    /**
+     * Đẩy lùi các dòng tới ít nhất giờ yêu cầu, lan theo phòng (lô sau bị đè thì lùi theo)
+     * và theo công đoạn sau (cộng thời gian chờ), tới khi khoảng trống hấp thụ hết. Không
+     * bắt đầu trong ngày nghỉ (được chạy xuyên qua); nhảy qua bảo trì / công đoạn khác / lô
+     * đang chạy trong phòng. Phải đẩy lô đang chạy / đã xong thì báo lỗi.
+     *
+     * @param array<int, int> $req id dòng => giờ bắt đầu tối thiểu
+     */
+    private function pushLater(array $req, RoomSequencer $sequencer, string $label, array $offRanges): void
+    {
+        $skipOff = function (int $t) use ($offRanges): int {
+            do {
+                $moved = false;
+                foreach ($offRanges as [$a, $b]) {
+                    if ($t >= $a && $t < $b) {
+                        $t = $b;
+                        $moved = true;
+                    }
+                }
+            } while ($moved);
+            return $t;
+        };
+        $fmt = fn(int $t) => date('Y-m-d H:i:s', $t);
+        $cols = ['id', 'plan_master_id', 'stage_code', 'code', 'resourceId', 'start', 'end', 'end_clearning', 'finished', 'actual_start', 'overlap'];
+        $queue = $req;
+        $steps = 0;
+
+        // Dời một dòng tới ít nhất $min (nhảy ngày nghỉ, nhảy khối không dời được), ghi công đoạn sau cần lùi
+        $move = function ($r, int $min) use (&$queue, &$steps, $skipOff, $fmt, $sequencer, $label): array {
+            if (++$steps > 5000) {
+                throw new \RuntimeException('Đẩy lùi lan quá rộng (> 5000 dòng)');
+            }
+            $stage = (int) $r->stage_code;
+            if ((int) $r->finished === 1 || ! empty($r->actual_start) || $stage < 3 || $stage > 7) {
+                // Công đoạn đã nhận phòng / đã xong mà công đoạn trước còn chưa xong: dữ liệu bất thường,
+                // không đẩy được; giữ nguyên và báo lại thay vì huỷ cả bước
+                $this->loadInfo([(int) $r->plan_master_id]);
+                $this->gateWarnings[(int) $r->id] = 'Lô ' . ($this->info[(int) $r->plan_master_id]['batch'] ?? $r->plan_master_id)
+                    . ' (' . (self::STAGE_NAMES[$stage] ?? 'CĐ ' . $stage) . '): đã nhận phòng / đã xong trước khi công đoạn trước xong, không đẩy lùi được';
+                return [strtotime($r->start), strtotime($r->end_clearning ?: $r->end)];
+            }
+            $start = strtotime($r->start);
+            $occ = strtotime($r->end_clearning ?: $r->end) - $start;
+            $new = $skipOff($min);
+            for ($k = 0; $r->resourceId && ! $r->overlap && $k < 50; $k++) {
+                $wallEnd = DB::table('stage_plan')->where('resourceId', $r->resourceId)->where('id', '!=', $r->id)
+                    ->where('active', 1)->where('overlap', 0)->where('finished', 0)->whereNotNull('start')
+                    ->where(fn($q) => $q->whereNotNull('actual_start')->orWhereNotIn('stage_code', [3, 4, 5, 6, 7]))
+                    ->where('start', '<', $fmt($new + $occ))
+                    ->whereRaw('COALESCE(end_clearning, end) > ?', [$fmt($new)])
+                    ->max(DB::raw('COALESCE(end_clearning, end)'));
+                if ($wallEnd === null) {
+                    break;
+                }
+                $new = $skipOff(strtotime($wallEnd));
+            }
+
+            $d = $new - $start;
+            $sequencer->apply([(int) $r->id => $d], $label);
+            $pm = (int) $r->plan_master_id;
+            $this->loadInfo([$pm]);
+            if ($stage > $this->gateStage) {
+                $this->bpShifted[(int) $r->id] ??= ['pm' => $pm, 'stage' => $stage, 'old' => $r->start];
+                $this->bpShifted[(int) $r->id]['new'] = $fmt($new);
+            } else {
+                $this->recordRoomMove(['pm' => $pm, 'stage' => $stage, 'start' => $start], $d, 'gate', $this->gateGroup, substr($r->start, 0, 10), 1, false);
+            }
+
+            $newEnd = strtotime($r->end) + $d;
+            if ($r->code) {
+                foreach (DB::table('stage_plan')->where('predecessor_code', $r->code)->where('active', 1)->whereNotNull('start')
+                    ->get(['id', 'stage_code', 'plan_master_id', 'start']) as $sx) {
+                    $this->loadInfo([(int) $sx->plan_master_id]);
+                    $need = $newEnd + $this->waitSeconds((int) $sx->stage_code, (int) $sx->plan_master_id);
+                    if (strtotime($sx->start) < $need) {
+                        $queue[(int) $sx->id] = max($queue[(int) $sx->id] ?? 0, $need);
+                    }
+                }
+            }
+
+            return [$new, $start + $occ + $d];
+        };
+
+        while ($queue !== []) {
+            asort($queue);
+            $id = array_key_first($queue);
+            $min = $queue[$id];
+            unset($queue[$id]);
+
+            $r = DB::table('stage_plan')->where('id', $id)->first($cols);
+            if ($r === null || empty($r->start) || strtotime($r->start) >= $min) {
+                continue;
+            }
+            [, $cursor] = $move($r, $min);
+
+            // Các lô sau trong phòng, theo thứ tự cũ: bị đè thì lùi ra sau lô trước, gặp khoảng trống thì dừng
+            if (! $r->resourceId || $r->overlap) {
+                continue;
+            }
+            $followers = DB::table('stage_plan')->where('resourceId', $r->resourceId)->where('id', '!=', $id)
+                ->where('active', 1)->where('overlap', 0)->where('finished', 0)->whereNull('actual_start')
+                ->whereBetween('stage_code', [3, 7])->whereNotNull('start')
+                ->where('start', '>=', $r->start)->orderBy('start')->limit(400)->get($cols);
+            foreach ($followers as $f) {
+                if (strtotime($f->start) >= $cursor) {
+                    break;
+                }
+                // Lô này có thể đang chờ lùi xa hơn vì công đoạn trước của nó: lấy mốc lớn hơn
+                [, $cursor] = $move($f, max($cursor, $queue[(int) $f->id] ?? 0));
+                unset($queue[(int) $f->id]);
+            }
+        }
+    }
+
+    /**
+     * Công đoạn sau (BP, ĐG) của lô vừa xếp lại ĐH chưa có hàng đúng giờ: thay vì để phòng
+     * chờ (BP là nút cổ chai, cả phòng sẽ lùi theo), đổi chỗ với khối lô ngay phía sau trong
+     * phòng đã có hàng; lặp tới khi kịp. Không đổi được thì mới đẩy lùi lan truyền.
+     *
+     * @param array<int, int> $need id dòng => giờ bắt đầu tối thiểu
+     */
+    private function repairSuccessors(array $need, string $label, array $offRanges, int $atTs, int $horizonEnd): void
+    {
+        if ($need === []) {
+            return;
+        }
+
+        $info = function (int $pm) {
+            $this->loadInfo([$pm]);
+            return $this->info[$pm];
+        };
+        $sequencer = new RoomSequencer(
+            $this->productionCode,
+            $atTs,
+            $horizonEnd + 30 * 86400,
+            fn(int $pm) => $info($pm)['lock'],
+            fn(int $pm, int $stage) => $info($pm)['deadlines'][$stage] ?? null,
+            function (int $stage, int $pm) use ($info) {
+                $info($pm);
+                return $this->waitSeconds($stage, $pm);
+            },
+            $offRanges
+        );
+
+        $rows = DB::table('stage_plan')->whereIn('id', array_keys($need))->get(['id', 'resourceId', 'overlap'])->keyBy('id');
+        $push = [];
+        foreach ($need as $id => $min) {
+            $roomId = (int) ($rows[$id]->resourceId ?? 0);
+            if ($roomId === 0 || (int) ($rows[$id]->overlap ?? 0) === 1) {
+                $push[$id] = $min;
+                continue;
+            }
+
+            for ($guard = 0; $guard < 30; $guard++) {
+                $seq = $sequencer->room($roomId);
+                $i = null;
+                foreach ($seq as $k => $row) {
+                    if ($row['id'] === $id) {
+                        $i = $k;
+                    }
+                }
+                if ($i === null || $seq[$i]['start'] >= $min) {
+                    break;
+                }
+
+                // Khối phía sau gần nhất đã có hàng, lên đúng chỗ dòng này
+                $plan = null;
+                for ($j = $i + 1, $scanned = 0; $j < count($seq) && $scanned < 15; $scanned++) {
+                    [$n1, $n2] = $sequencer->block($seq, $j);
+                    $j = $n2 + 1;
+                    if ($seq[$n1]['stage'] !== $seq[$i]['stage'] || $seq[$n1]['lock'] !== null) {
+                        continue;
+                    }
+                    if (($plan = $sequencer->swapPlan($seq, $i, $n1, $n2)) !== null) {
+                        break;
+                    }
+                }
+                if ($plan === null) {
+                    break;
+                }
+                $sequencer->apply($plan, $label);
+                $sequencer->forget($roomId);
+                $this->debug('gate_swap', $roomId, $plan);
+                foreach ($seq as $row) {
+                    if (isset($plan[$row['id']]) && $row['stage'] > $this->gateStage) {
+                        $this->bpShifted[$row['id']] ??= ['pm' => $row['pm'], 'stage' => $row['stage'], 'old' => date('Y-m-d H:i:s', $row['start'])];
+                        $this->bpShifted[$row['id']]['new'] = date('Y-m-d H:i:s', $row['start'] + $plan[$row['id']]);
+                    }
+                }
+            }
+
+            $start = DB::table('stage_plan')->where('id', $id)->value('start');
+            if ($start && strtotime($start) < $min) {
+                $push[$id] = $min;
+            }
+        }
+
+        $this->debug('gate_push', count($push));
+        $this->pushLater($push, $sequencer, $label, $offRanges);
+    }
+
+    /** Dòng công đoạn sau bị đẩy lùi theo ở chế độ ngưng nguồn */
+    private function bpShiftedReport(): array
+    {
+        $report = [];
+        foreach ($this->bpShifted as $id => $s) {
+            $pm = $s['pm'];
+            $this->loadInfo([$pm]);
+            $lastEnd = DB::table('stage_plan')->where('plan_master_id', $pm)->where('active', 1)->max('end');
+            $due = $this->info[$pm]['expected_date'] ?? null;
+            $report[] = [
+                'plan_master_id' => $pm,
+                'batch'          => $this->info[$pm]['batch'] ?? (string) $pm,
+                'product_name'   => $this->info[$pm]['product_name'] ?? null,
+                'stage'          => $s['stage'],
+                'old_start'      => $s['old'],
+                'new_start'      => $s['new'],
+                'last_end'       => $lastEnd,
+                'expected_date'  => $due,
+                'late'           => $due !== null && $lastEnd !== null && Carbon::parse($lastEnd)->gt(Carbon::parse($due)->endOfDay()),
+            ];
+        }
+        usort($report, fn($a, $b) => [$b['late'], $a['old_start']] <=> [$a['late'], $b['old_start']]);
+
+        return $report;
+    }
+
+    /**
+     * Ngưng nguồn, sau khi xếp lại công đoạn nguồn: trong một phòng công đoạn phía trước,
+     * với các lô trong $coated (lô có cổng, pm => nhóm):
+     *  1. xếp các khối lô theo hạn (giờ bắt đầu muộn nhất còn kịp công đoạn sau):
+     *     khối hạn xa đang chạy trước khối hạn gần thì đổi chỗ, để khối hạn xa còn đường lùi;
+     *  2. dồn từng khối lô về sát hạn, xét từ khối cuối phòng ngược lên (lấp khoảng
+     *     trống phía sau, không đẩy được lô đã sát hạn).
+     *
+     * @return int số lần dời
+     */
+    private function pullOrderAndJustify(RoomSequencer $sequencer, int $roomId, int $stage, array $coated, callable $blockIs,
+        int $atTs, int $horizonEnd, int $round, string $label, string $method = 'pull'): int
+    {
+        $moves = 0;
+        $minShift = (int) config('wip_control.min_shift_minutes', 60) * 60;
+        $scanLimit = 20;
+
+        $isHead = function (array $seq, int $i) use ($stage, $coated, $blockIs, $atTs, $horizonEnd, $sequencer): ?array {
+            $row = $seq[$i];
+            if ($row['stage'] !== $stage || ! isset($coated[$row['pm']]) || $row['lock'] !== null
+                || $row['start'] < $atTs || $row['start'] > $horizonEnd) {
+                return null;
+            }
+            [$a, $b] = $sequencer->block($seq, $i);
+            return $a === $i && $blockIs($seq, $a, $b, $stage, true) ? [$a, $b] : null;
+        };
+        $due = function (array $seq, int $a, int $b): int {
+            $d = PHP_INT_MAX;
+            for ($k = $a; $k <= $b; $k++) {
+                $d = min($d, $seq[$k]['bound'] === PHP_INT_MAX ? PHP_INT_MAX : $seq[$k]['start'] + $seq[$k]['bound']);
+            }
+            return $d;
+        };
+        $record = function (array $seq, array $plan, int $seedId) use ($round, $method, $coated) {
+            $byId = [];
+            foreach ($seq as $row) {
+                $byId[$row['id']] = $row;
+            }
+            foreach ($plan as $id => $d) {
+                $row = $byId[$id];
+                $this->recordRoomMove($row, $d, $method, is_string($coated[$row['pm']] ?? null) ? $coated[$row['pm']] : 'BP',
+                    date('Y-m-d', $row['start']), $round, $id === $seedId);
+                unset($this->info[$row['pm']]);
+            }
+        };
+
+        // 1. Hạn gần chạy trước
+        for ($guard = 0; $guard < 200; $guard++) {
+            $seq = $sequencer->room($roomId);
+            $plan = null;
+            $seedId = null;
+            for ($i = 0; $i < count($seq) && $plan === null; $i++) {
+                if (($c = $isHead($seq, $i)) === null) {
+                    continue;
+                }
+                $dueC = $due($seq, $c[0], $c[1]);
+                for ($j = $c[1] + 1, $scanned = 0; $j < count($seq) && $scanned < $scanLimit; $scanned++) {
+                    $n = $isHead($seq, $j);
+                    $j = $sequencer->block($seq, $j)[1] + 1;
+                    if ($n === null || $due($seq, $n[0], $n[1]) >= $dueC) {
+                        continue;
+                    }
+                    if (($option = $sequencer->swapPlan($seq, $c[0], $n[0], $n[1])) !== null) {
+                        $plan = $option;
+                        $seedId = $seq[$c[0]]['id'];
+                        break;
+                    }
+                }
+            }
+            if ($plan === null) {
+                break;
+            }
+            $sequencer->apply($plan, $label);
+            $this->debug('pull_order', $stage, $roomId, $plan);
+            $sequencer->forget($roomId);
+            $record($seq, $plan, $seedId);
+            $moves++;
+        }
+
+        // 2. Dồn về sát hạn, từ cuối phòng ngược lên
+        $seq = $sequencer->room($roomId);
+        for ($i = count($seq) - 1; $i >= 0; $i--) {
+            if ($isHead($seq, $i) === null) {
+                continue;
+            }
+            $delta = $sequencer->maxShift($seq, $i, $horizonEnd - $seq[$i]['start']);
+            if ($delta < $minShift || ($plan = $sequencer->shiftPlan($seq, $i, $delta)) === null) {
+                continue;
+            }
+            $sequencer->apply($plan, $label);
+            $this->debug('pull_justify', $stage, $roomId, $plan);
+            $sequencer->forget($roomId);
+            $record($seq, $plan, $seq[$i]['id']);
+            $moves++;
+            $seq = $sequencer->room($roomId);   // thứ tự dòng không đổi, chỉ giờ
+        }
+
+        return $moves;
     }
 
     private function recordRoomMove(array $row, int $delta, string $method, string $group, string $date, int $round, bool $seed): void
@@ -1644,7 +2026,7 @@ class WipThrottleService
                 if ($row->resourceId && ! $row->overlap) {
                     $clash = DB::table('stage_plan')
                         ->where('resourceId', $row->resourceId)->where('id', '!=', $row->id)->where('active', 1)
-                        ->where('overlap', 0)->whereNotNull('start')
+                        ->where('overlap', 0)->where('finished', 0)->whereNotNull('start')
                         ->where('start', '<', $row->end_clearning ?: $row->end)
                         ->whereRaw('COALESCE(end_clearning, end) > ?', [$row->start])
                         ->value('id');
@@ -1653,14 +2035,6 @@ class WipThrottleService
                         $this->debug('broken_overlap', $pm, (int) $row->stage_code, $row->start, $clash);
                         continue;
                     }
-                }
-
-                // Lô được kéo lên mà bị xếp muộn hơn lịch cũ thì không có lợi gì
-                $notLater = $this->noLater[$pm][(int) $row->stage_code] ?? null;
-                if ($notLater !== null && strtotime($row->start) > $notLater) {
-                    $broken[$pm] = true;
-                    $this->debug('broken_later', $pm, (int) $row->stage_code, $row->start);
-                    continue;
                 }
 
                 // Mốc lùi chỉ là chặn dưới, phòng bận thì bộ sắp lịch còn đẩy muộn hơn nữa
@@ -1803,6 +2177,9 @@ class WipThrottleService
             'pulled'            => $this->pulledReport(),
             'skipped'           => $this->skippedReport(),
             'skipped_by_reason' => array_count_values($this->skipped),
+            'bp_shifted'        => $this->bpShiftedReport(),
+            'gate_error'        => $this->gateError,
+            'gate_warnings'     => array_values($this->gateWarnings),
             'undo_code'         => $undoCode,
             'duration_seconds'  => (int) round(microtime(true) - $began),
         ] + $extra + (config('wip_control.debug') ? ['trace' => $this->trace] : []);

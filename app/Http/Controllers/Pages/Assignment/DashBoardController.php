@@ -43,7 +43,7 @@ class DashBoardController extends Controller
         // Departments list
         $departments = [
             'PXV1' => 'Phân xưởng Viên 1',
-            'PXTN' => 'Phân xưởng Thuốc Nước',
+            'PXTN' => 'Phân xưởng Nước',
             'PXV2' => 'Phân xưởng Viên 2',
             'PXDN' => 'Phân xưởng Dùng Ngoài',
             'PXVH' => 'Phân xưởng Viên H',
@@ -759,7 +759,7 @@ class DashBoardController extends Controller
 
         // 4. Lấy danh sách tất cả các tổ khả dụng trong phân xưởng này
         $availableGroupsArray = [];
-        
+
         if ($isENorQA) {
             foreach ($dbGroups as $code => $name) {
                 if ($name !== 'NA') {

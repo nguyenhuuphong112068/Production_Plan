@@ -320,7 +320,7 @@
                                             @if (!is_null($stage->yields))
                                                 <small class="d-block">Yield:
                                                     {{ $stage->yields }}
-                                                    {{ $stage->stage_code <= 4 ? 'Kg' : 'ĐVL' }}</small>
+                                                    {{ $stage->stage_code <= 4 ? 'Kg' : 'ĐV' }}</small>
                                             @endif
                                         </span>
                                     </button>
@@ -460,7 +460,7 @@
                                                 @if (!is_null($stage->yields))
                                                     <small class="d-block">Yield:
                                                         {{ $stage->yields }}
-                                                        {{ $stage->stage_code <= 4 ? 'Kg' : 'ĐVL' }}</small>
+                                                        {{ $stage->stage_code <= 4 ? 'Kg' : 'ĐV' }}</small>
                                                 @endif
                                             </span>
                                         </button>

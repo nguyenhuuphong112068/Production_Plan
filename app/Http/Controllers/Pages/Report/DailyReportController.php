@@ -148,7 +148,7 @@ class DailyReportController extends Controller
                     , 2) AS theory_qty_unit
                 "),
 
-                DB::raw('CASE WHEN sp.stage_code <= 4 THEN "Kg" ELSE "ĐVL" END AS unit'),
+                DB::raw('CASE WHEN sp.stage_code <= 4 THEN "Kg" ELSE "ĐV" END AS unit'),
                 DB::raw("
                     CASE 
                         WHEN sp.stage_code = 5 AND d.name COLLATE utf8mb4_unicode_ci LIKE '%phim%' THEN 'coating'
@@ -293,7 +293,7 @@ class DailyReportController extends Controller
                             , 2)
                     ELSE 0 END AS total_qty_unit"),
 
-                DB::raw('CASE WHEN sp.stage_code <= 4 THEN "Kg" ELSE "ĐVL" END AS unit'),
+                DB::raw('CASE WHEN sp.stage_code <= 4 THEN "Kg" ELSE "ĐV" END AS unit'),
 
                 DB::raw("
                     CASE 
@@ -471,7 +471,7 @@ class DailyReportController extends Controller
                 DB::raw('
                     CASE
                         WHEN sp.stage_code <= 4 THEN "Kg"
-                        ELSE "ĐVL"
+                        ELSE "ĐV"
                     END as unit
                 '),
                 DB::raw("
@@ -534,7 +534,7 @@ class DailyReportController extends Controller
                 DB::raw('
                     CASE
                         WHEN sp.stage_code <= 4 THEN "Kg"
-                        ELSE "ĐVL"
+                        ELSE "ĐV"
                     END as unit
                 '),
                 DB::raw("
@@ -704,7 +704,7 @@ class DailyReportController extends Controller
                 DB::raw('
                     CASE
                         WHEN sp.stage_code <= 4 THEN "Kg"
-                        ELSE "ĐVL"
+                        ELSE "ĐV"
                     END as unit
                 '),
                 DB::raw("

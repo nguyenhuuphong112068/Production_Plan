@@ -189,7 +189,7 @@
                                 class="nav-link">
                                 <i
                                     class="far fa-circle nav-icon {{ session('user')['production_code'] == 'PXTN' ? 'text-danger' : '' }}"></i>
-                                <p>PXTN</p>
+                                <p>PXN</p>
                             </a>
                         </li>
 

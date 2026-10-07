@@ -134,10 +134,10 @@
                                                     <td class="align-middle">{{ $data->stage }}</td>
                                                     <td class="align-middle">
                                                         {{ number_format($data->sum_yields, 2) }}
-                                                        {{ $data->stage_code <= 5 ? 'Kg' : 'ĐVL' }}
+                                                        {{ $data->stage_code <= 5 ? 'Kg' : 'ĐV' }}
                                                         @if ($data->stage_code == 5)
                                                             <br># {{ number_format($data->sum_yields_unit ?? 0, 2) }}
-                                                            ĐVL
+                                                            ĐV
                                                         @endif
                                                     </td>
                                                     <td class="align-middle">
@@ -240,7 +240,7 @@
                                     <td>${item.product_name ?? ''} </td>
                                     <td>${item.batch ?? ''}</td>
                                     <td>${(item.pre_room ?? '') }</td>
-                                    <td>${(item.yields != null ? new Intl.NumberFormat('en-US', { maximumFractionDigits: 3 }).format(item.yields) : '') + (item.stage_code <= 4 ? " Kg" : " ĐVL")}</td>
+                                    <td>${(item.yields != null ? new Intl.NumberFormat('en-US', { maximumFractionDigits: 3 }).format(item.yields) : '') + (item.stage_code <= 4 ? " Kg" : " ĐV")}</td>
                                     <td>${stageNameMap[item.next_stage] ?? ''}</td>
                                     
                                     <td>${moment(item.next_start).format('hh:mm DD/MM/YYYY') ?? ''}</td>

@@ -23,7 +23,7 @@
                                         @if($vt_ic->validationTracking)
                                         <tr>
                                             <td class="font-weight-bold text-primary">
-                                                {{ $product->intermediate_code }} - {{ $product->productName->name ?? 'N/A' }} - Cỡ lô: {{ number_format((float)$product->batch_size, 0, ',', '.') }} {{ $product->unit_batch_size ?? '' }} | ĐVL: {{ number_format((float)$product->batch_qty, 0, ',', '.') }} {{ $product->unit_batch_qty ?? '' }}
+                                                {{ $product->intermediate_code }} - {{ $product->productName->name ?? 'N/A' }} - Cỡ lô: {{ number_format((float)$product->batch_size, 0, ',', '.') }} {{ $product->unit_batch_size ?? '' }} | ĐV: {{ number_format((float)$product->batch_qty, 0, ',', '.') }} {{ $product->unit_batch_qty ?? '' }}
                                             </td>
                                             <td class="font-weight-bold text-secondary">{{ $vt_ic->validationTracking->MatID ?? 'N/A' }}</td>
                                             <td>{{ $vt_ic->validationTracking->MaterialName ?? 'N/A' }}<br><small class="text-muted">CC: {{ $vt_ic->validationTracking->CC_num }}</small></td>

@@ -113,7 +113,7 @@
                                 <td> {{ 'Chưa Xác nhận Hoàn Thành' }} </td>
                             @endif
 
-                            <td> {{ $data->sum_actual_yeild }} {{ $stageCode <= 4 ? 'Kg' : 'ĐVL' }}</td>
+                            <td> {{ $data->sum_actual_yeild }} {{ $stageCode <= 4 ? 'Kg' : 'ĐV' }}</td>
                             <td> {{ $data->quarantine_room_code }} </td>
                             <td> {{ $data->note }} </td>
 

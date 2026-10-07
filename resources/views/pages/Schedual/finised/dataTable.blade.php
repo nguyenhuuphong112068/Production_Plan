@@ -217,7 +217,7 @@
                             @if ($stageCode <= 4)
                                 {{ '(Kg)' }}
                             @else
-                                {{ '(ĐVL)' }}
+                                {{ '(ĐV)' }}
                             @endif
                             <br>
                             {{-- <span style="color: red; font-style:italic;">

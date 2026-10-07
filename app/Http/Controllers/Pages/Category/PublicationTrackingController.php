@@ -24,7 +24,7 @@ class PublicationTrackingController extends Controller
         private const DEPARTMENTS = [
                 'PXV1' => 'PX Viên 1',
                 'PXV2' => 'PX Viên 2',
-                'PXTN' => 'PX Thuốc Nước',
+                'PXTN' => 'PX Nước',
                 'PXDN' => 'PX Dùng Ngoài',
                 'PXVH' => 'PX Viên H',
         ];
@@ -423,9 +423,9 @@ class PublicationTrackingController extends Controller
                 $usedIds = $candidateIds->isEmpty()
                         ? collect()
                         : DB::table('publication_tracking_task_item')
-                                ->whereIn('detail_id', $candidateIds)
-                                ->distinct()
-                                ->pluck('detail_id');
+                        ->whereIn('detail_id', $candidateIds)
+                        ->distinct()
+                        ->pluck('detail_id');
 
                 $obsoleteIds = $candidateIds->diff($usedIds);
 

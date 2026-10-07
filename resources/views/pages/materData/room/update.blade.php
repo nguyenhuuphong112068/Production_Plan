@@ -60,7 +60,7 @@
 
             {{-- Capacity --}}
             <div class="form-group">
-              <label for="capacity">Công Suất (ĐVL/giờ)</label>
+              <label for="capacity">Công Suất (ĐV/giờ)</label>
               <input type="text" class="form-control" name="capacity" 
                 value="{{ old('capacity') }}">
             </div>

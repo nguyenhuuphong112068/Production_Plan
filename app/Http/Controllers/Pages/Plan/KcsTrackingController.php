@@ -28,7 +28,7 @@ class KcsTrackingController extends Controller
     private const DEPARTMENTS = [
         'PXV1' => 'PX Viên 1',
         'PXV2' => 'PX Viên 2',
-        'PXTN' => 'PX Thuốc Nước',
+        'PXTN' => 'PX Nước',
         'PXDN' => 'PX Dùng Ngoài',
         'PXVH' => 'PX Viên H',
     ];
@@ -173,8 +173,14 @@ class KcsTrackingController extends Controller
      */
     private function filteredData(array $filters): array
     {
-        ['department' => $department, 'planFrom' => $planFrom, 'planTo' => $planTo,
-            'keyword' => $keyword, 'kcsMonth' => $kcsMonth, 'result' => $result] = $filters;
+        [
+            'department' => $department,
+            'planFrom' => $planFrom,
+            'planTo' => $planTo,
+            'keyword' => $keyword,
+            'kcsMonth' => $kcsMonth,
+            'result' => $result
+        ] = $filters;
 
         $datas = $this->batches($department, $planFrom, $planTo, $keyword);
 
@@ -226,18 +232,47 @@ class KcsTrackingController extends Controller
      */
     private function buildExportSpreadsheet(array $filters, array $filtered): Spreadsheet
     {
-        ['datas' => $datas, 'records' => $records, 'bomVersions' => $bomVersions,
-            'kcsDates' => $kcsDates, 'mmsSuggestions' => $mmsSuggestions] = $filtered;
+        [
+            'datas' => $datas,
+            'records' => $records,
+            'bomVersions' => $bomVersions,
+            'kcsDates' => $kcsDates,
+            'mmsSuggestions' => $mmsSuggestions
+        ] = $filtered;
 
         $prefill = self::PREFILL_FROM_PLAN_MASTER;
 
         $headers = [
-            'STT', 'Số Lệnh', 'Số Lô', 'Tên Sản Phẩm', 'Mã BTP', 'Mã TP', 'Thị Trường', 'Quy Cách',
-            'Cỡ Lô', 'Lô TĐ',
-            'Ngày Nhận Hồ Sơ', 'Người Đọc', 'Ngày Đọc Xong HS', 'Số Phiếu COATP', 'Ngày Nhận COATP',
-            'DR/IR', 'Ngày AP DR/IR', 'OOS', 'Ngày AP OOS', 'Ngày AP DR/IR KCQ', 'Ngày AP OPV/PVR',
-            'Ngày Chờ KCS Theo Đúng Thứ Tự Lô', 'Ngày KCS', 'Ghi Chú',
-            'Ngày Đủ Điều Kiện', 'Số Ngày HT', 'KCS Pending', 'Tháng KCS', 'Mốc Quyết Định', 'Kết Quả',
+            'STT',
+            'Số Lệnh',
+            'Số Lô',
+            'Tên Sản Phẩm',
+            'Mã BTP',
+            'Mã TP',
+            'Thị Trường',
+            'Quy Cách',
+            'Cỡ Lô',
+            'Lô TĐ',
+            'Ngày Nhận Hồ Sơ',
+            'Người Đọc',
+            'Ngày Đọc Xong HS',
+            'Số Phiếu COATP',
+            'Ngày Nhận COATP',
+            'DR/IR',
+            'Ngày AP DR/IR',
+            'OOS',
+            'Ngày AP OOS',
+            'Ngày AP DR/IR KCQ',
+            'Ngày AP OPV/PVR',
+            'Ngày Chờ KCS Theo Đúng Thứ Tự Lô',
+            'Ngày KCS',
+            'Ghi Chú',
+            'Ngày Đủ Điều Kiện',
+            'Số Ngày HT',
+            'KCS Pending',
+            'Tháng KCS',
+            'Mốc Quyết Định',
+            'Kết Quả',
         ];
         $lastColumn = Coordinate::stringFromColumnIndex(count($headers));
 

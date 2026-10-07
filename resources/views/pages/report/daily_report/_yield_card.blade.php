@@ -58,7 +58,7 @@
             <tbody>
                 @foreach ($roomsByStage as $stage_code => $rooms)
                     @php
-                        $unit = $stage_code <= 4 ? 'Kg' : 'ĐVL';
+                        $unit = $stage_code <= 4 ? 'Kg' : 'ĐV';
                         $stageLT = $dayLT->where('stage_code', $stage_code)->sum('total_qty');
                         $stageTT = $dayTT->where('stage_code', $stage_code)->sum('total_qty');
                         $stagePercent = $stageLT == 0 ? ($stageTT > 0 ? 100 : 0) : ($stageTT / $stageLT) * 100;
@@ -86,7 +86,7 @@
                         <td class="yc-right">
                             <div class="yc-num">{{ number_format($stageLT, 2) }}</div>
                             @if ($stage_code == 4)
-                                <div class="yc-sub"># {{ number_format($dayLT->where('stage_code', 4)->sum('total_qty_unit'), 2) }} ĐVL</div>
+                                <div class="yc-sub"># {{ number_format($dayLT->where('stage_code', 4)->sum('total_qty_unit'), 2) }} ĐV</div>
                             @endif
                             @if ($stage_code == 5)
                                 <div class="yc-break">
@@ -99,7 +99,7 @@
                         <td class="yc-right">
                             <div class="yc-num yc-num-actual">{{ number_format($stageTT, 2) }}</div>
                             @if ($stage_code == 4)
-                                <div class="yc-sub"># {{ number_format($dayTT->where('stage_code', 4)->sum('total_qty_unit'), 2) }} ĐVL</div>
+                                <div class="yc-sub"># {{ number_format($dayTT->where('stage_code', 4)->sum('total_qty_unit'), 2) }} ĐV</div>
                             @endif
                             @if ($stage_code == 5)
                                 <div class="yc-break">
@@ -165,7 +165,7 @@
                             <td class="yc-right">
                                 <div class="yc-num">{{ number_format($qtyLT, 2) }}</div>
                                 @if ($stage_code == 4)
-                                    <div class="yc-sub"># {{ number_format($itemLT['total_qty_unit'] ?? 0, 2) }} ĐVL</div>
+                                    <div class="yc-sub"># {{ number_format($itemLT['total_qty_unit'] ?? 0, 2) }} ĐV</div>
                                 @endif
                                 @if ($plans->isNotEmpty())
                                     <div class="yc-plans">
@@ -194,7 +194,7 @@
                             <td class="yc-right">
                                 <div class="yc-num yc-num-actual">{{ number_format($qtyTT, 2) }}</div>
                                 @if ($stage_code == 4)
-                                    <div class="yc-sub"># {{ number_format($itemTT['total_qty_unit'] ?? 0, 2) }} ĐVL</div>
+                                    <div class="yc-sub"># {{ number_format($itemTT['total_qty_unit'] ?? 0, 2) }} ĐV</div>
                                 @endif
                             </td>
                             <td class="yc-pct {{ $pctCls }}">

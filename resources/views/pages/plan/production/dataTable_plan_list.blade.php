@@ -129,7 +129,7 @@
                             <th rowspan="2">Người Tạo</th>
                             <th rowspan="2">Ngày Tạo</th> <!-- ✅ SỬA -->
                             <th rowspan="2">Tình Trạng</th>
-                            <th rowspan="2">Sản Lượng Lý Thuyết (ĐVL)</th>
+                            <th rowspan="2">Sản Lượng Lý Thuyết (ĐV)</th>
 
                             <th colspan="9" style="text-align:center;">
                                 Tình Trạng Sản Xuất
@@ -295,7 +295,7 @@
                             <tr>
                                 <th rowspan="2">STT</th>
                                 <th rowspan="2">Tháng</th>
-                                <th rowspan="2">Sản Lượng Lý Thuyết (ĐVL)</th>
+                                <th rowspan="2">Sản Lượng Lý Thuyết (ĐV)</th>
                                 <th colspan="9" style="text-align:center;">Tình Trạng Sản Xuất</th>
                                 <th rowspan="2">Chi Tiết</th>
                                 <th rowspan="2">Lịch Chưa Sắp</th>
@@ -511,7 +511,7 @@
                                                 <span class="badge badge-success px-2 py-1"
                                                     style="font-size: 14px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                                                     {{ number_format($month_data->status_yields['Đã định hình'] ?? 0) }}
-                                                    <span style="font-size: 11px; font-weight: normal;">ĐVL</span>
+                                                    <span style="font-size: 11px; font-weight: normal;">ĐV</span>
                                                 </span>
                                             </div>
                                             <div class="mt-1 text-muted" style="font-size: 13px; line-height: 1.4;">
@@ -535,7 +535,7 @@
                                                 <span class="badge badge-success px-2 py-1"
                                                     style="font-size: 14px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                                                     {{ number_format($month_data->status_yields['Đã Bao phim'] ?? 0) }}
-                                                    <span style="font-size: 11px; font-weight: normal;">ĐVL</span>
+                                                    <span style="font-size: 11px; font-weight: normal;">ĐV</span>
                                                 </span>
                                             </div>
                                             <div class="mt-1 text-muted" style="font-size: 13px; line-height: 1.4;">
@@ -559,7 +559,7 @@
                                                 <span class="badge badge-success px-2 py-1"
                                                     style="font-size: 14px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                                                     {{ number_format($month_data->status_yields['Hoàn Tất ĐG'] ?? 0) }}
-                                                    <span style="font-size: 11px; font-weight: normal;">ĐVL</span>
+                                                    <span style="font-size: 11px; font-weight: normal;">ĐV</span>
                                                 </span>
                                             </div>
                                             <div class="mt-1 text-muted" style="font-size: 13px; line-height: 1.4;">
@@ -1480,7 +1480,7 @@
                     data: {
                         labels: labels,
                         datasets: [{
-                                label: 'Sản lượng (Kg/ĐVL)',
+                                label: 'Sản lượng (Kg/ĐV)',
                                 type: 'bar',
                                 backgroundColor: 'rgba(54, 162, 235, 0.6)',
                                 borderColor: 'rgba(54, 162, 235, 1)',
