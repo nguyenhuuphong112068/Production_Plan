@@ -18,6 +18,9 @@ class SchedualController extends Controller
     use ValidateSubmitLogic;
 
     protected $roomAvailability = [];
+
+    /** @var array<int, array{0: Carbon, 1: Carbon}>|null phòng đang có lô giữ phòng => [nhận phòng, dự kiến trả phòng], nạp 1 lần */
+    protected ?array $heldUntil = null;
     protected $moldSchedules = [];
 
     protected function loadMoldSchedules(array $moldIds)
@@ -5998,9 +6001,17 @@ class SchedualController extends Controller
                     'start' => Carbon::parse($row->start),
                     'end' => Carbon::parse($row->end),
                 ];
-            })
-            ->sortBy('start')
-            ->values();
+            });
+
+        // Lô đang giữ phòng (đã Nhận phòng, chưa Trả phòng): phòng bận tới giờ dự kiến trả phòng như thanh trên Gantt,
+        // không theo giờ kế hoạch cũ (nhận phòng trễ / chạy quá giờ thì kế hoạch cũ đã qua, phòng bị coi là trống từ now)
+        $this->heldUntil ??= app(RoomOccupancyService::class)->heldUntil();
+        if (isset($this->heldUntil[$roomId])) {
+            [$heldFrom, $heldTo] = $this->heldUntil[$roomId];
+            $blocks->push(['start' => $heldFrom->copy(), 'end' => $heldTo->copy()]);
+        }
+
+        $blocks = $blocks->sortBy('start')->values();
 
         $merged = [];
 

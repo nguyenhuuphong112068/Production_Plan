@@ -371,6 +371,48 @@ class RoomOccupancyService
     }
 
     /**
+     * Khoảng phòng đang bị lô giữ phòng chiếm, cho sắp lịch tự động: từ Nhận phòng tới dự kiến trả phòng, cùng quy tắc
+     * với thanh "đang diễn ra" trên Gantt (Nhận phòng + thời lượng giữ phòng theo lịch = KT vệ sinh − BĐ; quá lịch thì
+     * tới hiện tại). null = mọi phòng đang có lô giữ.
+     *
+     * @return array<int, array{0: Carbon, 1: Carbon}> room id => [nhận phòng, dự kiến trả phòng]
+     */
+    public function heldUntil(?array $roomIds = null): array
+    {
+        $roomIds ??= DB::table('stage_plan')
+            ->where('active', 1)
+            ->where('actual_start', '>=', self::TRACK_FROM)
+            ->whereRaw('(' . self::RELEASE_SQL . ') IS NULL')
+            ->whereNotNull('resourceId')
+            ->distinct()
+            ->pluck('resourceId')
+            ->all();
+        if (!$roomIds) {
+            return [];
+        }
+
+        $open = $this->openPlans($roomIds, $this->releasedAt($roomIds));
+        $planned = DB::table('stage_plan')
+            ->whereIn('id', $open->flatten()->pluck('id')->all() ?: [0])
+            ->get(['id', 'start', 'end', 'end_clearning'])
+            ->keyBy('id');
+
+        $now = now();
+        $held = [];
+        foreach ($open as $roomId => $rows) {
+            $received = Carbon::parse($rows->min('actual_start'));
+            $plannedSec = (int) $rows->max(function ($r) use ($planned) {
+                $p = $planned->get($r->id);
+                return $p && $p->start && ($p->end_clearning ?? $p->end)
+                    ? max(0, Carbon::parse($p->start)->diffInSeconds(Carbon::parse($p->end_clearning ?? $p->end), false)) : 0;
+            });
+            $held[(int) $roomId] = [$received, $received->copy()->addSeconds($plannedSec)->max($now)];
+        }
+
+        return $held;
+    }
+
+    /**
      * Phòng mà 1 người đang giữ (trang Ghi Nhận Sản Xuất vẫn hiện dù hết phân công): người đã bấm Nhận phòng các dòng còn
      * đang giữ phòng (Phòng Bận), hoặc Nhận phòng vệ sinh sau BT (Đang VS Sau BT). stage_plan không có cột người nhận,
      * nên đọc từ audittriallog (userName = người đăng nhập lúc bấm).

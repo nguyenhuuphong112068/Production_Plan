@@ -857,6 +857,10 @@ class WipThrottleService
                 $blocks[(int) $b->resourceId][] = [strtotime($b->start), strtotime($b->end_clearning ?: $b->end)];
             }
         }
+        // Lô đang giữ phòng: bận tới dự kiến trả phòng (như thanh trên Gantt), không theo giờ kế hoạch cũ
+        foreach (app(\App\Services\RoomOccupancyService::class)->heldUntil($rows->pluck('resourceId')->unique()->values()->all()) as $roomId => [$from, $to]) {
+            $blocks[$roomId][] = [$from->getTimestamp(), $to->getTimestamp()];
+        }
 
         $lots = [];
         $byId = [];
