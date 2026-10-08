@@ -229,7 +229,7 @@ function showReport(data) {
     customClass: { htmlContainer: 'cfg-html-left' },
     html: `
       <div style="text-align:left;font-size:13px">
-        <div style="margin-bottom:8px"><b>${st.text}</b> · ${data.iterations} vòng · ${data.duration_seconds}s</div>
+        <div style="margin-bottom:8px">${data.iterations} vòng · ${data.duration_seconds}s</div>
         ${warnings.length ? `<ul style="margin:0 0 10px 18px">${warnings.map((w) => `<li>${w}</li>`).join('')}</ul>` : ''}
         <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:10px">
           ${groupTable('Trước', data.before)}

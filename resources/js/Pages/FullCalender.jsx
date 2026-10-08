@@ -3967,12 +3967,6 @@ const ScheduleTest = () => {
     }
 
     const _proceedWithOverlapCheck = () => {
-      // =====================================================================
-      // 🔍 KIỂM TRA CHỒNG CHẤT TRƯỚC KHI LƯU
-      // =====================================================================
-      const calendarApiCheck = calendarRef.current?.getApi();
-      const allEventsCheck = calendarApiCheck ? calendarApiCheck.getEvents() : [];
-      const conflictingEvents = detectOverlappingEvents(changedEvent, allEventsCheck);
 
       const hasCascadeOldEvent = !!changeInfo.oldEvent;
 
@@ -4013,135 +4007,8 @@ const ScheduleTest = () => {
         }
       };
 
-      if (conflictingEvents.length > 0) {
-        // Tìm sự kiện bị chồng có end lớn nhất (để sắp tiếp sau)
-        const latestConflict = conflictingEvents.reduce((max, ev) =>
-          (ev.end && max.end && ev.end > max.end) ? ev : max
-          , conflictingEvents[0]);
-
-        // Tạo danh sách thông tin chồng chất (tối đa 5 sự kiện)
-        const conflictRows = conflictingEvents.slice(0, 5).map(ev => {
-          const props = ev.extendedProps || {};
-          const product = props.product_name || ev.title || '—';
-          const lot = props.actual_batch || props.batch_name || '—';
-          const startFmt = ev.start ? new Date(ev.start).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
-          const endFmt = ev.end ? new Date(ev.end).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
-          return `
-            <tr>
-              <td style="padding:6px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#1e40af">${product}</td>
-              <td style="padding:6px 10px;border-bottom:1px solid #e2e8f0;color:#7c3aed;font-weight:600">${lot}</td>
-              <td style="padding:6px 10px;border-bottom:1px solid #e2e8f0;color:#64748b;font-size:12px">${startFmt} → ${endFmt}</td>
-            </tr>`;
-        }).join('');
-
-        const moreText = conflictingEvents.length > 5
-          ? `<div style="text-align:center;margin-top:8px;color:#94a3b8;font-size:12px">...và ${conflictingEvents.length - 5} sự kiện khác</div>`
-          : '';
-
-        Swal.fire({
-          title: '<span style="color:#dc2626;font-size:18px">⚠️ Phát Hiện Chồng Lấn Lịch!</span>',
-          width: '680px',
-          html: `
-            <div style="text-align:left;font-family:inherit">
-              <p style="margin:0 0 12px;color:#475569;font-size:14px">
-                Sự kiện <strong style="color:#1e40af">${changedEvent.extendedProps?.product_name || changedEvent.title}</strong>
-                đang <span style="color:#dc2626;font-weight:700">chồng thời gian</span> với ${conflictingEvents.length} lịch sau:
-              </p>
-              <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;overflow:hidden;margin-bottom:12px">
-                <table style="width:100%;border-collapse:collapse">
-                  <thead>
-                    <tr style="background:#fee2e2">
-                      <th style="padding:8px 10px;text-align:left;font-size:12px;color:#991b1b">🏷️ Sản phẩm</th>
-                      <th style="padding:8px 10px;text-align:left;font-size:12px;color:#991b1b">📦 Lô</th>
-                      <th style="padding:8px 10px;text-align:left;font-size:12px;color:#991b1b">🕐 Thời gian</th>
-                    </tr>
-                  </thead>
-                  <tbody>${conflictRows}</tbody>
-                </table>
-                ${moreText}
-              </div>
-              <p style="margin:0;color:#64748b;font-size:13px">Bạn muốn xử lý như thế nào?</p>
-            </div>
-          `,
-          icon: 'warning',
-          showCancelButton: true,
-          confirmButtonText: 'Sắp tiếp sau',
-          cancelButtonText: 'Hủy',
-          confirmButtonColor: '#2563eb',
-          cancelButtonColor: '#6b7280',
-          buttonsStyling: true,
-          customClass: {
-            popup: 'swal-overlap-popup',
-            confirmButton: 'swal-btn-confirm',
-            denyButton: 'swal-btn-deny',
-            cancelButton: 'swal-btn-cancel'
-          }
-        }).then((result) => {
-          if (result.isConfirmed) {
-            // ✅ Lựa chọn 1: Sắp tiếp sau sự kiện bị chồng có end lớn nhất
-            const conflictEnd = latestConflict.extendedProps?.end_clearning || latestConflict.end || latestConflict.start;
-
-            const calendarApiCheck = calendarRef.current?.getApi();
-            const resourceEvents = calendarApiCheck ? calendarApiCheck.getEvents().filter(ev => {
-              const rId = ev.getResources?.()[0]?.id ?? ev.resourceId ?? ev._def?.resourceIds?.[0];
-              if (rId !== newResourceId) return false;
-              if (ev.extendedProps?.finished == 1) return false;
-              if (String(ev.id) === String(changedEvent.id)) return false;
-              return true;
-            }) : [];
-
-            let currentStart = skipOffDays(new Date(conflictEnd), offRanges);
-            const duration = changedEvent.end
-              ? changedEvent.end.getTime() - changedEvent.start.getTime()
-              : 0;
-            let finalStart, finalEnd;
-
-            while (true) {
-              let currentEnd = new Date(currentStart.getTime() + duration);
-              let safeEnd;
-              do { safeEnd = currentEnd; currentEnd = skipOffDays(currentEnd, offRanges); } while (currentEnd.getTime() !== safeEnd.getTime());
-
-              let hasOverlap = false;
-              let nextPossibleStart = null;
-
-              for (const ev of resourceEvents) {
-                const evStart = ev.start ? ev.start.getTime() : 0;
-                const evEnd = ev.extendedProps?.end_clearning ? new Date(ev.extendedProps.end_clearning).getTime() : (ev.end ? ev.end.getTime() : evStart);
-
-                if (currentStart.getTime() < evEnd && currentEnd.getTime() > evStart) {
-                  hasOverlap = true;
-                  if (!nextPossibleStart || evEnd > nextPossibleStart.getTime()) {
-                    nextPossibleStart = new Date(evEnd);
-                  }
-                }
-              }
-
-              if (!hasOverlap) {
-                finalStart = currentStart;
-                finalEnd = currentEnd;
-                break;
-              } else {
-                currentStart = skipOffDays(nextPossibleStart, offRanges);
-              }
-            }
-
-            let newStart = finalStart;
-            let newEnd = finalEnd;
-
-            changedEvent.setDates(newStart, newEnd, { maintainDuration: false });
-            _applyEventChange(changedEvent, oldEvent, newResourceId);
-
-          } else {
-            // ↩️ Hủy → hoàn tác về vị trí cũ và xóa khỏi pendingChanges
-            changeInfo.revert?.();
-            setPendingChanges(prev => prev.filter(e => String(e.id) !== String(changedEvent.id)));
-          }
-        });
-
-      } else {
-        // Không có chồng chất → lưu bình thường
-        _applyEventChange(changedEvent, oldEvent, newResourceId);
-      }
+      // Đã tắt hoàn toàn cảnh báo "Phát Hiện Chồng Lấn Lịch!" → luôn lưu thay đổi
+      _applyEventChange(changedEvent, oldEvent, newResourceId);
     };
 
     // --- Room Link Logic ---
