@@ -3578,11 +3578,46 @@ const ScheduleTest = () => {
         });
       };
 
-      const batchUpdates = generateBatchUpdates(initialOffset);
+      let currentOffset = initialOffset;
+      let batchUpdates = generateBatchUpdates(currentOffset);
+
+      // 1b. Nếu lô đầu tiên (trên mỗi phòng) bị thả chồng lên sự kiện vệ sinh của lô trước
+      // thì tự động lùi cả nhóm ra liền sau sự kiện vệ sinh đó.
+      const getPrevCleaningOverlapMs = (updates) => {
+        const movedSet = new Set(updates.map(u => String(u.id)));
+        const firstByRes = {};
+        updates.forEach(u => {
+          if (String(u.id).includes('-cleaning') || !u.resourceId) return;
+          const cur = firstByRes[u.resourceId];
+          if (!cur || new Date(u.start) < new Date(cur.start)) firstByRes[u.resourceId] = u;
+        });
+
+        let extra = 0;
+        const allEvs = calendarApi.getEvents();
+        Object.entries(firstByRes).forEach(([resId, first]) => {
+          const fs = new Date(first.start).getTime();
+          allEvs.forEach(e => {
+            const id = String(e.id);
+            if (!id.endsWith('-cleaning') || movedSet.has(id) || movedSet.has(id.replace('-cleaning', '-main'))) return;
+            if (!e.start || !e.end || String(e.getResources()[0]?.id) !== String(resId)) return;
+            const cs = e.start.getTime();
+            const ce = e.end.getTime();
+            if (cs <= fs && ce > fs) extra = Math.max(extra, ce - fs);
+          });
+        });
+        return extra;
+      };
+
+      for (let i = 0; i < 5; i++) {
+        const extra = getPrevCleaningOverlapMs(batchUpdates);
+        if (extra <= 0) break;
+        currentOffset += extra;
+        batchUpdates = generateBatchUpdates(currentOffset);
+      }
 
       // 2. Cascade Logic (Group Move)
       if (isCascadeMode) {
-        const offset = delta.milliseconds + delta.days * 24 * 60 * 60 * 1000;
+        const offset = currentOffset;
         const movedIds = new Set(batchUpdates.map(s => s.id));
 
         const resourceMinStart = {};
