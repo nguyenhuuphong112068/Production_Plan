@@ -3633,6 +3633,112 @@ const ScheduleTest = () => {
         if (adjust < 0) break;
       }
 
+      // 1c. Giãn lan truyền trong phòng (khi không bật chế độ Cascade):
+      // các lô phía sau (lô SX + VS của nó đi cùng nhau) bị chồng lấn thì đẩy ra liền sau lô đứng trước,
+      // gặp khoảng trống thì khoảng trống hấp thu phần chồng lấn và dừng lan truyền.
+      // Chỉ ĐẨY TRỄ, không kéo sớm. Bỏ qua Cân (1, 2) và Bảo trì (8); lô đã hoàn thành / đang giữ phòng là vật cản cố định.
+      if (!isCascadeMode) {
+        const movedIdSet = new Set(batchUpdates.map(u => String(u.id)));
+        const allEvs = calendarApi.getEvents();
+        const baseId = (id) => String(id).replace(/-(main|cleaning)$/, '');
+        const skipStage = (sc) => [1, 2, 8].includes(Number(sc));
+        const usable = (e) => e.start && e.display !== 'background' && !e.extendedProps?.is_personnel && !String(e.id).endsWith('-theory');
+
+        const movedByRes = {};
+        batchUpdates.forEach(u => {
+          if (!u.resourceId || skipStage(u._event?.extendedProps?.stage_code)) return;
+          (movedByRes[u.resourceId] = movedByRes[u.resourceId] || []).push(u);
+        });
+
+        Object.entries(movedByRes).forEach(([resId, moved]) => {
+          const stageCodes = new Set(moved.map(u => Number(u._event?.extendedProps?.stage_code)));
+          const minS = Math.min(...moved.map(u => new Date(u.start).getTime()));
+
+          // Khoảng thời gian đã bị chiếm: lô vừa thả + lô cố định (đã hoàn thành / đang giữ phòng).
+          // key = mã lô gốc, để VS không bị coi là chồng lấn với chính lô SX của nó.
+          const occupied = moved.map(u => ({ a: new Date(u.start).getTime(), b: new Date(u.end).getTime(), key: baseId(u.id) }));
+          // Lô SX được kéo một mình (không chọn kèm VS) -> VS của nó phải đi theo
+          const movedMainByKey = {};
+          moved.forEach(u => {
+            if (String(u.id).endsWith('-main') && u.originalStart) movedMainByKey[baseId(u.id)] = u;
+          });
+
+          const unitsMap = {};
+          allEvs.forEach(e => {
+            if (!usable(e) || movedIdSet.has(String(e.id))) return;
+            if (String(e.getResources()[0]?.id) !== String(resId)) return;
+            const end = (e.end || e.start).getTime();
+            if (e.extendedProps?.is_running) { occupied.push({ a: e.start.getTime(), b: end, key: null }); return; }
+            if (!stageCodes.has(Number(e.extendedProps?.stage_code))) return;
+            if (Number(e.extendedProps?.finished) === 1) { occupied.push({ a: e.start.getTime(), b: end, key: baseId(e.id) }); return; }
+            const key = baseId(e.id);
+            (unitsMap[key] = unitsMap[key] || []).push(e);
+          });
+
+          const units = Object.entries(unitsMap)
+            .map(([key, members]) => ({
+              key,
+              members,
+              start: Math.min(...members.map(m => m.start.getTime())),
+            }))
+            .filter(u => u.start >= minS || movedMainByKey[u.key])
+            .sort((a, b) => a.start - b.start);
+
+          // Dời cả cụm (lô + VS) sao cho mốc bắt đầu cụm = ns, giữ nguyên khoảng cách nội bộ
+          const placeUnit = (unit, ns) => unit.members.map(m => {
+            const mEnd = m.end || m.start;
+            let s, e;
+            if (!workingSunday) {
+              s = addWorkingTime(ns, getWorkingTimeBetween(new Date(unit.start), m.start, offRanges), offRanges);
+              e = addWorkingTime(s, getWorkingTimeBetween(m.start, mEnd, offRanges), offRanges);
+            } else {
+              s = new Date(ns.getTime() + (m.start.getTime() - unit.start));
+              e = new Date(s.getTime() + (mEnd.getTime() - m.start.getTime()));
+            }
+            return { m, s, e };
+          });
+
+          units.forEach(unit => {
+            let ns = new Date(unit.start);
+            const main = movedMainByKey[unit.key];
+            if (main) {
+              // VS dời theo đúng độ dời của lô SX
+              const oldS = new Date(main.originalStart);
+              const newS = new Date(main.start);
+              ns = !workingSunday
+                ? addWorkingTime(ns, getWorkingTimeBetween(oldS, newS, offRanges), offRanges)
+                : new Date(ns.getTime() + (newS.getTime() - oldS.getTime()));
+            }
+            let placed = placeUnit(unit, ns);
+            for (let guard = 0; guard < 50; guard++) {
+              const uS = Math.min(...placed.map(p => p.s.getTime()));
+              const uE = Math.max(...placed.map(p => p.e.getTime()));
+              const hit = occupied.filter(o => o.key !== unit.key && o.a < uE && o.b > uS);
+              if (hit.length === 0) break;
+              ns = new Date(Math.max(...hit.map(o => o.b)));
+              if (!workingSunday) ns = skipOffDays(ns, offRanges);
+              placed = placeUnit(unit, ns);
+            }
+
+            // Lô không bị dời thì không thành vật cản mới -> giữ nguyên chồng lấn cũ ngoài chuỗi lan truyền
+            if (ns.getTime() === unit.start) return;
+            placed.forEach(({ m, s, e }) => {
+              occupied.push({ a: s.getTime(), b: e.getTime(), key: unit.key });
+              if (s.getTime() === m.start.getTime()) return;
+              batchUpdates.push({
+                id: m.id,
+                start: s.toISOString(),
+                end: e.toISOString(),
+                resourceId: resId,
+                title: m.title,
+                submit: m.extendedProps.submit,
+                _event: m
+              });
+            });
+          });
+        });
+      }
+
       // 2. Cascade Logic (Group Move)
       if (isCascadeMode) {
         const offset = currentOffset;
