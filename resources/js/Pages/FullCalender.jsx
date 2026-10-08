@@ -3581,38 +3581,56 @@ const ScheduleTest = () => {
       let currentOffset = initialOffset;
       let batchUpdates = generateBatchUpdates(currentOffset);
 
-      // 1b. Nếu lô đầu tiên (trên mỗi phòng) bị thả chồng lên sự kiện vệ sinh của lô trước
-      // thì tự động lùi cả nhóm ra liền sau sự kiện vệ sinh đó.
-      const getPrevCleaningOverlapMs = (updates) => {
+      // 1b. "Hút" lô đầu tiên (trên mỗi phòng) vào lô/vệ sinh liền trước cùng phòng + cùng công đoạn:
+      //   - thả đè lên lô/vệ sinh trước  -> lùi cả nhóm ra liền sau nó
+      //   - thả cách nó <= MAGNET_MS      -> kéo cả nhóm sát vào nó
+      // Bỏ qua stage_code 1, 2 (Cân - được chạy song song) và 8 (Bảo trì), giống quy tắc trùng giờ của Gantt.
+      const MAGNET_MS = 60 * 60 * 1000;
+      const getMagnetAdjustMs = (updates) => {
         const movedSet = new Set(updates.map(u => String(u.id)));
         const firstByRes = {};
         updates.forEach(u => {
           if (String(u.id).includes('-cleaning') || !u.resourceId) return;
+          if ([1, 2, 8].includes(Number(u._event?.extendedProps?.stage_code))) return;
           const cur = firstByRes[u.resourceId];
           if (!cur || new Date(u.start) < new Date(cur.start)) firstByRes[u.resourceId] = u;
         });
 
-        let extra = 0;
+        let push = 0;
+        let pull = null;
         const allEvs = calendarApi.getEvents();
         Object.entries(firstByRes).forEach(([resId, first]) => {
           const fs = new Date(first.start).getTime();
+          const stageCode = Number(first._event?.extendedProps?.stage_code);
+          let prevEnd = null;
           allEvs.forEach(e => {
             const id = String(e.id);
-            if (!id.endsWith('-cleaning') || movedSet.has(id) || movedSet.has(id.replace('-cleaning', '-main'))) return;
+            if (movedSet.has(id) || movedSet.has(id.replace('-cleaning', '-main'))) return;
+            if (e.display === 'background' || e.extendedProps?.is_personnel || id.endsWith('-theory')) return;
             if (!e.start || !e.end || String(e.getResources()[0]?.id) !== String(resId)) return;
-            const cs = e.start.getTime();
-            const ce = e.end.getTime();
-            if (cs <= fs && ce > fs) extra = Math.max(extra, ce - fs);
+            if (Number(e.extendedProps?.stage_code) !== stageCode) return;
+            if (e.start.getTime() > fs) return;
+            if (prevEnd === null || e.end.getTime() > prevEnd) prevEnd = e.end.getTime();
           });
+          if (prevEnd === null) return;
+          if (prevEnd > fs) {
+            push = Math.max(push, prevEnd - fs);
+          } else if (fs - prevEnd <= MAGNET_MS) {
+            pull = pull === null ? fs - prevEnd : Math.min(pull, fs - prevEnd);
+          }
         });
-        return extra;
+        return push > 0 ? push : (pull ? -pull : 0);
       };
 
       for (let i = 0; i < 5; i++) {
-        const extra = getPrevCleaningOverlapMs(batchUpdates);
-        if (extra <= 0) break;
-        currentOffset += extra;
-        batchUpdates = generateBatchUpdates(currentOffset);
+        const adjust = getMagnetAdjustMs(batchUpdates);
+        if (adjust === 0) break;
+        const candidate = generateBatchUpdates(currentOffset + adjust);
+        // Kéo sát vào mà lại sinh chồng lấn (vd. vướng ngày nghỉ, phòng khác trong nhóm) thì giữ vị trí cũ
+        if (adjust < 0 && getMagnetAdjustMs(candidate) > 0) break;
+        currentOffset += adjust;
+        batchUpdates = candidate;
+        if (adjust < 0) break;
       }
 
       // 2. Cascade Logic (Group Move)
@@ -7394,12 +7412,14 @@ const ScheduleTest = () => {
               titleFormat: { year: 'numeric' }
             },
             resourceTimelineWeek15: { type: 'resourceTimelineWeek', slotDuration: '00:15:00' },
-            resourceTimelineWeek1h: { type: 'resourceTimelineWeek', slotDuration: '01:00:00' },
-            resourceTimelineWeek4h: { type: 'resourceTimelineWeek', slotDuration: '04:00:00' },
+            // snapDuration nhỏ hơn slotDuration để kéo thả tới được giờ lẻ (15p/30p)
+            // dù khung lưới hiển thị theo 1h/4h.
+            resourceTimelineWeek1h: { type: 'resourceTimelineWeek', slotDuration: '01:00:00', snapDuration: '00:15:00' },
+            resourceTimelineWeek4h: { type: 'resourceTimelineWeek', slotDuration: '04:00:00', snapDuration: '00:30:00' },
             resourceTimelineWeek1day: { type: 'resourceTimelineWeek', slotDuration: { days: 1 } },
 
-            resourceTimelineMonth1h: { type: 'resourceTimelineMonth', slotDuration: '01:00:00' },
-            resourceTimelineMonth4h: { type: 'resourceTimelineMonth', slotDuration: '04:00:00' },
+            resourceTimelineMonth1h: { type: 'resourceTimelineMonth', slotDuration: '01:00:00', snapDuration: '00:15:00' },
+            resourceTimelineMonth4h: { type: 'resourceTimelineMonth', slotDuration: '04:00:00', snapDuration: '00:30:00' },
             resourceTimelineMonth1d: { type: 'resourceTimelineMonth', slotDuration: { days: 1 } },
 
             resourceTimelineQuarter4h: { type: 'resourceTimelineQuarter', slotDuration: '04:00:00' },
