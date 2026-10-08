@@ -105,6 +105,7 @@
         .g-orange { background: linear-gradient(135deg, #bf360c, #ef6c00); }
         .g-rose { background: linear-gradient(135deg, #880e4f, #c2185b); }
         .g-slate { background: linear-gradient(135deg, #263238, #455a64); }
+        .g-maint { background: linear-gradient(135deg, #5d4037, #8d6e63); }
 
         .exec-count {
             display: inline-block; background: var(--sc-bg); color: var(--sc); border-radius: 999px;

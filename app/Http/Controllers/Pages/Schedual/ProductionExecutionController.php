@@ -66,11 +66,31 @@ class ProductionExecutionController extends Controller
         {
                 // Role Executor luôn vào được (đây là trang duy nhất của họ); người khác cần quyền
                 if (!RestrictExecutor::active() && !user_has_permission(session('user')['userId'], 'layout_production_record', 'boolean')) {
-                        abort(403, 'Bạn không có quyền vào trang Ghi Nhận Sản Xuất');
+                        abort(403, 'Bạn không có quyền vào trang Nhận – Trả Phòng');
                 }
 
                 $production = session('user')['production_code'];
                 $employee = DB::table('employees')->where('code', session('user')['userName'])->first(['id', 'code', 'name']);
+
+                // Executor phòng EN: mọi phòng của các phân xưởng tổ mình phụ trách, mỗi phân xưởng 1 khối
+                if (($teamDepartments = $this->maintenanceTeamDepartments()) !== null) {
+                        $data = [
+                                'boards'      => collect($teamDepartments)->mapWithKeys(fn($d) => [$d => $this->service->maintenanceBoard($d, $this->department())->groupBy('stage_group')]),
+                                'stages'      => collect(),
+                                'production'  => $production,
+                                'readonly'    => false,
+                                'employee'    => $employee,
+                                'assignments' => collect(),
+                                'teamName'    => session('user')['group_name'] ?? null,
+                        ];
+
+                        if ($request->boolean('partial')) {
+                                return view('pages.Schedual.execution._record_body', $data);
+                        }
+
+                        return view('pages.Schedual.execution.record', $data + ['executorOnly' => true]);
+                }
+
                 $assignments = $employee ? $this->service->assignmentsOf($employee->code, $production) : collect();
                 // Phòng đang được phân công + phòng mình đã Nhận phòng mà chưa Trả phòng (dù đã hết ca)
                 $rooms = $this->service->board($production, $assignments->pluck('room_id')
@@ -366,8 +386,38 @@ class ProductionExecutionController extends Controller
                 return DB::table('user_role')->where('user_id', session('user')['userId'] ?? null)->where('role_id', 1)->exists();
         }
 
+        /**
+         * Nhân viên EN / QA có role Executor (chỉ vào được trang Ghi Nhận Sản Xuất): các phân xưởng được xem (mỗi phân xưởng
+         * 1 tab), không theo phân công.
+         * EN: phân xưởng tổ phụ trách (RoomOccupancyService::MAINTENANCE_TEAM_DEPARTMENTS, có thể rỗng); QA: mọi phân xưởng.
+         * null nếu không phải trường hợp này.
+         */
+        private function maintenanceTeamDepartments(): ?array
+        {
+                $department = session('user')['department'] ?? null;
+                if (!RestrictExecutor::active() || !in_array($department, ['EN', 'QA'], true)) {
+                        return null;
+                }
+
+                if ($department === 'QA') {
+                        return DB::table('production')->orderBy('id')->pluck('code')->all();
+                }
+
+                return RoomOccupancyService::teamDepartments(session('user')['group_name']
+                        ?? DB::table('user_management')->where('userName', session('user')['userName'])->value('groupName'));
+        }
+
         private function ownRoom($roomId): ?object
         {
+                // Tổ bảo trì: phòng thuộc phân xưởng tổ phụ trách, không cần phân công
+                if (($teamDepartments = $this->maintenanceTeamDepartments()) !== null) {
+                        return DB::table('room')
+                                ->where('id', (int) $roomId)
+                                ->whereIn('deparment_code', $teamDepartments)
+                                ->where('active', 1)
+                                ->first();
+                }
+
                 $room = DB::table('room')
                         ->where('id', (int) $roomId)
                         ->where('deparment_code', session('user')['production_code'])
@@ -404,6 +454,10 @@ class ProductionExecutionController extends Controller
 
         private function roomDeniedMessage(): string
         {
+                if ($this->maintenanceTeamDepartments() !== null) {
+                        return '❌ Phòng không thuộc phân xưởng tổ của bạn phụ trách';
+                }
+
                 return $this->recordMode()
                         ? '❌ Bạn không được phân công tại phòng này vào lúc này (Lịch Công Tác → Sản Xuất)'
                         : '❌ Phòng không thuộc phân xưởng đang chọn';

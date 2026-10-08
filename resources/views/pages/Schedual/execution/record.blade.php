@@ -1,4 +1,4 @@
-{{-- Trang "Ghi Nhận Sản Xuất": card các phòng mà người đăng nhập đang được phân công lúc này, Nhận phòng / Trả phòng
+{{-- Trang "Nhận – Trả Phòng" (trước 08/10/2026 tên "Ghi Nhận Sản Xuất"; route / quyền vẫn là record / layout_production_record): card các phòng mà người đăng nhập đang được phân công lúc này, Nhận phòng / Trả phòng
      như trang Thực Thi Sản Xuất. Trang đứng riêng (không menu) vì role Executor chỉ vào được trang này; dùng được trên
      máy tính bảng đặt tại phòng. Tự làm mới mỗi phút để phòng hiện / ẩn theo giờ ca. --}}
 <!DOCTYPE html>
@@ -8,7 +8,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Ghi Nhận Sản Xuất – {{ $production }}</title>
+    <title>Nhận – Trả Phòng – {{ $production }}</title>
     <link rel="icon" type="image/png" href="{{ asset('img/iconstella.svg') }}">
     <link rel="stylesheet" href="{{ asset('css/bootstrap.min.css') }}">
     <link rel="stylesheet" href="{{ asset('dataTable/plugins/fontawesome-free/css/all.min.css') }}">
@@ -33,6 +33,16 @@
         .rec-shifts { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
         .rec-bar .rec-shifts { margin-left: 8px; padding-left: 14px; border-left: 1px solid #cbd5e1; }
         .rec-shifts-label { font-weight: 700; color: var(--navy); }
+        .rec-dept-title { font-weight: 800; color: var(--navy); margin: 14px 0 8px; }
+        /* EN / QA: tab phân xưởng + ô tìm phòng / thiết bị */
+        .rec-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 12px; }
+        .rec-tabs.searching { display: none; }
+        .rec-tab { border: 1px solid #cbd5e1; background: #fff; color: var(--navy); border-radius: 999px; padding: 6px 16px; font-weight: 700; }
+        .rec-tab.active { background: var(--navy); border-color: var(--navy); color: #fff; }
+        .rec-tab-count { display: inline-block; min-width: 22px; margin-left: 4px; padding: 0 6px; border-radius: 999px; background: #e2e8f0; color: #0f172a; font-size: .8rem; }
+        .rec-tab.active .rec-tab-count { background: #fff; }
+        .rec-search { flex: 1 1 260px; max-width: 420px; margin-left: 8px; }
+        .exec-equip-hit { margin-top: 4px; font-size: .78rem; color: #92400e; background: #fef3c7; border-radius: 6px; padding: 2px 6px; }
         .rec-shift { background: #fff; border: 1px solid #d5dde6; border-radius: 999px; padding: 3px 12px; font-size: .85rem; }
         .rec-offline { color: #b91c1c; font-weight: 700; }
 
@@ -46,7 +56,7 @@
 <body>
     <div class="exec-page">
         <header class="rec-head">
-            <h1><i class="fas fa-clipboard-check"></i> GHI NHẬN SẢN XUẤT <small>{{ session('user')['production_name'] ?? $production }}</small></h1>
+            <h1><i class="fas fa-clipboard-check"></i> NHẬN – TRẢ PHÒNG <small>{{ isset($boards) ? ($teamName ?: 'Bảo trì') . ' · ' . ($boards->keys()->implode(', ') ?: '—') : (session('user')['production_name'] ?? $production) }}</small></h1>
             <span class="rec-clock js-now"></span>
             <span class="rec-user">
                 {{ session('user')['fullName'] }}
@@ -71,6 +81,10 @@
                     <i class="fas fa-sync-alt"></i>
                 </button>
                 <span class="exec-updated">Cập nhật lúc <span id="execUpdatedAt">{{ now()->format('H:i') }}</span> · tự làm mới mỗi phút</span>
+                @isset($boards)
+                    <input type="search" id="recSearch" class="form-control form-control-sm rec-search" autocomplete="off"
+                        placeholder="Tìm phòng hoặc thiết bị (mã / tên trong danh mục BT - TI - HC)...">
+                @endisset
                 {{-- Dải ca đang phân công (_record_body) được afterRender() chuyển lên cùng dòng này --}}
                 <span id="recShiftsSlot"></span>
             </div>
@@ -116,9 +130,69 @@
                 $('.exec-stage').each(function() {
                     $(this).toggleClass('collapsed', collapsed.has($(this).attr('data-stage')));
                 });
+                applyTabs();
                 tick();
                 clocks();
             }
+
+            // ===== EN / QA: tab phân xưởng + tìm phòng / thiết bị (giữ qua các lần tự làm mới) =====
+            let activeDept = null;
+            try { activeDept = localStorage.getItem('recDeptTab'); } catch (e) {}
+
+            function applyTabs() {
+                const $tabs = $('[data-dept-tab]');
+                if (!$tabs.length) return;
+                if (!activeDept || !$tabs.filter(`[data-dept-tab="${activeDept}"]`).length) {
+                    activeDept = $tabs.first().attr('data-dept-tab');
+                }
+                const q = ($('#recSearch').val() || '').trim().toLowerCase();
+                const $panes = $('[data-dept-pane]');
+
+                $('.rec-tabs').toggleClass('searching', !!q);
+                $tabs.each(function() {
+                    $(this).toggleClass('active', $(this).attr('data-dept-tab') === activeDept);
+                });
+
+                if (!q) {
+                    $('.exec-room-col, .exec-stage').removeClass('d-none');
+                    $('.exec-equip-hit').addClass('d-none').empty();
+                    $panes.each(function() {
+                        $(this).toggleClass('d-none', $(this).attr('data-dept-pane') !== activeDept);
+                    });
+                    $('.rec-dept-title').addClass('d-none');
+                    $('.rec-search-empty').addClass('d-none');
+                    return;
+                }
+
+                // Đang tìm: lọc trên mọi phân xưởng, hiện tên phân xưởng có kết quả; thiết bị khớp ghi dưới tên phòng
+                let any = false;
+                $panes.each(function() {
+                    let n = 0;
+                    $(this).find('.exec-room-col').each(function() {
+                        const hit = (this.dataset.search || '').includes(q);
+                        $(this).toggleClass('d-none', !hit);
+                        if (hit) n++;
+                        const $hint = $(this).find('.exec-equip-hit');
+                        const equip = (this.dataset.equip || '').split('\n').filter(e => e && e.toLowerCase().includes(q));
+                        $hint.toggleClass('d-none', !hit || !equip.length)
+                            .text(equip.length ? '🔧 ' + equip.slice(0, 3).join(' | ') + (equip.length > 3 ? ` (+${equip.length - 3})` : '') : '');
+                    });
+                    $(this).find('.exec-stage').each(function() {
+                        $(this).toggleClass('d-none', !$(this).find('.exec-room-col:not(.d-none)').length);
+                    });
+                    $(this).toggleClass('d-none', !n);
+                    $(this).find('.rec-dept-title').toggleClass('d-none', !n);
+                    if (n) any = true;
+                });
+                $('.rec-search-empty').toggleClass('d-none', any);
+            }
+
+            $(document).on('click', '[data-dept-tab]', function() {
+                activeDept = $(this).attr('data-dept-tab');
+                try { localStorage.setItem('recDeptTab', activeDept); } catch (e) {}
+                applyTabs();
+            });
+            $('#recSearch').on('input', applyTabs);
 
             function refreshBoard(force) {
                 if (!force && ($('.modal.show').length || busy)) return;

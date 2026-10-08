@@ -487,7 +487,7 @@
                 .toggleClass('text-danger', on)
                 .text((on ?
                         'Đang bật cho ' + production +
-                        ': bấm [Trả phòng] ở trang Thực Thi Sản Xuất / Ghi Nhận Sản Xuất sẽ tự dịch các lô liên quan trên lịch lý thuyết theo giờ trả phòng, bất kể ai thao tác. Bấm ✓ / ✓✓ ở trang này không dịch lịch.' :
+                        ': bấm [Trả phòng] ở trang Thực Thi Sản Xuất / Nhận – Trả Phòng sẽ tự dịch các lô liên quan trên lịch lý thuyết theo giờ trả phòng, bất kể ai thao tác. Bấm ✓ / ✓✓ ở trang này không dịch lịch.' :
                         'Đang tắt cho ' + production +
                         ': xác nhận hoàn thành không ảnh hưởng đến lịch lý thuyết.') +
                     (lastChange ? ' (Đổi lần cuối: ' + lastChange + ')' : ''));

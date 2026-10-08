@@ -59,6 +59,24 @@ class RoomOccupancyService
 
     const MAINTENANCE_TYPE_LABELS = ['BT' => 'Bảo trì', 'TI' => 'Tiện ích', 'HC' => 'Hiệu chuẩn'];
 
+    // Trang Ghi Nhận Sản Xuất của Executor phòng EN (07/10/2026, user quy định): thấy mọi phòng sản xuất của các phân xưởng
+    // tổ mình phụ trách, không theo phân công. Khóa = user_management.groupName viết thường, bỏ hết khoảng trắng
+    // (tên tổ trong DB có chỗ 2 dấu cách). Tổ không có ở đây không thấy phòng nào.
+    const MAINTENANCE_TEAM_DEPARTMENTS = [
+        'tổbảotrì(b1)'                    => ['PXV1', 'PXTN'],
+        'tổđiệnlạnh-nướctinhkhiết(b1)'    => ['PXV1', 'PXTN'],
+        'tổbảotrì(pxv2-pxdn)'             => ['PXV2', 'PXDN'],
+        'tổbảotrì(pxvh)'                  => ['PXVH'],
+    ];
+
+    /** Phân xưởng tổ bảo trì phụ trách (MAINTENANCE_TEAM_DEPARTMENTS), [] nếu tổ không có trong danh sách */
+    public static function teamDepartments(?string $groupName): array
+    {
+        $key = mb_strtolower(preg_replace('/\s+/u', '', (string) $groupName));
+
+        return self::MAINTENANCE_TEAM_DEPARTMENTS[$key] ?? [];
+    }
+
     // Hoàn tác (06/10/2026): chỉ thao tác MỚI NHẤT của phòng, do chính người đó bấm, trong 2 phút. Quyền = quyền của thao tác gốc.
     const UNDO_SECONDS = 120;
     const UNDO_ACTIONS = [
@@ -87,6 +105,8 @@ class RoomOccupancyService
         5 => ['label' => 'Định Hình', 'icon' => 'fa-capsules', 'grad' => 'g-orange'],
         6 => ['label' => 'Bao Phim', 'icon' => 'fa-circle-notch', 'grad' => 'g-rose'],
         7 => ['label' => 'Đóng Gói', 'icon' => 'fa-box-open', 'grad' => 'g-slate'],
+        // Phòng chỉ dùng cho bảo trì (room.only_maintenance = 1, stage_code 8): chỉ trang Ghi Nhận của EN / QA
+        8 => ['label' => 'Khu Vực Không Sắp Lịch Sản Xuất', 'icon' => 'fa-tools', 'grad' => 'g-maint'],
     ];
 
     // Bắt đầu áp dụng Nhận/Trả phòng: lô có actual_start trước mốc này (xác nhận ✓ ở trang cũ mà chưa ✓✓) không giữ phòng,
@@ -112,11 +132,43 @@ class RoomOccupancyService
 
         $rooms = $this->roomQuery()
             ->where('deparment_code', $deparmentCode)
+            ->whereBetween('stage_code', [1, 7]) // phòng chỉ bảo trì chỉ hiện ở maintenanceBoard()
             ->when($roomIds !== null, fn($q) => $q->whereIn('id', $roomIds))
             ->get();
         $this->attachStates($rooms);
 
         return $rooms;
+    }
+
+    /**
+     * Trang Ghi Nhận Sản Xuất của nhân viên EN / QA (07/10/2026, user quy định): phòng sản xuất + phòng chỉ bảo trì
+     * (only_maintenance) của phân xưởng, KHÔNG có phòng đang bận sản xuất — chỉ phòng Sẵn Sàng hoặc đang giữ bởi lịch bảo trì
+     * (Phòng Bận BT/HC, Chờ / Đang VS Sau BT) để còn Trả phòng được. Mỗi phòng có ->equipment: thiết bị trong danh mục
+     * BT / TI / HC gắn với phòng (quota_maintenance_rooms), theo loại lịch phòng ban được nhận, để tìm "thiết bị ở phòng nào".
+     */
+    public function maintenanceBoard(string $deparmentCode, ?string $department): Collection
+    {
+        $rooms = $this->roomQuery()->where('deparment_code', $deparmentCode)->get();
+        $this->attachStates($rooms);
+
+        $rooms = $rooms->filter(fn($r) => $r->st->state === self::READY
+            || ($r->st->plans->isNotEmpty() && $r->st->plans->every(fn($p) => $p->maintenance)))->values();
+
+        $types = self::maintenanceTypesFor($department) ?? [];
+        $equipment = DB::table('quota_maintenance_rooms as qmr')
+            ->join('quota_maintenance as qm', 'qm.id', '=', 'qmr.quota_maintenance_id')
+            ->whereIn('qmr.room_id', $rooms->pluck('id'))
+            ->where('qm.active', 1)
+            ->whereIn(DB::raw(self::MAINTENANCE_TYPE_SQL), $types)
+            ->orderBy('qm.inst_id')
+            ->get(['qmr.room_id', 'qm.inst_id', 'qm.inst_name', 'qm.Eqp_name'])
+            ->groupBy('room_id');
+
+        return $rooms->each(function ($r) use ($equipment) {
+            $r->equipment = $equipment->get($r->id, collect())
+                ->map(fn($e) => trim($e->inst_id . ' · ' . ($e->inst_name ?: $e->Eqp_name)))
+                ->unique()->values()->all();
+        });
     }
 
     /**
@@ -157,11 +209,12 @@ class RoomOccupancyService
         return $room;
     }
 
+    /** Phòng sản xuất (công đoạn 1-7) và phòng chỉ dùng cho bảo trì (only_maintenance) */
     private function roomQuery()
     {
         return DB::table('room')
             ->where('active', 1)
-            ->whereBetween('stage_code', [1, 7])
+            ->where(fn($q) => $q->whereBetween('stage_code', [1, 7])->orWhere('only_maintenance', 1))
             ->orderBy('stage_code')
             ->orderBy('order_by')
             ->orderBy('code')
@@ -769,7 +822,7 @@ class RoomOccupancyService
 
     private function releaseLocked(int $roomId): array
     {
-        [$message, $deparmentCode, $productionIds] = DB::transaction(function () use ($roomId) {
+        [$message, $deparmentCode, $reroutePlan] = DB::transaction(function () use ($roomId) {
             [$room, $state, $plans] = $this->lockState($roomId, [self::BUSY, self::CLEANING]);
 
             $now = now();
@@ -789,15 +842,23 @@ class RoomOccupancyService
                 $this->openPlans([$room->id], $this->releasedAt([$room->id]))->get($room->id, collect())->pluck('id')->all()
             )->values());
 
+            // Tịnh tuyến: Trả phòng lô sản xuất; Trả phòng VS sau BT thì lấy 1 dòng bảo trì (thiết bị có giờ kết thúc vệ sinh lý
+            // thuyết muộn nhất) làm lô gốc. Trả phòng phần bảo trì (actual_end) không tịnh tuyến.
+            $rerouteIds = $state === self::BUSY
+                ? $plans->where('maintenance', false)->pluck('id')->all()
+                : $plans->sortByDesc(fn($p) => $p->end_clearning ?? $p->end)->take(1)->pluck('id')->all();
+
             return [
                 '✅ Đã trả phòng ' . $room->code . ' lúc ' . $now->format('H:i')
                     . ($after === self::CLEAN_WAIT ? ' · phòng chuyển sang ' . self::STATE_LABELS[self::CLEAN_WAIT] : ''),
                 $room->deparment_code,
-                $state === self::BUSY ? $plans->where('maintenance', false)->pluck('id')->all() : [],
+                [$rerouteIds, $state === self::BUSY ? 'rerouteOnRelease' : 'rerouteOnMaintenanceRelease'],
             ];
         });
 
-        return ['message' => $message, 'reroute' => $this->rerouteAfter($productionIds, $deparmentCode, 'rerouteOnRelease', self::REROUTE_AUDIT)];
+        [$rerouteIds, $method] = $reroutePlan;
+
+        return ['message' => $message, 'reroute' => $this->rerouteAfter($rerouteIds, $deparmentCode, $method, self::REROUTE_AUDIT)];
     }
 
     /**
@@ -811,7 +872,8 @@ class RoomOccupancyService
             return null;
         }
 
-        $result = ['trigger' => $method === 'rerouteOnReceive' ? 'receive' : 'release', 'count' => 0, 'delta' => 0, 'cleaning_moved' => false, 'error' => false];
+        $result = ['trigger' => $method === 'rerouteOnReceive' ? 'receive' : 'release', 'count' => 0, 'delta' => 0, 'cleaning_moved' => false, 'error' => false,
+            'maintenance' => $method === 'rerouteOnMaintenanceRelease'];
         foreach ($stagePlanIds as $id) {
             try {
                 $r = $method === 'rerouteOnRelease'
@@ -917,6 +979,7 @@ class RoomOccupancyService
                         break;
                     default: // Trả phòng vệ sinh sau BT
                         $update = ['actual_end_clearning' => null] + self::UNFINISH;
+                        $note .= $this->undoReroute((int) $p->id, self::REROUTE_AUDIT);
                 }
 
                 DB::table('stage_plan')->where('id', $p->id)->update($update);

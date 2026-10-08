@@ -57,14 +57,19 @@
     ];
 
     // Nhân sự đang được phân công (Lịch Công Tác): nhãn A, B, C... theo đúng thứ tự hiển thị bên Lịch Công Tác → Sản Xuất
-    $staff = $room->staff ?? collect();
+    // Nhân viên EN (bảo trì) / QA (hiệu chuẩn) role Executor (trang Ghi Nhận Sản Xuất) không thấy nhân sự phân công trên card
+    $hideStaff = \App\Http\Middleware\RestrictExecutor::active() && in_array(session('user')['department'] ?? null, ['EN', 'QA'], true);
+    $staff = $hideStaff ? collect() : ($room->staff ?? collect());
+
+    // Trang Ghi Nhận của EN / QA: thiết bị gắn với phòng (danh mục BT / TI / HC) để tìm "thiết bị ở phòng nào"
+    $equipment = $room->equipment ?? [];
 
     $search = mb_strtolower($room->code . ' ' . $room->name . ' ' . $plans->pluck('label')->implode(' ') . ' ' . ($plan->intermediate_code ?? '') . ' ' . ($plan->finished_product_code ?? '')
-        . ' ' . $staff->flatMap(fn($s) => $s->people->pluck('name'))->implode(' '));
+        . ' ' . $staff->flatMap(fn($s) => $s->people->pluck('name'))->implode(' ') . ' ' . implode(' ', $equipment));
 @endphp
 
 <div class="col-xl-4 col-md-6 mb-3 exec-room-col" id="exec-room-{{ $room->id }}" data-state="{{ $st->state }}"
-    data-search="{{ $search }}" @unless ($readonly) data-ctx="{{ json_encode($ctx, JSON_UNESCAPED_UNICODE) }}" @endunless>
+    data-search="{{ $search }}" @if ($equipment) data-equip="{{ implode("\n", $equipment) }}" @endif @unless ($readonly) data-ctx="{{ json_encode($ctx, JSON_UNESCAPED_UNICODE) }}" @endunless>
     <div class="exec-room st-{{ $stateClass }} {{ $busy || $cleaning ? 'is-active' : '' }}">
 
         <div class="exec-room-head">
@@ -73,6 +78,10 @@
                 <div class="exec-room-name" title="{{ $room->name }}">{{ $room->name }}</div>
                 @if ($room->main_equiment_name)
                     <div class="exec-room-equip" title="{{ $room->main_equiment_name }}">{{ $room->main_equiment_name }}</div>
+                @endif
+                @if ($equipment)
+                    {{-- Thiết bị khớp ô tìm kiếm (record.blade điền khi đang tìm) --}}
+                    <div class="exec-equip-hit d-none"></div>
                 @endif
             </div>
             <div class="exec-room-tools">
@@ -182,7 +191,7 @@
                         </div>
                     @endforeach
                 </div>
-            @elseif ($st->state !== $ROS::READY)
+            @elseif ($st->state !== $ROS::READY && !$hideStaff)
                 <div class="exec-staff empty" title="Không có ai được phân công tại phòng này vào lúc này trên Lịch Công Tác → Sản Xuất">
                     <i class="fas fa-user-slash"></i> Chưa phân công nhân sự lúc này
                 </div>

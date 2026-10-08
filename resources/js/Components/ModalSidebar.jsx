@@ -65,7 +65,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
       icon: 'question',
       title: lock ? 'Khóa thực thi sản xuất?' : 'Mở khóa thực thi sản xuất?',
       html: lock
-        ? 'Tạm dừng <b>Nhận phòng / Trả phòng</b> ở trang Thực Thi và Ghi Nhận Sản Xuất của phân xưởng trong lúc bạn sắp lịch thủ công, để tịnh tuyến lịch không xung đột.<br><small>Nếu quên tắt: tự mở khi không còn thao tác sắp lịch thủ công trong 10 phút.</small>'
+        ? 'Tạm dừng <b>Nhận phòng / Trả phòng</b> ở trang Thực Thi Sản Xuất và Nhận – Trả Phòng của phân xưởng trong lúc bạn sắp lịch thủ công, để tịnh tuyến lịch không xung đột.<br><small>Nếu quên tắt: tự mở khi không còn thao tác sắp lịch thủ công trong 10 phút.</small>'
         : 'Cho phép Nhận phòng / Trả phòng trở lại.',
       showCancelButton: true,
       confirmButtonText: lock ? 'Khóa' : 'Mở khóa',

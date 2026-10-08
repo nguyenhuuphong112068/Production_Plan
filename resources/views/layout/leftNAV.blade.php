@@ -631,7 +631,7 @@
                                 <a href="{{ route('pages.Schedual.record.index') }}"
                                     class="nav-link {{ str_contains(url()->current(), 'Schedual/record') ? 'active' : '' }}">
                                     <i class="far fa-circle nav-icon text-success"></i>
-                                    <p>Ghi Nhận Sản Xuất</p>
+                                    <p>Nhận – Trả Phòng</p>
                                 </a>
                             </li>
                         @endif --}}

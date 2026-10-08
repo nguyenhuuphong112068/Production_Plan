@@ -3306,6 +3306,9 @@ class SchedualController extends Controller
             $cascade = $request->input('cascade', false);
             $allManualIds = [];
             $alreadyCascadedIds = []; // Tránh dịch chuyển lặp lại trong cùng 1 request (đặc biệt khi drop theo nhóm)
+            // Chỉ nhận id lịch thật ("123", "123,124", "123-cleaning"). Thanh chỉ xem trên Gantt
+            // (running-<phòng>, released-<id>, personnel-...) không phải stage_plan, lọt vào thì bỏ.
+            $changes = array_values(array_filter($changes, fn($c) => preg_match('/^\d+(,\d+)*(-|$)/', (string) ($c['id'] ?? ''))));
             foreach ($changes as $c) {
                 $parts = explode('-', $c['id']);
                 $ids = explode(',', $parts[0]);

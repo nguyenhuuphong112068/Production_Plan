@@ -179,6 +179,24 @@ class ScheduleRerouteService
     }
 
     /**
+     * [Trả phòng] vệ sinh sau bảo trì (lịch stage_code 8 có vệ sinh): tịnh tuyến 2 chiều các lô sau trên phòng theo giờ
+     * trả phòng (actual_end_clearning) so với giờ kết thúc vệ sinh lý thuyết của lịch bảo trì. Nhận phòng / Trả phòng phần
+     * bảo trì (actual_start / actual_end) không tịnh tuyến (user chọn, 07/10/2026). Lịch bảo trì vẫn là khối cố định.
+     *
+     * @return array{run_code: ?string, delta_minutes: int, changes: array, source_cleaning_moved: bool}
+     */
+    public function rerouteOnMaintenanceRelease(int $stagePlanId): array
+    {
+        $source = DB::table('stage_plan')->where('id', $stagePlanId)->first();
+        if (! $source || (int) $source->stage_code !== self::MAINTENANCE_STAGE || ! $source->start || ! $source->end
+            || ! $source->actual_end_clearning) {
+            return $this->emptyResult();
+        }
+
+        return $this->run($source, self::TRIGGER_RELEASE, Carbon::parse($source->actual_end_clearning)->getTimestamp());
+    }
+
+    /**
      * Giờ kết thúc dự kiến đã dùng khi tịnh tuyến lúc Nhận phòng ($runCode: mã lần chạy, RoomOccupancyService lưu ở
      * audittriallog). null nếu lần chạy đó đã hoàn tác hết.
      */
@@ -217,8 +235,9 @@ class ScheduleRerouteService
      * @param  int  $actualTs  TRIGGER_FINISHED: giờ kết thúc thực tế của lô; TRIGGER_PRODUCTION: giờ kết thúc sản xuất thực tế;
      *                         TRIGGER_RECEIVE: giờ kết thúc dự kiến
      * @param  ?int $baselineFinish  mốc so sánh thay cho giờ kết thúc lý thuyết (Trả phòng sau khi đã tịnh tuyến lúc Nhận phòng)
+     *
+     * Đọc → tính → ghi trong khóa tịnh tuyến của phân xưởng (RerouteLock): các lần tịnh tuyến chạy lần lượt.
      */
-    /** Đọc → tính → ghi trong khóa tịnh tuyến của phân xưởng (RerouteLock): các lần tịnh tuyến chạy lần lượt */
     private function run(object $source, string $trigger, int $actualTs, ?int $baselineFinish = null): array
     {
         return RerouteLock::run($source->deparment_code, function () use ($source, $trigger, $baselineFinish, $actualTs) {
@@ -1231,7 +1250,12 @@ class ScheduleRerouteService
             ->select('pn.name as product_name', DB::raw('COALESCE(pm.actual_batch, pm.batch) as batch'), 'r.code as room_code', 'r.stage as stage_name')
             ->first();
 
-        $batch = ($info->product_name ?? $source->title) . ($info && $info->batch ? ' - lô ' . $info->batch : '');
+        // Lịch bảo trì: product_caterogy_id là thiết bị (quota_maintenance), không phải thành phẩm → dùng tiêu đề lịch
+        $maintenance = (int) $source->stage_code === self::MAINTENANCE_STAGE;
+        $batch = $maintenance
+            // Tiêu đề nhóm "<thiết bị> : - <từng thiết bị> ... Ngày tới hạn ..." → chỉ lấy phần trước dấu ':'
+            ? 'VS sau ' . trim(Str::before(strip_tags(str_replace(['<br/>', '<br>'], ' ', (string) $source->title)), ':'))
+            : ($info->product_name ?? $source->title) . ($info && $info->batch ? ' - lô ' . $info->batch : '');
         $where = implode(', ', array_filter([$info->stage_name ?? null, ($info->room_code ?? null) ? 'phòng ' . $info->room_code : null]));
         $confirmedAt = Carbon::parse($source->finished_date ?? now())->format('H:i d/m/Y');
         $lag = ($deltaSeconds < 0 ? 'sớm ' : 'trễ ') . $this->durationText($deltaSeconds);

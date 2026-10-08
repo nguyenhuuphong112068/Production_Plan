@@ -33,7 +33,7 @@ class RestrictExecutor
         }
 
         if ($request->expectsJson() || $request->ajax()) {
-            return response()->json(['message' => '❌ Tài khoản người thực thi chỉ dùng được trang Ghi Nhận Sản Xuất'], 403);
+            return response()->json(['message' => '❌ Tài khoản người thực thi chỉ dùng được trang Nhận – Trả Phòng'], 403);
         }
 
         return redirect()->route('pages.Schedual.record.index');

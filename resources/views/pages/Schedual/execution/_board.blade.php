@@ -43,6 +43,6 @@
 @empty
     <div class="exec-empty">
         <i class="fas fa-door-closed fa-3x mb-3"></i>
-        <div>Phân xưởng {{ $production }} chưa có phòng sản xuất nào đang hoạt động.</div>
+        <div>{{ $emptyText ?? 'Phân xưởng ' . $production . ' chưa có phòng sản xuất nào đang hoạt động.' }}</div>
     </div>
 @endforelse

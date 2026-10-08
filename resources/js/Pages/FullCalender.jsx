@@ -3597,7 +3597,7 @@ const ScheduleTest = () => {
           }
         });
 
-        const sortedEvents = calendarApi.getEvents().sort((a, b) => a.start - b.start);
+        const sortedEvents = calendarApi.getEvents().filter(e => !e.extendedProps?.is_running && !e.extendedProps?.is_personnel && e.display !== 'background').sort((a, b) => a.start - b.start);
         const resourceLastEnd = {};
         batchUpdates.forEach(update => {
           const rId = update.resourceId;
@@ -3890,7 +3890,7 @@ const ScheduleTest = () => {
 
       // Xuyên suốt cho resource hiện tại
       let lastEnd = changedEvent.extendedProps.end_clearning ? new Date(changedEvent.extendedProps.end_clearning) : changedEvent.end;
-      const sortedEvents = calendarApi.getEvents().sort((a, b) => a.start - b.start);
+      const sortedEvents = calendarApi.getEvents().filter(e => !e.extendedProps?.is_running && !e.extendedProps?.is_personnel && e.display !== 'background').sort((a, b) => a.start - b.start);
 
       calendarApi.batchRendering(() => {
         sortedEvents.forEach(otherEv => {
