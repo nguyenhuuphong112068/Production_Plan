@@ -49,3 +49,8 @@ ALTER TABLE `wip_control_settings`
 ALTER TABLE `wip_control_settings`
   ADD COLUMN `bp_strategy` VARCHAR(20) NOT NULL DEFAULT 'mix'
   COMMENT 'none | mix | pull | gate_shift | gate_keep' AFTER `pull_buffer_hours`;
+
+-- Ngày NL/BB không được vi phạm khi kiểm soát (migration 2026_10_08_090000)
+ALTER TABLE `wip_control_settings`
+  ADD COLUMN `date_rules` VARCHAR(255) NULL
+  COMMENT 'JSON các ngày NL/BB không được vi phạm, null = tất cả' AFTER `bp_strategy`;

@@ -15,8 +15,9 @@ class StagePlanHistory
 {
     /**
      * @param  object  $row  Dòng stage_plan SAU khi đã cập nhật
+     * @param  int|null  $version  số phiên bản đã biết trước (bỏ qua bước tra max(version), bảng lớn không có index stage_plan_id)
      */
-    public static function record(object $row, ?string $typeOfChange): void
+    public static function record(object $row, ?string $typeOfChange, ?int $version = null): void
     {
         try {
             DB::table('stage_plan_history')->insert([
@@ -41,7 +42,7 @@ class StagePlanHistory
                 'AHU_group' => $row->AHU_group,
                 'schedualed_by' => $row->schedualed_by,
                 'schedualed_at' => $row->schedualed_at,
-                'version' => (DB::table('stage_plan_history')->where('stage_plan_id', $row->id)->max('version') ?? 0) + 1,
+                'version' => $version ?? (DB::table('stage_plan_history')->where('stage_plan_id', $row->id)->max('version') ?? 0) + 1,
                 'note' => $row->note,
                 'deparment_code' => session('user.production_code') ?? $row->deparment_code,
                 'type_of_change' => $typeOfChange,

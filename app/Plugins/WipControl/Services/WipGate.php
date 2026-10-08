@@ -12,7 +12,9 @@ namespace App\Plugins\WipControl\Services;
  * của chính nó (giữ phòng, giữ thời lượng chiếm phòng của lịch cũ). Mỗi khi phòng rảnh,
  * chọn lô theo thứ tự:
  *  1. lô không có cổng tới hạn (bắt buộc chạy ngay để kịp công đoạn sau); lô có cổng
- *     không bao giờ bị ép, tới hạn mà tồn chưa cho phép thì công đoạn sau lùi theo;
+ *     không bị ép theo hạn này, tới hạn mà tồn chưa cho phép thì công đoạn sau lùi theo;
+ *     nhưng mọi lô tới hạn cứng (ngày NL/BB không được vi phạm, của chính nó hoặc của
+ *     công đoạn sau) đều bị ép;
  *  2. lô có cổng nếu tồn nhóm của nó cộng lượng của lô vẫn ≤ Max, hạn gần trước;
  *  3. lô không có cổng đã sẵn sàng, hạn gần trước;
  *  4. không có lô nào thì để phòng trống một bước.
@@ -27,7 +29,7 @@ class WipGate
     private const STEP = 1800;
 
     /**
-     * @param array<int, array{id:int, pm:int, room:int, old:int, occ:int, dur:int, gate:?string, ready:int, due:int, qty:float, exit:?int, lag:int}> $lots
+     * @param array<int, array{id:int, pm:int, room:int, old:int, occ:int, dur:int, gate:?string, ready:int, due:int, qty:float, exit:?int, lag:int, hard?:int}> $lots
      *        gate = nhóm tồn có Max mà lô vào kho (null = lô chạy thay); due = giờ bắt đầu muộn nhất
      *        còn kịp công đoạn sau; exit = giờ công đoạn tiêu thụ bắt đầu; lag = thời gian chạy + chờ trước nó
      * @param array<string, array<int, array{0:int, 1:float}>> $events nhóm => tồn cố định: [giờ, +/- lượng]
@@ -73,15 +75,21 @@ class WipGate
         }
 
         // Hạn bắt buộc tính ngược trong phòng: lô hạn muộn nhất xếp cuối, lô trước nó phải xong trước khi nó bắt đầu
-        $must = [];
-        foreach ($byRoom as $room => $ids) {
-            usort($ids, fn($a, $b) => $lots[$b]['due'] <=> $lots[$a]['due']);
-            $next = PHP_INT_MAX;
-            foreach ($ids as $i) {
-                $must[$i] = $next === PHP_INT_MAX ? $lots[$i]['due'] : min($lots[$i]['due'], $next - $lots[$i]['occ']);
-                $next = $must[$i];
+        $backward = function (string $key) use ($byRoom, $lots): array {
+            $out = [];
+            foreach ($byRoom as $ids) {
+                usort($ids, fn($a, $b) => ($lots[$b][$key] ?? PHP_INT_MAX) <=> ($lots[$a][$key] ?? PHP_INT_MAX));
+                $next = PHP_INT_MAX;
+                foreach ($ids as $i) {
+                    $v = $lots[$i][$key] ?? PHP_INT_MAX;
+                    $out[$i] = $next === PHP_INT_MAX ? $v : min($v, $next - $lots[$i]['occ']);
+                    $next = $out[$i];
+                }
             }
-        }
+            return $out;
+        };
+        $must = $backward('due');
+        $hardMust = $backward('hard');   // ngày NL/BB không được vi phạm
 
         $free = array_fill_keys(array_keys($byRoom), $from);
         $placed = [];   // i => start
@@ -142,7 +150,7 @@ class WipGate
                 if ($l['ready'] > $t || ! $fits($i)) {
                     continue;
                 }
-                $forced = $late || ($must[$i] <= $t + self::STEP && $l['gate'] === null);
+                $forced = $late || ($must[$i] <= $t + self::STEP && $l['gate'] === null) || $hardMust[$i] <= $t + self::STEP;
                 if ($forced && ($pick === null || $must[$i] < $best)) {
                     $pick = $i;
                     $best = $must[$i];

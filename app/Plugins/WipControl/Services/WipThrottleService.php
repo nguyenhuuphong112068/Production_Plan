@@ -38,13 +38,25 @@ class WipThrottleService
     /** Nhóm tồn theo công đoạn tiêu thụ */
     private const GROUP_OF_STAGE = [5 => 'DH', 6 => 'BP', 7 => 'DG'];
 
-    /** Hạn bắt đầu của từng công đoạn trên plan_master, giống scanOverdueTasks */
+    /** Hạn bắt đầu luôn giữ (06:00 như scanOverdueTasks), ngoài các ngày NL/BB tuỳ chọn bên dưới */
     private const STAGE_DEADLINES = [
-        3 => ['expired_material_date', 'preperation_before_date'],
-        4 => ['blending_before_date'],
-        5 => ['forming_before_date'],
-        6 => ['coating_before_date'],
-        7 => ['parkaging_before_date', 'expired_packing_date'],
+        7 => ['parkaging_before_date'],
+    ];
+
+    /**
+     * Ngày NL/BB người dùng chọn "không vi phạm" (modal): khoá => [cột plan_master, công đoạn, kiểu].
+     * max: công đoạn phải bắt đầu trong hoặc trước ngày đó; min: không được bắt đầu trước ngày đó.
+     * So theo ngày như cảnh báo trên lịch (colorEvent / SchedualWarningController). Ngày được
+     * cho phép vi phạm thì plugin bỏ qua hẳn.
+     */
+    public const DATE_RULES = [
+        'allow_weight'     => ['allow_weight_before_date', 3, 'min'],
+        'expired_material' => ['expired_material_date', 3, 'max'],
+        'expired_packing'  => ['expired_packing_date', 7, 'max'],
+        'preperation'      => ['preperation_before_date', 3, 'max'],
+        'blending'         => ['blending_before_date', 4, 'max'],
+        'forming'          => ['forming_before_date', 5, 'max'],
+        'coating'          => ['coating_before_date', 6, 'max'],
     ];
 
     /** Các cột lịch được chụp lại trước khi xoá để trả về nguyên trạng khi cần */
@@ -66,6 +78,24 @@ class WipThrottleService
     private bool $lockValidation;
 
     private ?string $gateError = null;
+
+    /** @var array<int, string> các khoá DATE_RULES không được vi phạm */
+    private array $hardRules = [];
+
+    /** @var array<int, true> lô bị ép chạy đúng hạn ở bước ngưng nguồn (ngưng thì vi phạm ngày NL/BB) */
+    private array $gateForced = [];
+
+    /** @var array<int, true> lô đã ép chạy đúng hạn mà vẫn vi phạm (phòng kẹt): giữ nguyên giờ cũ ở bước ngưng nguồn */
+    private array $gatePinned = [];
+
+    /** @var array<int, string> trong một lần thử ngưng nguồn: lô gốc gây vi phạm ngày NL/BB => mô tả */
+    private array $hardHits = [];
+
+    /** @var array<int, int> dòng bị đẩy lùi lan => lô gốc gây ra */
+    private array $pushOrigin = [];
+
+    /** @var array<int, string> vi phạm ngày NL/BB làm huỷ cả vòng (lưới an toàn cuối) */
+    private array $hardBlocked = [];
 
     /** @var array<int, string> dòng có dữ liệu bất thường gặp khi ngưng nguồn: id => mô tả */
     private array $gateWarnings = [];
@@ -129,6 +159,9 @@ class WipThrottleService
         $this->selectedStep = $opt['selected_step'];
         $this->startDate = $opt['start_date'];
         $this->lockValidation = $opt['lock_validation'];
+        RoomSequencer::resetHistoryCache();
+        // Các ngày NL/BB luôn không được vi phạm (đã bỏ tuỳ chọn cho phép vi phạm trên modal)
+        $this->hardRules = array_keys(self::DATE_RULES);
         $this->pullBufferHours = (int) ($opt['pull_buffer_hours'] ?? config('wip_control.safety_buffer_hours', 24));
         $this->waits = WipAwareScheduler::waitTimes($this->request);
 
@@ -209,6 +242,10 @@ class WipThrottleService
 
             $undoCode ??= $this->createUndoPoint();
 
+            // Lưới an toàn ngày NL/BB: giờ bắt đầu trước vòng, và báo cáo để trả lại nếu huỷ vòng
+            $startsBefore = $this->startsSnapshot();
+            $stateBefore = [$this->moved, $this->pulled, $this->bpShifted, $this->gateWarnings];
+
             // Cả vòng trong một transaction: lỗi giữa chừng (kể cả PHP chết) thì vòng
             // này tự huỷ, lịch quay về đúng như trước vòng, không để dòng nào bị khoá treo
             DB::beginTransaction();
@@ -239,6 +276,18 @@ class WipThrottleService
                         $reverted = $this->validateRound($movedNow, $groupOf, $snapshot, $hintsBefore, $round);
                     }
                 }
+
+                // Còn dòng nào vừa bị dời mà phạm ngày NL/BB không được vi phạm: huỷ cả vòng
+                $this->hardBlocked = $this->hardNet($startsBefore);
+                if ($this->hardBlocked !== []) {
+                    DB::rollBack();
+                    RoomSequencer::resetHistoryCache();
+                    [$this->moved, $this->pulled, $this->bpShifted, $this->gateWarnings] = $stateBefore;
+                    $this->info = [];
+                    $this->debug('hard_date_round', $round, $this->hardBlocked);
+                    $status = 'hard_date';
+                    break;
+                }
                 DB::commit();
             } catch (\Throwable $e) {
                 DB::rollBack();
@@ -264,9 +313,14 @@ class WipThrottleService
 
         $overdueAfter = $this->freshScheduler()->overdueCampaignCodes();
 
+        // Lô đã xếp xuyên qua BT-HC-TI chưa bắt đầu: dời các lịch đó ra khe trống kế tiếp trong phòng
+        $maintenanceShifted = $rounds === [] ? [] : app(\App\Services\MaintenanceShiftService::class)
+            ->shiftOverlapping($this->productionCode, 'Dời BT-HC-TI sau lịch sản xuất (kiểm soát tồn BTP)');
+
         return $this->finish($status, $rounds, $before, $last, $began, $undoCode, [
             'out_of_scope' => $outOfScope,
             'new_overdue'  => array_values(array_diff($overdueAfter, $overdueBefore)),
+            'maintenance_shifted' => $maintenanceShifted,
         ]);
     }
 
@@ -519,7 +573,8 @@ class WipThrottleService
                 $info($pm);
                 return $this->waitSeconds($stage, $pm);
             },
-            $this->freshScheduler()->offRanges()
+            $this->freshScheduler()->offRanges(),
+            fn(int $pm, int $stage) => $info($pm)['earliest'][$stage] ?? null
         );
 
         $shifted = [];   // pm => [stage => giây đã dời trong vòng]
@@ -735,8 +790,10 @@ class WipThrottleService
      *
      * @param array<int, int> $stages [6] = BP, [5] = ĐH, [3, 4] = PC/THT (dòng ra của nhóm Pha chế)
      */
-    private function gateStep(int $round, array $stages): void
+    private function gateStep(int $round, array $stages, int $attempt = 0): void
     {
+        $this->hardHits = [];
+        $this->pushOrigin = [];
         $atTs = $this->at->getTimestamp();
         $horizonDays = (int) config('wip_control.horizon_days', 30);
         $horizonEnd = $this->at->copy()->addDays($horizonDays)->getTimestamp();
@@ -782,8 +839,10 @@ class WipThrottleService
             }
         }
 
-        // PC của lô có THT không sinh tồn (tồn tính từ THT): để nguyên làm khối cố định, lùi theo ở bước dồn sát hạn
-        $rows = $rows->filter(fn($r) => (int) $r->stage_code !== 3 || ($succStage[$r->code] ?? 99) !== 4)->values();
+        // PC của lô có THT không sinh tồn (tồn tính từ THT): để nguyên làm khối cố định, lùi theo ở bước dồn sát hạn.
+        // Lô ép chạy đúng hạn mà vẫn vi phạm ngày NL/BB: cũng đứng yên ở giờ cũ
+        $rows = $rows->filter(fn($r) => ((int) $r->stage_code !== 3 || ($succStage[$r->code] ?? 99) !== 4)
+            && ! isset($this->gatePinned[(int) $r->plan_master_id]))->values();
 
         $this->loadInfo($rows->pluck('plan_master_id')->map(fn($pm) => (int) $pm)->unique()->values()->all());
         $rows = $rows->filter(function ($r) use ($succStarted) {
@@ -846,11 +905,12 @@ class WipThrottleService
         }
         unset($ledgers, $groupOf);
 
-        // Khối cố định trong các phòng: mọi dòng khác không được xếp lại
+        // Khối cố định trong các phòng: mọi dòng khác không được xếp lại (trừ BT-HC-TI chưa bắt đầu, cuối lượt dời ra sau)
         $ids = $rows->pluck('id')->flip()->all();
         $blocks = [];
         foreach (DB::table('stage_plan')->whereIn('resourceId', $rows->pluck('resourceId')->unique()->all())
             ->where('active', 1)->where('finished', 0)->where('overlap', 0)->whereNotNull('start')
+            ->where(fn($q) => $q->where('stage_code', '!=', 8)->orWhereNotNull('actual_start'))
             ->whereRaw('COALESCE(end_clearning, end) > ?', [date('Y-m-d H:i:s', $atTs)])
             ->get(['id', 'resourceId', 'start', 'end', 'end_clearning']) as $b) {
             if (! isset($ids[$b->id])) {
@@ -871,11 +931,19 @@ class WipThrottleService
             $start = strtotime($r->start);
             $dur = strtotime($r->end) - $start;
             [$gate, $q] = $gateOfRow[(int) $r->id];
+            if (isset($this->gateForced[$pm])) {
+                $gate = null;   // ngưng lô này thì vi phạm ngày NL/BB: chạy đúng hạn như lô chạy thay
+            }
             $consumer = $gate !== null ? self::CONSUMER_STAGE[$gate] : null;
 
             $limit = null;
             $exit = null;
+            $hard = $this->info[$pm]['deadlines'][$stage] ?? PHP_INT_MAX;
             foreach ($succ[$r->code] ?? [] as [$sStage, $spm, $sStart]) {
+                $this->loadInfo([$spm]);
+                if (($sd = $this->info[$spm]['deadlines'][$sStage] ?? null) !== null) {
+                    $hard = min($hard, $sd - $this->waitSeconds($sStage, $spm) - $dur);
+                }
                 $l = $sStart - $this->waitSeconds($sStage, $spm) - ($sStage === $consumer ? $buffer : 0);
                 $limit = $limit === null ? $l : min($limit, $l);
                 if ($sStage === $consumer) {
@@ -888,13 +956,15 @@ class WipThrottleService
             }
 
             $pe = $r->predecessor_code ? ($predEnd[$r->predecessor_code] ?? null) : null;
-            $ready = $pe === null ? $start : min($start, max($atTs, $pe + $this->waitSeconds($stage, $pm)));
+            $ready = $pe === null ? $start
+                : min($start, max($atTs, $pe + $this->waitSeconds($stage, $pm), $this->info[$pm]['earliest'][$stage] ?? 0));
 
             $lots[] = [
                 'id' => (int) $r->id, 'pm' => $pm, 'room' => (int) $r->resourceId, 'old' => $start,
                 'occ' => strtotime($r->end_clearning ?: $r->end) - $start, 'dur' => $dur, 'gate' => $gate,
                 'ready' => $ready, 'due' => max($start, $due), 'qty' => $gate !== null ? $q : 0.0,
                 'exit' => $exit, 'lag' => $consumer !== null ? $dur + $this->waitSeconds($consumer, $pm) : 0,
+                'hard' => max($start, $hard),
             ];
             $byId[(int) $r->id] = $r;
             if ($gate !== null) {
@@ -928,7 +998,8 @@ class WipThrottleService
                 $info($pm);
                 return $this->waitSeconds($stage, $pm);
             },
-            $offRanges
+            $offRanges,
+            fn(int $pm, int $stage) => $info($pm)['earliest'][$stage] ?? null
         );
 
         // Lỗi thì trả lại đúng kết quả các bước trước
@@ -948,6 +1019,9 @@ class WipThrottleService
             foreach ($changes as $id => $d) {
                 $r = $byId[$id];
                 $pm = (int) $r->plan_master_id;
+                if ($v = $this->hardViolation($pm, (int) $r->stage_code, strtotime($r->start) + $d, strtotime($r->start))) {
+                    $this->hardHits[$pm] = $v;
+                }
                 $group = $gateOfRow[$id][0] ?? array_key_first($this->limits);
                 $this->recordRoomMove(['pm' => $pm, 'stage' => (int) $r->stage_code, 'start' => strtotime($r->start)], $d, 'gate', $group,
                     substr($r->start, 0, 10), $round, true);
@@ -959,6 +1033,7 @@ class WipThrottleService
                         $need = $newEnd + $this->waitSeconds((int) $sx->stage_code, (int) $sx->plan_master_id);
                         if (strtotime($sx->start) < $need) {
                             $push[(int) $sx->id] = max($push[(int) $sx->id] ?? 0, $need);
+                            $this->pushOrigin[(int) $sx->id] ??= $pm;
                         }
                     }
                 }
@@ -987,12 +1062,34 @@ class WipThrottleService
                     $this->pullOrderAndJustify($sequencer, $roomId, $stage, $gatedPm, $blockIs, $atTs, $horizonEnd, $round, $label, 'gate');
                 }
             }
+            if ($this->hardHits !== []) {
+                throw new \RuntimeException('vi phạm ngày NL/BB');
+            }
             DB::commit();
         } catch (\RuntimeException $e) {
             DB::rollBack();
+            RoomSequencer::resetHistoryCache();
             [$this->moved, $this->pulled, $this->bpShifted, $this->gateWarnings] = $saved;
             $this->info = [];
-            $this->gateFailed($stageName, $e->getMessage());
+            if ($this->hardHits === []) {
+                $this->gateFailed($stageName, $e->getMessage());
+                return;
+            }
+
+            // Ngưng các lô này thì vi phạm ngày NL/BB (của chính nó hoặc lô bị đẩy lùi theo): lần sau cho chạy đúng hạn
+            $this->debug('gate_hard_retry', $stageName, $attempt, $this->hardHits);
+            $hits = $this->hardHits;
+            foreach ($hits as $pm => $_) {
+                if (isset($this->gateForced[$pm])) {
+                    $this->gatePinned[$pm] = true;   // ép rồi vẫn vi phạm: lần sau giữ nguyên giờ cũ
+                }
+                $this->gateForced[$pm] = true;
+            }
+            if ($attempt >= (int) config('wip_control.hard_date_retries', 8)) {
+                $this->gateFailed($stageName, 'không ngưng nguồn được mà vẫn giữ ngày NL/BB (' . implode('; ', array_slice($hits, 0, 3)) . ')');
+                return;
+            }
+            $this->gateStep($round, $stages, $attempt + 1);
         }
     }
 
@@ -1049,7 +1146,7 @@ class WipThrottleService
             for ($k = 0; $r->resourceId && ! $r->overlap && $k < 50; $k++) {
                 $wallEnd = DB::table('stage_plan')->where('resourceId', $r->resourceId)->where('id', '!=', $r->id)
                     ->where('active', 1)->where('overlap', 0)->where('finished', 0)->whereNotNull('start')
-                    ->where(fn($q) => $q->whereNotNull('actual_start')->orWhereNotIn('stage_code', [3, 4, 5, 6, 7]))
+                    ->where(fn($q) => $q->whereNotNull('actual_start')->orWhereNotIn('stage_code', [3, 4, 5, 6, 7, 8]))
                     ->where('start', '<', $fmt($new + $occ))
                     ->whereRaw('COALESCE(end_clearning, end) > ?', [$fmt($new)])
                     ->max(DB::raw('COALESCE(end_clearning, end)'));
@@ -1063,6 +1160,9 @@ class WipThrottleService
             $sequencer->apply([(int) $r->id => $d], $label);
             $pm = (int) $r->plan_master_id;
             $this->loadInfo([$pm]);
+            if ($v = $this->hardViolation($pm, $stage, $new, $start)) {
+                $this->hardHits[$this->pushOrigin[(int) $r->id] ?? $pm] = $v;
+            }
             if ($stage > $this->gateStage) {
                 $this->bpShifted[(int) $r->id] ??= ['pm' => $pm, 'stage' => $stage, 'old' => $r->start];
                 $this->bpShifted[(int) $r->id]['new'] = $fmt($new);
@@ -1078,6 +1178,7 @@ class WipThrottleService
                     $need = $newEnd + $this->waitSeconds((int) $sx->stage_code, (int) $sx->plan_master_id);
                     if (strtotime($sx->start) < $need) {
                         $queue[(int) $sx->id] = max($queue[(int) $sx->id] ?? 0, $need);
+                        $this->pushOrigin[(int) $sx->id] ??= $this->pushOrigin[(int) $r->id] ?? $pm;
                     }
                 }
             }
@@ -1110,6 +1211,7 @@ class WipThrottleService
                     break;
                 }
                 // Lô này có thể đang chờ lùi xa hơn vì công đoạn trước của nó: lấy mốc lớn hơn
+                $this->pushOrigin[(int) $f->id] ??= $this->pushOrigin[$id] ?? (int) $r->plan_master_id;
                 [, $cursor] = $move($f, max($cursor, $queue[(int) $f->id] ?? 0));
                 unset($queue[(int) $f->id]);
             }
@@ -1143,7 +1245,8 @@ class WipThrottleService
                 $info($pm);
                 return $this->waitSeconds($stage, $pm);
             },
-            $offRanges
+            $offRanges,
+            fn(int $pm, int $stage) => $info($pm)['earliest'][$stage] ?? null
         );
 
         $rows = DB::table('stage_plan')->whereIn('id', array_keys($need))->get(['id', 'resourceId', 'overlap'])->keyBy('id');
@@ -1622,6 +1725,7 @@ class WipThrottleService
                     'pm.expected_date',
                     'pm.main_parkaging_id',
                     'pm.expired_material_date',
+                    'pm.allow_weight_before_date',
                     'pm.preperation_before_date',
                     'pm.blending_before_date',
                     'pm.forming_before_date',
@@ -1676,6 +1780,23 @@ class WipThrottleService
                 }
             }
         }
+        // Ngày NL/BB không được vi phạm: hạn là hết ngày đó (cảnh báo so theo ngày), mốc sớm nhất là đầu ngày
+        $earliest = [];
+        $ruleDates = [];
+        foreach ($this->hardRules as $key) {
+            [$field, $stage, $kind] = self::DATE_RULES[$key];
+            if ($first === null || empty($first->$field)) {
+                continue;
+            }
+            $day = Carbon::parse($first->$field)->format('Y-m-d');
+            $ruleDates[$key] = $day;
+            if ($kind === 'max') {
+                $d = strtotime($day . ' 23:59:59');
+                $deadlines[$stage] = isset($deadlines[$stage]) ? min($deadlines[$stage], $d) : $d;
+            } else {
+                $earliest[$stage] = max($earliest[$stage] ?? 0, strtotime($day . ' 00:00:00'));
+            }
+        }
 
         return [
             'batch'         => $first->batch ?? (string) $pm,
@@ -1696,6 +1817,8 @@ class WipThrottleService
                 'resourceId'         => $r->resourceId ? (int) $r->resourceId : null,
             ])->values()->all(),
             'deadlines'     => $deadlines,
+            'earliest'      => $earliest,
+            'rule_dates'    => $ruleDates,
             'last_end'      => $lastEnd,
             'lock'          => $lock,
         ];
@@ -1784,6 +1907,79 @@ class WipThrottleService
 
         return $max;
     }
+
+    /** @return array<int, array{0: int, 1: int, 2: int}> id dòng => [pm, công đoạn, giờ bắt đầu] (dòng chưa xong của xưởng) */
+    private function startsSnapshot(): array
+    {
+        if ($this->hardRules === []) {
+            return [];
+        }
+        $out = [];
+        foreach (DB::table('stage_plan')->where('deparment_code', $this->productionCode)->where('active', 1)
+            ->where('finished', 0)->whereBetween('stage_code', [3, 7])->whereNotNull('start')
+            ->get(['id', 'plan_master_id', 'stage_code', 'start']) as $r) {
+            $out[(int) $r->id] = [(int) $r->plan_master_id, (int) $r->stage_code, strtotime($r->start)];
+        }
+
+        return $out;
+    }
+
+    /** Dòng đã dời so với $before mà phạm ngày NL/BB không được vi phạm: id => mô tả */
+    private function hardNet(array $before): array
+    {
+        if ($this->hardRules === []) {
+            return [];
+        }
+        $out = [];
+        foreach ($this->startsSnapshot() as $id => [$pm, $stage, $ts]) {
+            $old = $before[$id][2] ?? null;
+            if ($old === $ts) {
+                continue;
+            }
+            if ($v = $this->hardViolation($pm, $stage, $ts, $old)) {
+                $out[$id] = $v;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * Mô tả vi phạm nếu công đoạn $stage của lô bắt đầu lúc $ts phạm một ngày NL/BB không được vi phạm.
+     * Chỉ tính vi phạm MỚI: lô đã vi phạm sẵn ngày đó ở giờ $oldTs thì bỏ qua.
+     */
+    private function hardViolation(int $pm, int $stage, int $ts, ?int $oldTs = null): ?string
+    {
+        if ($this->hardRules === []) {
+            return null;
+        }
+        $this->loadInfo([$pm]);
+        $day = date('Y-m-d', $ts);
+        foreach ($this->info[$pm]['rule_dates'] ?? [] as $key => $limit) {
+            [, $ruleStage, $kind] = self::DATE_RULES[$key];
+            if ($ruleStage !== $stage || ($kind === 'max' ? $day <= $limit : $day >= $limit)) {
+                continue;
+            }
+            // Lịch trước đã vi phạm sẵn ngày này (lỗi của lịch sắp xuôi, cần xử lý tay) thì không tính cho plugin
+            if ($oldTs !== null && ($kind === 'max' ? date('Y-m-d', $oldTs) > $limit : date('Y-m-d', $oldTs) < $limit)) {
+                continue;
+            }
+            return 'Lô ' . ($this->info[$pm]['batch'] ?? $pm) . ' (' . (self::STAGE_NAMES[$stage] ?? 'CĐ ' . $stage) . ' '
+                . date('d/m H:i', $ts) . '): ' . self::DATE_RULE_LABELS[$key] . ' ' . date('d/m/Y', strtotime($limit));
+        }
+
+        return null;
+    }
+
+    private const DATE_RULE_LABELS = [
+        'allow_weight'     => 'trước Ngày được phép cân',
+        'expired_material' => 'sau Ngày HH NL chính',
+        'expired_packing'  => 'sau Ngày HH BB',
+        'preperation'      => 'sau hạn PC trước',
+        'blending'         => 'sau hạn THT trước',
+        'forming'          => 'sau hạn ĐH trước',
+        'coating'          => 'sau hạn BP trước',
+    ];
 
     private function debug(...$entry): void
     {
@@ -2031,6 +2227,7 @@ class WipThrottleService
                     $clash = DB::table('stage_plan')
                         ->where('resourceId', $row->resourceId)->where('id', '!=', $row->id)->where('active', 1)
                         ->where('overlap', 0)->where('finished', 0)->whereNotNull('start')
+                        ->where(fn($q) => $q->where('stage_code', '!=', 8)->orWhereNotNull('actual_start'))
                         ->where('start', '<', $row->end_clearning ?: $row->end)
                         ->whereRaw('COALESCE(end_clearning, end) > ?', [$row->start])
                         ->value('id');
@@ -2048,6 +2245,10 @@ class WipThrottleService
                     && (empty($old->start) || strtotime($old->start) <= $deadline)) {
                     $broken[$pm] = true;
                     $this->debug('broken_deadline', $pm, (int) $row->stage_code, $row->start);
+                }
+                if ($this->hardViolation($pm, (int) $row->stage_code, strtotime($row->start), empty($old->start) ? null : strtotime($old->start))) {
+                    $broken[$pm] = true;
+                    $this->debug('broken_date_rule', $pm, (int) $row->stage_code, $row->start);
                 }
                 if ($row->code) {
                     $shifted[$row->code] = $row;
@@ -2184,6 +2385,10 @@ class WipThrottleService
             'bp_shifted'        => $this->bpShiftedReport(),
             'gate_error'        => $this->gateError,
             'gate_warnings'     => array_values($this->gateWarnings),
+            'date_rules'        => $this->hardRules,
+            'hard_forced'       => count($this->gateForced),
+            'hard_pinned'       => count($this->gatePinned),
+            'hard_blocked'      => array_values(array_slice($this->hardBlocked, 0, 20)),
             'undo_code'         => $undoCode,
             'duration_seconds'  => (int) round(microtime(true) - $began),
         ] + $extra + (config('wip_control.debug') ? ['trace' => $this->trace] : []);

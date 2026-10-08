@@ -761,6 +761,7 @@ class WipCoverageService
                 $splits = [];
                 foreach ($successors as $successor) {
                     $splits[] = [
+                        'id'      => $successor->id ?? null,   // stage_plan lô con, plugin RoomWip làm sáng sự kiện
                         'room_id' => $successor->resourceId ?? null,
                         'weight'  => $this->successorWeight($successors, $successor),
                         'start'   => self::stageMoment($successor)
@@ -794,6 +795,7 @@ class WipCoverageService
 
                 $ledgers[$groupCode][] = [
                     'plan_master_id'    => $outRow->plan_master_id,
+                    'source_id'         => $outRow->id,   // stage_plan dòng nguồn, plugin RoomWip làm sáng sự kiện
                     'batch'             => $outRow->batch ?? null,
                     'intermediate_code' => $outRow->intermediate_code ?? null,
                     'product_name'      => $outRow->product_name ?? null,

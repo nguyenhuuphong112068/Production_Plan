@@ -43,9 +43,15 @@ class RoomSequencer
     /** @var callable(int $stage, int $pm): int giây chờ trước khi vào công đoạn */
     private $wait;
 
+    /** @var callable(int $pm, int $stage): ?int|null không được bắt đầu sớm hơn (vd Ngày được phép cân) */
+    private $earliest;
+
     private string $productionCode;
     private int $at;
     private int $windowEnd;
+
+    /** @var array<int, int>|null stage_plan_id => phiên bản lịch sử lớn nhất, nạp một lần cho cả lượt chạy */
+    private static ?array $historyVersion = null;
 
     /** @var array<int, array> roomId => trình tự đã nạp */
     private array $cache = [];
@@ -53,8 +59,9 @@ class RoomSequencer
     /** @var array<int, array{0: int, 1: int}> khoảng nghỉ: không được BẮT ĐẦU lô trong đó */
     private array $offRanges;
 
-    public function __construct(string $productionCode, int $at, int $windowEnd, callable $lockOf, callable $deadline, callable $wait, array $offRanges = [])
+    public function __construct(string $productionCode, int $at, int $windowEnd, callable $lockOf, callable $deadline, callable $wait, array $offRanges = [], ?callable $earliest = null)
     {
+        $this->earliest = $earliest;
         $this->offRanges = $offRanges;
         $this->productionCode = $productionCode;
         $this->at = $at;
@@ -80,6 +87,12 @@ class RoomSequencer
         return $ts;
     }
 
+    /** Bỏ phiên bản lịch sử đã nạp (đầu lượt chạy, hoặc sau khi huỷ một bước đã ghi lịch sử) */
+    public static function resetHistoryCache(): void
+    {
+        self::$historyVersion = null;
+    }
+
     public function forget(int $roomId): void
     {
         unset($this->cache[$roomId]);
@@ -97,10 +110,12 @@ class RoomSequencer
             return $this->cache[$roomId];
         }
 
+        // BT-HC-TI chưa bắt đầu không chặn lô: cuối lượt được dời ra sau (MaintenanceShiftService)
         $rows = DB::table('stage_plan')
             ->where('resourceId', $roomId)
             ->where('active', 1)
             ->whereNotNull('start')
+            ->where(fn($q) => $q->where('stage_code', '!=', 8)->orWhereNotNull('actual_start'))
             ->where('start', '<=', date('Y-m-d H:i:s', $this->windowEnd))
             ->whereRaw('COALESCE(end_clearning, end) >= ?', [date('Y-m-d H:i:s', $this->at - 86400)])
             ->orderBy('start')
@@ -172,6 +187,9 @@ class RoomSequencer
             }
 
             $ready = $this->at;
+            if ($this->earliest !== null && ($e = ($this->earliest)($pm, $stage)) !== null) {
+                $ready = max($ready, $e);
+            }
             if ($r->predecessor_code && isset($predEnd[$r->predecessor_code])) {
                 $pe = $predEnd[$r->predecessor_code];
                 $ready = $pe === PHP_INT_MAX ? PHP_INT_MAX : max($ready, $pe + ($this->wait)($stage, $pm));
@@ -352,9 +370,15 @@ class RoomSequencer
                 'accept_quarantine' => 0,
             ]);
 
-            // Ghi lịch sử như tịnh tuyến: lô đã submit hoặc đã có phiên bản
-            if ((int) $row->submit === 1 || DB::table('stage_plan_history')->where('stage_plan_id', $id)->exists()) {
-                \App\Support\StagePlanHistory::record(DB::table('stage_plan')->where('id', $id)->first(), $typeOfChange);
+            // Ghi lịch sử như tịnh tuyến: lô đã submit hoặc đã có phiên bản. stage_plan_history không có index
+            // stage_plan_id: tra từng dòng là quét cả bảng, nên nạp sẵn phiên bản lớn nhất của mọi dòng một lần
+            self::$historyVersion ??= DB::table('stage_plan_history')->groupBy('stage_plan_id')
+                ->selectRaw('stage_plan_id, MAX(version) AS v')->pluck('v', 'stage_plan_id')
+                ->map(fn($v) => (int) $v)->all();
+            if ((int) $row->submit === 1 || isset(self::$historyVersion[$id])) {
+                $version = (self::$historyVersion[$id] ?? 0) + 1;
+                \App\Support\StagePlanHistory::record(DB::table('stage_plan')->where('id', $id)->first(), $typeOfChange, $version);
+                self::$historyVersion[$id] = $version;
             }
         }
     }

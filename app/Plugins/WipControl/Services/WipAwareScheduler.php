@@ -62,6 +62,7 @@ class WipAwareScheduler extends SchedualController
         $this->mold_change_tolerance = max(0, (float) ($request->mold_change_tolerance ?? 72));
         $this->max_Step = $selectedStep;
         $this->wipHints = $hints;
+        $this->campaignSkipsMaintenance = (bool) config('scheduling.campaign_skip_maintenance', true);   // như runScheduleAll: chiến dịch xếp xuyên BT-HC-TI chưa bắt đầu
 
         $this->loadOffDate('asc');
 

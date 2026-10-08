@@ -29,6 +29,8 @@ import EventFontSizeInput from '../Components/EventFontSizeInput';
 import ModalSidebar from '../Components/ModalSidebar';
 import NoteModal from '../Components/NoteModal';
 import { wipControlSectionHtml, initWipControl, collectWipControl, hasWipLimits, runWipControl } from '../Plugins/WipControl';
+import { useLotLinks } from '../Plugins/LotLinks'; // LotLinks (thử nghiệm)
+import { useRoomWip, isRoomWipRow, RoomWipToggle } from '../Plugins/RoomWip'; // RoomWip (thử nghiệm)
 
 //import History from '../Components/History';
 //import { CheckAuthorization } from '../Components/CheckAuthorization';
@@ -5777,6 +5779,29 @@ const ScheduleTest = () => {
                 return;
               }
 
+              // Lô vẫn bắt đầu sau Ngày HH NL chính / HH BB sau khi đã chen lịch theo hạn,
+              // và lịch BT-HC-TI đã dời vì chiến dịch xếp đè lên
+              const hardLate = data?.hard_deadline?.late ?? [];
+              const maintShifted = data?.maintenance_shifted ?? [];
+              if (hardLate.length || maintShifted.length) {
+                const fmt = (d) => d ? d.substring(0, 10).split('-').reverse().join('/') : '';
+                const fmtTime = (d) => d ? `${d.substring(8, 10)}/${d.substring(5, 7)} ${d.substring(11, 16)}` : '';
+                Swal.fire({
+                  icon: hardLate.length ? 'warning' : 'info',
+                  title: hardLate.length ? 'Còn lô vi phạm hạn NL/BB' : 'Hoàn Thành Sắp Lịch',
+                  width: 760,
+                  html: `<div style="text-align:left;font-size:14px;max-height:60vh;overflow:auto">
+                    ${hardLate.map(l => `<div>• Lô <b>${l.batch}</b>: ${l.rule} ${fmt(l.deadline)}, bắt đầu ${l.stage_code === 3 ? 'PC' : 'ĐG'} ${fmt(l.start)}
+                      ${l.avoidable ? '' : ' <i>(hạn sớm hơn ngày sớm nhất lô được chạy, không thể đáp ứng)</i>'}</div>`).join('')}
+                    ${maintShifted.length ? `<div style="margin-top:${hardLate.length ? 10 : 0}px"><b>Lịch BT-HC-TI bị chiến dịch xếp đè / trễ hạn BT:</b></div>
+                      ${maintShifted.map(m => `<div>• ${m.room} – ${m.title} ${m.to === m.from ? `giữ ${fmtTime(m.from)}` : `${fmtTime(m.from)} → <b>${fmtTime(m.to)}</b>`}${m.to < m.from ? ' (dời sớm để kịp hạn)' : ''}
+                        ${m.late ? ` <b style="color:#c0392b">– trễ hạn BT ${fmt(m.due)}, không còn khe trống kịp hạn</b>` : ''}</div>`).join('')}` : ''}
+                  </div>`,
+                });
+                setLoading(!loading);
+                return;
+              }
+
               Swal.fire({
                 icon: 'success',
                 title: 'Hoàn Thành Sắp Lịch',
@@ -6118,6 +6143,8 @@ const ScheduleTest = () => {
   }
 
   const finisedEvent = (dropInfo, draggedEvent) => {
+
+    if (isRoomWipRow(dropInfo.resource)) return false; // RoomWip (thử nghiệm): dòng con chỉ để xem
 
     if (draggedEvent._def.ui.backgroundColor == "#002af9ff" || draggedEvent._def.extendedProps.stage_code == 8) {
       return false;
@@ -6711,6 +6738,9 @@ const ScheduleTest = () => {
     }));
   };
 
+  const lotLinks = useLotLinks(calendarRef, activePlanMasterIds, events); // LotLinks (thử nghiệm)
+  const roomWip = useRoomWip(calendarRef, events); // RoomWip (thử nghiệm)
+
   const calendarEvents = useMemo(() => {
     const base = [
       ...events,                     // event sản xuất
@@ -6734,8 +6764,9 @@ const ScheduleTest = () => {
     if (selectedRoomsFilter && selectedRoomsFilter.length > 0) {
       baseRes = baseRes.filter(r => selectedRoomsFilter.includes(r.title));
     }
-    return baseRes;
-  }, [resources, showPersonnel, selectedStagesFilter, selectedRoomsFilter]);
+    baseRes = lotLinks.filterResources(baseRes); // LotLinks (thử nghiệm): Ctrl + double-click ẩn phòng không liên quan
+    return roomWip.resources(baseRes); // RoomWip (thử nghiệm): thêm dòng con Tồn chờ vào
+  }, [resources, showPersonnel, selectedStagesFilter, selectedRoomsFilter, roomWip.resources, lotLinks.filterResources]);
 
   const handleConfirmClearningValidation = (e) => {
     const ids = selectedEvents.map(row =>
@@ -7027,6 +7058,7 @@ const ScheduleTest = () => {
     showDetailHover,
     undoStack.length,
     overlapIds,
+    roomWip.highlight, // RoomWip (thử nghiệm)
   ];
 
   return (
@@ -7120,6 +7152,7 @@ const ScheduleTest = () => {
               ></i>
             </div>
           )}
+          <RoomWipToggle roomWip={roomWip} />{/* RoomWip (thử nghiệm) */}
           {moldWarningEvents.length > 0 && (
             <div
               className="flex align-items-center gap-2 bg-yellow-100 text-yellow-800 px-3 py-1 border-round-2xl shadow-1 border-1 border-yellow-300 cursor-pointer hover:bg-yellow-200 transition-colors"
@@ -7205,9 +7238,11 @@ const ScheduleTest = () => {
               classes.push('fc-event-overlap');
             }
 
+            classes.push(...roomWip.classesFor(arg.event)); // RoomWip (thử nghiệm): sáng lô nguồn / tiêu thụ
+
             // Active Plan Master IDs focusing (logic from line 2956)
             if (activePlanMasterIds.length > 0) {
-              if (activePlanMasterIds.includes(pmId)) {
+              if (activePlanMasterIds.includes(pmId) || lotLinks.focusPmIds?.has(String(pmId))) { // LotLinks (thử nghiệm): hiện cả lô đóng gói một phần cùng chuỗi
                 classes.push('fc-event-focus');
               } else {
                 classes.push('fc-event-hidden');
@@ -7258,26 +7293,22 @@ const ScheduleTest = () => {
           resourceGroupLabelContent={(arg) => {
 
             const stage_code = stageMap[arg.groupValue] || {};
-            const sumItem = sumBatchByStage.find(s => s.stage_code == stage_code)
-            const qty = sumItem ? formatNumberWithComma(sumItem.total_qty) : "0";
-            const unit = sumItem?.unit || "";
-            const yields = `${qty} ${unit}`.trim();
-
             const highlight = selectedRows.some(row => row.stage_code == stage_code);
 
+            // Chỉ còn tên công đoạn: sản lượng đã bỏ, tồn BTP xem bằng nút [Tồn BTP]
             return (
               <div style={{ fontWeight: "bold", color: highlight ? "red" : "black" }}>
-                {arg.groupValue + " :"}
-                <span style={{ marginLeft: "10px", color: "green" }}>
-                  {yields}
-                </span>
+                {arg.groupValue}
               </div>
             );
 
           }}
 
           // Phòng
+          resourceLaneContent={roomWip.laneContent} // RoomWip (thử nghiệm)
+
           resourceLabelContent={(arg) => {
+            if (isRoomWipRow(arg.resource)) return roomWip.labelContent(arg); // RoomWip (thử nghiệm)
             const res = arg.resource.extendedProps;
 
             if (res.is_personnel_sub) {

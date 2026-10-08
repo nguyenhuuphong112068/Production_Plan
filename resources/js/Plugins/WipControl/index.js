@@ -31,6 +31,7 @@ const STAGE_SHORT = { 3: 'PC', 4: 'THT', 5: 'ĐH', 6: 'BP', 7: 'ĐG' };
 
 const STATUS = {
   ok: { icon: 'success', text: 'Đạt: tồn mọi nhóm đã nằm trong Max' },
+  hard_date: { icon: 'warning', text: 'Dừng để không vi phạm ngày NL/BB' },
   infeasible: { icon: 'warning', text: 'Không khả thi: không còn lô nào lùi được để giảm tồn (thường do năng lực công đoạn sau thấp hơn đầu nguồn)' },
   max_iterations: { icon: 'warning', text: 'Hết số vòng lặp, tồn vẫn còn vượt Max' },
   timeout: { icon: 'warning', text: 'Hết thời gian cho phép, tồn vẫn còn vượt Max' },
@@ -74,6 +75,7 @@ export function wipControlSectionHtml() {
             <input id="wip-${g.key}" type="number" min="0" step="1" placeholder="Không giới hạn" class="wip-input" style="${input}">
           </div>`).join('')}
         <p class="asm-hint">
+          Luôn giữ đúng các ngày NL/BB (được phép cân, HH NL chính, HH BB, PC / THT / ĐH / BP trước): lô bị lùi không được vi phạm các ngày này.<br/>
           Ngưng nguồn: lô chỉ vào công đoạn nguồn khi tồn nhóm nó sắp vào còn dưới Max, phòng chạy thay lô đi nhóm không cài Max hoặc để trống; lô vì thế trễ thì công đoạn sau lùi theo.<br/>
           Chờ ĐH → ngưng THT (PC). Chờ BP → ngưng ĐH lô bao phim. Chờ ĐG → ngưng BP và ĐH lô không bao phim. Cài 1, 2 hoặc cả 3 nhóm.
         </p>
@@ -101,7 +103,6 @@ export function initWipControl() {
         const el = document.getElementById(`wip-${g.key}`);
         if (el && data[g.key] !== null && data[g.key] !== undefined) el.value = Math.round(data[g.key]);
       });
-
 
       // Đã từng cài Max thì bật sẵn
       const hasLimit = GROUPS.some((g) => data[g.key] !== null && data[g.key] !== undefined);
@@ -215,8 +216,16 @@ function showReport(data) {
   if (late.length) warnings.push(`<b style="color:#c0392b">${late.length} lô xong phần đã lùi sau ngày cần hàng</b>${late.every((d) => d.no_consumer) ? ' (đều là lô công đoạn sau chưa có lịch)' : ''}.`);
   if (unscheduled.length) warnings.push(`<b style="color:#e67e22">${unscheduled.length} lô chưa sắp lại được</b>, cần xử lý tay.`);
   if (data.gate_warnings?.length) warnings.push(`<b style="color:#e67e22">Dữ liệu bất thường (giữ nguyên, cần kiểm tra Nhận / Trả phòng):</b><br/>${data.gate_warnings.map(esc).join('<br/>')}`);
+  if (data.hard_blocked?.length) warnings.push(`<b style="color:#c0392b">Đã huỷ vòng cuối vì làm vi phạm ngày NL/BB không được vi phạm:</b><br/>${data.hard_blocked.map(esc).join('<br/>')}`);
+  if (data.hard_forced) warnings.push(`${data.hard_forced} lô phải chạy đúng hạn (không ngưng) để giữ ngày NL/BB.`);
   if (data.gate_error) warnings.push(`<b style="color:#c0392b">Không ngưng nguồn được:</b> ${esc(data.gate_error)}. Lịch giữ nguyên ở bước này.`);
   if (shifted.length) warnings.push(`<b style="color:#e67e22">${new Set(shifted.map((s) => s.plan_master_id)).size} lô bị lùi công đoạn sau theo</b>${shiftedLate.length ? `, <b style="color:#c0392b">${new Set(shiftedLate.map((s) => s.plan_master_id)).size} lô xong sau ngày cần hàng</b>` : ''}: xem bảng bên dưới.`);
+  if (data.maintenance_shifted?.length) {
+    const d = (s) => s.substring(8, 10) + '/' + s.substring(5, 7) + ' ' + s.substring(11, 16);
+    warnings.push(`Lịch BT-HC-TI bị lô sản xuất xếp đè / trễ hạn BT:<br/>${data.maintenance_shifted
+      .map(m => `${esc(m.room)} – ${esc(m.title)}: ${m.to === m.from ? 'giữ ' + d(m.from) : d(m.from) + ' → ' + d(m.to)}${m.to < m.from ? ' (dời sớm để kịp hạn)' : ''}${m.late
+        ? ` <b style="color:#c0392b">– trễ hạn BT ${esc(m.due.split('-').reverse().join('/'))}</b>` : ''}`).join('<br/>')}`);
+  }
   if (data.new_overdue?.length) warnings.push(`Campaign mới bị quá hạn biệt trữ: <b>${data.new_overdue.map(esc).join(', ')}</b>.`);
   if (delayed.length) warnings.push('Công đoạn tiêu thụ trở về sau giữ nguyên lịch. Đổi chỗ / giãn lịch chỉ dời lô trong cùng phòng; lô "Sắp lại lô" có thể đã lùi Pha chế: kiểm tra và chạy lại lịch <b>Cân NL (CNL)</b>.');
   if ((data.pulled ?? []).length) warnings.push(`${data.pulled.length} lô được kéo lên sớm (đi sang nhóm không cài Max): tồn của nhóm đó sẽ tăng.`);

@@ -58,19 +58,29 @@ $integrity = function () use ($prod) {
     foreach ($rows as $r) if ($r->predecessor_code && isset($byCode[$r->predecessor_code]) && $r->start < $byCode[$r->predecessor_code]->end) $prec[] = $r->id;
     $offR = DB::table('off_days')->where('off_date', '>=', date('Y-m-d'))->pluck('off_date')->map(fn($d) => [strtotime("$d 06:00"), strtotime("$d 06:00") + 86400]);
     $inOff = []; foreach ($rows as $r) { $t = strtotime($r->start); foreach ($offR as [$a, $b]) if ($t >= $a && $t < $b && $r->stage_code <= 6) $inOff[] = $r->id; }
-    return ['overlap' => $overlap, 'prec' => $prec, 'off' => $inOff];
+    // Vi phạm ngày NL/BB theo đúng quy tắc cảnh báo (so theo ngày)
+    $rules = [['allow_weight_before_date', 3, '>'], ['expired_material_date', 3, '<'], ['expired_packing_date', 7, '<'],
+        ['preperation_before_date', 3, '<'], ['blending_before_date', 4, '<'], ['forming_before_date', 5, '<'], ['coating_before_date', 6, '<']];
+    $pmd = DB::table('plan_master')->whereIn('id', $rows->pluck('id')->isEmpty() ? [0] : DB::table('stage_plan')->whereIn('id', $rows->pluck('id'))->pluck('plan_master_id')->unique())->get()->keyBy('id');
+    $pmOf = DB::table('stage_plan')->whereIn('id', $rows->pluck('id'))->pluck('plan_master_id', 'id');
+    $dates = [];
+    foreach ($rows as $r) { $p = $pmd[$pmOf[$r->id]] ?? null; if (!$p) continue; $day = substr($r->start, 0, 10);
+        foreach ($rules as [$f, $st, $op]) if ((int) $r->stage_code === $st && !empty($p->$f) && ($op === '<' ? substr($p->$f, 0, 10) < $day : substr($p->$f, 0, 10) > $day)) $dates[] = $r->id . ':' . $f; }
+    return ['overlap' => $overlap, 'prec' => $prec, 'off' => $inOff, 'dates' => $dates];
 };
 $ib = $integrity();
 DB::beginTransaction();
 try {
     $t = microtime(true);
     $r = app(WipThrottleService::class)->run(['production_code' => $prod, 'limits' => $limits, 'iterations' => $iter,
-        'lock_validation' => false, 'prioritize_non_coated' => getenv('NOMIX') ? false : true, 'pull_mode' => (bool) getenv('PULL'), 'gate_mode' => getenv('GATE') ?: null, 'pull_buffer_hours' => getenv('BUFFER') !== false ? (int) getenv('BUFFER') : 24, 'selected_step' => 7, 'start_date' => Carbon::now()->setTime(6,0), 'request' => $req]);
+        'lock_validation' => false, 'prioritize_non_coated' => getenv('NOMIX') ? false : true, 'pull_mode' => (bool) getenv('PULL'), 'gate_mode' => getenv('GATE') ?: null, 'pull_buffer_hours' => getenv('BUFFER') !== false ? (int) getenv('BUFFER') : 24, 'date_rules' => getenv('ALLOWDATES') ? [] : null, 'selected_step' => 7, 'start_date' => Carbon::now()->setTime(6,0), 'request' => $req]);
     echo "Chạy: " . round(microtime(true) - $t, 1) . "s, peak mem " . round(memory_get_peak_usage(true)/1048576) . "MB\n";
     $ia = $integrity();
     echo "Đè giờ cùng phòng: trước " . count($ib['overlap']) . ", sau " . count($ia['overlap']) . ", MỚI: " . json_encode(array_values(array_diff($ia['overlap'], $ib['overlap']))) . "
 ";
     echo "Lô BẮT ĐẦU trong ngày nghỉ (PC→BP): trước " . count($ib['off']) . ", sau " . count($ia['off']) . ", MỚI: " . json_encode(array_values(array_diff($ia['off'], $ib['off']))) . "
+";
+    echo "Vi phạm ngày NL/BB: trước " . count($ib['dates']) . ", sau " . count($ia['dates']) . ", MỚI: " . json_encode(array_values(array_diff($ia['dates'], $ib['dates']))) . "
 ";
     echo "Công đoạn sau bắt đầu trước khi công đoạn trước xong: trước " . count($ib['prec']) . ", sau " . count($ia['prec']) . ", MỚI: " . json_encode(array_values(array_diff($ia['prec'], $ib['prec']))) . "
 ";
@@ -78,6 +88,15 @@ try {
     $trace = $r['trace']; unset($r['trace']);
     $cnt = []; foreach ($trace as $t) if (str_starts_with((string) $t[0], 'broken')) { $cnt[$t[0]] = ($cnt[$t[0]] ?? 0) + 1; if (getenv('SHOWBROKEN')) echo "BROKEN " . json_encode($t, JSON_UNESCAPED_UNICODE) . "
 "; }
+    foreach ($trace as $tr) if (in_array($tr[0], ['gate_hard_retry', 'hard_date_round', 'gate_failed'], true)) echo "HARD " . json_encode($tr, JSON_UNESCAPED_UNICODE) . "
+";
+    echo "Lô bị ép chạy đúng hạn: " . ($r['hard_forced'] ?? 0) . ", vòng bị huỷ: " . json_encode($r['hard_blocked'] ?? [], JSON_UNESCAPED_UNICODE) . "
+";
+    echo "BT-HC-TI đã dời: " . count($r['maintenance_shifted'] ?? []) . "
+";
+    $mo = DB::selectOne("SELECT COUNT(*) c FROM stage_plan m JOIN stage_plan p ON p.resourceId = m.resourceId AND p.stage_code BETWEEN 3 AND 7 AND p.active = 1 AND p.finished = 0 AND p.start IS NOT NULL AND p.start < COALESCE(m.end_clearning, m.end) AND COALESCE(p.end_clearning, p.end) > m.start WHERE m.stage_code = 8 AND m.active = 1 AND m.finished = 0 AND m.actual_start IS NULL AND m.start >= NOW() AND m.deparment_code = ?", [$prod])->c;
+    echo "BT-HC-TI còn bị lô SX đè: $mo cặp
+";
     echo "Lý do trả về: " . json_encode($cnt) . "
 ";
     if ($ids = getenv('WATCHROWS')) { $w = array_map('intval', explode(',', $ids));

@@ -242,6 +242,16 @@ class SchedualController extends Controller
     // Số giờ trễ tối đa chấp nhận được để giữ nguyên bộ khuôn
     protected $mold_change_tolerance = 72;
 
+    // Lô được chen lên trước mọi nhóm vì sẽ trễ Ngày HH NL chính / HH BB: plan_master_id => [deadline, upto]
+    protected array $deadlinePriority = [];
+
+    // Sắp lịch tự động: chiến dịch xếp xuyên qua lịch BT-HC-TI chưa bắt đầu, sắp xong mới dời BT-HC-TI (MaintenanceShiftService)
+    protected bool $campaignSkipsMaintenance = false;
+
+    // Đang tìm phòng cho một chiến dịch: bảng phòng bận bỏ qua lịch BT-HC-TI chưa bắt đầu
+    protected bool $ignorePendingMaintenance = false;
+
+
     protected $stage_Name = [
         1 => 'Cân NL',
         3 => 'PC',
@@ -5957,10 +5967,18 @@ class SchedualController extends Controller
 
         $this->roomAvailability[$roomId] = [];
 
+        // BT-HC-TI (stage_code 8) chưa bắt đầu không chặn chiến dịch khi sắp lịch tự động
+        $skipMaintenance = function ($q) {
+            if ($this->ignorePendingMaintenance) {
+                $q->where(fn($q) => $q->where('stage_code', '!=', 8)->orWhereNotNull('actual_start'));
+            }
+        };
+
         $notCampaign = DB::table('stage_plan')
             ->where('resourceId', $roomId)
             ->where('finished', 0)
             ->whereNull('campaign_code')
+            ->where($skipMaintenance)
             ->where(function ($q) {
 
                 $q->where('end', '>=', now())
@@ -5978,6 +5996,7 @@ class SchedualController extends Controller
             ->where('finished', 0)
             ->where('resourceId', $roomId)
             ->whereNotNull('campaign_code')
+            ->where($skipMaintenance)
             ->where(function ($q) {
 
                 $q->where('end', '>=', now())
@@ -6472,6 +6491,8 @@ class SchedualController extends Controller
 
         $this->mold_change_tolerance = max(0, (float) ($request->mold_change_tolerance ?? 72));
 
+        $this->campaignSkipsMaintenance = (bool) config('scheduling.campaign_skip_maintenance', true);
+
         $this->loadOffDate('asc');
 
         $today = Carbon::now()->toDateString();
@@ -6527,8 +6548,38 @@ class SchedualController extends Controller
 
             $this->scheduleLine($request->lines, $request->stage_plan_ids, $stage_code_line, 0, 0, $start_date);
 
-            return response()->json([]);
+            return response()->json(['maintenance_shifted' => $this->shiftMaintenanceAfterSchedule()]);
         }
+
+        // Các nhóm sắp lịch; lô sẽ trễ hạn HH NL chính / HH BB được chen lên trước rồi sắp lại
+        $hardDeadline = $this->scheduleWithHardDeadlines($request, $start_date, $selectedStep, $stageCodes);
+
+        $maintenanceShifted = $this->shiftMaintenanceAfterSchedule();
+
+        $overdueCampaigns = $this->scanOverdueTasks();
+
+        return response()->json(['overdueCampaigns' => $overdueCampaigns, 'hard_deadline' => $hardDeadline, 'maintenance_shifted' => $maintenanceShifted]);
+    }
+
+    /** Dời lịch BT-HC-TI bị chiến dịch xếp đè lên ra khe trống kế tiếp trong phòng */
+    protected function shiftMaintenanceAfterSchedule(): array
+    {
+        $moved = app(\App\Services\MaintenanceShiftService::class)
+            ->shiftOverlapping(session('user.production_code'), 'Dời BT-HC-TI sau lịch sản xuất (sắp lịch tự động)');
+        if ($moved !== []) {
+            Log::info('Sắp lịch: dời BT-HC-TI bị lịch sản xuất đè', ['count' => count($moved), 'moved' => $moved]);
+        }
+
+        return $moved;
+    }
+
+    /**
+     * Các nhóm sắp lịch của runScheduleAll: (lô chen theo hạn) → bán thành phẩm → cảnh báo NL/BB
+     * → nhạy cảm → thương mại → khuyến mãi.
+     */
+    protected function runScheduleGroups(Request $request, Carbon $start_date, int $selectedStep, $stageCodes): void
+    {
+        $this->scheduleDeadlinePriority($request, $start_date, $selectedStep);
 
         // ///bán thành phầm
         for ($i = $selectedStep; $i >= 3; $i--) {
@@ -6603,10 +6654,287 @@ class SchedualController extends Controller
                 $this->Auto_scheduler_Stage_Forward($i, $waite_time_nomal_batch, $waite_time_val_batch, $start_date, $promotionalFilter);
             }
         }
+    }
 
-        $overdueCampaigns = $this->scanOverdueTasks();
+    /**
+     * Ngày HH NL chính (PC) và Ngày HH BB (ĐG) không được vi phạm.
+     *
+     * Lõi xếp theo nhóm nên lô có hạn gần vẫn có thể bị lô hạn xa chiếm phòng trước. Sắp lịch một lượt
+     * (trong savepoint), tìm lô bắt đầu sau hạn mà vẫn còn kịp (hạn không sớm hơn hôm nay / ngày có đủ
+     * NL, BB), hoàn tác rồi sắp lại với các lô đó (và các lô cùng chiến dịch, để không tách chiến dịch)
+     * được xếp trước mọi nhóm theo hạn gần nhất. Lặp tới config scheduling.hard_deadline_reruns lần (mặc định 3), lô bị chen làm
+     * trễ hạn thì thêm vào danh sách ưu tiên; giữ lượt có ít lô trễ nhất.
+     *
+     * @return array{reruns: int, priority_lots: int, late: array<int, array>} lô vẫn trễ hạn sau cùng (kể cả lô hết cứu)
+     */
+    protected function scheduleWithHardDeadlines(Request $request, Carbon $start_date, int $selectedStep, $stageCodes): array
+    {
+        // Các dòng lượt này sẽ xếp: chỉ chúng mới được đánh giá trễ hạn
+        $runIds = DB::table('stage_plan')
+            ->where('deparment_code', session('user.production_code'))
+            ->whereBetween('stage_code', [3, $selectedStep])
+            ->where('finished', 0)
+            ->where('active', 1)
+            ->whereNull('start')
+            ->pluck('id')
+            ->all();
 
-        return response()->json(['overdueCampaigns' => $overdueCampaigns]);
+        // Số lần sắp lại tối đa; 0 = tắt chen theo hạn
+        $maxReruns = (int) config('scheduling.hard_deadline_reruns', 3);
+        $pristine = clone $this;   // chưa có bộ nhớ đệm phòng/khuôn của lượt nào
+        $today = $start_date->copy()->max(Carbon::today())->toDateString();
+        $priority = [];
+        $best = null;
+        $reruns = 0;
+
+        $run = function (array $priority, bool $first) use ($pristine, $request, $start_date, $selectedStep, $stageCodes, $runIds, $today) {
+            DB::beginTransaction();
+            try {
+                $runner = $first ? $this : clone $pristine;
+                $runner->deadlinePriority = $priority;
+                $runner->runScheduleGroups($request, $start_date, $selectedStep, $stageCodes);
+
+                return $this->hardDeadlineLate($runIds, $today);
+            } catch (\Throwable $e) {
+                DB::rollBack();
+                throw $e;
+            }
+        };
+
+        for ($attempt = 0;; $attempt++) {
+            $late = $run($priority, $attempt === 0);
+
+            $avoidable = array_filter($late, fn($l) => $l['avoidable']);
+            $score = [count($avoidable), array_sum(array_column($avoidable, 'late_days'))];
+            if ($best === null || $score < $best['score']) {
+                $best = ['priority' => $priority, 'score' => $score, 'late' => $late, 'attempt' => $attempt];
+            }
+
+            $next = $this->expandDeadlinePriority($priority, $avoidable, $runIds);
+            $stuck = $avoidable === [] || array_diff_key($next, $priority) === [];
+            if ($stuck || $attempt >= $maxReruns) {
+                if ($best['attempt'] !== $attempt) {
+                    // Lượt cuối tệ hơn: sắp lại theo danh sách ưu tiên của lượt tốt nhất
+                    DB::rollBack();
+                    $reruns++;
+                    $best['late'] = $run($best['priority'], false);
+                }
+                DB::commit();
+                break;
+            }
+
+            DB::rollBack();
+            $reruns++;
+            $priority = $next;
+        }
+
+        $result = ['reruns' => $reruns, 'priority_lots' => count($best['priority']), 'late' => array_values($best['late'])];
+        if ($result['late'] !== [] || $reruns > 0) {
+            Log::info('Sắp lịch: chen lô theo hạn HH NL/BB', $result);
+        }
+
+        return $result;
+    }
+
+    /**
+     * Lô (trong các dòng lượt này xếp) có PC bắt đầu sau Ngày HH NL chính hoặc ĐG bắt đầu sau Ngày HH BB,
+     * so theo ngày như cảnh báo trên Gantt. avoidable = false khi hạn sớm hơn mốc sớm nhất lô được chạy
+     * (hôm nay, Ngày có đủ NL / được phép cân, Ngày có đủ BB): chen lên cũng không kịp.
+     *
+     * @return array<int, array> plan_master_id => thông tin lô trễ
+     */
+    protected function hardDeadlineLate(array $runIds, string $today): array
+    {
+        $late = [];
+        foreach (array_chunk($runIds, 2000) as $chunk) {
+            $rows = DB::table('stage_plan as sp')
+                ->join('plan_master as pm', 'pm.id', '=', 'sp.plan_master_id')
+                ->whereIn('sp.id', $chunk)
+                ->whereNotNull('sp.start')
+                ->where(function ($q) {
+                    $q->where(fn($q) => $q->where('sp.stage_code', 3)->whereNotNull('pm.expired_material_date'))
+                        ->orWhere(fn($q) => $q->where('sp.stage_code', 7)->whereNotNull('pm.expired_packing_date'));
+                })
+                ->get(['sp.id', 'sp.plan_master_id', 'sp.stage_code', 'sp.start', 'pm.batch',
+                    'pm.expired_material_date', 'pm.expired_packing_date', 'pm.after_weigth_date',
+                    'pm.allow_weight_before_date', 'pm.after_parkaging_date']);
+
+            foreach ($rows as $r) {
+                $isPc = (int) $r->stage_code === 3;
+                $deadline = substr($isPc ? $r->expired_material_date : $r->expired_packing_date, 0, 10);
+                $day = substr($r->start, 0, 10);
+                if ($day <= $deadline) {
+                    continue;
+                }
+
+                $bounds = $isPc ? [$today, $r->after_weigth_date, $r->allow_weight_before_date] : [$today, $r->after_parkaging_date];
+                $earliest = max(array_map(fn($d) => substr((string) $d, 0, 10), array_filter($bounds)));
+                $pm = (int) $r->plan_master_id;
+                $item = [
+                    'stage_plan_id' => (int) $r->id,
+                    'plan_master_id' => $pm,
+                    'stage_code' => (int) $r->stage_code,
+                    'batch' => $r->batch,
+                    'rule' => $isPc ? 'Ngày HH NL chính' : 'Ngày HH BB',
+                    'deadline' => $deadline,
+                    'start' => $r->start,
+                    'late_days' => (int) round((strtotime($day) - strtotime($deadline)) / 86400),
+                    'avoidable' => $deadline >= $earliest,
+                ];
+                // Một lô trễ cả PC và ĐG: giữ dòng ở công đoạn sau để chen cả chuỗi
+                if (! isset($late[$pm]) || $item['stage_code'] > $late[$pm]['stage_code']) {
+                    $late[$pm] = $item;
+                }
+            }
+        }
+
+        return $late;
+    }
+
+    /**
+     * Thêm lô trễ hạn vào danh sách ưu tiên: plan_master_id => [deadline, upto = công đoạn cuối cần chen].
+     * Kéo theo các lô cùng chiến dịch ở những công đoạn đó (tới khi không thêm được nữa) vì chiến dịch
+     * được xếp liền một mạch, không tách.
+     */
+    protected function expandDeadlinePriority(array $priority, array $late, array $runIds): array
+    {
+        $next = $priority;
+        foreach ($late as $pm => $l) {
+            $old = $next[$pm] ?? null;
+            $next[$pm] = [
+                'deadline' => $old ? min($old['deadline'], $l['deadline']) : $l['deadline'],
+                'upto' => max($old['upto'] ?? 0, $l['stage_code']),
+            ];
+        }
+
+        if ($next === $priority) {
+            return $next;
+        }
+
+        $rows = [];
+        foreach (array_chunk($runIds, 2000) as $chunk) {
+            foreach (DB::table('stage_plan')->whereIn('id', $chunk)->whereNotNull('campaign_code')->get(['plan_master_id', 'stage_code', 'campaign_code']) as $r) {
+                $rows[] = $r;
+            }
+        }
+        $byCampaign = [];
+        foreach ($rows as $r) {
+            $byCampaign[$r->campaign_code][] = $r;
+        }
+
+        do {
+            $changed = false;
+            foreach ($rows as $r) {
+                $pm = (int) $r->plan_master_id;
+                if (! isset($next[$pm]) || (int) $r->stage_code > $next[$pm]['upto']) {
+                    continue;
+                }
+                foreach ($byCampaign[$r->campaign_code] as $mate) {
+                    $mpm = (int) $mate->plan_master_id;
+                    $old = $next[$mpm] ?? null;
+                    $want = [
+                        'deadline' => $old ? min($old['deadline'], $next[$pm]['deadline']) : $next[$pm]['deadline'],
+                        'upto' => max($old['upto'] ?? 0, (int) $mate->stage_code),
+                    ];
+                    if ($old !== $want) {
+                        $next[$mpm] = $want;
+                        $changed = true;
+                    }
+                }
+            }
+        } while ($changed);
+
+        return $next;
+    }
+
+    /**
+     * Nhóm chen theo hạn: xếp trước mọi nhóm các lô trong deadlinePriority, từ PC tới công đoạn cần
+     * chen của từng lô, hạn gần nhất trước.
+     */
+    protected function scheduleDeadlinePriority(Request $request, Carbon $start_date, int $selectedStep): void
+    {
+        if ($this->deadlinePriority === []) {
+            return;
+        }
+
+        for ($stageCode = 3; $stageCode <= $selectedStep; $stageCode++) {
+            $pms = array_keys(array_filter($this->deadlinePriority, fn($p) => $p['upto'] >= $stageCode));
+            if ($pms === []) {
+                continue;
+            }
+
+            $tasks = DB::table('stage_plan as sp')
+                ->select(
+                    'sp.id',
+                    'sp.plan_master_id',
+                    'sp.product_caterogy_id',
+                    'sp.predecessor_code',
+                    'sp.nextcessor_code',
+                    'sp.campaign_code',
+                    'sp.code',
+                    'sp.stage_code',
+                    'sp.tank',
+                    'sp.keep_dry',
+                    'sp.order_by',
+                    'sp.required_room_code',
+                    'sp.immediately',
+                    'plan_master.batch',
+                    'plan_master.is_val',
+                    'plan_master.code_val',
+                    'plan_master.expected_date',
+                    'plan_master.after_weigth_date',
+                    'plan_master.after_parkaging_date',
+                    'plan_master.allow_weight_before_date',
+                    'finished_product_category.product_name_id',
+                    'finished_product_category.market_id',
+                    'finished_product_category.finished_product_code',
+                    'finished_product_category.intermediate_code',
+                    'product_name.name',
+                    'market.code as market',
+                )
+                ->leftJoin('plan_master', 'sp.plan_master_id', 'plan_master.id')
+                ->leftJoin('plan_list', 'plan_master.plan_list_id', 'plan_list.id')
+                ->leftJoin('finished_product_category', function ($join) {
+                    $join->on('sp.product_caterogy_id', '=', 'finished_product_category.id')
+                        ->where('plan_list.type', '=', 1);
+                })
+                ->leftJoin('product_name', 'finished_product_category.product_name_id', 'product_name.id')
+                ->leftJoin('market', 'finished_product_category.market_id', 'market.id')
+                ->where('sp.stage_code', $stageCode)
+                ->where('sp.finished', 0)
+                ->where('sp.active', 1)
+                ->whereNull('sp.start')
+                ->where('sp.not_schedule', 0)
+                ->whereNotExists($this->laterStageStarted('sp'))
+                ->whereNotNull('plan_master.after_weigth_date')
+                ->when($stageCode == 7, fn($q) => $q->whereNotNull('plan_master.after_parkaging_date'))
+                ->whereIn('sp.plan_master_id', $pms)
+                ->where('sp.deparment_code', session('user.production_code'))
+                ->orderBy('sp.order_by')
+                ->get();
+
+            // Hạn của chiến dịch = hạn gần nhất trong các lô của nó
+            $deadlineOf = function ($task) use ($tasks) {
+                $members = $task->campaign_code === null ? collect([$task]) : $tasks->where('campaign_code', $task->campaign_code);
+
+                return $members->map(fn($t) => $this->deadlinePriority[(int) $t->plan_master_id]['deadline'])->min();
+            };
+            $tasks = $tasks->sortBy(fn($t) => $deadlineOf($t) . sprintf('%010d', (int) $t->order_by))->values();
+
+            $processedCampaigns = [];
+            foreach ($tasks as $task) {
+                // Thời gian chờ 0 như nhóm bán thành phẩm / cảnh báo NL/BB mà các lô này vốn thuộc về
+                $waite_time = 0;
+
+                if ($task->campaign_code === null) {
+                    $this->sheduleNotCampaing($task, $stageCode, $waite_time, $start_date, null);
+                } elseif (! in_array($task->campaign_code, $processedCampaigns, true)) {
+                    $campaignTasks = $tasks->where('campaign_code', $task->campaign_code)->sortBy('batch');
+                    $this->scheduleCampaign($campaignTasks, $stageCode, $waite_time, $start_date, null);
+                    $processedCampaigns[] = $task->campaign_code;
+                }
+            }
+        }
     }
 
     private function runScheduleAllPass2(Request $request)
@@ -6629,6 +6957,7 @@ class SchedualController extends Controller
         $this->prev_orderBy = $request->prev_orderBy ?? false;
         $this->limit_mold_change = filter_var($request->limit_mold_change ?? true, FILTER_VALIDATE_BOOLEAN);
         $this->mold_change_tolerance = max(0, (float) ($request->mold_change_tolerance ?? 72));
+        $this->campaignSkipsMaintenance = (bool) config('scheduling.campaign_skip_maintenance', true);
         $this->loadOffDate('asc');
 
         $today = Carbon::now()->toDateString();
@@ -6739,7 +7068,7 @@ class SchedualController extends Controller
             }
         }
 
-        return response()->json(['status' => 'Pass 2 Completed']);
+        return response()->json(['status' => 'Pass 2 Completed', 'maintenance_shifted' => $this->shiftMaintenanceAfterSchedule()]);
     }
 
     protected function scheduleOverdueCampaigns($overdueCampaigns, Request $request, $start_date)
@@ -8362,6 +8691,17 @@ class SchedualController extends Controller
 
     protected function scheduleCampaign($campaignTasks, $stageCode, int $waite_time = 0, ?Carbon $start_date = null, ?string $Line = null, ?float $totalTimeCampaign = 0)
     {
+        $previous = $this->ignorePendingMaintenance;
+        $this->ignorePendingMaintenance = $this->campaignSkipsMaintenance;
+        try {
+            $this->scheduleCampaignBody($campaignTasks, $stageCode, $waite_time, $start_date, $Line, $totalTimeCampaign);
+        } finally {
+            $this->ignorePendingMaintenance = $previous;
+        }
+    }
+
+    protected function scheduleCampaignBody($campaignTasks, $stageCode, int $waite_time = 0, ?Carbon $start_date = null, ?string $Line = null, ?float $totalTimeCampaign = 0)
+    {
         $main_ids = $campaignTasks->pluck('plan_master_id')->unique();
         $subTasks = DB::table('stage_plan')
             ->join('plan_master', 'stage_plan.plan_master_id', '=', 'plan_master.id')
@@ -8411,23 +8751,15 @@ class SchedualController extends Controller
 
         $candidates[] = $start_date;
 
-        // nếu có after_weigth_date
-        if ($stageCode <= 6) {
-
-            if (! empty($firstTask->after_weigth_date)) {
-
-                $candidates[] = Carbon::parse($firstTask->after_weigth_date);
-            }
-
-            if (! empty($task->allow_weight_before_date)) {
-
-                $candidates[] = Carbon::parse($firstTask->allow_weight_before_date);
-            }
-        } else {
-
-            if (! empty($firstTask->after_parkaging_date)) {
-
-                $candidates[] = Carbon::parse($firstTask->after_parkaging_date);
+        // Ngày có đủ NL / ngày được phép cân (ĐG: ngày có đủ BB) của MỌI lô trong campaign: campaign chạy liền
+        // một mạch nên phải bắt đầu sau ngày muộn nhất. Trước đây chỉ xét lô đầu, và điều kiện ngày được phép cân
+        // kiểm tra nhầm biến $task (không tồn tại trong hàm này) nên mốc đó luôn bị bỏ qua.
+        foreach ($campaignTasks as $campaignTask) {
+            $fields = $stageCode <= 6 ? ['after_weigth_date', 'allow_weight_before_date'] : ['after_parkaging_date'];
+            foreach ($fields as $field) {
+                if (! empty($campaignTask->$field)) {
+                    $candidates[] = Carbon::parse($campaignTask->$field);
+                }
             }
         }
 
