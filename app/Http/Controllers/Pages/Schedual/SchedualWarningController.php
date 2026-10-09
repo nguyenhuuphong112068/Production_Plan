@@ -68,7 +68,7 @@ class SchedualWarningController extends Controller
 
         // 2. Cảnh Báo Ngày Đáp Ứng NL/BB
         $criticalChecks = [
-            // [1,  3,  'after_weigth_date',         'Ngày có đủ NL',  '>'],
+            [1,  3,  'after_weigth_date',         'Ngày có đủ NL',  '>'],
             [1,  3,  'allow_weight_before_date',  'Ngày được phép cân',  '>'],
             [1,  3,  'expired_material_date',     'Ngày hết hạn NL chính',  '<'],
             [7,  7,  'expired_packing_date',     'Ngày hết hạn BB',  '<'],
@@ -77,7 +77,7 @@ class SchedualWarningController extends Controller
             [5,  5,  'forming_before_date',     'Phải ĐH trước ngày',  '<'],
             [6,  6,  'coating_before_date',     'Phải BP trước ngày',  '<'],
             [7,  7,  'parkaging_before_date',     'Phải ĐG trước ngày',  '<'],
-            // [7,  7,  'after_parkaging_date',    'Ngày có đủ BB',  '>'],
+            [7,  7,  'after_parkaging_date',    'Ngày có đủ BB',  '>'],
         ];
 
         $activePlans = DB::table('stage_plan')
