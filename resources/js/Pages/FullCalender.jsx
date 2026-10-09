@@ -7,6 +7,7 @@ import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import resourceTimelinePlugin from '@fullcalendar/resource-timeline';
 import interactionPlugin, { Draggable } from '@fullcalendar/interaction';
+import { config as fcConfig } from '@fullcalendar/core/internal';
 import { useHotkeys } from "react-hotkeys-hook";
 import { Calendar } from 'primereact/calendar';
 import { Stepper } from 'primereact/stepper';
@@ -34,6 +35,9 @@ import { useRoomWip, isRoomWipRow, RoomWipToggle } from '../Plugins/RoomWip'; //
 
 //import History from '../Components/History';
 //import { CheckAuthorization } from '../Components/CheckAuthorization';
+
+// Timeline mặc định chỉ cho tối đa 1000 ô; khung 3 tháng slot 1h cần ~2200 ô (nếu vượt, FullCalendar bỏ qua slotDuration).
+fcConfig.MAX_TIMELINE_SLOTS = 3000;
 
 const calendarPlugins = [dayGridPlugin, resourceTimelinePlugin, interactionPlugin];
 
@@ -175,7 +179,7 @@ const ScheduleTest = () => {
   const lastQueryRef = useRef("");
   const slotViewWeeks = ['resourceTimelineWeek1day', 'resourceTimelineWeek4h', 'resourceTimelineWeek1h', 'resourceTimelineWeek15'];
   const slotViewMonths = ['resourceTimelineMonth1d', 'resourceTimelineMonth4h', 'resourceTimelineMonth1h',];
-  const slotViewQuarters = ['resourceTimelineQuarter1d', 'resourceTimelineQuarter4h'];
+  const slotViewQuarters = ['resourceTimelineQuarter1d', 'resourceTimelineQuarter4h', 'resourceTimelineQuarter1h'];
   const [slotIndex, setSlotIndex] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false); // ẩn topNAV/leftNAV để xem chart rộng
   const [eventFontSize, setEventFontSize] = useState(22); // default 14px
@@ -7549,17 +7553,18 @@ const ScheduleTest = () => {
               titleFormat: { year: 'numeric' }
             },
             resourceTimelineWeek15: { type: 'resourceTimelineWeek', slotDuration: '00:15:00' },
-            // snapDuration nhỏ hơn slotDuration để kéo thả tới được giờ lẻ (15p/30p)
+            // snapDuration nhỏ hơn slotDuration để kéo thả tới được giờ lẻ (bước 15p)
             // dù khung lưới hiển thị theo 1h/4h.
             resourceTimelineWeek1h: { type: 'resourceTimelineWeek', slotDuration: '01:00:00', snapDuration: '00:15:00' },
-            resourceTimelineWeek4h: { type: 'resourceTimelineWeek', slotDuration: '04:00:00', snapDuration: '00:30:00' },
+            resourceTimelineWeek4h: { type: 'resourceTimelineWeek', slotDuration: '04:00:00', snapDuration: '00:15:00' },
             resourceTimelineWeek1day: { type: 'resourceTimelineWeek', slotDuration: { days: 1 } },
 
             resourceTimelineMonth1h: { type: 'resourceTimelineMonth', slotDuration: '01:00:00', snapDuration: '00:15:00' },
-            resourceTimelineMonth4h: { type: 'resourceTimelineMonth', slotDuration: '04:00:00', snapDuration: '00:30:00' },
+            resourceTimelineMonth4h: { type: 'resourceTimelineMonth', slotDuration: '04:00:00', snapDuration: '00:15:00' },
             resourceTimelineMonth1d: { type: 'resourceTimelineMonth', slotDuration: { days: 1 } },
 
-            resourceTimelineQuarter4h: { type: 'resourceTimelineQuarter', slotDuration: '04:00:00' },
+            resourceTimelineQuarter4h: { type: 'resourceTimelineQuarter', slotDuration: '04:00:00', snapDuration: '00:15:00' },
+            resourceTimelineQuarter1h: { type: 'resourceTimelineQuarter', slotDuration: '01:00:00', snapDuration: '00:15:00' },
             resourceTimelineQuarter1d: { type: 'resourceTimelineQuarter', slotDuration: { days: 1 } },
           }}
 
