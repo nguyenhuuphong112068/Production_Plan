@@ -57,7 +57,7 @@
                     </tr>
                     <tr>
                       <th>Cân NL</th>
-                      <th>Cân NL Khác</th>
+                      <th>{{ session('user')['production_code'] == 'PXTN' ? 'Xử lý Bao Bì' : 'Cân NL Khác' }}</th>
                       <th>PC</th>
                       <th>THT</th>
                       <th>ĐH</th>

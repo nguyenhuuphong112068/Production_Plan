@@ -82,7 +82,7 @@
                             <select class="form-control" name="stage_code" style="text-align-last: center;"
                                 onchange="document.getElementById('filterForm').submit();">
                                 <option {{ $stageCode == 1 ? 'selected' : '' }} value=1>Cân NL</option>
-                                <option {{ $stageCode == 2 ? 'selected' : '' }} value=2>Cân NL Khác</option>
+                                <option {{ $stageCode == 2 ? 'selected' : '' }} value=2>{{ session('user')['production_code'] == 'PXTN' ? 'Xử lý Bao Bì' : 'Cân NL Khác' }}</option>
                                 <option {{ $stageCode == 3 ? 'selected' : '' }} value=3>Pha Chế</option>
                                 <option {{ $stageCode == 4 ? 'selected' : '' }} value=4>Trộn Hoàn Tất</option>
                                 <option {{ $stageCode == 5 ? 'selected' : '' }} value=5>Định Hình</option>

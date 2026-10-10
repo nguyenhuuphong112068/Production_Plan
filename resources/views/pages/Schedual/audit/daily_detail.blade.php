@@ -152,7 +152,7 @@
 
         const STAGE_NAMES = {
             1: 'Cân NL',
-            2: 'Cân NL Khác',
+            2: @json(session('user')['production_code'] == 'PXTN' ? 'Xử lý Bao Bì' : 'Cân NL Khác'),
             3: 'Pha Chế',
             4: 'Trộn Hoàn Tất',
             5: 'Định Hình',
