@@ -458,6 +458,7 @@
 <script src="{{ asset('js/popper.min.js') }}"></script>
 <script src="{{ asset('js/bootstrap.min.js') }}"></script>
 <script src="{{ asset('js/sweetalert2.all.min.js') }}"></script>
+<script src="{{ asset('assets/vendor/select2/select2.min.js') }}"></script>
 
 @if (session('success'))
     <script>
@@ -476,6 +477,39 @@
 
         document.body.style.overflowY = "auto";
 
+        // Các ô chọn trong modal Tạo mới / Cập nhật: gõ vài ký tự để lọc, không phân biệt dấu/hoa thường,
+        // nhiều từ thì từng từ chỉ cần có mặt (vd "nguyen phong" khớp "Nguyễn Hữu Phong")
+        const searchNormalize = (text) => (text || '').toString().toLowerCase()
+            .normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd');
+        const $modalSelects = $('#create_modal select, #update_modal select');
+
+        $modalSelects.each(function() {
+            const $select = $(this);
+            const $placeholder = $select.find('option[value=""]').first();
+            $select.select2({
+                theme: 'bootstrap4',
+                width: '100%',
+                placeholder: $placeholder.length ? $placeholder.text().trim() : undefined,
+                allowClear: $placeholder.length > 0,
+                // Ít lựa chọn (vd Kg/Lít) thì không cần ô tìm kiếm
+                minimumResultsForSearch: 5,
+                dropdownParent: $select.closest('.modal'),
+                matcher: function(params, data) {
+                    const terms = searchNormalize(params.term).split(/\s+/).filter(Boolean);
+                    if (!terms.length) return data;
+                    if (!data.id) return null;
+                    const text = searchNormalize(data.text);
+                    return terms.every(t => text.includes(t)) ? data : null;
+                }
+            });
+        });
+
+        // Mở dropdown là con trỏ nằm sẵn ở ô tìm kiếm, gõ được ngay
+        $modalSelects.on('select2:open', function() {
+            const search = document.querySelector('.select2-container--open .select2-search__field');
+            if (search) search.focus();
+        });
+
         $('.btn-edit').click(function() {
             const button = $(this);
             const modal = $('#update_modal');
@@ -485,13 +519,13 @@
             // Mỗi lần sửa là một lý do mới, không mang lý do của lần trước sang
             modal.find('textarea[name="change_reason"]').val('');
             modal.find('input[name="intermediate_code"]').val(button.data('intermediate_code'));
-            modal.find('select[name="product_name_id"]').val(button.data('product_name_id'));
+            modal.find('select[name="product_name_id"]').val(button.data('product_name_id')).trigger('change.select2');
             modal.find('input[name="batch_size"]').val(button.data('batch_size'));
             modal.find('input[name="batch_qty"]').val(button.data('batch_qty'));
-            modal.find('select[name="unit_batch_qty"]').val(button.data('unit_batch_qty'));
+            modal.find('select[name="unit_batch_qty"]').val(button.data('unit_batch_qty')).trigger('change.select2');
             modal.find('input[name="excution_time"]').val(button.data('excution-time'));
-            modal.find('select[name="dosage_id"]').val(button.data('dosage_id'));
-            modal.find('select[name="pharmacist_id"]').val(button.data('pharmacist_id') || '');
+            modal.find('select[name="dosage_id"]').val(button.data('dosage_id')).trigger('change.select2');
+            modal.find('select[name="pharmacist_id"]').val(button.data('pharmacist_id') || '').trigger('change.select2');
 
 
             const isChecked = (val) => val && val != '0';
@@ -546,12 +580,12 @@
         //     // Gán dữ liệu vào input
         //     modal.find('input[name="id"]').val(button.data('id'));
         //     modal.find('input[name="intermediate_code"]').val(button.data('intermediate_code'));
-        //     modal.find('select[name="product_name_id"]').val(button.data('product_name_id'));
+        //     modal.find('select[name="product_name_id"]').val(button.data('product_name_id')).trigger('change.select2');
         //     modal.find('input[name="batch_size"]').val(button.data('batch_size'));
         //     modal.find('input[name="batch_qty"]').val(button.data('batch_qty'));
-        //     modal.find('select[name="unit_batch_qty"]').val(button.data('unit_batch_qty'));
+        //     modal.find('select[name="unit_batch_qty"]').val(button.data('unit_batch_qty')).trigger('change.select2');
         //     modal.find('input[name="excution_time"]').val(button.data('excution-time'));
-        //     modal.find('select[name="dosage_id"]').val(button.data('dosage_id'));
+        //     modal.find('select[name="dosage_id"]').val(button.data('dosage_id')).trigger('change.select2');
         //     modal.find('select[name="pharmacist_id"]').val(button.data('pharmacist_id') || '');
         //
         // });

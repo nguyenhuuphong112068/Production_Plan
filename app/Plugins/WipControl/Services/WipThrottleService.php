@@ -38,16 +38,16 @@ class WipThrottleService
     /** Nhóm tồn theo công đoạn tiêu thụ */
     private const GROUP_OF_STAGE = [5 => 'DH', 6 => 'BP', 7 => 'DG'];
 
-    /** Hạn bắt đầu luôn giữ (06:00 như scanOverdueTasks), ngoài các ngày NL/BB tuỳ chọn bên dưới */
+    /** Hạn bắt đầu luôn giữ (06:00 như scanOverdueTasks), ngoài các ngày NL/BB bên dưới */
     private const STAGE_DEADLINES = [
         7 => ['parkaging_before_date'],
     ];
 
     /**
-     * Ngày NL/BB người dùng chọn "không vi phạm" (modal): khoá => [cột plan_master, công đoạn, kiểu].
-     * max: công đoạn phải bắt đầu trong hoặc trước ngày đó; min: không được bắt đầu trước ngày đó.
-     * So theo ngày như cảnh báo trên lịch (colorEvent / SchedualWarningController). Ngày được
-     * cho phép vi phạm thì plugin bỏ qua hẳn.
+     * Ngày NL/BB luôn không được vi phạm (đã bỏ tuỳ chọn cho phép vi phạm trên modal):
+     * khoá => [cột plan_master, công đoạn, kiểu]. max: công đoạn phải bắt đầu trong hoặc trước
+     * ngày đó; min: không được bắt đầu trước ngày đó. So theo ngày như cảnh báo trên lịch
+     * (colorEvent / SchedualWarningController).
      */
     public const DATE_RULES = [
         'allow_weight'     => ['allow_weight_before_date', 3, 'min'],

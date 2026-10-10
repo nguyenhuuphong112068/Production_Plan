@@ -1,11 +1,25 @@
 ---
 name: Lập Lịch Sản Xuất, Hiệu Chuẩn & Bảo Trì (Schedual)
-description: Các tính năng, logic ưu tiên và quy tắc cốt lõi của tính năng sắp lịch Sản Xuất, Hiệu Chuẩn và Bảo Trì.
+description: Các tính năng, logic ưu tiên và quy tắc cốt lõi của tính năng sắp lịch Sản Xuất, Hiệu Chuẩn và Bảo Trì. Đọc trước khi sửa SchedualController / FullCalender.jsx / sắp lịch tự động. Mọi thay đổi nguyên lý sắp lịch tự động PHẢI cập nhật skill này và tạo phiên bản mới trong storage/app/schedualer (xem mục 0).
 ---
 
 # Kỹ Năng Sắp Lịch Sản Xuất & Bảo Trì (Schedual)
 
 Skill này chứa các thông tin tổng hợp về nghiệp vụ, quy tắc ưu tiên và logic lập lịch để tham chiếu khi bảo trì code, đặc biệt tại `SchedualController.php` và `FullCalender.jsx`.
+
+## 0. Quy Tắc Bắt Buộc Khi Thay Đổi Nguyên Lý Sắp Lịch Tự Động
+
+Người dùng (Nguyễn Hữu Phong) yêu cầu từ 10/10/2026: **mỗi khi thay đổi hoặc bổ sung nguyên lý sắp lịch tự động** (thứ tự nhóm, cách chọn phòng, ràng buộc ngày, chiến dịch, BT-HC-TI, plugin Kiểm soát tồn BTP...) thì trong CÙNG lượt làm việc phải:
+
+1. **Cập nhật skill** – skill này (lõi) và/hoặc `.agents/skills/wip-control/SKILL.md` (plugin). Ghi cả quyết định của người dùng và việc KHÔNG được làm lại.
+2. **Tạo phiên bản mới của tài liệu Nguyên lý cho khách hàng** trong `storage/app/schedualer/` theo đúng quy trình ở `storage/app/schedualer/README.md`:
+   - chép thư mục phiên bản mới nhất `nguyen-ly/v<X.Y>_<YYYY-MM-DD>/` thành thư mục phiên bản mới (MAJOR khi đổi cách làm, MINOR khi bổ sung/làm rõ), không sửa đè bản cũ;
+   - sửa file `.md` (viết cho khách hàng: tiếng Việt dễ hiểu, không tên hàm/tên bảng), sửa dòng "Phiên bản … · ngày";
+   - xuất Word bằng `python storage/app/schedualer/_tools/md_to_docx.py "<file .md>"`, rồi PDF bằng `powershell -ExecutionPolicy Bypass -File storage/app/schedualer/_tools/docx_to_pdf.ps1 "<file .docx>"` (cần Microsoft Word); mở PDF kiểm tra bố cục;
+   - thêm mục ở đầu `storage/app/schedualer/CHANGELOG.md`.
+3. Nếu thay đổi chỉ là sửa lỗi code mà nguyên lý không đổi thì không cần phiên bản mới, nhưng vẫn cập nhật skill nếu skill mô tả sai.
+
+Bản trực tuyến v1.0 (Claude Docs): https://claude.ai/artifact/SZRvWgbQheSqVwHp41KuBw — nội dung giống `storage/app/schedualer/nguyen-ly/v1.0_2026-10-10/`.
 
 ## 1. Mức Độ Ưu Tiên Màu Sắc (Từ Thấp Đến Cao)
 Hệ thống sử dụng nhiều logic kiểm tra vi phạm (validation) để cảnh báo người dùng. Khi một sự kiện vi phạm nhiều lỗi cùng lúc, màu nền sẽ lấy theo lỗi có mức ưu tiên cao nhất, các lỗi còn lại sẽ được hiển thị thành các dải màu dọc (violation bars) chạy song song ở cạnh phải.
@@ -48,6 +62,7 @@ Nút "tạo chiến dịch" (`createManualCampain`, `createManualCampainStage`) 
   * Hiệu chuẩn (kết thúc bằng `_HC`): `#9a1b72ff` (Tím đậm)
   * Tiện ích (kết thúc bằng `_TI`): `#830cbfff`
 * Cảnh báo tới hạn/quá hạn: Viền cảnh báo được tính toán dưa trên `expected_date` hoặc `min_due` từ backend.
+* Khi sắp lịch tự động: chiến dịch xếp xuyên BT-HC-TI chưa bắt đầu, sau đó BT-HC-TI bị đè được dời và kiểm tra hạn BT – xem **mục 6.2**.
 
 ---
 
@@ -58,6 +73,8 @@ Toàn bộ logic nằm trong file [SchedualController.php](file:///c:/PMS/Produc
 ### 5.1. Tổng Quan Kiến Trúc
 
 Hệ thống sắp lịch tự động sử dụng thuật toán **Forward Scheduling** (đẩy tiến từ ngày bắt đầu). Điểm vào chính là hàm `scheduleAll()` nhận request từ frontend và điều phối toàn bộ quy trình.
+
+> ⚠️ Các dòng "**Vị trí:** Lxxxx" trong mục 5 là số dòng CŨ (trước 10/2026), file đã dài ~10.000 dòng. Luôn tìm theo tên hàm (`grep -n "function scheduleCampaign"`), đừng tin số dòng. Mục 6 mô tả các cơ chế mới nhất.
 
 #### Bảng Mã Công Đoạn (Stage Code)
 
@@ -101,38 +118,48 @@ Hệ thống sắp lịch tự động sử dụng thuật toán **Forward Sched
 
 > **Lưu ý**: Thời gian chờ (wait time) từ request tính theo **ngày**, được nhân `× 24 × 60` để chuyển sang **phút** trong code.
 
-#### Luồng Xử Lý Chính
+#### Luồng Xử Lý Chính (cập nhật 10/10/2026)
 
 ```
-scheduleAll()
-│
-├── 1. Khởi tạo: selectedDates, work_sunday, reason, prev_orderBy
-├── 2. loadOffDate('asc')  → Tải và gộp ngày nghỉ thành các khoảng off
-├── 3. start_date = request.start_date hoặc now() lúc 06:00
-│
-├── [Nếu selectedStep == 'CNL']
-│   └── scheduleWeightStage(start_date) → return
-│
-├── [Nếu runType == 'line']
-│   └── scheduleLine(lines, stage_plan_ids, stage_code, 0, 0, start_date) → return
-│
-├── 4. Vòng lặp NGƯỢC (selectedStep → 3): 
-│   └── scheduleIntermediate(i, 0, 0, start_date)
-│       → Sắp lịch các lô BÁN THÀNH PHẨM (đã có predecessor_start)
-│
-├── 5. Vòng lặp XUÔI (3 → selectedStep):
-│   └── scheduleSensitiveProduct(i, 0, 0, start_date)
-│       → Sắp lịch các sản phẩm NHẠY CẢM (quarantine_total > 0)
-│
-└── 6. Vòng lặp XUÔI theo stage_plan (3 → selectedStep):
-    └── Auto_scheduler_Stage_Forward(i, wt_normal, wt_val, start_date)
-        → Sắp lịch tất cả các lô còn lại chưa được xếp
+scheduleAll()  → withSchedulingLock()  (khoá is_scheduling theo phân xưởng; đang có người chạy → HTTP 423)
+└── runScheduleAll($request)
+    ├── 1. Khởi tạo: selectedDates, work_sunday, reason, prev_orderBy,
+    │      limit_mold_change (mặc định true), mold_change_tolerance (giờ, mặc định 72),
+    │      campaignSkipsMaintenance = config('scheduling.campaign_skip_maintenance', true)
+    ├── 2. loadOffDate('asc')  → gộp ngày nghỉ thành khoảng 06:00 → 06:00
+    ├── 3. start_date = request.start_date hoặc hôm nay, lúc 06:00
+    │
+    ├── [selectedStep == 'CNL'] → scheduleWeightStage(start_date) → return
+    ├── [runType == 'line']     → scheduleLine(...) → shiftMaintenanceAfterSchedule() → return
+    │
+    ├── 4. scheduleWithHardDeadlines()          ← mục 6.1 (chen lịch theo hạn HH NL/BB)
+    │      lặp tối đa 1 + config('scheduling.hard_deadline_reruns', 3) lượt, mỗi lượt trong savepoint:
+    │      └── runScheduleGroups()  (trên bản clone "pristine" của controller)
+    │          ├── a. scheduleDeadlinePriority()       nhóm CHEN THEO HẠN (chỉ có từ lượt 2)
+    │          ├── b. scheduleIntermediate(i)  i = selectedStep → 3   BÁN THÀNH PHẨM
+    │          ├── c. scheduleWarningMR(i)     i = selectedStep → 3   CẢNH BÁO NL/BB (EDF)
+    │          ├── d. scheduleSensitiveProduct(i) i = 3 → selectedStep  NHẠY CẢM
+    │          └── e. foreach promotional [0, 1]: foreach stage 3 → selectedStep:
+    │                 Auto_scheduler_Stage_Forward(i, wt_normal, wt_val, start_date, promotional)
+    │                 (0 = thương mại trước, 1 = khuyến mãi sau)
+    ├── 5. shiftMaintenanceAfterSchedule()      ← mục 6.2 (dời BT-HC-TI bị chiến dịch đè)
+    ├── 6. scanOverdueTasks()                    → campaign quá hạn biệt trữ (cho Pass 2)
+    └── response: { overdueCampaigns, hard_deadline: {reruns, priority_lots, late[]}, maintenance_shifted[] }
 ```
 
-**Ý nghĩa thứ tự ưu tiên:**
-1. **Bán thành phẩm** (Intermediate) được xếp trước vì chúng đã có công đoạn trước (predecessor) đã chạy → cần xếp tiếp nhanh.
-2. **Sản phẩm nhạy cảm** (Sensitive Product) có `quarantine_total > 0` → phải trừ lùi ngày giao hàng để đảm bảo kịp biệt trữ.
-3. **Tất cả lô còn lại** được xếp theo thứ tự `order_by`.
+- **Pass 2** (`scheduleAllPass2` → `runScheduleAllPass2`): xoá lịch các campaign quá hạn, `scheduleOverdueCampaigns` xếp chúng trước (VIP), rồi chạy lại b → e. Pass 2 KHÔNG có bước chen theo hạn (6.1), nhưng có bật `campaignSkipsMaintenance` và gọi `shiftMaintenanceAfterSchedule()`.
+- **Plugin Kiểm soát tồn BTP** chạy SAU khi `scheduleAll` trả về (frontend gọi `/Schedual/wip-control/run` nếu có Max) – xem skill `wip-control`. Plugin dùng `WipAwareScheduler extends SchedualController` để gọi lại b → e (`rescheduleUnscheduled`), không có nhóm chen theo hạn.
+- **Frontend** (`FullCalender.jsx`, modal Sắp lịch tự động): sau khi xong, nếu `hard_deadline.late` hoặc `maintenance_shifted` không rỗng thì hiện Swal liệt kê (thay cho toast "Hoàn Thành Sắp Lịch"); đường plugin thì danh sách BT-HC-TI hiện trong modal Kết quả kiểm soát BTP.
+
+**Ý nghĩa thứ tự ưu tiên (nhóm trước chọn phòng/giờ trước, nhóm sau lấp chỗ trống):**
+1. **Chen theo hạn** (`scheduleDeadlinePriority`): lô sẽ trễ Ngày HH NL chính / HH BB + cả chiến dịch của nó (mục 6.1).
+2. **Bán thành phẩm** (`scheduleIntermediate`): công đoạn trước đã có lịch (`prev.start` not null), xếp theo `prev.start ASC`. ⚠️ Nhóm này KHÔNG xét hạn; đây là lý do lô hạn gần từng bị lô hạn xa chiếm phòng (sự cố Stadxicam 7.5 lô 051026, 08/10/2026) → sinh ra mục 6.1.
+3. **Cảnh báo NL/BB** (`scheduleWarningMR`): lô có ít nhất một cột NL/BB, sắp `LEAST(expired_material_date, allow_weight_before_date, preperation_before_date, blending_before_date, forming_before_date, coating_before_date, parkaging_before_date, expired_packing_date) ASC` (EDF), rồi `prev.start`.
+4. **Sản phẩm nhạy cảm** (`scheduleSensitiveProduct`): `quarantine_total > 0`.
+5. **Thương mại** (`promotional_products = 0`) theo `order_by` (hoặc `prev.start` khi `prev_orderBy`).
+6. **Khuyến mãi** (`promotional_products = 1`) xếp sau cùng.
+
+> ⚠️ Các nhóm b, c (và nhóm chen a) gọi với thời gian chờ **0** (`scheduleIntermediate($i, 0, 0, ...)`); chỉ nhóm e dùng `wt_*`. Ngoài ra 8 ô thời gian chờ trên modal thiếu thuộc tính `name` nên KHÔNG BAO GIỜ gửi lên backend → nhóm e luôn dùng mặc định (`wt_*_val`: THT 1 ngày, ĐH/BP/ĐG 5 ngày; lô thường 0). Đừng "sửa" thời gian chờ của nhóm chen sang 5 ngày: lô thẩm định 051026 sẽ không kịp hạn BB (đã thử 08/10/2026).
 
 ---
 
@@ -578,3 +605,93 @@ Hàm phụ trợ dùng chung:
 | `sheet_2` | Ca 2: 14-22h (0/1) |
 | `sheet_3` | Ca 3: 22-06h (0/1) |
 | `AHU_group` | Nhóm AHU (0 = không có) |
+
+---
+
+## 6. Các Cơ Chế Bổ Sung (10/2026) – Đọc Kỹ Trước Khi Sửa
+
+### 6.1. Chen Lịch Theo Hạn HH NL Chính / HH BB (`scheduleWithHardDeadlines`)
+
+**Mục tiêu (yêu cầu người dùng 08/10/2026):** 5 mốc trên `plan_master` không được vi phạm: Ngày có đủ NL (`after_weigth_date`), Ngày có đủ BB (`after_parkaging_date`), Ngày được phép cân (`allow_weight_before_date`), Ngày HH NL chính (`expired_material_date`), Ngày HH BB (`expired_packing_date`).
+- 3 mốc "có đủ / được phép cân" là **mốc sớm nhất**, đã chặn trong `$candidates` của `sheduleNotCampaing` và `scheduleCampaign` (stage ≤ 6: `after_weigth_date`, `allow_weight_before_date`; stage 7: `after_parkaging_date`).
+- 2 mốc HH là **mốc muộn nhất**, lõi xếp tiến nên không thể chặn trực tiếp → dùng cơ chế chen + sắp lại dưới đây.
+
+**Thuật toán:**
+1. `$runIds` = các dòng `stage_plan` của phân xưởng, stage 3..selectedStep, `finished=0, active=1, start IS NULL` (chỉ dòng lượt này xếp mới bị đánh giá).
+2. `$pristine = clone $this` ngay sau khi cấu hình (chưa có cache phòng/khuôn).
+3. Lượt 0: `DB::beginTransaction()` (savepoint) → `$this->runScheduleGroups()` → `hardDeadlineLate($runIds, $today)`.
+4. `hardDeadlineLate`: PC (stage 3) bắt đầu sau `expired_material_date`, hoặc ĐG (stage 7) bắt đầu sau `expired_packing_date`, so theo **NGÀY** (`substr(start,0,10) > deadline`, giống cảnh báo Gantt `criticalChecks`). `avoidable = deadline >= max(hôm nay, after_weigth_date, allow_weight_before_date)` (PC) hoặc `max(hôm nay, after_parkaging_date)` (ĐG). Một lô trễ cả PC và ĐG giữ dòng stage lớn hơn.
+5. Điểm = `[số lô trễ avoidable, tổng ngày trễ]`, giữ lượt tốt nhất (so mảng PHP).
+6. `expandDeadlinePriority`: thêm lô trễ vào `$deadlinePriority[pm] = ['deadline' => Y-m-d, 'upto' => stage]`, rồi **kéo theo mọi lô cùng `campaign_code`** ở các công đoạn ≤ upto (lặp tới khi không đổi) → không tách chiến dịch.
+7. Không còn lô trễ avoidable, hoặc không thêm được lô mới, hoặc hết số lượt → nếu lượt hiện tại là tốt nhất thì `DB::commit()`; ngược lại rollback và chạy lại với `priority` của lượt tốt nhất rồi commit. Còn lại: `DB::rollBack()` và lượt mới trên `clone $pristine` với `deadlinePriority = $next`.
+8. `scheduleDeadlinePriority` (nhóm a): với stage 3 → selectedStep, lấy các dòng của lô trong `deadlinePriority` có `upto >= stage`, sắp theo hạn của chiến dịch (min deadline các lô) rồi `order_by`, gọi `sheduleNotCampaing` / `scheduleCampaign` với **wait 0**.
+9. Kết quả trả về `hard_deadline.late[]` = {stage_plan_id, plan_master_id, stage_code, batch, rule, deadline, start, late_days, avoidable}; log `Sắp lịch: chen lô theo hạn HH NL/BB`.
+
+**Config:** `scheduling.hard_deadline_reruns` (mặc định 3; **0 = tắt**). Không có file config riêng, chỉ đọc `config()` với mặc định.
+**Chi phí:** mỗi lượt sắp lại ≈ 1 lần chạy lõi (PXV1 ~40 s) → có lô cần chen thì ~80 s.
+**Kết quả thử PXV1 08/10/2026:** vi phạm HH NL/BB 9 → 3 (3 lô còn lại hạn đã qua), ĐG trễ ngày cần hàng 228 → 217 lô, không tăng đè giờ / sai thứ tự.
+**Giới hạn:** Pass 2 và vòng sắp lại của plugin không có nhóm chen (plugin tự chặn vi phạm MỚI).
+
+### 6.2. Chiến Dịch Xếp Xuyên BT-HC-TI, Rồi Dời BT-HC-TI (`MaintenanceShiftService`)
+
+**Yêu cầu người dùng 08/10/2026:** khi sắp lịch tự động (lõi và plugin), lô **chiến dịch** không cần tránh lịch BT-HC-TI (stage_code 8) để tối ưu thời gian chiến dịch; BT-HC-TI được dời sau đó. **Lô lẻ vẫn tránh** BT-HC-TI trong lõi.
+
+**Lõi:**
+- `protected bool $campaignSkipsMaintenance` = `config('scheduling.campaign_skip_maintenance', true)`, bật ở `runScheduleAll`, `runScheduleAllPass2`, `WipAwareScheduler::configure`.
+- `scheduleCampaign()` giờ là wrapper: lưu cờ cũ, đặt `$ignorePendingMaintenance = $campaignSkipsMaintenance`, gọi `scheduleCampaignBody()` (thân cũ), `finally` trả cờ. (Đệ quy công đoạn sau vẫn gọi `scheduleCampaign` → qua wrapper.)
+- `loadRoomAvailability()`: khi `$ignorePendingMaintenance` thì cả 2 truy vấn (lô lẻ, nhóm theo campaign) thêm `where(stage_code != 8 OR actual_start IS NOT NULL)` → BT-HC-TI đang làm (đã nhận phòng) vẫn chặn.
+- Sau khi sắp: `shiftMaintenanceAfterSchedule()` → `app(MaintenanceShiftService::class)->shiftOverlapping(production, 'Dời BT-HC-TI sau lịch sản xuất (sắp lịch tự động)')`.
+
+**`App\Services\MaintenanceShiftService::shiftOverlapping($production, $typeOfChange)`:**
+1. BT-HC-TI chờ dời: stage 8, `active=1, finished=0, actual_start IS NULL, start >= now`, có `resourceId`; join `plan_master` lấy `expected_date`, `actual_batch`.
+2. Khối bận theo phòng = dòng stage 3..7 (`active=1, finished=0`, `COALESCE(end_clearning,end) > now`) + `RoomOccupancyService::heldUntil()`.
+3. Nhóm BT theo `resourceId|start|end|end_clearning` (một lịch nhiều thiết bị) → dời cùng nhau, giữ độ dài và vệ sinh (cộng cùng delta cho start/end/start_clearning/end_clearning).
+4. Không bị đè → bỏ qua, TRỪ khi lịch từng bị bước này dời (có history `type_of_change LIKE HISTORY_PREFIX%`) mà đang trễ hạn → thử kéo về khe sớm hơn.
+5. Bị đè → khe trống sớm nhất từ giờ cũ trở đi (nhảy tới cuối khối đè, lặp). **Được rơi vào ngày nghỉ** – bảo trì vốn hay xếp T7/CN (bản đầu cấm ngày nghỉ đã dời nhầm 22 lịch cố ý đặt cuối tuần).
+6. Hạn BT `dueLimit()`: ngày tới hạn đọc từ title `Ngày tới hạn: dd/mm/yyyy` (không có thì `plan_master.expected_date`); `_HC` +0 ngày, `actual_batch = 'Monthly'` +7, loại khác +21 (giống `MaintenanceSchedualController::autoSchedual`). Trễ = ngày bắt đầu > limit.
+7. Dời ra sau mà trễ → `latestGapBefore()`: khe trống muộn nhất trước giờ cũ (bội 15 phút, từ now) đủ dài; nếu ngày bắt đầu ≤ limit thì dùng. Không có → vẫn dời ra sau (nếu bị đè) hoặc giữ nguyên, báo `late: true`.
+8. Ghi `stage_plan` + `StagePlanHistory::record` (version tra một lần cho cả nhóm id – bảng history không có index `stage_plan_id`).
+9. Trả về `[{room, title, from, to, rows, due, late}]`; `to < from` = dời sớm, `to == from && late` = kẹt.
+
+**Config:** `scheduling.campaign_skip_maintenance` (mặc định true; false = chiến dịch tránh BT như cũ, bước dời vẫn chạy).
+**⚠️ Lệch quy tắc trên Gantt:** `FullCalender.jsx` tô viền đỏ BT trễ dùng `props.Inst_sch_type`, nhưng backend đã comment cột `quota_maintenance.Inst_sch_type` → Gantt luôn gia hạn 21 ngày kể cả Monthly. Trang Lịch Bảo Trì (`MaintenanceCalender .jsx`) và service dùng `actual_batch` (đúng hơn). Chưa sửa Gantt (đã đề xuất, chờ người dùng).
+**Kết quả thử PXV1:** dời 21 lịch, 0 BT còn bị đè, ĐG trễ ngày cần hàng 219 → 193 lô.
+
+### 6.3. Phòng Đang Nhận Phòng Bận Tới Giờ Dự Kiến Kết Thúc (`heldUntil`)
+
+`loadRoomAvailability()` thêm khối `[received, expectedEnd]` từ `RoomOccupancyService::heldUntil()` (cache trong `$this->heldUntil`): lô đã Nhận phòng (actual_start ≥ TRACK_FROM) chưa Trả phòng → bận tới `actual_start + thời lượng kế hoạch`, nhưng không sớm hơn now. Trước đó phòng bị coi trống từ now khi lô chạy quá giờ.
+
+### 6.4. Chiến Dịch: Mốc Sớm Nhất Lấy Từ MỌI Lô
+
+Trong `scheduleCampaignBody`, `$candidates` lấy ngày MUỘN NHẤT của mọi lô trong campaign: stage ≤ 6 `after_weigth_date`, `allow_weight_before_date`; stage 7 `after_parkaging_date`. Lỗi cũ: điều kiện ngày được phép cân kiểm tra biến `$task` không tồn tại nên luôn bỏ qua, và chỉ xét lô đầu (sự cố Stadlacil 071026, 08/10/2026).
+
+### 6.5. Hạn Chế Xuống Khuôn (ĐG)
+
+Chọn phòng = phòng có giờ bắt đầu sớm nhất. Riêng stage 7 khi `limit_mold_change` bật: phòng có khuôn liền trước trùng mã khuôn được ưu tiên nếu bắt đầu trễ hơn phòng tốt nhất ≤ `mold_change_tolerance` giờ (mặc định 72).
+
+### 6.6. Quyết Định Của Người Dùng – KHÔNG Làm Lại
+
+| Ngày | Đã thử / đề xuất | Quyết định |
+| --- | --- | --- |
+| 08/10/2026 | Tự tách chiến dịch trễ hạn thành 2 trong lõi (`trySplitCampaign`, mã `_S`) | **Gỡ hẳn. Không tách chiến dịch trong lõi.** |
+| 08/10/2026 | Plugin Drum–Buffer–Rope (sắp ngược PC/THT/ĐH theo BP/ĐG) | **Gỡ hẳn**, kiểm soát BTP kém. Không đề xuất sắp ngược kiểu này. |
+| 08/10/2026 | Phương án 1: chỉ đổi thứ tự trong nhóm bán thành phẩm theo hạn | Người dùng chọn **phương án 2** (chen + sắp lại, mục 6.1). |
+| 10/2026 | Checkbox "cho phép vi phạm" 7 ngày NL/BB trong plugin | **Bỏ**: 7 ngày luôn là hạn cứng. |
+| 08/10/2026 | Dòng "Khả thi / Không khả thi" trên modal kết quả BTP | Bỏ. |
+
+### 6.7. Bẫy Đã Gặp
+
+- **DB local là dữ liệu thật**: test ghi phải trong transaction + rollback. Không chạy `php artisan migrate` trần (bảng migrations lệch) – dùng `--path`.
+- **`stage_plan_history` (~150k dòng) không có index `stage_plan_id`**: tra version từng dòng là quét cả bảng → luôn tra một lần cho cả nhóm id (xem `RoomSequencer::$historyVersion`, `MaintenanceShiftService`).
+- **Vệ sinh kéo qua ngày nghỉ đè lô sau**: lô lẻ chèn vào khe ngay trước một chiến dịch, `end_clearning` bị kéo dài qua ngày nghỉ, lấn lô kế tiếp (1–3 cặp mỗi lần chạy PXV1). Lỗi cũ của lõi, chưa sửa.
+- **`skipOffTime($time, $offDates, $roomId)`**: `$busyList = $this->loadRoomAvailability(...)` nhận `void` → phần kiểm tra phòng bận trong hàm này không chạy; chỉ ngày nghỉ có tác dụng.
+- **Lịch lý thuyết có sẵn chồng giờ** (~234 cặp/30 ngày) – đừng coi mọi chồng giờ là lỗi mới; so trước/sau.
+- **Carbon 3 `createFromTimestamp` trả UTC** – dùng `date()`/`strtotime()` hoặc set timezone.
+
+### 6.8. Cách Test
+
+- `scratch/hard_deadline_test.php [PXV1]`: trong transaction, `deActiveAll` (xoá lịch từ now) → `scheduleAll` → in thời gian, `hard_deadline`, chỉ số (đè giờ, sai thứ tự, ĐG trễ ngày cần hàng, trễ hạn PC..ĐG), số BT-HC-TI đã dời / còn bị đè, vi phạm 5 mốc → ROLLBACK.
+  - `RERUNS=0` tắt chen theo hạn; `NOSKIP=1` tắt chiến dịch xuyên BT; `OV=1` in cặp đè giờ; `ROOM=<id>` in lịch phòng; `WATCH=<plan_master_id>`.
+- Session test cần: `production_code`, `fullName`, `userId`, `department`, `userGroup`.
+- Sau test kiểm tra: `stage_plan where schedualed_by like 'TEST%'` = 0 và `information_schema.innodb_trx` rỗng.
+

@@ -28,7 +28,7 @@
                     <div class="form-group">
                         <label for="name">Tên Sản Phẩm</label>
                         <select class="form-control" name="product_name_id">
-                            <option> --- Chọn Sản Phẩm --- </option>
+                            <option value=""> --- Chọn Sản Phẩm --- </option>
                             @foreach ($productNames as $productName)
                                 <option value="{{ $productName->id }}"
                                     {{ old('product_name_id') == $productName->id ? 'selected' : '' }}>
@@ -58,7 +58,7 @@
                             <div class="form-group">
                                 <label for="unit">Dạng Bào Chế</label>
                                 <select class="form-control" name="dosage_id">
-                                    <option> --- Chọn Dạng Bào Chế --- </option>
+                                    <option value=""> --- Chọn Dạng Bào Chế --- </option>
                                     @foreach ($dosages as $dosage)
                                         <option value="{{ $dosage->id }}"
                                             {{ old('dosage_id') == $dosage->id ? 'selected' : '' }}>
@@ -121,7 +121,7 @@
                                     <div class="col-md-4">
                                         <label for="unit_batch_qty">Đơn Vị</label>
                                         <select class="form-control" name="unit_batch_qty">
-                                            <option> - Chọn ĐV - </option>
+                                            <option value=""> - Chọn ĐV - </option>
                                             @foreach ($units as $unit)
                                                 <option value="{{ $unit->code }}"
                                                     {{ old('unit_batch_qty') == $unit->code ? 'selected' : '' }}>
