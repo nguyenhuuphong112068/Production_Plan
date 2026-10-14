@@ -50,32 +50,12 @@ class RoomOccupancyService
 
     const MAINTENANCE_STAGE = 8;
 
-    // Loại lịch stage_code 8 (tiền tố quota_maintenance.block) mỗi phòng ban được nhận phòng; phòng ban không có ở đây
-    // chỉ nhận lô sản xuất. Dòng không có block coi là BT như Lịch Công Tác bảo trì.
-    const MAINTENANCE_TYPES_BY_DEPARTMENT = [
-        'EN' => ['BT', 'TI'],
-        'QA' => ['HC'],
-    ];
-
     const MAINTENANCE_TYPE_LABELS = ['BT' => 'Bảo trì', 'TI' => 'Tiện ích', 'HC' => 'Hiệu chuẩn'];
 
-    // Trang Ghi Nhận Sản Xuất của Executor phòng EN (07/10/2026, user quy định): thấy mọi phòng sản xuất của các phân xưởng
-    // tổ mình phụ trách, không theo phân công. Khóa = user_management.groupName viết thường, bỏ hết khoảng trắng
-    // (tên tổ trong DB có chỗ 2 dấu cách). Tổ không có ở đây không thấy phòng nào.
-    const MAINTENANCE_TEAM_DEPARTMENTS = [
-        'tổbảotrì(b1)'                    => ['PXV1', 'PXTN'],
-        'tổđiệnlạnh-nướctinhkhiết(b1)'    => ['PXV1', 'PXTN'],
-        'tổbảotrì(pxv2-pxdn)'             => ['PXV2', 'PXDN'],
-        'tổbảotrì(pxvh)'                  => ['PXVH'],
-    ];
-
-    /** Phân xưởng tổ bảo trì phụ trách (MAINTENANCE_TEAM_DEPARTMENTS), [] nếu tổ không có trong danh sách */
-    public static function teamDepartments(?string $groupName): array
-    {
-        $key = mb_strtolower(preg_replace('/\s+/u', '', (string) $groupName));
-
-        return self::MAINTENANCE_TEAM_DEPARTMENTS[$key] ?? [];
-    }
+    // Modal Nhận phòng (12/10/2026, user quy định): nhân viên phân xưởng nhận cả lô sản xuất lẫn lịch BT / TI / HC, chọn
+    // 1 trong 2 chế độ. EN / QA không còn Nhận / Trả phòng (ProductionExecutionController::canOperate).
+    const RECEIVE_PRODUCTION = 'production';
+    const RECEIVE_MAINTENANCE = 'maintenance';
 
     // Hoàn tác (06/10/2026): chỉ thao tác MỚI NHẤT của phòng, do chính người đó bấm, trong 2 phút. Quyền = quyền của thao tác gốc.
     const UNDO_SECONDS = 120;
@@ -105,8 +85,6 @@ class RoomOccupancyService
         5 => ['label' => 'Định Hình', 'icon' => 'fa-capsules', 'grad' => 'g-orange'],
         6 => ['label' => 'Bao Phim', 'icon' => 'fa-circle-notch', 'grad' => 'g-rose'],
         7 => ['label' => 'Đóng Gói', 'icon' => 'fa-box-open', 'grad' => 'g-slate'],
-        // Phòng chỉ dùng cho bảo trì (room.only_maintenance = 1, stage_code 8): chỉ trang Ghi Nhận của EN / QA
-        8 => ['label' => 'Khu Vực Không Sắp Lịch Sản Xuất', 'icon' => 'fa-tools', 'grad' => 'g-maint'],
     ];
 
     // Bắt đầu áp dụng Nhận/Trả phòng: lô có actual_start trước mốc này (xác nhận ✓ ở trang cũ mà chưa ✓✓) không giữ phòng,
@@ -123,7 +101,7 @@ class RoomOccupancyService
        ĐỌC TRẠNG THÁI
        ========================================================= */
 
-    /** $roomIds: chỉ lấy các phòng này (trang Ghi Nhận Sản Xuất: phòng người đăng nhập đang được phân công) */
+    /** $roomIds: chỉ lấy các phòng này (trang Nhận – Trả Phòng: phòng người đăng nhập đang được phân công) */
     public function board(string $deparmentCode, ?array $roomIds = null): Collection
     {
         if ($roomIds === []) {
@@ -132,43 +110,11 @@ class RoomOccupancyService
 
         $rooms = $this->roomQuery()
             ->where('deparment_code', $deparmentCode)
-            ->whereBetween('stage_code', [1, 7]) // phòng chỉ bảo trì chỉ hiện ở maintenanceBoard()
             ->when($roomIds !== null, fn($q) => $q->whereIn('id', $roomIds))
             ->get();
         $this->attachStates($rooms);
 
         return $rooms;
-    }
-
-    /**
-     * Trang Ghi Nhận Sản Xuất của nhân viên EN / QA (07/10/2026, user quy định): phòng sản xuất + phòng chỉ bảo trì
-     * (only_maintenance) của phân xưởng, KHÔNG có phòng đang bận sản xuất — chỉ phòng Sẵn Sàng hoặc đang giữ bởi lịch bảo trì
-     * (Phòng Bận BT/HC, Chờ / Đang VS Sau BT) để còn Trả phòng được. Mỗi phòng có ->equipment: thiết bị trong danh mục
-     * BT / TI / HC gắn với phòng (quota_maintenance_rooms), theo loại lịch phòng ban được nhận, để tìm "thiết bị ở phòng nào".
-     */
-    public function maintenanceBoard(string $deparmentCode, ?string $department): Collection
-    {
-        $rooms = $this->roomQuery()->where('deparment_code', $deparmentCode)->get();
-        $this->attachStates($rooms);
-
-        $rooms = $rooms->filter(fn($r) => $r->st->state === self::READY
-            || ($r->st->plans->isNotEmpty() && $r->st->plans->every(fn($p) => $p->maintenance)))->values();
-
-        $types = self::maintenanceTypesFor($department) ?? [];
-        $equipment = DB::table('quota_maintenance_rooms as qmr')
-            ->join('quota_maintenance as qm', 'qm.id', '=', 'qmr.quota_maintenance_id')
-            ->whereIn('qmr.room_id', $rooms->pluck('id'))
-            ->where('qm.active', 1)
-            ->whereIn(DB::raw(self::MAINTENANCE_TYPE_SQL), $types)
-            ->orderBy('qm.inst_id')
-            ->get(['qmr.room_id', 'qm.inst_id', 'qm.inst_name', 'qm.Eqp_name'])
-            ->groupBy('room_id');
-
-        return $rooms->each(function ($r) use ($equipment) {
-            $r->equipment = $equipment->get($r->id, collect())
-                ->map(fn($e) => trim($e->inst_id . ' · ' . ($e->inst_name ?: $e->Eqp_name)))
-                ->unique()->values()->all();
-        });
     }
 
     /**
@@ -209,12 +155,16 @@ class RoomOccupancyService
         return $room;
     }
 
-    /** Phòng sản xuất (công đoạn 1-7) và phòng chỉ dùng cho bảo trì (only_maintenance) */
+    /**
+     * Phòng sản xuất (công đoạn 1-7). Phòng chỉ dùng cho bảo trì (room.only_maintenance, "Khu Vực Không Sắp Lịch Sản Xuất")
+     * không Nhận / Trả phòng (user quy định 12/10/2026).
+     */
     private function roomQuery()
     {
         return DB::table('room')
             ->where('active', 1)
-            ->where(fn($q) => $q->whereBetween('stage_code', [1, 7])->orWhere('only_maintenance', 1))
+            ->whereBetween('stage_code', [1, 7])
+            ->where('only_maintenance', 0)
             ->orderBy('stage_code')
             ->orderBy('order_by')
             ->orderBy('code')
@@ -669,27 +619,25 @@ class RoomOccupancyService
             })->values());
     }
 
-    /** Loại lịch bảo trì phòng ban được nhận phòng; null = phòng ban khác, chỉ nhận lô sản xuất */
-    public static function maintenanceTypesFor(?string $department): ?array
-    {
-        return self::MAINTENANCE_TYPES_BY_DEPARTMENT[$department] ?? null;
-    }
-
     /**
      * Lô / lịch bảo trì nhận phòng được: đã sắp lịch vào phòng, chưa nhận phòng, chưa hoàn thành.
      * Phòng cân (Cân NL / Cân NL Khác) nhận cả lô của 2 công đoạn và lô chưa gán phòng.
-     * $department: EN chỉ thấy lịch BT/TI, QA chỉ thấy lịch HC, phòng ban khác chỉ thấy lô sản xuất.
+     * $mode: RECEIVE_PRODUCTION = lô sản xuất của công đoạn phòng; RECEIVE_MAINTENANCE = lịch BT / TI / HC (stage_code 8).
      */
-    private function candidateQuery(object $room, ?string $department)
+    public static function receiveMode(?string $mode): string
+    {
+        return $mode === self::RECEIVE_MAINTENANCE ? self::RECEIVE_MAINTENANCE : self::RECEIVE_PRODUCTION;
+    }
+
+    private function candidateQuery(object $room, ?string $mode)
     {
         $weighing = in_array((int) $room->stage_code, self::GROUP_STAGES, true);
-        $types = self::maintenanceTypesFor($department);
+        $maintenance = self::receiveMode($mode) === self::RECEIVE_MAINTENANCE;
 
         $q = DB::table('stage_plan as sp');
-        if ($types) {
-            $q->leftJoin('quota_maintenance as qm', 'sp.product_caterogy_id', '=', 'qm.id')
-                ->where('sp.stage_code', self::MAINTENANCE_STAGE)
-                ->whereIn(DB::raw(self::MAINTENANCE_TYPE_SQL), $types);
+        if ($maintenance) {
+            $q->where('sp.stage_code', self::MAINTENANCE_STAGE);
+            $weighing = false; // lịch bảo trì luôn đã gán phòng
         } else {
             $q->whereIn('sp.stage_code', $weighing ? self::GROUP_STAGES : [(int) $room->stage_code]);
         }
@@ -708,9 +656,9 @@ class RoomOccupancyService
             });
     }
 
-    public function candidatePlans(object $room, ?string $department): Collection
+    public function candidatePlans(object $room, ?string $mode): Collection
     {
-        $ids = $this->candidateQuery($room, $department)
+        $ids = $this->candidateQuery($room, $mode)
             ->orderByRaw('sp.resourceId = ? DESC', [$room->id])
             // lô có lịch gần thời điểm hiện tại nhất lên đầu
             ->orderByRaw('ABS(TIMESTAMPDIFF(MINUTE, sp.start, NOW()))')
@@ -731,31 +679,31 @@ class RoomOccupancyService
     /**
      * Nhận phòng: ghi actual_start = giờ hệ thống cho lô / lịch bảo trì đã chọn. Chọn nhiều: phòng cân (lô cùng mã BTP)
      * hoặc nhiều lịch bảo trì (mỗi dòng 1 thiết bị). Lô nhận ở phòng cân mà chưa gán phòng thì gán vào phòng này.
-     * $department: phòng ban người bấm, quyết định loại lịch được nhận (maintenanceTypesFor).
+     * $mode: RECEIVE_PRODUCTION (lô sản xuất) / RECEIVE_MAINTENANCE (lịch BT / TI / HC), chọn trong modal Nhận phòng.
      * Sau khi lưu: lô sản xuất bắt đầu trễ từ 30 phút thì tịnh tuyến chỉ đẩy trễ (ScheduleRerouteService::rerouteOnReceive);
      * reroute = null khi không dịch lô nào.
      *
      * @return array{message: string, reroute: ?array}
      */
-    public function receive(int $roomId, array $stagePlanIds, ?string $department): array
+    public function receive(int $roomId, array $stagePlanIds, ?string $mode): array
     {
-        return $this->withRerouteLock($roomId, fn() => $this->receiveLocked($roomId, $stagePlanIds, $department));
+        return $this->withRerouteLock($roomId, fn() => $this->receiveLocked($roomId, $stagePlanIds, $mode));
     }
 
-    private function receiveLocked(int $roomId, array $stagePlanIds, ?string $department): array
+    private function receiveLocked(int $roomId, array $stagePlanIds, ?string $mode): array
     {
         $stagePlanIds = array_values(array_unique(array_map('intval', array_filter($stagePlanIds))));
         if (!$stagePlanIds) {
             throw new ProductionExecutionException('❌ Chọn lô / lịch cần nhận phòng');
         }
 
-        [$message, $deparmentCode, $productionIds] = DB::transaction(function () use ($roomId, $stagePlanIds, $department) {
+        [$message, $deparmentCode, $productionIds] = DB::transaction(function () use ($roomId, $stagePlanIds, $mode) {
             [$room] = $this->lockState($roomId, [self::READY]);
 
-            $plans = $this->candidateQuery($room, $department)->whereIn('sp.id', $stagePlanIds)->lockForUpdate()
+            $plans = $this->candidateQuery($room, $mode)->whereIn('sp.id', $stagePlanIds)->lockForUpdate()
                 ->get(['sp.id', 'sp.stage_code', 'sp.resourceId']);
             if ($plans->count() !== count($stagePlanIds)) {
-                throw new ProductionExecutionException('❌ Lô / lịch không hợp lệ, không thuộc phòng ban của bạn, đã hoàn thành hoặc đã được nhận phòng', 409);
+                throw new ProductionExecutionException('❌ Lô / lịch không hợp lệ, đã hoàn thành hoặc đã được nhận phòng', 409);
             }
             $maintenance = $plans->where('stage_code', self::MAINTENANCE_STAGE)->count();
             if ($maintenance && $maintenance !== $plans->count()) {

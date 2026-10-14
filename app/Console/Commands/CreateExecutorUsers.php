@@ -8,7 +8,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
 /**
- * Tạo tài khoản role Executor (Ghi Nhận Sản Xuất) cho nhân viên 5 phân xưởng + EN, QA.
+ * Tạo tài khoản role Executor (trang Nhận – Trả Phòng) cho nhân viên 5 phân xưởng.
+ * Từ 12/10/2026 không tạo cho EN / QA nữa: Nhận / Trả phòng (kể cả lịch BT / TI / HC) do nhân viên phân xưởng thực hiện.
  *
  * - Nguồn: bảng employees còn làm việc (active=1, resign=0); phân xưởng lấy từ
  *   employee_assignments.production_code của dòng is_main=1.
@@ -20,16 +21,13 @@ use Illuminate\Support\Facades\Hash;
 class CreateExecutorUsers extends Command
 {
     protected $signature = 'users:create-executors
-                            {--department= : Chỉ tạo cho một bộ phận (VD: PXV1, EN). Bỏ trống = tất cả}
+                            {--department= : Chỉ tạo cho một phân xưởng (VD: PXV1). Bỏ trống = tất cả}
                             {--dry-run : Chỉ liệt kê, không ghi DB}
                             {--fix-groups : Chỉ tính lại groupName cho các user do lệnh này tạo trước đó}';
 
-    protected $description = 'Tạo user Executor từ bảng employees cho PXV1, PXV2, PXDN, PXVH, PXTN, EN, QA (bỏ qua MSNV đã có tài khoản)';
+    protected $description = 'Tạo user Executor từ bảng employees cho PXV1, PXV2, PXDN, PXVH, PXTN (bỏ qua MSNV đã có tài khoản)';
 
-    private const DEPARTMENTS = ['PXV1', 'PXV2', 'PXDN', 'PXVH', 'PXTN', 'EN', 'QA'];
-
-    // EN / QA: group_id là stage_groups.code (11 Tổ Bảo Trì (B1), 20 Tổ Hiệu Chuẩn (QA)...) như PersonnelController
-    private const STAGE_GROUP_DEPARTMENTS = ['EN', 'QA'];
+    private const DEPARTMENTS = ['PXV1', 'PXV2', 'PXDN', 'PXVH', 'PXTN'];
 
     // employee_assignments.group_id của phân xưởng sản xuất là MÃ TỔ theo danh sách cứng của trang Nhân Sự /
     // Lịch Công Tác (ProductionAssignmentController), KHÔNG phải stage_groups.id
@@ -80,13 +78,9 @@ class CreateExecutorUsers extends Command
             }
         }
 
-        // PX sản xuất: danh sách cứng, ngoài danh sách thì một số dòng cũ ghi stage_groups.id (vd. 14 = ĐGTC).
-        // EN / QA: stage_groups.code.
+        // PX sản xuất: danh sách cứng, ngoài danh sách thì một số dòng cũ ghi stage_groups.id (vd. 14 = ĐGTC)
         $groupNamesById = DB::table('stage_groups')->pluck('name', 'id')->all();
-        $groupNamesByCode = DB::table('stage_groups')->pluck('name', 'code')->all();
-        $groupNameOf = fn ($dept) => in_array($dept, self::STAGE_GROUP_DEPARTMENTS, true)
-            ? fn ($gid) => $groupNamesByCode[$gid] ?? 'NA'
-            : fn ($gid) => self::GROUPS[$gid] ?? $groupNamesById[$gid] ?? 'NA';
+        $groupNameOf = fn ($dept) => fn ($gid) => self::GROUPS[$gid] ?? $groupNamesById[$gid] ?? 'NA';
         $existing = DB::table('user_management')->pluck('userName')->map(fn ($u) => (string) $u)->flip();
 
         $employees = DB::table('employees')

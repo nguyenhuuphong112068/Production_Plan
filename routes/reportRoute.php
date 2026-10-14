@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Route;
         ->group(function(){
         
             Route::get('','index')->name('index');
+            Route::get('export','export')->name('export');
             Route::post('detail','detail')->name('detail');
             Route::post('explain','explain')->name('explain');
             Route::post('getExplainationContent','getExplainationContent')->name('getExplainationContent');

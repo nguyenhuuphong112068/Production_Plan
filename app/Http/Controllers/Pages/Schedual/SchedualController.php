@@ -4017,32 +4017,39 @@ class SchedualController extends Controller
 
             if ($ids->isNotEmpty()) {
 
-                // Lấy danh sách campaign_code + stage_code của các dòng bị xoá
+                // Lấy danh sách campaign_code + stage_code của các dòng bị xoá. Bỏ lô không thuộc chiến dịch:
+                // where('campaign_code', null) thành IS NULL, gom nhầm mọi lô lẻ cùng công đoạn có lịch trước start_date
                 $deletedRows = DB::table('stage_plan')
                     ->where('deparment_code', $production)
                     ->whereIn('id', $ids)
+                    ->whereNotNull('campaign_code')
+                    ->where('campaign_code', '!=', '')
                     ->select('campaign_code', 'stage_code')
+                    ->distinct()
                     ->get();
 
                 // Lấy thêm các id khác cùng campaign_code & stage_code, start < start_date
-                $relatedIds = DB::table('stage_plan')
-                    ->where('deparment_code', $production)
-                    ->where(function ($query) use ($deletedRows) {
+                // (không có cặp nào thì bỏ qua: nhóm orWhere rỗng bị Laravel bỏ đi, sẽ lấy mọi lịch trước start_date)
+                if ($deletedRows->isNotEmpty()) {
+                    $relatedIds = DB::table('stage_plan')
+                        ->where('deparment_code', $production)
+                        ->where(function ($query) use ($deletedRows) {
 
-                        foreach ($deletedRows as $row) {
+                            foreach ($deletedRows as $row) {
 
-                            $query->orWhere(function ($q) use ($row) {
+                                $query->orWhere(function ($q) use ($row) {
 
-                                $q->where('campaign_code', $row->campaign_code)
-                                    ->where('stage_code', $row->stage_code);
-                            });
-                        }
-                    })
-                    ->where('start', '<', $request->start_date)
-                    ->pluck('id');
+                                    $q->where('campaign_code', $row->campaign_code)
+                                        ->where('stage_code', $row->stage_code);
+                                });
+                            }
+                        })
+                        ->where('start', '<', $request->start_date)
+                        ->pluck('id');
 
-                // Gộp danh sách id lại
-                $ids = $ids->merge($relatedIds)->unique();
+                    // Gộp danh sách id lại
+                    $ids = $ids->merge($relatedIds)->unique();
+                }
             }
 
             // Lịch đang thực thi (đã Nhận phòng) và lịch đã hoàn thành giữ nguyên — kể cả khi bị gộp theo chiến dịch
@@ -6974,9 +6981,16 @@ class SchedualController extends Controller
         $this->max_Step = $selectedStep;
 
         // --- BƯỚC 3: ROLLBACK LỊCH CHỌN LỌC ---
+        // Lịch đã hoàn thành / đang thực thi (đã Nhận phòng) giữ nguyên như Xóa lịch: mất resourceId thì Lịch sử sản xuất
+        // mất phòng, phòng hiện Sẵn sàng dù lô còn trong phòng
         foreach ($overdueCampaigns as $overdue) {
-            $campaignCode = $overdue['campaign_code'];
+            $campaignCode = $overdue['campaign_code'] ?? null;
             $stageCode = $overdue['stage_code'];
+
+            // overdueCampaigns có thể do client gửi lên: where('campaign_code', null) thành IS NULL, xóa nhầm mọi lô lẻ
+            if ($campaignCode === null || $campaignCode === '') {
+                continue;
+            }
 
             if (in_array($stageCode, [1, 2])) {
                 // Lỗi ở Cân: Chỉ xóa lịch Cân (stage_code 1, 2)
@@ -6984,6 +6998,8 @@ class SchedualController extends Controller
                     ->where('campaign_code', $campaignCode)
                     ->whereIn('stage_code', [1, 2])
                     ->where('schedualed', 1)
+                    ->where('finished', 0)
+                    ->whereNull('actual_start')
                     ->update([
                         'start' => null,
                         'end' => null,
@@ -6998,6 +7014,9 @@ class SchedualController extends Controller
                 DB::table('stage_plan')
                     ->where('campaign_code', $campaignCode)
                     ->where('schedualed', 1)
+                    ->where('stage_code', '!=', 8) // CHẶN: không xóa trắng công đoạn bảo trì
+                    ->where('finished', 0)
+                    ->whereNull('actual_start')
                     ->update([
                         'start' => null,
                         'end' => null,

@@ -12,23 +12,9 @@
 
             $update_daily_report = user_has_permission(session('user')['userId'], 'update_daily_report', 'boolean');
 
-            $stage_name = [
-                1 => 'Cân Nguyên Liệu',
-                3 => 'Pha Chế',
-                4 => 'Trộn Hoàn Tất',
-                5 => 'Định Hình',
-                6 => 'Bao Phim',
-                7 => 'ĐGSC - ĐGTC',
-            ];
-
-            $group_name = [
-                1 => 'Cân Nguyên Liệu',
-                3 => 'Pha Chế',
-                4 => 'Sủi',
-                5 => 'Định Hình',
-                6 => 'Bao Phim',
-                7 => 'ĐGSC - ĐGTC',
-            ];
+            // Dùng chung với file Excel (DailyReportExcelService)
+            $stage_name = \App\Http\Controllers\Pages\Report\DailyReportController::STAGE_NAME;
+            $group_name = \App\Http\Controllers\Pages\Report\DailyReportController::GROUP_NAME;
 
         @endphp
         <!-- /.card-Body -->
@@ -64,7 +50,11 @@
                         đến 06:00 ngày {{ Carbon::parse($defaultFrom)->addDays(1)->format('d/m/Y') }}
                     </div>
                 </div>
-                <div class ="col-md-3">
+                <div class ="col-md-3 text-right">
+                    <a href="{{ route('pages.report.daily_report.export', ['reportedDate' => $defaultFrom]) }}"
+                        class="btn btn-sm btn-success" title="Xuất Excel Báo cáo ngày đang xem">
+                        <i class="fas fa-file-excel"></i> Xuất Excel
+                    </a>
                 </div>
             </div>
 

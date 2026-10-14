@@ -3,40 +3,100 @@
 namespace App\Http\Controllers\Pages\Report;
 
 use App\Http\Controllers\Controller;
+use App\Services\DailyReportExcelService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class DailyReportController extends Controller
 {
     const EXECUTION_LOCKED = 'Hoạt động này được tạo từ trang Thực Thi Sản Xuất, không được sửa hoặc xóa ở Báo cáo ngày.';
 
+    // Tên công đoạn (card Sản Lượng) và tên tổ (card Phân Bố Tồn Kho), dùng chung cho trang và file Excel
+    const STAGE_NAME = [
+        1 => 'Cân Nguyên Liệu',
+        3 => 'Pha Chế',
+        4 => 'Trộn Hoàn Tất',
+        5 => 'Định Hình',
+        6 => 'Bao Phim',
+        7 => 'ĐGSC - ĐGTC',
+    ];
+
+    const GROUP_NAME = [
+        1 => 'Cân Nguyên Liệu',
+        3 => 'Pha Chế',
+        4 => 'Sủi',
+        5 => 'Định Hình',
+        6 => 'Bao Phim',
+        7 => 'ĐGSC - ĐGTC',
+    ];
+
     public function index(Request $request)
     {
+        $reportedDate = $this->reportedDate($request);
 
-        $department = DB::table('user_management')->where('userName', session('user')['userName'])->value('deparment');
+        $displayDate = $reportedDate->format('d/m/Y');
+        session()->put(['title' => "BÁO CÁO NGÀY $displayDate"]);
 
-        if ($department == session('user')['production_code']) { {
-                $reportedDate = $request->reportedDate ?? Carbon::now()->format('Y-m-d');
+        return view('pages.report.daily_report.list', $this->reportData($reportedDate) + [
+            'reportedDate' => $displayDate,
+        ]);
+    }
+
+    /**
+     * Xuất Excel Báo cáo ngày: dùng đúng reportData() của index() nên file luôn khớp trang đang xem.
+     */
+    public function export(Request $request)
+    {
+        $reportedDate = $this->reportedDate($request);
+        $productionCode = session('user')['production_code'];
+
+        $spreadsheet = (new DailyReportExcelService())->build($this->reportData($reportedDate), $reportedDate, $productionCode);
+
+        $fileName = 'Bao_Cao_Ngay_' . $productionCode . '_' . $reportedDate->format('d-m-Y') . '.xlsx';
+
+        return response()->streamDownload(function () use ($spreadsheet) {
+            // Dọn mọi output buffer trước khi ghi: chỉ một ký tự thừa lọt vào
+            // đầu luồng là Excel báo file hỏng
+            while (ob_get_level()) {
+                ob_end_clean();
             }
-        } else {
-            $reportedDate = $request->reportedDate ?? Carbon::yesterday()->format('Y-m-d');
+
+            (new Xlsx($spreadsheet))->save('php://output');
+        }, $fileName, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
+    }
+
+    /**
+     * Ngày báo cáo (mốc 06:00). Không chọn ngày: người thuộc phân xưởng đang xem thì mặc định hôm nay,
+     * phòng ban khác mặc định hôm qua.
+     */
+    private function reportedDate(Request $request): Carbon
+    {
+        $reportedDate = $request->reportedDate;
+
+        if (!$reportedDate) {
+            $department = DB::table('user_management')->where('userName', session('user')['userName'])->value('deparment');
+            $reportedDate = ($department == session('user')['production_code'] ? Carbon::now() : Carbon::yesterday())->format('Y-m-d');
         }
 
-        $reportedDate = Carbon::parse($reportedDate)->setTime(6, 0, 0);
+        return Carbon::parse($reportedDate)->setTime(6, 0, 0);
+    }
 
+    /**
+     * Toàn bộ số liệu của trang trong ca 06:00 $reportedDate → 06:00 hôm sau.
+     */
+    private function reportData(Carbon $reportedDate): array
+    {
         $startDate =  $reportedDate->copy();
         $endDate =  $reportedDate->copy()->addDays(1);
 
-
-        //$actual = $this->yield_actual($startDate, $endDate, 'resourceId');
-
         $yield_actual_detial = $this->yield_actual_detial($startDate, $endDate, 'resourceId');
         $yield_theoryl_detial = $this->yield_theoryl_detial($startDate, $endDate, 'resourceId');
-
-        //dd($yield_theoryl_detial);
 
         $theory = $this->yield_theory($startDate, $endDate, 'resourceId');
 
@@ -83,18 +143,13 @@ class DailyReportController extends Controller
             ->where('deparment_code', session('user')['production_code'])
             ->where('reported_date', $reportedDate->toDateString())->get()->keyBy('stage_code');
 
-        $displayDate = $reportedDate->format('d/m/Y');
-        session()->put(['title' => "BÁO CÁO NGÀY $displayDate"]);
-
-        return view('pages.report.daily_report.list', [
-            //'actual' => $actual,
+        return [
             'yield_actual_detial' => $yield_actual_detial,
             'yield_theoryl_detial' => $yield_theoryl_detial,
             'theory' => $theory,
             'sum_by_next_room' => $sum_by_next_room,
-            'reportedDate'    => $displayDate,
             'explanation' => $explanation,
-        ]);
+        ];
     }
     public function yield_theoryl_detial($startDate, $endDate, $group_By, $production_code = null)
     {

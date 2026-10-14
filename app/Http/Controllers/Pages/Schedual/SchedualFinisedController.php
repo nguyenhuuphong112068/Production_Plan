@@ -335,7 +335,7 @@ class SchedualFinisedController extends Controller
                                 return response()->json(['message' => '❌ Thời gian Sản Xuất / Vệ Sinh Không Hợp Lệ'], 422);
                 }
 
-                if (!$request->resourceId)
+                if (!$request->resourceId || !DB::table('room')->where('id', $request->resourceId)->exists())
                         return response()->json(['message' => '❌ Chọn Phòng Sản Xuất!'], 422);
 
                 // Lô chưa có lịch lý thuyết (chưa sắp lịch) thì không được xác nhận hoàn thành, trừ Cân NL / Cân NL Khác (stage 1, 2)

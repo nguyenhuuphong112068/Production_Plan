@@ -22,8 +22,13 @@
             @if ($foreignDepartment)
                 <div class="exec-title">
                     <div class="small text-danger font-weight-bold mt-1">
-                        <i class="fas fa-lock"></i> Chỉ xem: bạn thuộc phân xưởng {{ $foreignDepartment }},
-                        không được thao tác trên phòng của {{ $production }}.
+                        <i class="fas fa-lock"></i>
+                        @if ($maintenanceDepartment)
+                            Chỉ xem: Nhận / Trả phòng (kể cả lịch BT / TI / HC) do nhân viên phân xưởng thực hiện.
+                        @else
+                            Chỉ xem: bạn thuộc phân xưởng {{ $foreignDepartment }},
+                            không được thao tác trên phòng của {{ $production }}.
+                        @endif
                     </div>
                 </div>
             @endif

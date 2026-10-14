@@ -147,7 +147,7 @@ scheduleAll()  → withSchedulingLock()  (khoá is_scheduling theo phân xưởn
     └── response: { overdueCampaigns, hard_deadline: {reruns, priority_lots, late[]}, maintenance_shifted[] }
 ```
 
-- **Pass 2** (`scheduleAllPass2` → `runScheduleAllPass2`): xoá lịch các campaign quá hạn, `scheduleOverdueCampaigns` xếp chúng trước (VIP), rồi chạy lại b → e. Pass 2 KHÔNG có bước chen theo hạn (6.1), nhưng có bật `campaignSkipsMaintenance` và gọi `shiftMaintenanceAfterSchedule()`.
+- **Pass 2** (`scheduleAllPass2` → `runScheduleAllPass2`): xoá lịch các campaign quá hạn (chỉ dòng `finished = 0`, chưa `actual_start`, khác CĐ 8; bỏ qua `campaign_code` rỗng — từ 13/10/2026), `scheduleOverdueCampaigns` xếp chúng trước (VIP), rồi chạy lại b → e. Pass 2 KHÔNG có bước chen theo hạn (6.1), nhưng có bật `campaignSkipsMaintenance` và gọi `shiftMaintenanceAfterSchedule()`.
 - **Plugin Kiểm soát tồn BTP** chạy SAU khi `scheduleAll` trả về (frontend gọi `/Schedual/wip-control/run` nếu có Max) – xem skill `wip-control`. Plugin dùng `WipAwareScheduler extends SchedualController` để gọi lại b → e (`rescheduleUnscheduled`), không có nhóm chen theo hạn.
 - **Frontend** (`FullCalender.jsx`, modal Sắp lịch tự động): sau khi xong, nếu `hard_deadline.late` hoặc `maintenance_shifted` không rỗng thì hiện Swal liệt kê (thay cho toast "Hoàn Thành Sắp Lịch"); đường plugin thì danh sách BT-HC-TI hiện trong modal Kết quả kiểm soát BTP.
 
@@ -687,6 +687,8 @@ Chọn phòng = phòng có giờ bắt đầu sớm nhất. Riêng stage 7 khi `
 - **`skipOffTime($time, $offDates, $roomId)`**: `$busyList = $this->loadRoomAvailability(...)` nhận `void` → phần kiểm tra phòng bận trong hàm này không chạy; chỉ ngày nghỉ có tác dụng.
 - **Lịch lý thuyết có sẵn chồng giờ** (~234 cặp/30 ngày) – đừng coi mọi chồng giờ là lỗi mới; so trước/sau.
 - **Carbon 3 `createFromTimestamp` trả UTC** – dùng `date()`/`strtotime()` hoặc set timezone.
+- **Xoá lịch làm lô đã hoàn thành mất phòng**: mọi update đặt `resourceId = null` trên `stage_plan` phải lọc `finished = 0` + `actual_start IS NULL` (mất phòng → Lịch sử sản xuất hiện "-", phòng hiện Sẵn sàng dù lô còn trong phòng). Trước 06/10/2026 `deActiveAll` không lọc → 24/08/2026 một lần xoá ở PXV1 làm 1.763 lô đã xong mất phòng (dữ liệu chưa khôi phục; `stage_plan_history` còn phòng cũ). Pass 2 thêm lọc 13/10/2026.
+- **`where('campaign_code', $x)` với `$x = null` thành `IS NULL`**: gom theo chiến dịch phải bỏ dòng không có chiến dịch, và nhóm `orWhere` rỗng bị Laravel bỏ đi (lấy hết bảng) → kiểm tra rỗng trước (`deActiveAll`, 13/10/2026).
 
 ### 6.8. Cách Test
 

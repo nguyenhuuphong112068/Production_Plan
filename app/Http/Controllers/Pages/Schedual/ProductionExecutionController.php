@@ -28,6 +28,9 @@ class ProductionExecutionController extends Controller
                 'execution_release'          => '❌ Bạn không có quyền Trả phòng (Thực Thi SX: Trả Phòng)',
         ];
 
+        // Phòng ban bảo trì / hiệu chuẩn: chỉ xem trang Thực Thi, không Nhận / Trả phòng
+        private const MAINTENANCE_DEPARTMENTS = ['EN', 'QA'];
+
         public function __construct(private RoomOccupancyService $service) {}
 
         public function index(Request $request)
@@ -35,7 +38,7 @@ class ProductionExecutionController extends Controller
                 $production = session('user')['production_code'];
                 $rooms = $this->service->board($production);
 
-                // Nhân viên phân xưởng khác: chỉ xem, card phòng không có nút thao tác
+                // Nhân viên phân xưởng khác / EN / QA: chỉ xem, card phòng không có nút thao tác
                 $foreign = !$this->canOperate($production);
 
                 $data = [
@@ -53,6 +56,7 @@ class ProductionExecutionController extends Controller
 
                 return view('pages.Schedual.execution.index', $data + [
                         'foreignDepartment' => $foreign ? session('user')['department'] : null,
+                        'maintenanceDepartment' => in_array(session('user')['department'] ?? null, self::MAINTENANCE_DEPARTMENTS, true),
                         'stateCounts'       => $rooms->countBy(fn($r) => $r->st->state),
                 ]);
         }
@@ -71,25 +75,6 @@ class ProductionExecutionController extends Controller
 
                 $production = session('user')['production_code'];
                 $employee = DB::table('employees')->where('code', session('user')['userName'])->first(['id', 'code', 'name']);
-
-                // Executor phòng EN: mọi phòng của các phân xưởng tổ mình phụ trách, mỗi phân xưởng 1 khối
-                if (($teamDepartments = $this->maintenanceTeamDepartments()) !== null) {
-                        $data = [
-                                'boards'      => collect($teamDepartments)->mapWithKeys(fn($d) => [$d => $this->service->maintenanceBoard($d, $this->department())->groupBy('stage_group')]),
-                                'stages'      => collect(),
-                                'production'  => $production,
-                                'readonly'    => false,
-                                'employee'    => $employee,
-                                'assignments' => collect(),
-                                'teamName'    => session('user')['group_name'] ?? null,
-                        ];
-
-                        if ($request->boolean('partial')) {
-                                return view('pages.Schedual.execution._record_body', $data);
-                        }
-
-                        return view('pages.Schedual.execution.record', $data + ['executorOnly' => true]);
-                }
 
                 $assignments = $employee ? $this->service->assignmentsOf($employee->code, $production) : collect();
                 // Phòng đang được phân công + phòng mình đã Nhận phòng mà chưa Trả phòng (dù đã hết ca)
@@ -147,8 +132,8 @@ class ProductionExecutionController extends Controller
         }
 
         /**
-         * Lô / lịch bảo trì nhận phòng được (modal Nhận phòng), theo phòng ban người đăng nhập:
-         * EN chỉ lịch BT/TI, QA chỉ lịch HC, phòng ban khác chỉ lô sản xuất (RoomOccupancyService::MAINTENANCE_TYPES_BY_DEPARTMENT).
+         * Lô / lịch bảo trì nhận phòng được (modal Nhận phòng), theo chế độ chọn trong modal (?mode=): "production" = lô sản
+         * xuất, "maintenance" = lịch BT / TI / HC.
          */
         public function plans(Request $request)
         {
@@ -159,13 +144,16 @@ class ProductionExecutionController extends Controller
                 if (!$this->can('execution_receive')) {
                         return response()->json(['message' => self::PERMISSION_DENIED['execution_receive']], 403);
                 }
+                if (!$this->canOperate($room->deparment_code)) {
+                        return response()->json(['message' => $this->operateDeniedMessage($room->deparment_code)], 403);
+                }
                 if ($block = SchedulingLock::executionBlock($room->deparment_code)) {
                         return response()->json(['message' => $block], 423);
                 }
 
                 $fmt = fn($t) => $t ? Carbon::parse($t)->format('H:i d/m/Y') : null;
 
-                return response()->json($this->service->candidatePlans($room, $this->department())->map(fn($p) => [
+                return response()->json($this->service->candidatePlans($room, $request->input('mode'))->map(fn($p) => [
                         'id'          => $p->id,
                         // Lịch bảo trì: mỗi dòng 1 thiết bị → tên thiết bị; tiêu đề nhóm + ngày tới hạn ở dòng phụ
                         'product'     => $p->maintenance ? $p->equipment_label : ($p->product_name ?? $p->title),
@@ -224,7 +212,7 @@ class ProductionExecutionController extends Controller
                 return $this->act($request, fn() => $this->service->receive(
                         (int) $request->room_id,
                         (array) $request->input('stage_plan_ids', []),
-                        $this->department()
+                        $request->input('mode')
                 ), 'execution_receive');
         }
 
@@ -269,8 +257,7 @@ class ProductionExecutionController extends Controller
                 }
 
                 if (!$this->canOperate($room->deparment_code)) {
-                        return response()->json(['message' => '❌ Bạn thuộc phân xưởng ' . session('user')['department']
-                                . ', không được thao tác trên phòng của phân xưởng ' . $room->deparment_code], 403);
+                        return response()->json(['message' => $this->operateDeniedMessage($room->deparment_code)], 403);
                 }
 
                 // Phân xưởng đang sắp lịch tự động, hoặc người sắp lịch đang khóa thủ công (nút ở sidebar lịch chờ sắp trên Gantt)
@@ -373,12 +360,16 @@ class ProductionExecutionController extends Controller
 
         /**
          * Nhân viên của 1 phân xưởng chỉ được thao tác trên phòng của phân xưởng mình (các phân xưởng khác chỉ xem).
-         * Phòng ban không phải phân xưởng (QA, PL, EN...) và nhóm quyền Admin không bị giới hạn này.
+         * EN / QA không Nhận / Trả phòng (12/10/2026: nhân viên phân xưởng nhận cả lịch BT / TI / HC), chỉ xem.
+         * Phòng ban khác không phải phân xưởng (PL...) và nhóm quyền Admin không bị giới hạn này.
          */
         private function canOperate(string $production): bool
         {
                 $department = session('user')['department'] ?? null;
 
+                if (in_array($department, self::MAINTENANCE_DEPARTMENTS, true)) {
+                        return false;
+                }
                 if ($department === $production || !DB::table('production')->where('code', $department)->exists()) {
                         return true;
                 }
@@ -386,42 +377,24 @@ class ProductionExecutionController extends Controller
                 return DB::table('user_role')->where('user_id', session('user')['userId'] ?? null)->where('role_id', 1)->exists();
         }
 
-        /**
-         * Nhân viên EN / QA có role Executor (chỉ vào được trang Ghi Nhận Sản Xuất): các phân xưởng được xem (mỗi phân xưởng
-         * 1 tab), không theo phân công.
-         * EN: phân xưởng tổ phụ trách (RoomOccupancyService::MAINTENANCE_TEAM_DEPARTMENTS, có thể rỗng); QA: mọi phân xưởng.
-         * null nếu không phải trường hợp này.
-         */
-        private function maintenanceTeamDepartments(): ?array
+        private function operateDeniedMessage(string $production): string
         {
                 $department = session('user')['department'] ?? null;
-                if (!RestrictExecutor::active() || !in_array($department, ['EN', 'QA'], true)) {
-                        return null;
-                }
 
-                if ($department === 'QA') {
-                        return DB::table('production')->orderBy('id')->pluck('code')->all();
-                }
-
-                return RoomOccupancyService::teamDepartments(session('user')['group_name']
-                        ?? DB::table('user_management')->where('userName', session('user')['userName'])->value('groupName'));
+                return in_array($department, self::MAINTENANCE_DEPARTMENTS, true)
+                        ? '❌ Nhận / Trả phòng (kể cả lịch BT / TI / HC) do nhân viên phân xưởng thực hiện, phòng ban ' . $department . ' chỉ xem'
+                        : '❌ Bạn thuộc phân xưởng ' . $department . ', không được thao tác trên phòng của phân xưởng ' . $production;
         }
 
         private function ownRoom($roomId): ?object
         {
-                // Tổ bảo trì: phòng thuộc phân xưởng tổ phụ trách, không cần phân công
-                if (($teamDepartments = $this->maintenanceTeamDepartments()) !== null) {
-                        return DB::table('room')
-                                ->where('id', (int) $roomId)
-                                ->whereIn('deparment_code', $teamDepartments)
-                                ->where('active', 1)
-                                ->first();
-                }
-
+                // Chỉ phòng sản xuất: phòng chỉ dùng cho bảo trì (only_maintenance) không Nhận / Trả phòng
                 $room = DB::table('room')
                         ->where('id', (int) $roomId)
                         ->where('deparment_code', session('user')['production_code'])
                         ->where('active', 1)
+                        ->whereBetween('stage_code', [1, 7])
+                        ->where('only_maintenance', 0)
                         ->first();
 
                 // Trang Ghi Nhận / role Executor: chỉ phòng đang được phân công lúc bấm nút, hoặc phòng mình đã Nhận phòng
@@ -442,11 +415,6 @@ class ProductionExecutionController extends Controller
                 return user_has_permission(session('user')['userId'] ?? 0, $permission, 'boolean');
         }
 
-        private function department(): ?string
-        {
-                return session('user')['department'] ?? null;
-        }
-
         private function recordMode(): bool
         {
                 return request()->routeIs('pages.Schedual.record.*') || RestrictExecutor::active();
@@ -454,10 +422,6 @@ class ProductionExecutionController extends Controller
 
         private function roomDeniedMessage(): string
         {
-                if ($this->maintenanceTeamDepartments() !== null) {
-                        return '❌ Phòng không thuộc phân xưởng tổ của bạn phụ trách';
-                }
-
                 return $this->recordMode()
                         ? '❌ Bạn không được phân công tại phòng này vào lúc này (Lịch Công Tác → Sản Xuất)'
                         : '❌ Phòng không thuộc phân xưởng đang chọn';

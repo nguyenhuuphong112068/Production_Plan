@@ -118,24 +118,45 @@
             /* ---------- Nhận phòng ---------- */
             // Phòng cân chọn được nhiều lô cùng BTP (selected = danh sách id), phòng khác 1 lô / 1 lịch bảo trì
             let plans = [],
-                selected = [];
+                selected = [],
+                receiveMode = 'production'; // 'production' = lô sản xuất, 'maintenance' = lịch BT / TI / HC
 
             function openReceive() {
                 const $m = $('#execReceiveModal');
                 $m.find('.js-room').text(ctx.room);
-                $('#execPlanSearch').val('');
-                $('#execPlanHint').text('');
-                selected = [];
-                loadPlans();
+                setReceiveMode('production');
                 $m.modal('show');
             }
 
+            function setReceiveMode(mode) {
+                receiveMode = mode;
+                $('#execReceiveMode [data-mode]').each(function() {
+                    const on = $(this).attr('data-mode') === mode;
+                    $(this).toggleClass('active', on).attr('aria-pressed', on);
+                });
+                $('#execReceiveSubmit').html(mode === 'maintenance' ?
+                    '<i class="fas fa-tools"></i> Nhận phòng BT' : '<i class="fas fa-door-open"></i> Nhận phòng sản xuất');
+                $('#execPlanSearch').val('');
+                $('#execPlanHint').text('');
+                plans = [];
+                selected = [];
+                loadPlans();
+            }
+
+            $('#execReceiveMode').on('click', '[data-mode]', function() {
+                const mode = $(this).attr('data-mode');
+                if (mode !== receiveMode) setReceiveMode(mode);
+            });
+
             function loadPlans() {
+                const mode = receiveMode;
                 $('#execPlanList').html(
-                    '<div class="exec-plan-empty"><i class="fas fa-spinner fa-spin"></i> Đang tải danh sách lô...</div>');
+                    `<div class="exec-plan-empty"><i class="fas fa-spinner fa-spin"></i> Đang tải ${mode === 'maintenance' ? 'lịch BT / TI / HC' : 'danh sách lô'}...</div>`);
                 $.get(R.plans, {
-                    room_id: ctx.room_id
+                    room_id: ctx.room_id,
+                    mode: mode
                 }).done(list => {
+                    if (mode !== receiveMode) return; // đã đổi chế độ trong lúc tải
                     plans = list;
                     renderPlans();
                 }).fail(xhr => {
@@ -150,17 +171,18 @@
                 const first = plans.find(x => x.id === selected[0]);
                 return first ? first.btp : null;
             };
-            // Chọn nhiều: phòng cân (lô cùng BTP) hoặc danh sách lịch bảo trì / hiệu chuẩn (EN, QA: mỗi dòng 1 thiết bị)
+            // Chọn nhiều: phòng cân (lô cùng BTP) hoặc danh sách lịch bảo trì / hiệu chuẩn (Nhận phòng BT: mỗi dòng 1 thiết bị)
             const maintList = () => plans.length > 0 && plans.every(p => p.maintenance);
             const multi = () => ctx.weighing || maintList();
             const selectedMaint = () => plans.some(p => selected.includes(p.id) && p.maintenance);
 
             function renderPlans() {
                 const q = $('#execPlanSearch').val().toLowerCase().trim();
-                const rows = plans.filter(p => !q || `${p.product} ${p.batch || ''} ${p.codes}`.toLowerCase().includes(q));
+                const rows = plans.filter(p => !q || `${p.product} ${p.batch || ''} ${p.codes} ${p.group || ''}`.toLowerCase().includes(q));
                 if (!rows.length) {
-                    $('#execPlanHint').text(plans.length ? '' : 'Phòng chưa có lô hay lịch bảo trì nào được sắp lịch.');
-                    $('#execPlanList').html('<div class="exec-plan-empty">Không có lô phù hợp.</div>');
+                    $('#execPlanHint').text(plans.length ? '' : (receiveMode === 'maintenance' ?
+                        'Phòng chưa có lịch BT / TI / HC nào được sắp lịch.' : 'Phòng chưa có lô nào được sắp lịch.'));
+                    $('#execPlanList').html(`<div class="exec-plan-empty">${receiveMode === 'maintenance' ? 'Không có lịch phù hợp.' : 'Không có lô phù hợp.'}</div>`);
                     return;
                 }
                 const scrollTop = $('#execPlanList').scrollTop();
@@ -223,7 +245,8 @@
                     title: 'Chọn lô / lịch cần nhận phòng'
                 });
                 send(R.receive, {
-                    stage_plan_ids: selected
+                    stage_plan_ids: selected,
+                    mode: receiveMode
                 }, $('#execReceiveModal'));
             });
 
