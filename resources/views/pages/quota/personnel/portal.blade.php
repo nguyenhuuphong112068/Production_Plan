@@ -145,6 +145,32 @@
         .portal-shift-badge.shift-c4 { background-color: #6f42c1; }
         .portal-shift-badge.shift-hc { background-color: #ffc107; color: #212529; }
         .portal-shift-badge.shift-p { background-color: #6c757d; }
+
+        /* Số liệu ca lấy từ bản sao lưu (portal không gọi eO2, xem PersonnelController::portal) */
+        .portal-stale {
+            display: block;
+            margin-top: 6px;
+            font-size: 0.7rem;
+            color: #b26a00;
+        }
+
+        .portal-no-data {
+            display: block;
+            font-size: 0.75rem;
+            color: #6c757d;
+            font-style: italic;
+        }
+
+        /* Không để quy tắc .portal-card i (biểu tượng lớn của phân xưởng) áp vào biểu tượng nhỏ này */
+        .portal-card .portal-stale i,
+        .portal-card .portal-no-data i {
+            font-size: inherit;
+            width: auto;
+            height: auto;
+            margin: 0 2px 0 0;
+            color: inherit;
+            transform: none;
+        }
     </style>
     <div class="content-wrapper">
         <div class="portal-container">
@@ -175,6 +201,12 @@
                             <h5>{{ $d['name'] }}</h5>
                             
                             <div class="shift-badges-container">
+                                @if (!($counts['has_data'] ?? true))
+                                    <span class="portal-no-data"
+                                        title="Chưa nạp được lịch trực của bộ phận này từ eO2. Số liệu được nạp nền tự động (shifts:warm-cache) hoặc khi bấm Đồng bộ ở Lịch công tác / Dashboard.">
+                                        <i class="fas fa-hourglass-half"></i> Chưa có số liệu ca
+                                    </span>
+                                @else
                                 <span class="portal-shift-badge shift-total" title="Tổng nhân sự">
                                     Tổng: {{ $counts['total'] }}
                                 </span>
@@ -196,6 +228,13 @@
                                 <span class="portal-shift-badge shift-p" title="Nghỉ phép">
                                     P: {{ $counts['p'] }}
                                 </span>
+                                @if (!($counts['fresh'] ?? true))
+                                    <span class="portal-stale"
+                                        title="Đang hiện bản lưu gần nhất vì chưa nạp được số mới từ eO2. Số liệu được nạp nền tự động (shifts:warm-cache) hoặc khi bấm Đồng bộ ở Lịch công tác / Dashboard.">
+                                        <i class="fas fa-history"></i> Số liệu cũ – chờ đồng bộ eO2
+                                    </span>
+                                @endif
+                                @endif
                             </div>
                         </a>
                     @endforeach

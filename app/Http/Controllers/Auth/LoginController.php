@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Pages\AuditTrail\AuditTrialController;
 use App\Http\Middleware\RestrictExecutor;
+use App\Services\LoginHistory;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -31,6 +32,8 @@ class LoginController extends Controller
         $getUser = DB::table('user_management')->where('userName', '=', $request->username)->first();
 
         if (is_null($getUser)) {
+            LoginHistory::failure('failed', (string) $request->username, null, 'Tài khoản không tồn tại');
+
             return redirect()->route('login')
                 ->with('error', 'User Không Tồn Tại, Vui Lòng Đăng Nhập Lại!')
                 ->with('activeForm', 'login')
@@ -69,6 +72,7 @@ class LoginController extends Controller
                 'Login Blocked', 'user_management', $getUser->id, 'NA',
                 "Tài khoản đang bị khoá, còn khoảng {$remain} phút", $getUser->userName
             );
+            LoginHistory::failure('locked', $getUser->userName, $getUser->id, "Đăng nhập khi tài khoản đang bị khoá (còn khoảng {$remain} phút)");
 
             return redirect()->route('login')
                 ->with('error', "Tài Khoản Đã Bị Khoá Do Nhập Sai Nhiều Lần. Vui Lòng Thử Lại Sau Khoảng {$remain} Phút.")
@@ -97,6 +101,12 @@ class LoginController extends Controller
                     ? "Sai mật khẩu lần {$attempts}/{$maxAttempts} - Tài khoản bị KHOÁ {$lockoutMin} phút"
                     : "Sai mật khẩu lần {$attempts}/{$maxAttempts}",
                 $getUser->userName
+            );
+            LoginHistory::failure(
+                $locked ? 'locked' : 'failed', $getUser->userName, $getUser->id,
+                $locked
+                    ? "Sai mật khẩu lần {$attempts}/{$maxAttempts} — khoá tài khoản {$lockoutMin} phút"
+                    : "Sai mật khẩu (lần {$attempts}/{$maxAttempts})"
             );
 
             if ($locked) {
@@ -136,6 +146,9 @@ class LoginController extends Controller
                     : 'Mật khẩu đã quá hạn ' . config('security.password_expiry_days') . ' ngày - yêu cầu đổi',
                 $getUser->userName
             );
+            LoginHistory::failure('pwchange', $getUser->userName, $getUser->id, $mustChange
+                ? 'Đăng nhập lần đầu — phải đặt mật khẩu mới'
+                : 'Mật khẩu quá hạn — phải đổi mật khẩu');
 
             return redirect()->route('login')
                 ->with('error', $mustChange
@@ -193,6 +206,7 @@ class LoginController extends Controller
         }
 
         AuditTrialController::log('Login', 'NA', 0, 'NA', 'Đăng Nhập Thành Công');
+        LoginHistory::success($getUser->id, $getUser->userName);
 
         // Người thực thi (role Executor) chỉ dùng trang Ghi Nhận Sản Xuất
         if (RestrictExecutor::active()) {
@@ -225,6 +239,7 @@ class LoginController extends Controller
     public function logout(Request $request)
     {
         AuditTrialController::log('Log Out', 'NA', 0, 'NA', 'Đăng Xuất');
+        LoginHistory::end('manual');
         $request->session()->flush();
 
         return redirect()->route('login');
@@ -333,6 +348,9 @@ class LoginController extends Controller
 
         // 5️⃣ Ghi log và thông báo
         AuditTrialController::log('ChangePassword', 'NA', 0, 'NA', 'Đổi mật khẩu thành công');
+        // Đổi mật khẩu xong là vào thẳng hệ thống → tính là một phiên đăng nhập
+        LoginHistory::end('manual');
+        LoginHistory::success($getUser->id, $getUser->userName);
 
         return redirect()->route('pages.general.home');
     }

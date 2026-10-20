@@ -395,6 +395,22 @@
         .shift-p {
             background-color: #6c757d;
         }
+
+        /* Chặn in trực tiếp (Ctrl+P, menu trình duyệt): ẩn toàn bộ nội dung, chỉ in ra dòng thông báo */
+        @media print {
+            body.print-blocked > * {
+                display: none !important;
+            }
+
+            body.print-blocked::before {
+                content: "Không được phép in trang này. Vui lòng in qua nút \"In Lịch\" trong trang Phân Công Sản Xuất.";
+                display: block;
+                padding: 40px 20px;
+                text-align: center;
+                font-size: 1.2rem;
+                font-weight: 600;
+            }
+        }
     </style>
 </head>
 
@@ -419,7 +435,7 @@
     $bgColors = ['#0d6efd', '#198754', '#dc3545', '#ffc107', '#0dcaf0', '#6f42c1', '#fd7e14'];
 @endphp
 
-<body>
+<body class="{{ $allowPrint ? '' : 'print-blocked' }}">
 
     <div class="header-bar">
         <h3><i class="fas fa-industry"></i> Lịch Phân Công Sản Xuất</h3>
@@ -1121,7 +1137,7 @@
                 fetchPersonnelShifts();
             }
 
-            @if (request()->has('print'))
+            @if ($allowPrint)
                 // Chờ load xong giao diện rồi in
                 setTimeout(function() {
                     window.print();
@@ -1129,6 +1145,34 @@
             @endif
         });
     </script>
+    @unless ($allowPrint)
+        <script>
+            // Chặn Ctrl+P / Cmd+P: trang public chỉ để xem, in qua nút "In Lịch" của trang phân công
+            document.addEventListener('keydown', function(e) {
+                if (!(e.ctrlKey || e.metaKey) || !(e.key === 'p' || e.key === 'P' || e.code === 'KeyP')) {
+                    return;
+                }
+                e.preventDefault();
+                e.stopImmediatePropagation();
+
+                let toast = document.getElementById('print-blocked-toast');
+                if (!toast) {
+                    toast = document.createElement('div');
+                    toast.id = 'print-blocked-toast';
+                    toast.textContent = 'Không được phép in trang này. Vui lòng in qua nút "In Lịch" trong trang Phân Công Sản Xuất.';
+                    toast.style.cssText = 'position:fixed; top:20px; left:50%; transform:translateX(-50%); z-index:9999;' +
+                        'background:#dc3545; color:#fff; padding:10px 18px; border-radius:6px; font-weight:600;' +
+                        'box-shadow:0 2px 8px rgba(0,0,0,.25);';
+                    document.body.appendChild(toast);
+                }
+                toast.style.display = 'block';
+                clearTimeout(toast._hideTimer);
+                toast._hideTimer = setTimeout(function() {
+                    toast.style.display = 'none';
+                }, 3000);
+            }, true);
+        </script>
+    @endunless
 </body>
 
 </html>

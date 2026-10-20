@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use App\Services\ShiftApiService;
+use App\Services\EmployeeProductService;
 
 class PersonnelController extends Controller
 {
@@ -41,6 +42,17 @@ class PersonnelController extends Controller
 
         $shiftCounts = [];
 
+        // Mã NV đang hoạt động của từng bộ phận: một truy vấn cho cả 7 thay vì mỗi bộ phận một lần.
+        $activeCodesByDept = DB::table('employees as e')
+            ->join('employee_assignments as ea', 'ea.employees_id', '=', 'e.id')
+            ->where('ea.active', 1)
+            ->whereIn('ea.production_code', array_column($departments, 'code'))
+            ->select('ea.production_code', 'e.code')
+            ->distinct()
+            ->get()
+            ->groupBy('production_code')
+            ->map(fn ($rows) => array_flip($rows->pluck('code')->map(fn ($c) => (string) $c)->all()));
+
         foreach ($departments as $d) {
             $code = $d['code'];
             $depId = $depMapping[$code] ?? null;
@@ -53,15 +65,23 @@ class PersonnelController extends Controller
                 'c3' => 0,
                 'c4' => 0,
                 'hc' => 0,
-                'p' => 0
+                'p' => 0,
+                'fresh' => false,    // false = đang hiện bản sao lưu (số cũ) hoặc chưa có số
+                'has_data' => false, // false = cache chưa có gì cho bộ phận này
             ];
 
             if (!$depId) {
                 continue;
             }
 
-            // ShiftApiService tự cache (nén gzip) nên không cần cache riêng ở đây.
-            $shiftIndex = $shiftApi->shiftIndex($dateKey, $dateKey, $depId, $depId === 15) ?? [];
+            // CHỈ đọc cache, không gọi eO2: trước đây gọi shiftIndex() lần lượt cho 7 bộ phận ngay
+            // trong request, cache nguội là trang chờ vài phút (PXV1 có sleep 70s giữa 2 mẻ) và từ
+            // bộ phận thứ hai trở đi dính 429 do luật 60s/endpoint. Làm mới để shifts:warm-cache lo.
+            $fresh = false;
+            $shiftIndex = $shiftApi->cachedShiftIndex($dateKey, $dateKey, $depId, $depId === 15, $fresh);
+            $shiftCounts[$code]['fresh'] = $fresh;
+            $shiftCounts[$code]['has_data'] = $shiftIndex !== null;
+            $shiftIndex = $shiftIndex ?? [];
 
             $personnelData = [];
             foreach ($shiftIndex as $empCode => $person) {
@@ -76,19 +96,9 @@ class PersonnelController extends Controller
 
             if (count($personnelData) > 0) {
                 // Lọc theo danh sách nhân sự active ở local DB
-                $activeEmployeeCodes = DB::table('employees as e')
-                    ->whereExists(function ($q) use ($code) {
-                        $q->select(DB::raw(1))
-                            ->from('employee_assignments as ea')
-                            ->whereColumn('ea.employees_id', 'e.id')
-                            ->where('ea.production_code', $code)
-                            ->where('ea.active', 1);
-                    })
-                    ->pluck('e.code')
-                    ->toArray();
+                $activeCodesSet = $activeCodesByDept->get($code, []);
 
-                if (!empty($activeEmployeeCodes)) {
-                    $activeCodesSet = array_flip($activeEmployeeCodes);
+                if (!empty($activeCodesSet)) {
                     $filteredPersonnelData = [];
                     foreach ($personnelData as $person) {
                         $empCode = $person['employeeId'] ?? $person['code'] ?? null;
@@ -234,9 +244,29 @@ class PersonnelController extends Controller
             ->where('only_maintenance', 0)
             ->get();
 
+        // Tab "Sản phẩm được phép" (Nhân sự – Sản phẩm) — chỉ cho phân xưởng sản xuất,
+        // dùng chung bộ lọc Tổ / Phòng với tab "Tổ & Phòng công tác"
+        $productTab = null;
+        $activeTab = 'rooms';
+        if (!$isENorQA) {
+            $productTab = [
+                'employees' => app(EmployeeProductService::class)->attachSummaries(
+                    $datas->filter(fn ($e) => $e->active == 1 && empty($e->resign))->map(fn ($e) => clone $e)->values(),
+                    $departmentCode
+                ),
+                'canEdit' => EmployeeProductService::userCanEdit($departmentCode),
+                'types' => EmployeeProductService::TYPES,
+            ];
+            if ($request->tab === 'products') {
+                $activeTab = $request->tab;
+            }
+        }
+
         $viewName = $isENorQA ? 'pages.quota.personnel.en_qa_list' : 'pages.quota.personnel.list';
         // dd($datas, $groups);
         return view($viewName, [
+            'productTab' => $productTab,
+            'activeTab' => $activeTab,
             'datas' => $datas,
             'departments' => session('user')['department'],
             'groups' => $groups,

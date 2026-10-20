@@ -221,14 +221,20 @@
                 $canEdit = $isAdmin || $isOwnDepartment;
                 $disabled = $canEdit ? '' : 'disabled';
                 $pointerNone = $canEdit ? '' : 'pointer-events: none; opacity: 0.7;';
+
+                // Tab Nhân sự – Sản phẩm (chỉ phân xưởng sản xuất); phần tử .pn-rooms-only chỉ hiện ở tab Tổ & Phòng
+                $productTab = $productTab ?? null;
+                $activeTab = $productTab ? ($activeTab ?? 'rooms') : 'rooms';
+                $roomsOnlyHidden = $activeTab === 'rooms' ? '' : 'd-none';
             @endphp
             <div class="mb-3 d-flex justify-content-between align-items-center">
                 <h5 class="font-weight-bold text-primary mb-0"><i class="fas fa-users"></i> Quản Lý Nhân Sự</h5>
-                <button id="btn-toggle-dashboard" class="btn btn-sm btn-outline-info shadow-sm">
+                <button id="btn-toggle-dashboard" class="btn btn-sm btn-outline-info shadow-sm pn-rooms-only {{ $roomsOnlyHidden }}">
                     <i class="fas fa-chart-pie"></i> <span id="text-toggle-dashboard">Hiển thị Dashboard</span>
                 </button>
             </div>
 
+            <div class="pn-rooms-only {{ $roomsOnlyHidden }}">
             <div id="personnel-dashboard" class="mb-4" style="display: none;">
                 <div class="card shadow-sm border-info" style="border-top: 3px solid #17a2b8;">
                     <div class="card-header bg-light py-2">
@@ -456,10 +462,14 @@
                     </div>
                 </div>
             </div>
+            </div>{{-- /.pn-rooms-only (Dashboard) --}}
 
-            <!-- Filter Section -->
+            <!-- Filter Section: dùng chung cho mọi tab -->
             <div class="filter-section">
                 <form action="{{ url()->current() }}" method="GET" id="filter-form">
+                    @if ($productTab)
+                        <input type="hidden" name="tab" value="{{ $activeTab === 'rooms' ? '' : $activeTab }}">
+                    @endif
                     <div class="row align-items-end">
                         <div class="col-md-3">
                             <label class="small font-weight-bold">Lọc theo Tổ:</label>
@@ -486,10 +496,12 @@
                             </select>
                         </div>
                         <div class="col-md-auto d-flex align-items-end mt-2 mt-md-0">
-                            <a href="{{ url()->current() }}" class="btn btn-sm btn-secondary shadow-sm mr-2 mb-0">
+                            <a href="{{ url()->current() . ($activeTab === 'rooms' ? '' : '?tab=' . $activeTab) }}"
+                                id="btn-reset-filter" class="btn btn-sm btn-secondary shadow-sm mr-2 mb-0">
                                 <i class="fas fa-undo"></i> Reset
                             </a>
-                            <button type="button" id="btn-export-excel" class="btn btn-sm btn-success shadow-sm mb-0">
+                            <button type="button" id="btn-export-excel"
+                                class="btn btn-sm btn-success shadow-sm mb-0 pn-rooms-only {{ $roomsOnlyHidden }}">
                                 <i class="fas fa-file-excel mr-1"></i> Xuất Excel
                             </button>
                         </div>
@@ -497,6 +509,22 @@
                 </form>
             </div>
 
+            @if ($productTab)
+                <ul class="nav nav-tabs mb-3" id="pn-tabs">
+                    <li class="nav-item">
+                        <a class="nav-link {{ $activeTab === 'rooms' ? 'active' : '' }}" href="{{ url()->current() }}"
+                            data-pn-tab="rooms"><i class="fas fa-door-open mr-1"></i> Tổ &amp; Phòng công tác</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ $activeTab === 'products' ? 'active' : '' }}"
+                            href="{{ url()->current() }}?tab=products" data-pn-tab="products"><i
+                                class="fas fa-user-check mr-1"></i> Sản phẩm được phép</a>
+                    </li>
+                </ul>
+            @endif
+
+            <div class="tab-content">
+            <div class="tab-pane fade {{ $activeTab === 'rooms' ? 'show active' : '' }}" data-pn-pane="rooms">
             <table id="data_table_personnel" class="table table-bordered table-striped">
                 <thead style="position: sticky; top: 60px; background-color: white; z-index: 1020">
                     <tr>
@@ -989,6 +1017,12 @@
 
                 </tbody>
             </table>
+            </div>{{-- /tab Tổ & Phòng công tác --}}
+
+            @if ($productTab)
+                @include('pages.quota.personnel_product._panes')
+            @endif
+            </div>{{-- /.tab-content --}}
         </div>
         <!-- /.card-body -->
     </div>
@@ -2308,3 +2342,8 @@
 
     });
 </script>
+
+{{-- Nhân sự – Sản phẩm: modal khai báo + chuyển tab (chỉ phân xưởng sản xuất) --}}
+@if ($productTab)
+    @include('pages.quota.personnel_product._modal')
+@endif

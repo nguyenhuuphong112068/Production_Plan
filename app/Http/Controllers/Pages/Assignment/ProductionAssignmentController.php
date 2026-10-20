@@ -12,6 +12,7 @@ use App\Support\AssignmentWeek;
 use App\Support\WorkingDay;
 use Illuminate\Support\Facades\Log;
 use App\Services\ShiftApiService;
+use App\Services\EmployeeProductService;
 
 class ProductionAssignmentController extends Controller
 {
@@ -91,6 +92,9 @@ class ProductionAssignmentController extends Controller
             ->join('plan_list as pl', 'pm.plan_list_id', '=', 'pl.id')
             ->leftJoin('finished_product_category as fpc', 'sp.product_caterogy_id', '=', 'fpc.id')
             ->leftJoin('product_name', 'fpc.product_name_id', 'product_name.id')
+            // Tên hiển thị: CĐ 1-6 theo BTP (intermediate_category), CĐ 7 (Đóng gói) theo thành phẩm
+            ->leftJoin('intermediate_category as ic_name', 'ic_name.intermediate_code', '=', 'fpc.intermediate_code')
+            ->leftJoin('product_name as pn_btp', 'pn_btp.id', '=', 'ic_name.product_name_id')
             ->where('sp.deparment_code', $production_code)
             ->where('pl.type', 1);
 
@@ -120,7 +124,7 @@ class ProductionAssignmentController extends Controller
                 'sp.title_clearning',
                 'sp.stage_code',
                 'pm.batch',
-                'product_name.name as product_name'
+                DB::raw('CASE WHEN sp.stage_code = 7 THEN product_name.name ELSE COALESCE(pn_btp.name, product_name.name) END as product_name')
             )
             ->get()
             ->groupBy('room_id');
@@ -194,6 +198,7 @@ class ProductionAssignmentController extends Controller
 
                         $displayItems[] = [
                             'sp_id' => $p->id,
+                            'kind' => $isCleaning ? EmployeeProductService::KIND_CLEANING : EmployeeProductService::KIND_PRODUCTION,
                             'start' => $p->start,
                             'end' => $p->end,
                             'text' => $displayText
@@ -214,6 +219,7 @@ class ProductionAssignmentController extends Controller
 
                         $displayItems[] = [
                             'sp_id' => $p->id,
+                            'kind' => EmployeeProductService::KIND_CLEANING,
                             'start' => $p->start_clearning,
                             'end' => $p->end_clearning,
                             'text' => $displayText
@@ -233,7 +239,8 @@ class ProductionAssignmentController extends Controller
                 }
                 $timeDisp = Carbon::parse($item['start'])->format('H:i') . '-' . Carbon::parse($item['end'])->format('H:i');
 
-                $theoryDisplay .= "<div class='plan-item mb-1 pb-1 border-bottom position-relative hover-show-btn' data-start='{$item['start']}'><div class='plan-text' style='font-size: 0.8rem; line-height: 1.2;'><b>{$stt}. {$item['text']} <span class='time-text'>| ({$timeDisp})</span></b></div><button class='btn btn-xs btn-primary btn-copy-plan' title='Chép mục này' style='position: absolute; right: 0; top: 0; padding: 0 4px; font-size: 10px; display: none;'> >></button></div>";
+                // data-sp-id / data-kind đi theo mục khi chép sang ô Hoạt động → liên kết ca công tác với stage_plan
+                $theoryDisplay .= "<div class='plan-item mb-1 pb-1 border-bottom position-relative hover-show-btn' data-start='{$item['start']}' data-sp-id='{$item['sp_id']}' data-kind='{$item['kind']}'><div class='plan-text' style='font-size: 0.8rem; line-height: 1.2;'><b>{$stt}. {$item['text']} <span class='time-text'>| ({$timeDisp})</span></b></div><button class='btn btn-xs btn-primary btn-copy-plan' title='Chép mục này' style='position: absolute; right: 0; top: 0; padding: 0 4px; font-size: 10px; display: none;'> >></button></div>";
             }
             if ($theoryDisplay == '') {
                 $theoryDisplay = '<span class="text-muted italic">Không có lịch</span>';
@@ -287,28 +294,31 @@ class ProductionAssignmentController extends Controller
                     foreach ($displayItems as $item) {
                         $pStart = Carbon::parse($item['start']);
                         $pEnd = Carbon::parse($item['end']);
-                        $displayText = $item['text'];
 
                         $s1S = $dayStart->copy();
                         $s1E = $dayStart->copy()->addHours(8);
-                        if ($pStart->lt($s1E) && $pEnd->gt($s1S)) $shiftItems['1'][] = $displayText;
+                        if ($pStart->lt($s1E) && $pEnd->gt($s1S)) $shiftItems['1'][] = $item;
 
                         $s2S = $s1E->copy();
                         $s2E = $s2S->copy()->addHours(8);
-                        if ($pStart->lt($s2E) && $pEnd->gt($s2S)) $shiftItems['2'][] = $displayText;
+                        if ($pStart->lt($s2E) && $pEnd->gt($s2S)) $shiftItems['2'][] = $item;
 
                         $s3S = $s2E->copy();
                         $s3E = $s3S->copy()->addHours(8);
-                        if ($pStart->lt($s3E) && $pEnd->gt($s3S)) $shiftItems['3'][] = $displayText;
+                        if ($pStart->lt($s3E) && $pEnd->gt($s3S)) $shiftItems['3'][] = $item;
                     }
 
                     foreach ($shiftItems as $code => $items) {
                         if (empty($items)) continue;
-                        $unique_items = array_values(array_unique($items));
+                        // Mỗi dòng là một .plan-item mang data-sp-id để ca công tác liên kết được với stage_plan;
+                        // không sửa chữ được (contenteditable=false), giống dòng chép bằng >> / thêm bằng [+]
+                        $unique_items = array_values(collect($items)->unique('text')->all());
                         $jobDescription = "";
                         foreach ($unique_items as $idx => $item) {
-                            $jobDescription .= ($idx + 1) . ". " . $item . "\n";
+                            $jobDescription .= "<div class='plan-item' contenteditable='false' data-start='{$item['start']}' data-sp-id='{$item['sp_id']}' data-kind='{$item['kind']}'>"
+                                . "<span class='pi-no'>" . ($idx + 1) . ". </span>" . $item['text'] . "</div>";
                         }
+                        $jobDescription .= "<div><br></div>";
                         $sTime = $dayStart->copy()->addHours(($code - 1) * 8);
                         $eTime = $sTime->copy()->addHours(8);
                         $shiftCode = $code;
@@ -434,6 +444,18 @@ class ProductionAssignmentController extends Controller
         // Tạo mapping skills từ danh sách personnel đã lấy
         $skills = $personnel->keyBy('id');
 
+        // Đối chiếu sản phẩm đã khai báo (employee_products) với các lô trong ô Hoạt động — chỉ để cảnh báo.
+        // Lô gồm lịch lý thuyết trong ngày + lô được tham chiếu trong nội dung đã lưu (có thể chép từ ngày khác).
+        $productService = app(EmployeeProductService::class);
+        $activitySpIds = array_merge(
+            $stagePlans->flatten()->pluck('id')->all(),
+            EmployeeProductService::spIdsInDescriptions($allAssignments->flatten()->pluck('Job_description'))
+        );
+        $productAuth = [
+            'plans' => (object) $productService->planProducts($activitySpIds),
+            'declared' => (object) $productService->declarations($personnel->pluck('id')->all()),
+        ];
+
         // Tạo danh sách ID nhân sự được phép để lọc sidebar ở client
         $allowedPersonnelCodes = $personnel->pluck('code')->toArray();
 
@@ -478,6 +500,7 @@ class ProductionAssignmentController extends Controller
             'isLocked' => $isLocked,
             'personnel' => $personnel,
             'skills' => $skills, // Truyền dữ liệu bậc kỹ năng
+            'productAuth' => $productAuth,
             'allowedPersonnelCodes' => $allowedPersonnelCodes,
             'rooms' => $rooms,
             'allRooms' => $allRooms,
@@ -1019,6 +1042,23 @@ class ProductionAssignmentController extends Controller
         }
     }
 
+    /**
+     * Nút [+] ở ô Hoạt động: các lô đã sắp lịch ở phòng, chưa hoàn thành và chưa nhận phòng, để chọn thêm vào
+     * nội dung ca (dòng thêm vào mang data-sp-id → đối chiếu được sản phẩm NV đã khai báo).
+     */
+    public function roomLots(Request $request)
+    {
+        $roomId = (int) $request->room_id;
+        if ($roomId <= 0) {
+            return response()->json(['success' => false, 'message' => 'Thiếu phòng.'], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'lots' => app(EmployeeProductService::class)->pendingLots($roomId),
+        ]);
+    }
+
     public function updateHasAssignment(Request $request)
     {
         try {
@@ -1114,6 +1154,7 @@ class ProductionAssignmentController extends Controller
             $deleteSuggestQuery->delete();
 
             // 2. Thêm mới các phân công
+            $productService = app(EmployeeProductService::class);
             $prodGroups = [
                 1 => "Trung Tâm Cân",
                 3 => "Pha Chế",
@@ -1191,7 +1232,7 @@ class ProductionAssignmentController extends Controller
                         'Sheet' => $row['shift'],
                         'start' => $startDt,
                         'end' => $endDt,
-                        'Job_description' => isset($row['job_description']) ? trim($row['job_description']) : null,
+                        'Job_description' => isset($row['job_description']) ? EmployeeProductService::stripFlags(trim($row['job_description'])) : null,
                         'number_of_employes' => $row['number_of_employes'] ?? 0,
                         'Num_of_per_Level_3' => $row['num_of_per_level_3'] ?? 0,
                         'off_stream' => $row['off_stream'] ?? 0,
@@ -1201,6 +1242,7 @@ class ProductionAssignmentController extends Controller
                         'active' => 1
                     ]);
 
+                    $productService->syncActivities($assignmentId, $row['job_description'] ?? null, $room_id);
 
                     // Lưu danh sách nhân sự
                     $unique_p_data = collect($p_data)->unique('personnel_id');
@@ -1463,7 +1505,7 @@ class ProductionAssignmentController extends Controller
                         'Sheet' => $row['shift'],
                         'start' => $startDt,
                         'end' => $endDt,
-                        'Job_description' => isset($row['job_description']) ? trim($row['job_description']) : null,
+                        'Job_description' => isset($row['job_description']) ? EmployeeProductService::stripFlags(trim($row['job_description'])) : null,
                         'number_of_employes' => count($validPersonnelList),
                         'Num_of_per_Level_3' => $row['num_of_per_level_3'] ?? 0,
                         'off_stream' => $row['off_stream'] ?? 0,
@@ -1472,6 +1514,8 @@ class ProductionAssignmentController extends Controller
                         'updated_at' => now(),
                         'active' => 1
                     ]);
+
+                    app(EmployeeProductService::class)->syncActivities($assignmentId, $row['job_description'] ?? null, $room_id);
 
                     $displayOrder = 1;
                     foreach ($validPersonnelList as $p) {
@@ -1730,6 +1774,9 @@ class ProductionAssignmentController extends Controller
             ->join('plan_list as pl', 'pm.plan_list_id', '=', 'pl.id')
             ->leftJoin('finished_product_category as fpc', 'sp.product_caterogy_id', '=', 'fpc.id')
             ->leftJoin('product_name', 'fpc.product_name_id', 'product_name.id')
+            // Tên hiển thị: CĐ 1-6 theo BTP (intermediate_category), CĐ 7 (Đóng gói) theo thành phẩm
+            ->leftJoin('intermediate_category as ic_name', 'ic_name.intermediate_code', '=', 'fpc.intermediate_code')
+            ->leftJoin('product_name as pn_btp', 'pn_btp.id', '=', 'ic_name.product_name_id')
             ->where('sp.deparment_code', $production_code)
             ->where('pl.type', 1)
             ->where('sp.active', 1)
@@ -1748,7 +1795,7 @@ class ProductionAssignmentController extends Controller
             'sp.title_clearning',
             'sp.stage_code',
             'pm.batch',
-            'product_name.name as product_name'
+            DB::raw('CASE WHEN sp.stage_code = 7 THEN product_name.name ELSE COALESCE(pn_btp.name, product_name.name) END as product_name')
         )
             ->get()
             ->groupBy('room_id');
@@ -1953,7 +2000,9 @@ class ProductionAssignmentController extends Controller
             'personnel' => $personnel,
             'allowedPersonnelCodes' => $allowedPersonnelCodes,
             'dbAssignments' => $dbAssignments,
-            'suggestions' => $suggestions
+            'suggestions' => $suggestions,
+            // Chỉ cho in khi mở từ nút "In Lịch" của trang phân công (link có chữ ký), còn lại chặn Ctrl+P
+            'allowPrint' => $request->has('print') && $request->hasValidSignature(),
         ]);
     }
 
@@ -2101,6 +2150,9 @@ class ProductionAssignmentController extends Controller
             ->join('plan_list as pl', 'pm.plan_list_id', '=', 'pl.id')
             ->leftJoin('finished_product_category as fpc', 'sp.product_caterogy_id', '=', 'fpc.id')
             ->leftJoin('product_name', 'fpc.product_name_id', 'product_name.id')
+            // Tên hiển thị: CĐ 1-6 theo BTP (intermediate_category), CĐ 7 (Đóng gói) theo thành phẩm
+            ->leftJoin('intermediate_category as ic_name', 'ic_name.intermediate_code', '=', 'fpc.intermediate_code')
+            ->leftJoin('product_name as pn_btp', 'pn_btp.id', '=', 'ic_name.product_name_id')
             ->where('sp.deparment_code', $production_code)
             ->where('pl.type', 1)
             ->where('sp.active', 1)
@@ -2129,7 +2181,7 @@ class ProductionAssignmentController extends Controller
             'sp.title_clearning',
             'sp.stage_code',
             'pm.batch',
-            'product_name.name as product_name'
+            DB::raw('CASE WHEN sp.stage_code = 7 THEN product_name.name ELSE COALESCE(pn_btp.name, product_name.name) END as product_name')
         )->get();
 
         $events = [];
@@ -2395,13 +2447,15 @@ class ProductionAssignmentController extends Controller
                     'Sheet' => $row['sheet'] ?? 1,
                     'start' => $startDt,
                     'end' => $endDt,
-                    'Job_description' => isset($row['job_description']) ? trim($row['job_description']) : null,
+                    'Job_description' => isset($row['job_description']) ? EmployeeProductService::stripFlags(trim($row['job_description'])) : null,
                     'number_of_employes' => count($p_data),
                     'assigned_by' => session('user')['userName'] ?? 'System',
                     'created_at' => now(),
                     'updated_at' => now(),
                     'active' => 1
                 ]);
+
+                app(EmployeeProductService::class)->syncActivities($assignmentId, $row['job_description'] ?? null, $roomId);
 
                 $unique_p_data = collect($p_data)->unique('personnel_id');
                 $displayOrder = 1;

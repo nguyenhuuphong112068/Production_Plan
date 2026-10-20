@@ -1,6 +1,7 @@
 <?php
     // use Illuminate\Routing\Route;
 
+use App\Http\Controllers\Pages\User\LoginHistoryController;
 use App\Http\Controllers\Pages\User\PermissionContoller;
 use App\Http\Controllers\Pages\User\RoleController;
 use App\Http\Controllers\Pages\User\UserController;
@@ -33,6 +34,15 @@ Route::prefix('/User')
         Route::get('{userId}','index')->name('list');
         Route::post('store_or_update','store_or_update')->name('store_or_update');
 
+    });
+
+    // Lịch sử đăng nhập: toàn hệ thống (quyền login_history_view, kiểm tra trong controller) + của tôi
+    Route::prefix('/login_history')
+    ->name('login_history.')
+    ->controller(LoginHistoryController::class)
+    ->group(function(){
+        Route::get('','index')->name('list');
+        Route::get('mine','mine')->name('mine');
     });
 
     Route::prefix('/permission')

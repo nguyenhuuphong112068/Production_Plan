@@ -31,6 +31,7 @@ Route::prefix('/assignemnt/production')
         Route::post('update-personnel-time', 'updatePersonnelTime')->name('update_personnel_time');
         Route::get('personnel-time-history', 'personnelTimeHistory')->name('personnel_time_history');
         Route::post('update-has-assignment', 'updateHasAssignment')->name('update_has_assignment');
+        Route::get('room-lots', 'roomLots')->name('room_lots');
         Route::delete('destroy/{id}', 'destroy')->name('destroy');
 
         Route::get('portal', 'portal')->name('portal');

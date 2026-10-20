@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\LoginHistory;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -23,6 +24,9 @@ class UpdateUserActivity
             DB::table('user_management')
                 ->where('id', $userId)
                 ->update(['last_activity' => now()]);
+
+            // Thao tác cuối của phiên trong Lịch Sử Đăng Nhập (tối đa 1 lần/phút)
+            LoginHistory::touch();
         }
 
         return $next($request);

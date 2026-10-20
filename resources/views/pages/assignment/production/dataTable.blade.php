@@ -277,6 +277,120 @@
         line-height: inherit !important;
     }
 
+    /* Cảnh báo NV chưa được khai báo sản phẩm của lô trong ô Hoạt động (Nhân sự - Sản phẩm) */
+    .product-auth-warn {
+        margin-top: 4px;
+        padding: 4px 8px;
+        border-left: 3px solid #fd7e14;
+        border-radius: 3px;
+        background: #fff4e5;
+        color: #8a4b00;
+        font-size: 0.75rem;
+        line-height: 1.35;
+        text-align: left;
+    }
+
+    .product-auth-warn .paw-title {
+        font-weight: 600;
+    }
+
+    /* Nút [+] thêm lô từ lịch phòng, góc trên phải ô Hoạt động */
+    .btn-add-lot {
+        position: absolute;
+        top: 6px;
+        right: 8px;
+        z-index: 2;
+        padding: 0 6px;
+        font-size: 0.75rem;
+        line-height: 1.6;
+    }
+
+    .job-desc.has-add-lot {
+        padding-right: 34px;
+    }
+
+    /* Nút × nổi để xoá một dòng lô (đặt lên dòng đang rê chuột) */
+    #pi-del-btn {
+        position: absolute;
+        z-index: 1050;
+        width: 20px;
+        height: 20px;
+        padding: 0;
+        border: none;
+        border-radius: 50%;
+        background: #dc3545;
+        color: #fff;
+        font-size: 0.7rem;
+        line-height: 20px;
+        text-align: center;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        cursor: pointer;
+    }
+
+    .job-desc[contenteditable="true"] .plan-item:hover {
+        background-color: #fff5f5 !important;
+    }
+
+    /* Dòng lô (chép >> hoặc thêm [+]): không sửa chữ được (contenteditable=false), chỉ xoá cả dòng */
+    .job-desc .plan-item[contenteditable="false"] {
+        cursor: default;
+        border-left: 3px solid #90caf9 !important;
+        padding-left: 4px;
+        margin: 1px 0;
+    }
+
+    #add-lot-table td {
+        vertical-align: middle;
+    }
+
+    #add-lot-table td.add-lot-actions {
+        white-space: nowrap;
+    }
+
+    #add-lot-table .btn-pick-lot,
+    #add-lot-table .btn-picked {
+        padding: 1px 8px;
+        font-size: 0.75rem;
+    }
+
+    #add-lot-table tr.lot-past td {
+        color: #9e9e9e;
+    }
+
+    #add-lot-table tr.in-day td,
+    .add-lot-legend {
+        background: #e3f2fd;
+    }
+
+    .add-lot-legend {
+        display: inline-block;
+        width: 22px;
+        height: 10px;
+        border: 1px solid #90caf9;
+        vertical-align: middle;
+    }
+
+    /* Badge sau dòng lô trong ô Hoạt động: vẽ bằng ::after nên không thành chữ khi lưu / xuất Excel */
+    .job-desc .paw-flag::after {
+        content: "⚠ Nhân viên chưa được đào tạo sản phẩm";
+        display: inline-block;
+        margin-left: 6px;
+        padding: 0 7px;
+        border-radius: 8px;
+        background: #fd7e14;
+        color: #fff;
+        font-size: 0.7rem;
+        font-weight: 600;
+        line-height: 1.6;
+        vertical-align: middle;
+        white-space: nowrap;
+    }
+
+    .product-auth-warn .paw-code {
+        color: #a0522d;
+        font-family: monospace;
+    }
+
     .btn-save-room.is-dirty {
         background-color: #ffc107 !important;
         border-color: #ffc107 !important;
@@ -571,7 +685,12 @@
                 </button>
 
                 <button class="btn btn-sm btn-dark shadow-sm ml-2" id="btn-print-schedule" title="In lịch công tác"
-                    data-url="{{ route('pages.assignment.production.public') }}?production_code={{ $production_code }}&group_code={{ $group_code }}&reportedDate={{ $reportedDate }}&print=1">
+                    data-url="{{ \Illuminate\Support\Facades\URL::temporarySignedRoute('pages.assignment.production.public', now()->addHours(12), [
+                        'production_code' => $production_code,
+                        'group_code' => $group_code,
+                        'reportedDate' => $reportedDate,
+                        'print' => 1,
+                    ]) }}">
                     <i class="fas fa-print"></i> In Lịch
                 </button>
             </div>
@@ -1211,6 +1330,45 @@
     </div>
 </div>
 
+<!-- Modal thêm lô vào ô Hoạt động (nút [+]): lô đã sắp lịch ở phòng, chưa hoàn thành, chưa nhận phòng -->
+<div class="modal fade" id="modalAddLot" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white py-2">
+                <h5 class="modal-title font-weight-bold"><i class="fas fa-plus-circle mr-2"></i>Thêm lô vào Hoạt động
+                    – <span id="add-lot-room"></span></h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body pt-2">
+                <div class="d-flex align-items-center mb-2">
+                    <input type="text" class="form-control form-control-sm" id="add-lot-search"
+                        placeholder="Tìm sản phẩm / số lô..." style="max-width: 280px;">
+                    <span class="ml-auto small text-muted">Lô chưa hoàn thành và chưa nhận phòng. <span
+                            class="add-lot-legend"></span> nằm trong ngày công tác đang xem.</span>
+                </div>
+                <div style="max-height: 60vh; overflow-y: auto;">
+                    <table class="table table-sm table-hover mb-0" id="add-lot-table">
+                        <thead class="thead-light">
+                            <tr>
+                                <th style="width: 150px;">Thời gian</th>
+                                <th>Sản phẩm</th>
+                                <th style="width: 80px;">Số lô</th>
+                                <th style="width: 170px;" class="text-center">Thêm</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer bg-light py-2">
+                <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Đóng</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Shared Datalist cho Công tác khác -->
 <datalist id="room-list-options">
     @foreach ($allRooms as $r)
@@ -1345,6 +1503,323 @@
             "{{ $pid }}": "{{ $s->allowed_rooms_with_levels }}",
         @endforeach
     };
+
+    // ===== Nhân sự - Sản phẩm (employee_products) =====
+    // Cảnh báo khi NV trong ca chưa được khai báo (đào tạo) sản phẩm của lô mà ô Hoạt động tham chiếu (mục .plan-item
+    // mang data-sp-id): badge "Nhân viên chưa được đào tạo sản phẩm" ngay sau dòng lô (CSS ::after của .paw-flag, server
+    // gỡ lớp này trước khi lưu) + khung liệt kê NV bên dưới ô. Chỉ cảnh báo, không chặn. BTP áp cho CĐ 1-6, TP cho CĐ 7.
+    // Từ 15/10/2026 xét MỌI NV, kể cả NV chưa khai báo sản phẩm nào. Mục vệ sinh và chữ gõ tay không xét.
+    const productAuth = @json($productAuth);
+
+    function productTypeForStage(stage) {
+        stage = parseInt(stage, 10);
+        if (stage >= 1 && stage <= 6) return 'BTP';
+        return stage === 7 ? 'TP' : null;
+    }
+
+    function pawEsc(s) {
+        return $('<div>').text(s == null ? '' : String(s)).html();
+    }
+
+    // Lô sản xuất mà một mục .plan-item trong ô Hoạt động tham chiếu; null = vệ sinh / không liên kết
+    function planOfItem($pi, $row) {
+        let spId = $pi.attr('data-sp-id');
+        let kind = $pi.attr('data-kind');
+        if (!spId) {
+            // Mục chép trước khi có liên kết: dò theo giờ bắt đầu trong lịch lý thuyết của phòng
+            const start = $pi.attr('data-start');
+            if (!start) return null;
+            const $theory = $row.find('.theory-cell .plan-item').filter(function() {
+                return $(this).attr('data-start') === start;
+            }).first();
+            spId = $theory.attr('data-sp-id');
+            kind = $theory.attr('data-kind');
+        }
+        if (!spId || (kind || 'SX') !== 'SX') return null;
+        return productAuth.plans[spId] || null;
+    }
+
+    // ===== Dòng lô trong ô Hoạt động (.plan-item) =====
+    // Mọi dòng lô (chép bằng >> / >>> / tự điền theo ca, hoặc thêm bằng nút [+]) đều KHÔNG sửa chữ được
+    // (contenteditable=false) để chữ luôn khớp lô mà data-sp-id trỏ tới, và Enter không nhân bản liên kết sang dòng gõ
+    // tay. Sau dòng lô cuối luôn chừa một dòng trống sửa được để gõ thêm ghi chú.
+    function lockJobDescItems($desc) {
+        if (!$desc.length || $desc.attr('contenteditable') !== 'true') return;
+        $desc.find('.plan-item').attr('contenteditable', 'false');
+        if ($desc.children().last().hasClass('plan-item')) {
+            $desc.append('<div><br></div>');
+        }
+    }
+
+    // Sau mỗi lần chép / thêm lô: khoá chữ, bỏ phần thời gian "| (06:00-10:30)" và đánh số lại 1, 2, 3... theo thứ tự
+    // các dòng lô trong ô (số cũ "N. " chép từ lịch lý thuyết được thay bằng ô số .pi-no).
+    function normalizeJobDesc($desc) {
+        let no = 0;
+        $desc.find('.plan-item').each(function() {
+            const $pi = $(this);
+            $pi.find('.time-text').remove();
+            let $no = $pi.find('.pi-no').first();
+            if (!$no.length) {
+                const walker = document.createTreeWalker(this, NodeFilter.SHOW_TEXT);
+                let node;
+                while ((node = walker.nextNode()) && node.nodeValue.trim() === '') {}
+                if (node) node.nodeValue = node.nodeValue.replace(/^\s*\d+\.\s*/, '');
+                $no = $('<span class="pi-no"></span>');
+                const $holder = $pi.find('b').first().length ? $pi.find('b').first() :
+                    ($pi.find('.plan-text').first().length ? $pi.find('.plan-text').first() : $pi);
+                $holder.prepend($no);
+            }
+            $no.text(++no + '. ');
+        });
+        lockJobDescItems($desc);
+    }
+
+    // Nút × xoá một dòng lô: dòng lô khoá chữ nên không xoá bằng bàn phím tiện được. Nút là MỘT phần tử nổi gắn vào
+    // <body> (ngoài .job-desc) và chỉ đặt lên dòng đang rê chuột, nên không bị lưu vào Job_description hay lọt vào
+    // innerText khi xuất Excel. Xoá xong đánh số lại và đánh dấu phòng chưa lưu.
+    $(function() {
+        const $piDel = $('<button type="button" id="pi-del-btn" title="Bỏ dòng này khỏi Hoạt động">' +
+            '<i class="fas fa-times"></i></button>').appendTo('body').hide();
+        let piDelTarget = null;
+        let piDelTimer = null;
+
+        $(document).on('mouseover', '.job-desc[contenteditable="true"] .plan-item', function() {
+            const el = $(this).closest('.plan-item')[0];
+            clearTimeout(piDelTimer);
+            if (piDelTarget === el && $piDel.is(':visible')) return;
+            piDelTarget = el;
+            const r = el.getBoundingClientRect();
+            $piDel.css({
+                top: r.top + window.pageYOffset + Math.max(0, (Math.min(r.height, 26) - 20) / 2),
+                left: r.right + window.pageXOffset - 24
+            }).show();
+        });
+        $(document).on('mouseleave', '.job-desc .plan-item', function() {
+            piDelTimer = setTimeout(function() {
+                $piDel.hide();
+            }, 300);
+        });
+        $piDel.on('mouseenter', function() {
+            clearTimeout(piDelTimer);
+        }).on('mouseleave', function() {
+            $piDel.hide();
+        }).on('mousedown', function(e) {
+            e.preventDefault(); // giữ con trỏ trong ô Hoạt động
+        }).on('click', function() {
+            const el = piDelTarget;
+            $piDel.hide();
+            piDelTarget = null;
+            if (!el || !document.body.contains(el)) return;
+            const $desc = $(el).closest('.job-desc');
+            $(el).remove();
+            normalizeJobDesc($desc);
+            markRoomDirty($desc.closest('.room-row'));
+        });
+        // Cuộn trang hoặc vùng bảng thì vị trí nút không còn đúng → ẩn (scroll không nổi bọt nên bắt ở pha capture)
+        document.addEventListener('scroll', function() {
+            $piDel.hide();
+        }, true);
+    });
+
+    // ===== Nút [+] ở ô Hoạt động: chọn lô từ lịch của phòng =====
+    // Liệt kê lô đã sắp ở phòng, chưa hoàn thành và chưa nhận phòng; dòng chèn vào mang data-sp-id nên đối chiếu được
+    // sản phẩm. Dòng chèn vào là contenteditable=false: không sửa chữ được (tránh chữ một đằng, liên kết một nẻo) và
+    // Enter không nhân bản liên kết sang dòng gõ tay kế tiếp.
+    const addLotState = {
+        $item: null,
+        lots: []
+    };
+    const workDayStart = '{{ \App\Support\WorkingDay::start($reportedDate)->format('Y-m-d H:i:s') }}';
+    const workDayEnd = '{{ \App\Support\WorkingDay::end($reportedDate)->format('Y-m-d H:i:s') }}';
+
+    function ensureAddLotButton($item) {
+        const $desc = $item.find('.job-desc');
+        const roomId = $item.closest('.room-row').attr('data-room-id');
+        if (!$desc.length || !/^\d+$/.test(roomId || '') || $desc.attr('contenteditable') !== 'true') return;
+        if ($item.find('.btn-add-lot').length) return;
+        $desc.addClass('has-add-lot').parent().css('position', 'relative');
+        $desc.after('<button type="button" class="btn btn-xs btn-outline-primary btn-add-lot" ' +
+            'title="Thêm lô từ lịch của phòng"><i class="fas fa-plus"></i></button>');
+    }
+
+    function fmtLotTime(start, end) {
+        const d = s => s ? s.substr(8, 2) + '/' + s.substr(5, 2) : '';
+        const t = s => s ? s.substr(11, 5) : '';
+        if (!start) return '';
+        return d(start) + ' ' + t(start) + (end ? ' – ' + (d(end) !== d(start) ? d(end) + ' ' : '') + t(end) : '');
+    }
+
+    function cleaningLabel(titleClearning) {
+        if (titleClearning === 'VS-II') return 'Vệ sinh cấp II';
+        if (titleClearning === 'VS-I') return 'Vệ sinh cấp I';
+        return 'Vệ sinh';
+    }
+
+    function lotLineHtml(lot, kind) {
+        const isVs = kind === 'VS';
+        const start = isVs ? lot.start_clearning : lot.start;
+        const product = `${lot.name} - ${lot.batch}`;
+        const text = isVs ? `${cleaningLabel(lot.title_clearning)} (${product})` : product;
+        return `<div class="plan-item" contenteditable="false" data-start="${pawEsc(start)}" data-sp-id="${lot.sp_id}" data-kind="${kind}">` +
+            `<div class="plan-text"><b><span class="pi-no"></span>${pawEsc(text)}</b></div></div>`;
+    }
+
+    function renderAddLotTable() {
+        const q = ($('#add-lot-search').val() || '').trim().toLowerCase();
+        const $desc = addLotState.$item ? addLotState.$item.find('.job-desc') : $();
+        const has = (id, kind) => $desc.find(`.plan-item[data-sp-id="${id}"][data-kind="${kind}"]`).length > 0;
+        let html = '';
+        // Lô trong ngày công tác đang xem lên đầu, rồi lô sắp tới, cuối cùng lô quá hạn mà chưa nhận phòng
+        const group = lot => (lot.start < workDayEnd && lot.end > workDayStart) ? 0 : (lot.start >= workDayEnd ? 1 : 2);
+        const lots = addLotState.lots.slice().sort((a, b) => group(a) - group(b) || (a.start < b.start ? -1 : 1));
+        lots.forEach(lot => {
+            const code = lot.stage_code === 7 ? lot.tp : lot.btp;
+            if (q && (lot.name + ' ' + lot.batch + ' ' + code).toLowerCase().indexOf(q) === -1) return;
+            const g = group(lot);
+            const btn = (kind, label) => has(lot.sp_id, kind) ?
+                `<button class="btn btn-light btn-picked" disabled><i class="fas fa-check"></i> ${label}</button>` :
+                `<button class="btn btn-primary btn-pick-lot" data-sp-id="${lot.sp_id}" data-kind="${kind}"><i class="fas fa-plus"></i> ${label}</button>`;
+            html += `<tr class="${g === 0 ? 'in-day' : (g === 2 ? 'lot-past' : '')}">
+                <td class="small">${pawEsc(fmtLotTime(lot.start, lot.end))}${g === 2 ? '<br><span class="badge badge-light">quá hạn</span>' : ''}</td>
+                <td>${pawEsc(lot.name)} <span class="text-muted small">(${lot.stage_code === 7 ? 'TP' : 'BTP'} ${pawEsc(code)})</span></td>
+                <td>${pawEsc(lot.batch)}</td>
+                <td class="text-center add-lot-actions">${btn('SX', 'Sản xuất')} ${lot.start_clearning ? btn('VS', 'VS') : ''}</td>
+            </tr>`;
+        });
+        $('#add-lot-table tbody').html(html ||
+            '<tr><td colspan="4" class="text-center text-muted py-3">Không có lô nào chưa nhận phòng ở phòng này.</td></tr>');
+    }
+
+    $(document).on('click', '.btn-add-lot', function() {
+        const $item = $(this).closest('.assignment-item');
+        const $row = $item.closest('.room-row');
+        addLotState.$item = $item;
+        addLotState.lots = [];
+        $('#add-lot-room').text($row.find('.room-name-cell b').first().text() || '');
+        $('#add-lot-search').val('');
+        $('#add-lot-table tbody').html('<tr><td colspan="4" class="text-center text-muted py-3">Đang tải...</td></tr>');
+        $('#modalAddLot').modal('show');
+        $.getJSON("{{ route('pages.assignment.production.room_lots') }}", {
+            room_id: $row.attr('data-room-id')
+        }).done(function(res) {
+            addLotState.lots = (res && res.lots) || [];
+            renderAddLotTable();
+        }).fail(function() {
+            $('#add-lot-table tbody').html('<tr><td colspan="4" class="text-center text-danger py-3">Không tải được danh sách lô.</td></tr>');
+        });
+    });
+
+    $(document).on('input', '#add-lot-search', renderAddLotTable);
+
+    $(document).on('click', '.btn-pick-lot', function() {
+        const $item = addLotState.$item;
+        if (!$item) return;
+        const spId = String($(this).attr('data-sp-id'));
+        const kind = $(this).attr('data-kind');
+        const lot = addLotState.lots.find(l => String(l.sp_id) === spId);
+        if (!lot) return;
+
+        // Cho phần đối chiếu sản phẩm biết lô này (có thể nằm ngoài lịch lý thuyết của ngày đang xem)
+        productAuth.plans[spId] = {
+            stage_code: lot.stage_code,
+            room_id: lot.room_id,
+            btp: lot.btp,
+            tp: lot.tp,
+            name: lot.name,
+            batch: lot.batch
+        };
+
+        const $desc = $item.find('.job-desc');
+        const $last = $desc.children().last();
+        const lastIsEmptyLine = $last.length && !$last.hasClass('plan-item') && $.trim($last.text()) === '';
+        if (lastIsEmptyLine) {
+            $last.before(lotLineHtml(lot, kind));
+        } else {
+            // Chừa một dòng trống sửa được ở cuối để vẫn gõ thêm ghi chú sau dòng lô (dòng lô không đặt con trỏ được)
+            $desc.append(lotLineHtml(lot, kind));
+        }
+        normalizeJobDesc($desc);
+        markRoomDirty($item.closest('.room-row'));
+        renderAddLotTable();
+    });
+
+    function refreshProductAuthWarning($item) {
+        ensureAddLotButton($item);
+        lockJobDescItems($item.find('.job-desc'));
+        const $desc = $item.find('.job-desc');
+        if (!$desc.length) return;
+        const $row = $item.closest('.room-row');
+
+        const persons = [];
+        $item.find('.personnel-row').each(function() {
+            const pid = $(this).find('.person-select').val();
+            if (!pid) return;
+            persons.push({
+                pid: pid,
+                label: $(this).find('.personnel-label').first().text().trim(),
+                declared: productAuth.declared[pid] || {}
+            });
+        });
+
+        $desc.find('.paw-flag').removeClass('paw-flag');
+        const missingByPerson = {}; // pid => {key: html}
+        $desc.find('.plan-item').each(function() {
+            const plan = planOfItem($(this), $row);
+            const type = plan ? productTypeForStage(plan.stage_code) : null;
+            if (!type) return;
+            const code = type === 'TP' ? plan.tp : plan.btp;
+            if (!code) return;
+
+            let flagged = false;
+            persons.forEach(p => {
+                if ((p.declared[type] || {})[code]) return;
+                flagged = true;
+                missingByPerson[p.pid] = missingByPerson[p.pid] || {};
+                missingByPerson[p.pid][type + code] =
+                    `${pawEsc(plan.name)} <span class="paw-code">(${type} ${pawEsc(code)})</span>`;
+            });
+            if (flagged) {
+                // Gắn badge vào dòng chữ (.plan-text) để badge nằm cùng hàng với nội dung
+                const $text = $(this).find('.plan-text').first();
+                ($text.length ? $text : $(this)).addClass('paw-flag');
+            }
+        });
+
+        const lines = persons.filter(p => missingByPerson[p.pid]).map(p => {
+            const info = personnelInfo[p.pid] || {};
+            return `<div><b>${pawEsc(p.label)}. ${pawEsc(info.name || p.pid)}</b>: ${Object.values(missingByPerson[p.pid]).join(', ')}</div>`;
+        });
+
+        let $warn = $item.find('.product-auth-warn');
+        if (!lines.length) {
+            $warn.remove();
+            return;
+        }
+        if (!$warn.length) {
+            $warn = $('<div class="product-auth-warn"></div>');
+            $desc.after($warn);
+        }
+        $warn.html(
+            '<div class="paw-title"><i class="fas fa-exclamation-triangle"></i> Nhân viên chưa được đào tạo sản phẩm:</div>' +
+            lines.join(''));
+    }
+
+    function scheduleProductAuthRefresh(row) {
+        const el = row && row[0];
+        if (!el) return;
+        clearTimeout(el._productAuthTimer);
+        el._productAuthTimer = setTimeout(function() {
+            row.find('.assignment-item').each(function() {
+                refreshProductAuthWarning($(this));
+            });
+        }, 150);
+    }
+
+    $(document).ready(function() {
+        $('.room-row').each(function() {
+            scheduleProductAuthRefresh($(this));
+        });
+    });
 
     function getPersonLevel(pid, roomId) {
         if (!pid || !roomId) return 0;
@@ -1920,6 +2395,8 @@
 
     function markRoomDirty(row) {
         row.find('.btn-save-room').addClass('is-dirty').removeClass('btn-primary');
+        // Mọi thay đổi nhân sự / ô Hoạt động đều đi qua đây → tính lại cảnh báo Nhân sự - Sản phẩm
+        scheduleProductAuthRefresh(row);
     }
 
     function markRoomSaved(row) {
@@ -2715,6 +3192,7 @@
                     $itm.find('.btn-copy-plan').remove();
                     $target.append($itm);
                 });
+                normalizeJobDesc($target);
             }
 
             updatePersonnelLabels(container);
@@ -2961,6 +3439,7 @@
                 $itm.find('.btn-copy-plan').remove();
                 $targetDesc.append($itm);
             });
+            normalizeJobDesc($targetDesc);
         }
 
         function addShiftHtml(nextShift, startTime, endTime) {
@@ -3932,6 +4411,7 @@
                     $itm.find('.btn-copy-plan').remove();
                     $target.append($itm);
                 });
+                normalizeJobDesc($target);
             });
             markRoomDirty(roomRow);
         });
@@ -3983,6 +4463,7 @@
                     $itm.find('.btn-copy-plan').remove();
                     $target.append($itm);
                 });
+                normalizeJobDesc($target);
             });
             markRoomDirty(roomRow);
         });

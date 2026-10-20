@@ -1071,14 +1071,37 @@
                     </li>
                 @endif
 
-                <!-- Audit Trial-->
-                <li class="nav-item">
-                    <a href="{{ route('pages.AuditTrail.list') }}" class="nav-link">
-                        <i class="nav-icon fas fa-th"></i>
+                <!-- Lịch sử đăng nhập + Audit Trial-->
+                <li class="nav-item has-treeview">
+                    <a href="#" class="nav-link">
+                        <i class="nav-icon fas fa-key"></i>
                         <p>
                             Lịch Sử Đăng Nhập
+                            <i class="right fas fa-angle-left"></i>
                         </p>
                     </a>
+                    <ul class="nav nav-treeview">
+                        @if (user_has_permission(session('user')['userId'], 'login_history_view', 'boolean'))
+                            <li class="nav-item">
+                                <a href="{{ route('pages.User.login_history.list') }}" class="nav-link">
+                                    <i class="far fa-circle nav-icon"></i>
+                                    <p>Toàn Hệ Thống</p>
+                                </a>
+                            </li>
+                        @endif
+                        <li class="nav-item">
+                            <a href="{{ route('pages.User.login_history.mine') }}" class="nav-link">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Của Tôi</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{{ route('pages.AuditTrail.list') }}" class="nav-link">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Audit Trail</p>
+                            </a>
+                        </li>
+                    </ul>
                 </li>
 
                 {{-- @if (user_has_permission(session('user')['userId'], 'layout_test', 'boolean'))

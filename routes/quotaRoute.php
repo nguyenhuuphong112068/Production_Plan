@@ -3,6 +3,7 @@
 use App\Http\Controllers\Pages\Quota\MoldController;
 use App\Http\Controllers\Pages\Quota\ProductionQuotaController;
 use App\Http\Controllers\Pages\Quota\PersonnelController;
+use App\Http\Controllers\Pages\Quota\PersonnelProductController;
 use App\Http\Middleware\CheckLogin;
 use Illuminate\Support\Facades\Route;
 
@@ -27,6 +28,15 @@ Route::prefix('/quota')
                 Route::get('deActive/{id}', 'deActive')->name('deActive');
                 Route::post('toggleMaternityLeave', 'toggleMaternityLeave')->name('toggleMaternityLeave');
                 Route::post('toggleLongLeave', 'toggleLongLeave')->name('toggleLongLeave');
+            });
+
+        Route::prefix('/personnel-products')
+            ->controller(PersonnelProductController::class)
+            ->name('personnel_products.')
+            ->group(function () {
+                Route::get('employee/{id}', 'employee')->name('employee')->whereNumber('id');
+                Route::post('save', 'save')->name('save');
+                Route::get('/{department?}', 'index')->name('list');
             });
 
         Route::prefix('/production')

@@ -81,6 +81,30 @@ class ShiftApiService
      */
     public function shiftIndex($from, $to, $department, bool $mergeWarehouse = false): ?array
     {
+        return $this->indexFor($from, $to, $department, $mergeWarehouse, true);
+    }
+
+    /**
+     * Như `shiftIndex` nhưng CHỈ đọc cache (cache nóng, không có thì bản sao lưu 24h) và
+     * KHÔNG BAO GIỜ gọi eO2. Trả về null khi cả hai đều không có.
+     *
+     * Dành cho màn hình chỉ cần số liệu tham khảo và không được phép bắt người dùng chờ
+     * API, ví dụ portal Quản lý nhân sự: portal cần cả 7 bộ phận, mà theo luật 60s/endpoint
+     * của eO2 thì nạp lại 7 bộ phận trong MỘT request là không thể (bộ phận thứ hai đã dính
+     * 429). Làm mới là việc của `shifts:warm-cache` và các nút Đồng bộ. Muốn biết số liệu
+     * đang dùng có phải bản mới không thì đọc $fresh.
+     *
+     * @param bool|null $fresh nhận true nếu mọi ô đều lấy từ cache nóng, false nếu có ô
+     *        phải dùng bản sao lưu (số liệu cũ) hoặc không có dữ liệu
+     */
+    public function cachedShiftIndex($from, $to, $department, bool $mergeWarehouse = false, ?bool &$fresh = null): ?array
+    {
+        return $this->indexFor($from, $to, $department, $mergeWarehouse, false, $fresh);
+    }
+
+    private function indexFor($from, $to, $department, bool $mergeWarehouse, bool $allowFetch, ?bool &$fresh = null): ?array
+    {
+        $fresh = false;
         $from = Carbon::parse($from)->startOfDay();
         $to = Carbon::parse($to)->startOfDay();
         if ($to->lt($from)) {
@@ -97,13 +121,17 @@ class ShiftApiService
         }
 
         // Nạp TẤT CẢ tháng × bộ phận trong một mẻ song song duy nhất.
-        $loaded = $this->loadMonthIndexes($specs);
+        $stale = [];
+        $loaded = $this->loadMonthIndexes($specs, $allowFetch, $stale);
 
         $index = [];
         $anyLoaded = false;
+        // Mới = mọi ô đều có số và không ô nào phải dùng bản sao lưu.
+        $fresh = empty($stale);
         foreach ($specs as $spec) {
             $part = $loaded[$this->specKey($spec)] ?? null;
             if ($part === null) {
+                $fresh = false;
                 continue; // Kho lỗi thì bỏ qua, không kéo theo cả bộ phận chính.
             }
             if (!$spec['wh']) {
@@ -619,9 +647,11 @@ class ShiftApiService
      * endpoint mới được ghi, xem giải thích ở vòng lặp ghép kết quả bên dưới.
      *
      * @param array $specs list of ['year'=>int,'month'=>int,'dept'=>int,'wh'=>bool]
+     * @param bool $allowFetch false = chỉ đọc cache, ô thiếu cache nóng thì lấy bản sao lưu
+     * @param array $stale nhận các specKey phải dùng bản sao lưu (số liệu cũ)
      * @return array [specKey => array|null]  (null = API lỗi và hết bản sao lưu)
      */
-    private function loadMonthIndexes(array $specs): array
+    private function loadMonthIndexes(array $specs, bool $allowFetch = true, array &$stale = []): array
     {
         $result = [];
         $pending = [];  // specKey => spec  (phải gọi API)
@@ -643,6 +673,15 @@ class ShiftApiService
             $cached = $this->cacheGet($this->cacheKeyFor($spec, false));
             if (is_array($cached)) {
                 $result[$key] = $this->memo[$key] = $cached;
+                continue;
+            }
+
+            if (!$allowFetch) {
+                // Chỉ đọc cache: rơi về bản sao lưu. KHÔNG ghi vào $memo, để một lượt có
+                // gọi API sau đó trong cùng request vẫn thử nạp số mới cho ô này.
+                $backup = $this->cacheGet($this->cacheKeyFor($spec, true));
+                $result[$key] = is_array($backup) ? $backup : null;
+                $stale[] = $key;
                 continue;
             }
 
@@ -679,6 +718,7 @@ class ShiftApiService
                 $backup = $this->cacheGet($this->cacheKeyFor($spec, true));
                 if (is_array($backup)) {
                     $result[$key] = $this->memo[$key] = $backup;
+                    $stale[] = $key;
                     continue;
                 }
 
