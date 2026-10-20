@@ -92,6 +92,24 @@ class EmployeeProductService
         return $map;
     }
 
+    /** Phòng sản xuất (CĐ 1-7) đang hiệu lực của các NV, đã sắp tăng dần: [employees_id => [room_id, ...]] */
+    public function productionRoomIds(array $employeeIds): array
+    {
+        $production = DB::table('room')
+            ->whereBetween('stage_code', [1, 7])
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->flip();
+
+        $map = [];
+        foreach ($this->employeeRooms($employeeIds) as $employeeId => $rooms) {
+            $ids = array_values(array_unique(array_filter($rooms, fn ($r) => isset($production[$r]))));
+            sort($ids);
+            $map[$employeeId] = $ids;
+        }
+        return $map;
+    }
+
     /**
      * Khai báo đang hiệu lực của các NV: [employees_id => ['BTP' => [code => true], 'TP' => [...]]]
      */
@@ -205,6 +223,10 @@ class EmployeeProductService
                 ->values();
             $e->room_codes = $rooms->pluck('code')->all();
             $e->room_count = count($e->room_codes);
+            // Khóa so khớp "cùng phòng SX" khi nhân bản khai báo (giống productionRoomIds)
+            $roomIds = $rooms->pluck('id')->map(fn ($id) => (int) $id)->all();
+            sort($roomIds);
+            $e->room_key = implode(',', $roomIds);
 
             $e->btp_items = $itemsByEmp[$e->id][self::TYPE_BTP] ?? [];
             $e->tp_items = $itemsByEmp[$e->id][self::TYPE_TP] ?? [];
@@ -355,12 +377,12 @@ class EmployeeProductService
      *
      * @return array{added:int, removed:int}
      */
-    public function saveDeclarations(int $employeeId, string $type, array $codes, string $user, ?string $auditUser = null): array
+    public function saveDeclarations(int $employeeId, string $type, array $codes, string $user, ?string $auditUser = null, ?string $auditAction = null): array
     {
         $codes = array_values(array_unique(array_filter(array_map('strval', $codes), 'strlen')));
         $now = now();
 
-        return DB::transaction(function () use ($employeeId, $type, $codes, $user, $auditUser, $now) {
+        return DB::transaction(function () use ($employeeId, $type, $codes, $user, $auditUser, $auditAction, $now) {
             $existing = DB::table('employee_products')
                 ->where('employees_id', $employeeId)
                 ->where('product_type', $type)
@@ -417,7 +439,7 @@ class EmployeeProductService
             if ($added || $removed) {
                 DB::table('audittriallog')->insert([
                     'userName' => mb_substr($auditUser ?? $user, 0, 10),
-                    'action' => 'Khai báo sản phẩm ' . $type,
+                    'action' => mb_substr($auditAction ?? 'Khai báo sản phẩm ' . $type, 0, 255),
                     'table_Audit' => 'employee_products',
                     'record_Id_AuditTrial' => $employeeId,
                     'old_values' => json_encode(['removed' => $removed], JSON_UNESCAPED_UNICODE),
@@ -429,6 +451,39 @@ class EmployeeProductService
             }
 
             return ['added' => count($added), 'removed' => count($removed)];
+        });
+    }
+
+    /**
+     * Nhân bản khai báo (cả BTP và TP) của NV nguồn sang các NV đích.
+     * $replace = false: cộng thêm SP của nguồn, giữ SP đích đang có; true: đích giống hệt nguồn.
+     * Kiểm tra cùng phòng SX do controller làm trước khi gọi.
+     *
+     * @return array<int, array{added:int, removed:int}> theo employees_id đích
+     */
+    public function copyDeclarations(int $sourceId, array $targetIds, bool $replace, string $user, ?string $auditUser = null, ?string $sourceCode = null): array
+    {
+        $source = $this->declarations([$sourceId])[$sourceId] ?? [];
+        $current = $this->declarations($targetIds);
+
+        return DB::transaction(function () use ($source, $current, $targetIds, $replace, $user, $auditUser, $sourceCode, $sourceId) {
+            $result = [];
+            foreach ($targetIds as $targetId) {
+                $added = 0;
+                $removed = 0;
+                foreach (array_keys(self::TYPES) as $type) {
+                    $codes = array_map('strval', array_keys($source[$type] ?? []));
+                    if (!$replace) {
+                        $codes = array_merge(array_map('strval', array_keys($current[$targetId][$type] ?? [])), $codes);
+                    }
+                    $action = 'Nhân bản khai báo sản phẩm ' . $type . ' từ NV ' . ($sourceCode ?? $sourceId) . ($replace ? ' (ghi đè)' : '');
+                    $r = $this->saveDeclarations($targetId, $type, $codes, $user, $auditUser, $action);
+                    $added += $r['added'];
+                    $removed += $r['removed'];
+                }
+                $result[$targetId] = ['added' => $added, 'removed' => $removed];
+            }
+            return $result;
         });
     }
 

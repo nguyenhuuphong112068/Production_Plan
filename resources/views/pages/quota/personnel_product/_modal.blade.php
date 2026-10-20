@@ -47,7 +47,81 @@
         font-size: 0.75rem;
         font-style: italic;
     }
+
+    #pp-copy-modal .pp-list-wrap {
+        max-height: 50vh;
+        overflow-y: auto;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+    }
+
+    #pp-copy-modal table td {
+        font-size: 0.82rem;
+        vertical-align: middle;
+        padding: 3px 8px;
+    }
+
+    #pp-copy-modal tr.checked {
+        background: #fffbe6;
+    }
 </style>
+
+@if ($productTab['canEdit'])
+    {{-- Nhân bản khai báo BTP + TP của 1 NV sang các NV có cùng tập phòng sản xuất (server kiểm tra lại) --}}
+    <div class="modal fade" id="pp-copy-modal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header py-2">
+                    <div>
+                        <h5 class="modal-title mb-0"><i class="fas fa-copy text-info"></i> Nhân bản khai báo từ
+                            <span id="pp-copy-source"></span>
+                        </h5>
+                        <div id="pp-copy-summary" class="mt-1 small"></div>
+                    </div>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
+                            aria-hidden="true">&times;</span></button>
+                </div>
+                <div class="modal-body pt-2">
+                    <div class="d-flex flex-wrap align-items-center mb-2">
+                        <input type="text" class="form-control form-control-sm mr-2 mb-1" id="pp-copy-search"
+                            placeholder="Tìm mã / tên nhân viên..." style="width: 260px;">
+                        <span class="small text-muted mb-1">Chỉ hiện nhân viên có <b>cùng phòng SX</b> với nhân viên nguồn.</span>
+                    </div>
+                    <div class="pp-list-wrap">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th style="width: 36px;" class="text-center"><input type="checkbox" id="pp-copy-all"></th>
+                                    <th style="width: 90px;">Mã NV</th>
+                                    <th>Tên nhân viên</th>
+                                    <th>Tổ</th>
+                                    <th style="width: 110px;" class="text-center">Đang có BTP / TP</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pp-copy-list"></tbody>
+                        </table>
+                    </div>
+                    <div class="mt-2">
+                        <div class="custom-control custom-radio custom-control-inline">
+                            <input type="radio" class="custom-control-input" name="pp-copy-mode" id="pp-copy-merge" value="0" checked>
+                            <label class="custom-control-label small" for="pp-copy-merge"><b>Cộng thêm</b> – giữ sản phẩm nhân viên nhận đang có</label>
+                        </div>
+                        <div class="custom-control custom-radio custom-control-inline">
+                            <input type="radio" class="custom-control-input" name="pp-copy-mode" id="pp-copy-replace" value="1">
+                            <label class="custom-control-label small" for="pp-copy-replace"><b>Ghi đè</b> – nhân viên nhận giống hệt nhân viên nguồn</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer py-2">
+                    <span class="mr-auto small text-muted" id="pp-copy-info"></span>
+                    <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Đóng</button>
+                    <button type="button" class="btn btn-info btn-sm" id="pp-copy-save"><i class="fas fa-copy"></i>
+                        Nhân bản</button>
+                </div>
+            </div>
+        </div>
+    </div>
+@endif
 
 <div class="modal fade" id="pp-modal" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-xl" role="document">
@@ -129,6 +203,7 @@
         const urls = {
             employee: "{{ url('/quota/personnel-products/employee') }}/",
             save: "{{ route('pages.quota.personnel_products.save') }}",
+            copy: "{{ route('pages.quota.personnel_products.copy') }}",
         };
 
         const dtLanguage = {
@@ -403,13 +478,7 @@
                         i.by = s ? s.by : null;
                         i.at = s ? s.at : null;
                     });
-                    $tr.find(`.pp-cell-${type}`).attr('data-order', saved.length).html(saved.length ?
-                        `<div class="pp-list ${type.toLowerCase()}">` + saved.map(i =>
-                            `<div class="pp-item"><span class="pp-code">${esc(i.code)}</span> - ${esc(i.name)}` +
-                            `<span class="pp-meta"><i class="fas fa-user-edit"></i> ${esc(i.by)} · ${esc(i.at)}</span></div>`
-                        ).join('') + '</div>' :
-                        '<span class="pp-list-empty">—</span>');
-                    if ($tr.length) empTable.row($tr).invalidate('dom');
+                    renderCell($tr, type, saved);
                 }
                 renderList();
                 Swal.fire({
@@ -424,6 +493,139 @@
                 Swal.fire('Lỗi', msg, 'error');
             } finally {
                 $btn.prop('disabled', false);
+            }
+        });
+
+        // Dựng lại ô "mã - tên" (kèm người / lúc cập nhật) của 1 NV và bật/tắt nút Nhân bản theo số khai báo
+        function renderCell($tr, type, saved) {
+            if (!$tr.length) return;
+            $tr.find(`.pp-cell-${type}`).attr('data-order', saved.length).html(saved.length ?
+                `<div class="pp-list ${type.toLowerCase()}">` + saved.map(i =>
+                    `<div class="pp-item"><span class="pp-code">${esc(i.code)}</span> - ${esc(i.name)}` +
+                    `<span class="pp-meta"><i class="fas fa-user-edit"></i> ${esc(i.by)} · ${esc(i.at)}</span></div>`
+                ).join('') + '</div>' :
+                '<span class="pp-list-empty">—</span>');
+            const total = Object.keys(typeLabels).reduce((s, t) => s + (parseInt($tr.find(`.pp-cell-${t}`).attr('data-order')) || 0), 0);
+            $tr.find('.btn-pp-copy').prop('disabled', !$tr.attr('data-room-key') || !total);
+            empTable.row($tr).invalidate('dom');
+        }
+
+        // ---------------- Nhân bản khai báo sang NV cùng phòng SX ----------------
+        let copySourceId = null;
+
+        $(document).on('click', '.btn-pp-copy', function() {
+            const $src = $(this).closest('tr');
+            copySourceId = $src.data('employee-id');
+            const roomKey = String($src.attr('data-room-key') || '');
+            const cells = $tr => $tr.children('td');
+
+            $('#pp-copy-source').text(cells($src).eq(2).text() + ' (' + cells($src).eq(1).text() + ')');
+            $('#pp-copy-summary').html(
+                Object.keys(typeLabels).map(t => `${t}: <b>${parseInt($src.find(`.pp-cell-${t}`).attr('data-order')) || 0}</b>`).join(' · ') +
+                ' · Phòng: ' + cells($src).eq(4).html());
+
+            // Ứng viên lấy từ mọi dòng của bảng (kể cả trang khác), cùng tập phòng SX với nguồn
+            let html = '';
+            empTable.rows().nodes().to$().each(function() {
+                const $tr = $(this);
+                if ($tr.data('employee-id') == copySourceId || String($tr.attr('data-room-key') || '') !== roomKey) return;
+                const c = cells($tr);
+                const counts = Object.keys(typeLabels).map(t => parseInt($tr.find(`.pp-cell-${t}`).attr('data-order')) || 0).join(' / ');
+                html += `<tr data-id="${$tr.data('employee-id')}" data-search="${esc((c.eq(1).text() + ' ' + c.eq(2).text()).toLowerCase())}">
+                    <td class="text-center"><input type="checkbox" class="pp-copy-check"></td>
+                    <td>${esc(c.eq(1).text())}</td>
+                    <td>${esc(c.eq(2).text())}</td>
+                    <td>${esc(c.eq(3).text())}</td>
+                    <td class="text-center">${counts}</td>
+                </tr>`;
+            });
+            $('#pp-copy-list').html(html ||
+                '<tr><td colspan="5" class="text-center text-muted py-3">Không có nhân viên nào khác có cùng phòng sản xuất.</td></tr>');
+            $('#pp-copy-search').val('');
+            $('#pp-copy-all').prop('checked', false);
+            $('#pp-copy-merge').prop('checked', true);
+            updateCopyInfo();
+            $('#pp-copy-modal').modal('show');
+        });
+
+        function updateCopyInfo() {
+            const n = $('#pp-copy-list .pp-copy-check:checked').length;
+            $('#pp-copy-info').text(n ? `Đã chọn ${n} nhân viên` : '');
+            $('#pp-copy-save').prop('disabled', !n);
+        }
+
+        $('#pp-copy-search').on('input', function() {
+            const q = $(this).val().trim().toLowerCase();
+            $('#pp-copy-list tr[data-id]').each(function() {
+                $(this).toggle(!q || $(this).attr('data-search').indexOf(q) !== -1);
+            });
+        });
+        $('#pp-copy-list').on('change', '.pp-copy-check', function() {
+            $(this).closest('tr').toggleClass('checked', this.checked);
+            updateCopyInfo();
+        });
+        $('#pp-copy-list').on('click', 'tr[data-id] td:not(:first-child)', function() {
+            $(this).closest('tr').find('.pp-copy-check').trigger('click');
+        });
+        $('#pp-copy-all').on('change', function() {
+            const val = this.checked;
+            $('#pp-copy-list tr[data-id]:visible .pp-copy-check').each(function() {
+                $(this).prop('checked', val).closest('tr').toggleClass('checked', val);
+            });
+            updateCopyInfo();
+        });
+
+        $('#pp-copy-save').on('click', async function() {
+            const targetIds = $('#pp-copy-list .pp-copy-check:checked').map(function() {
+                return $(this).closest('tr').data('id');
+            }).get();
+            if (!targetIds.length) return;
+            const replace = $('#pp-copy-replace').is(':checked');
+
+            const ask = await Swal.fire({
+                icon: 'question',
+                title: 'Nhân bản khai báo?',
+                html: `Sang <b>${targetIds.length}</b> nhân viên – ` + (replace ?
+                    '<b class="text-danger">ghi đè</b>: sản phẩm nhân viên nhận đang có mà nguồn không có sẽ bị bỏ.' :
+                    '<b>cộng thêm</b> vào sản phẩm đang có.'),
+                showCancelButton: true,
+                confirmButtonText: 'Nhân bản',
+                cancelButtonText: 'Hủy'
+            });
+            if (!ask.isConfirmed) return;
+
+            const $btn = $(this).prop('disabled', true);
+            try {
+                const res = await $.ajax({
+                    url: urls.copy,
+                    method: 'POST',
+                    data: {
+                        _token: "{{ csrf_token() }}",
+                        source_id: copySourceId,
+                        target_ids: targetIds,
+                        replace: replace ? 1 : 0
+                    }
+                });
+                if (!res.success) throw {
+                    responseJSON: res
+                };
+                Object.entries(res.items || {}).forEach(([id, byType]) => {
+                    const $tr = $(`#tbl-pp-employees tr[data-employee-id="${id}"]`);
+                    Object.keys(typeLabels).forEach(type => renderCell($tr, type, byType[type] || []));
+                });
+                $('#pp-copy-modal').modal('hide');
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Đã nhân bản',
+                    text: res.message,
+                    timer: 2500,
+                    showConfirmButton: false
+                });
+            } catch (xhr) {
+                const msg = xhr && xhr.responseJSON ? (xhr.responseJSON.message || 'Lỗi') : 'Lỗi kết nối server';
+                Swal.fire('Lỗi', msg, 'error');
+            } finally {
+                updateCopyInfo();
             }
         });
 

@@ -36,6 +36,7 @@ Route::prefix('/quota')
             ->group(function () {
                 Route::get('employee/{id}', 'employee')->name('employee')->whereNumber('id');
                 Route::post('save', 'save')->name('save');
+                Route::post('copy', 'copy')->name('copy');
                 Route::get('/{department?}', 'index')->name('list');
             });
 

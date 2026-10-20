@@ -105,12 +105,12 @@
                 <th style="width: 150px;">Phòng SX</th>
                 <th style="width: 22%;">BTP được phép</th>
                 <th style="width: 22%;">TP được phép</th>
-                <th style="width: 50px;" class="text-center"></th>
+                <th style="width: 80px;" class="text-center"></th>
             </tr>
         </thead>
         <tbody>
             @foreach ($productTab['employees'] as $e)
-                <tr data-employee-id="{{ $e->id }}">
+                <tr data-employee-id="{{ $e->id }}" data-room-key="{{ $e->room_key }}">
                     <td class="text-center">{{ $loop->iteration }}</td>
                     <td>{{ $e->code }}</td>
                     <td>{{ $e->name }}</td>
@@ -145,6 +145,13 @@
                             @if (!$e->room_count) disabled @endif>
                             <i class="fas {{ $productTab['canEdit'] ? 'fa-edit' : 'fa-eye' }}"></i>
                         </button>
+                        @if ($productTab['canEdit'])
+                            <button class="btn btn-xs btn-info btn-pp-copy" data-id="{{ $e->id }}"
+                                title="Nhân bản khai báo sang nhân viên khác cùng phòng SX"
+                                @if (!$e->room_count || !($e->btp_count + $e->tp_count)) disabled @endif>
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        @endif
                     </td>
                 </tr>
             @endforeach
