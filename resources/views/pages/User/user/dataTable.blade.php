@@ -28,6 +28,7 @@
                         <th>Mail</th>
                         <th>Người Tạo</th>
                         <th>Ngày Tạo</th>
+                        <th>Trạng Thái</th>
                         <th>Quyền Riêng</th>
                         <th>Edit</th>
                         <th>DeActive</th>
@@ -46,6 +47,13 @@
                             <td>{{ $data->mail }}</td>
                             <td>{{ $data->prepareBy }}</td>
                             <td>{{ \Carbon\Carbon::parse($data->created_at)->format('d/m/Y') }}</td>
+                            <td class="text-center align-middle">
+                                @if ($data->isActive)
+                                    <span class="badge badge-success">Hoạt động</span>
+                                @else
+                                    <span class="badge badge-secondary">Vô hiệu</span>
+                                @endif
+                            </td>
 
                             <td class="text-center align-middle">
                                 <button type="button" class="btn btn-info btn-user-permission"
@@ -68,14 +76,26 @@
 
                             <td class="text-center align-middle">
 
-                                <form class="form-deActive"
-                                    action="{{ route('pages.User.user.deActive', ['id' => $data->id]) }}"
-                                    method="post">
-                                    @csrf
-                                    <button type="submit" class="btn btn-danger" data-name="{{ $data->userName }}">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </form>
+                                @if ($data->isActive)
+                                    <form class="form-deActive"
+                                        action="{{ route('pages.User.user.deActive', ['id' => $data->id]) }}"
+                                        method="post">
+                                        @csrf
+                                        <button type="submit" class="btn btn-danger" data-name="{{ $data->userName }}">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
+                                @else
+                                    <form class="form-active"
+                                        action="{{ route('pages.User.user.active', ['id' => $data->id]) }}"
+                                        method="post">
+                                        @csrf
+                                        <button type="submit" class="btn btn-success" data-name="{{ $data->userName }}"
+                                            title="Kích hoạt lại">
+                                            <i class="fas fa-undo"></i>
+                                        </button>
+                                    </form>
+                                @endif
 
                             </td>
                         </tr>
@@ -144,6 +164,27 @@
                 title: 'Bạn chắc chắn muốn vô hiệu?',
                 text: `User: ${name}`,
                 icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#28a745',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Đồng ý',
+                cancelButtonText: 'Hủy'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    form.submit();
+                }
+            });
+        });
+
+        $('.form-active').on('submit', function(e) {
+            e.preventDefault();
+            const form = this;
+            const name = $(form).find('button[type="submit"]').data('name');
+
+            Swal.fire({
+                title: 'Kích hoạt lại tài khoản?',
+                text: `User: ${name}`,
+                icon: 'question',
                 showCancelButton: true,
                 confirmButtonColor: '#28a745',
                 cancelButtonColor: '#d33',

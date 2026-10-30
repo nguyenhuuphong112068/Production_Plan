@@ -22,8 +22,9 @@ Route::prefix('/User')
         Route::get('','index')->name('list');
         Route::post('store','store')->name('store');
         Route::post('update', 'update')->name('update');
-        Route::post('deActive/{id}','deActive')->name('deActive'); 
-    
+        Route::post('deActive/{id}','deActive')->name('deActive');
+        Route::post('active/{id}','active')->name('active');
+
     });
 
     Route::prefix('/user_permission')

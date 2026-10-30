@@ -40,6 +40,20 @@ class LoginController extends Controller
                 ->withInput($request->only('username'));
         }
 
+        // ── 0. Tài khoản đã bị vô hiệu hoá (isActive = 0) -> chặn đăng nhập ──
+        if (! $getUser->isActive) {
+            AuditTrialController::log(
+                'Login Blocked', 'user_management', $getUser->id, 'NA',
+                'Tài khoản đã bị vô hiệu hoá', $getUser->userName
+            );
+            LoginHistory::failure('inactive', $getUser->userName, $getUser->id, 'Đăng nhập bằng tài khoản đã bị vô hiệu hoá');
+
+            return redirect()->route('login')
+                ->with('error', 'Tài Khoản Đã Bị Vô Hiệu Hoá. Vui Lòng Liên Hệ Quản Trị Viên!')
+                ->with('activeForm', 'login')
+                ->withInput($request->only('username'));
+        }
+
         $maxAttempts = (int) config('security.max_login_attempts', 5);
         $lockoutMin  = (int) config('security.lockout_minutes', 15);
 
@@ -279,6 +293,11 @@ class LoginController extends Controller
 
         if (! $getUser) {
             return back()->with('error', 'User Không tồn tại');
+        }
+
+        // Đổi mật khẩu xong là vào thẳng hệ thống -> tài khoản vô hiệu cũng phải chặn ở đây
+        if (! $getUser->isActive) {
+            return back()->with('error', 'Tài Khoản Đã Bị Vô Hiệu Hoá. Vui Lòng Liên Hệ Quản Trị Viên!')->with('activeForm', 'changePass');
         }
 
         // 3️⃣ Xác thực mật khẩu cũ

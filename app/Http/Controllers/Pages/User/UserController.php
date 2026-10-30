@@ -17,8 +17,9 @@ class UserController extends Controller
                 $deparments = DB::table('deparments')->where('active', true)->get();
                 $roles = DB::table('roles')->where('active', 1)->get();
 
+                // Hiện cả tài khoản đã vô hiệu (isActive = 0) để còn kích hoạt lại; tài khoản đang dùng xếp trước
                 $datas = DB::table('user_management')
-                    ->where ('isActive',1)
+                    ->orderBy('isActive','desc')
                     ->orderBy('created_at','desc')
                     ->get()
                     ->map(function($user) {
@@ -172,5 +173,15 @@ class UserController extends Controller
                         'updated_at' => now(), 
                 ]);
                 return redirect()->back()->with('success', 'Vô Hiệu Hóa thành công!');
+        }
+
+        public function active(string|int $id){
+
+               DB::table('user_management')->where('id', $id)->update([
+                        'isActive' => 1,
+                        'prepareBy' => session('user')['fullName'],
+                        'updated_at' => now(),
+                ]);
+                return redirect()->back()->with('success', 'Kích Hoạt thành công!');
         }
 }

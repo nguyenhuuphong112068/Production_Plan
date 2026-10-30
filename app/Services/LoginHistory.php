@@ -20,10 +20,12 @@ class LoginHistory
         'failed'   => ['label' => 'Sai mật khẩu / tài khoản', 'badge' => 'badge-warning'],
         'locked'   => ['label' => 'Bị khoá', 'badge' => 'badge-danger'],
         'pwchange' => ['label' => 'Phải đổi mật khẩu', 'badge' => 'badge-info'],
+        'inactive' => ['label' => 'Tài khoản vô hiệu', 'badge' => 'badge-dark'],
     ];
 
     public const LOGOUT_TYPES = [
         'manual' => 'Tự đăng xuất',
+        'inactive' => 'Tài khoản bị vô hiệu hoá',
     ];
 
     /** Đăng nhập thành công — giữ id dòng trong session để cập nhật khi kết thúc phiên. */
@@ -39,7 +41,7 @@ class LoginHistory
         session([self::SESSION_KEY => $id, 'login_history_touched_ts' => now()->timestamp]);
     }
 
-    /** Lần đăng nhập không vào được hệ thống: failed | locked | pwchange. */
+    /** Lần đăng nhập không vào được hệ thống: failed | locked | pwchange | inactive. */
     public static function failure(string $status, string $userName, ?int $userId, string $reason): void
     {
         DB::table('login_histories')->insert(self::base($userName, $userId) + [

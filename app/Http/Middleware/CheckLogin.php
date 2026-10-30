@@ -19,8 +19,9 @@ class CheckLogin
 
         if (!session()->has('user') || empty(session('user.fullName'))) {
              return redirect()->route ('login')->with('error', 'Vui Lòng Đăng Nhập!');
-            
+
         }
+
         return $next($request);
     }
 }

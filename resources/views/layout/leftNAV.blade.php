@@ -1090,15 +1090,9 @@
                             </li>
                         @endif
                         <li class="nav-item">
-                            <a href="{{ route('pages.User.login_history.mine') }}" class="nav-link">
-                                <i class="far fa-circle nav-icon"></i>
-                                <p>Của Tôi</p>
-                            </a>
-                        </li>
-                        <li class="nav-item">
                             <a href="{{ route('pages.AuditTrail.list') }}" class="nav-link">
                                 <i class="far fa-circle nav-icon"></i>
-                                <p>Audit Trail</p>
+                                <p>Lịch Sử Đăng Nhập</p>
                             </a>
                         </li>
                     </ul>
