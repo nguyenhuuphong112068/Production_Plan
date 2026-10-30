@@ -171,16 +171,11 @@ class MaintenanceDailyReportController extends Controller
                             if ($statusRaw == 'Fail') $yield = 0;
                             elseif ($statusRaw == 'Skip') $yield = 2;
 
+                            // Chỉ lấy kết quả từ CAL. Giờ thực tế + finished do Nhận / Trả phòng ở trang Thực Thi
+                            // Sản Xuất ghi (30/10/2026); finished = 1 ở đây sẽ làm lịch không còn nhận phòng được.
                             DB::table('stage_plan')->where('id', $spId)
                                 ->where('finished', 0)
-                                ->update([
-                                    'actual_start' => $res->Sch_caldone_to,
-                                    'actual_end'   => $res->Sch_CalDone_On,
-                                    'finished_by'  => $res->Sch_Cal_Done_by ?? null,
-                                    'finished'     => 1,
-                                    'yields'       => $yield,
-                                    'finished_date' => now()
-                                ]);
+                                ->update(['yields' => $yield]);
                         }
                     }
                 }

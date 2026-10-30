@@ -227,6 +227,7 @@
                                     <input type="hidden" name="id" value = "{{ $data->id }}">
                                     <input type="hidden" name="active" value="{{ $data->active }}">
                                     <input type="hidden" name="IsHypothesis" value="{{ $data->IsHypothesis }}">
+                                    <input type="hidden" name="deactive_reason" value="">
 
                                     @if ($data->active)
                                         <button type="submit" class="btn btn-danger" data-type="{{ $data->active }}"
@@ -298,6 +299,13 @@
 <script src="{{ asset('js/popper.min.js') }}"></script>
 <script src="{{ asset('js/bootstrap.min.js') }}"></script>
 <script src="{{ asset('js/sweetalert2.all.min.js') }}"></script>
+<script src="{{ asset('assets/vendor/select2/select2.min.js') }}"></script>
+
+@if (session('error'))
+    <script>
+        Swal.fire('Lỗi', @json(session('error')), 'error');
+    </script>
+@endif
 
 @if (session('success'))
     <script>
@@ -314,6 +322,38 @@
 <script>
     $(document).ready(function() {
         document.body.style.overflowY = "auto";
+
+        // Các ô chọn trong modal Tạo mới / Cập nhật: gõ vài ký tự để lọc, không phân biệt dấu/hoa thường,
+        // nhiều từ thì từng từ chỉ cần có mặt (vd "stella 100" khớp "Aceclofenac STELLA 100 mg")
+        const searchNormalize = (text) => (text || '').toString().toLowerCase()
+            .normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd');
+        const $modalSelects = $('#create_modal select, #update_modal select');
+
+        $modalSelects.each(function() {
+            const $select = $(this);
+            const $placeholder = $select.find('option[value=""]').first();
+            $select.select2({
+                theme: 'bootstrap4',
+                width: '100%',
+                placeholder: $placeholder.length ? $placeholder.text().trim() : undefined,
+                allowClear: $placeholder.length > 0,
+                dropdownParent: $select.closest('.modal'),
+                matcher: function(params, data) {
+                    const terms = searchNormalize(params.term).split(/\s+/).filter(Boolean);
+                    if (!terms.length) return data;
+                    if (!data.id) return null;
+                    const text = searchNormalize(data.text);
+                    return terms.every(t => text.includes(t)) ? data : null;
+                }
+            });
+        });
+
+        // Mở dropdown là con trỏ nằm sẵn ở ô tìm kiếm, gõ được ngay
+        $modalSelects.on('select2:open', function() {
+            const search = document.querySelector('.select2-container--open .select2-search__field');
+            if (search) search.focus();
+        });
+
         $('.btn-edit').click(function() {
             const button = $(this);
             const modal = $('#update_modal');
@@ -324,9 +364,9 @@
             modal.find('textarea[name="change_reason"]').val('');
             modal.find('input[name="finished_product_code"]').val(button.data('finished_product_code'));
             modal.find('input[name="intermediate_code"]').val(button.data('intermediate_code'));
-            modal.find('select[name="product_name_id"]').val(button.data('product_name_id'));
-            modal.find('select[name="market_id"]').val(button.data('market_id'));
-            modal.find('select[name="specification_id"]').val(button.data('specification_id'));
+            modal.find('select[name="product_name_id"]').val(button.data('product_name_id')).trigger('change.select2');
+            modal.find('select[name="market_id"]').val(button.data('market_id')).trigger('change.select2');
+            modal.find('select[name="specification_id"]').val(button.data('specification_id')).trigger('change.select2');
             modal.find('input[name="batch_size"]').val(button.data('batch_size'));
             modal.find('input[name="batch_qty"]').val(button.data('batch_qty'));
             modal.find('input[name="unit_batch_qty"]').val(button.data('unit_batch_qty'));
@@ -363,6 +403,15 @@
                 title = 'Bạn chắc chắn muốn phục hồi danh mục?'
             }
 
+            // Vô hiệu hóa bắt buộc nhập lý do (lưu vào change_reason, xem ở Lịch Sử); phục hồi thì không cần
+            const reasonOptions = active ? {
+                input: 'textarea',
+                inputLabel: 'Lý do vô hiệu hóa *',
+                inputPlaceholder: 'Nhập lý do vô hiệu hóa danh mục...',
+                inputAttributes: { maxlength: 480 },
+                inputValidator: (value) => !value || !value.trim() ? 'Vui lòng nhập lý do vô hiệu hóa.' : undefined
+            } : {};
+
             Swal.fire({
                 title: title,
                 text: `Sản phẩm: ${productName}`,
@@ -371,9 +420,11 @@
                 confirmButtonColor: '#28a745',
                 cancelButtonColor: '#d33',
                 confirmButtonText: 'Đồng ý',
-                cancelButtonText: 'Hủy'
+                cancelButtonText: 'Hủy',
+                ...reasonOptions
             }).then((result) => {
                 if (result.isConfirmed) {
+                    $(form).find('input[name="deactive_reason"]').val(active ? result.value.trim() : '');
                     form.submit(); // chỉ submit sau khi xác nhận
                 }
             });

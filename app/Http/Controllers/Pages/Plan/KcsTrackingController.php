@@ -262,7 +262,6 @@ class KcsTrackingController extends Controller
             'Ngày AP DR/IR',
             'OOS',
             'Ngày AP OOS',
-            'Ngày AP DR/IR KCQ',
             'Ngày AP OPV/PVR',
             'Ngày Chờ KCS Theo Đúng Thứ Tự Lô',
             'Ngày KCS',
@@ -356,7 +355,6 @@ class KcsTrackingController extends Controller
                 $formatDate($value('dr_ir_approval_date')),
                 $value('oos'),
                 $formatDate($value('oos_approval_date')),
-                $formatDate($value('dr_ir_kcq_approval_date')),
                 $formatDate($value('opv_pvr_approval_date')),
                 $formatDate($value('kcs_queue_date')),
                 $formatDate($kcsDate),
@@ -391,7 +389,7 @@ class KcsTrackingController extends Controller
 
         // Tên sản phẩm dài để auto size sẽ tràn màn hình
         $sheet->getColumnDimension('D')->setAutoSize(false)->setWidth(35);
-        $sheet->getColumnDimension('X')->setAutoSize(false)->setWidth(25); // Ghi Chú
+        $sheet->getColumnDimension('W')->setAutoSize(false)->setWidth(25); // Ghi Chú
 
         // Ghim tiêu đề + 3 cột định danh đầu (Số Lệnh, Số Lô), giống vùng ghim của lưới
         $sheet->freezePane('D' . ($headerRow + 1));

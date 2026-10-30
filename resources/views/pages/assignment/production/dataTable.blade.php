@@ -1510,6 +1510,8 @@
     // gỡ lớp này trước khi lưu) + khung liệt kê NV bên dưới ô. Chỉ cảnh báo, không chặn. BTP áp cho CĐ 1-6, TP cho CĐ 7.
     // Từ 15/10/2026 xét MỌI NV, kể cả NV chưa khai báo sản phẩm nào. Mục vệ sinh và chữ gõ tay không xét.
     const productAuth = @json($productAuth);
+    // EMPLOYEE_PRODUCT_WARNING: false = không cảnh báo, dòng lô sửa chữ tự do như trước (xoá bớt / thêm số lô)
+    const productWarning = @json($productWarning);
 
     function productTypeForStage(stage) {
         stage = parseInt(stage, 10);
@@ -1543,8 +1545,13 @@
     // Mọi dòng lô (chép bằng >> / >>> / tự điền theo ca, hoặc thêm bằng nút [+]) đều KHÔNG sửa chữ được
     // (contenteditable=false) để chữ luôn khớp lô mà data-sp-id trỏ tới, và Enter không nhân bản liên kết sang dòng gõ
     // tay. Sau dòng lô cuối luôn chừa một dòng trống sửa được để gõ thêm ghi chú.
+    // Tắt EMPLOYEE_PRODUCT_WARNING thì ngược lại: mở khoá mọi dòng lô (kể cả dòng đã lưu khi còn khoá).
     function lockJobDescItems($desc) {
         if (!$desc.length || $desc.attr('contenteditable') !== 'true') return;
+        if (!productWarning) {
+            $desc.find('.plan-item').removeAttr('contenteditable');
+            return;
+        }
         $desc.find('.plan-item').attr('contenteditable', 'false');
         if ($desc.children().last().hasClass('plan-item')) {
             $desc.append('<div><br></div>');
@@ -1748,6 +1755,11 @@
         lockJobDescItems($item.find('.job-desc'));
         const $desc = $item.find('.job-desc');
         if (!$desc.length) return;
+        if (!productWarning) {
+            $desc.find('.paw-flag').removeClass('paw-flag');
+            $item.find('.product-auth-warn').remove();
+            return;
+        }
         const $row = $item.closest('.room-row');
 
         const persons = [];

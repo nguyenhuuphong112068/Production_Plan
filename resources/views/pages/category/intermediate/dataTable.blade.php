@@ -381,6 +381,7 @@
                                     <input type="hidden" name="id" value = "{{ $data->id }}">
                                     <input type="hidden" name="active" value="{{ $data->active }}">
                                     <input type="hidden" name="IsHypothesis" value="{{ $data->IsHypothesis }}">
+                                    <input type="hidden" name="deactive_reason" value="">
 
                                     @if ($data->active)
                                         <button type="submit" class="btn btn-danger"
@@ -459,6 +460,12 @@
 <script src="{{ asset('js/bootstrap.min.js') }}"></script>
 <script src="{{ asset('js/sweetalert2.all.min.js') }}"></script>
 <script src="{{ asset('assets/vendor/select2/select2.min.js') }}"></script>
+
+@if (session('error'))
+    <script>
+        Swal.fire('Lỗi', @json(session('error')), 'error');
+    </script>
+@endif
 
 @if (session('success'))
     <script>
@@ -601,6 +608,15 @@
                 title = 'Bạn chắc chắn muốn phục hồi danh mục?'
             }
 
+            // Vô hiệu hóa bắt buộc nhập lý do (lưu vào change_reason, xem ở Lịch Sử); phục hồi thì không cần
+            const reasonOptions = active ? {
+                input: 'textarea',
+                inputLabel: 'Lý do vô hiệu hóa *',
+                inputPlaceholder: 'Nhập lý do vô hiệu hóa danh mục...',
+                inputAttributes: { maxlength: 480 },
+                inputValidator: (value) => !value || !value.trim() ? 'Vui lòng nhập lý do vô hiệu hóa.' : undefined
+            } : {};
+
             Swal.fire({
                 title: title,
                 text: ` ${productName}`,
@@ -609,9 +625,11 @@
                 confirmButtonColor: '#28a745',
                 cancelButtonColor: '#d33',
                 confirmButtonText: 'Đồng ý',
-                cancelButtonText: 'Hủy'
+                cancelButtonText: 'Hủy',
+                ...reasonOptions
             }).then((result) => {
                 if (result.isConfirmed) {
+                    $(form).find('input[name="deactive_reason"]').val(active ? result.value.trim() : '');
                     form.submit(); // chỉ submit sau khi xác nhận
                 }
             });

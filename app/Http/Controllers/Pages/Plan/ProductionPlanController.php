@@ -1758,7 +1758,9 @@ class ProductionPlanController extends Controller
                                 "number_parkaging" => $request->number_of_unit,
                                 "only_parkaging" => 1,
                                 "note" => $request->note ?? "NA",
-                                'deparment_code' => session('user')['production_code'],
+                                // Theo lô chính, không theo session: session dùng chung mọi tab nên
+                                // đang mở phân xưởng khác ở tab khác sẽ ghi sai (lô 11028 bị PXTN)
+                                'deparment_code' => $mainPlanMaster->deparment_code,
                                 'prepared_by' => session('user')['fullName'],
                                 'created_at' => now(),
                         ]);
@@ -1821,7 +1823,7 @@ class ProductionPlanController extends Controller
                                 "number_parkaging" =>  $request->number_of_unit,
                                 "only_parkaging" => 1,
                                 "note" => $request->note ?? "NA",
-                                'deparment_code' => session('user')['production_code'],
+                                'deparment_code' => $mainPlanMaster->deparment_code,
                                 'prepared_by' => session('user')['fullName'],
                                 'created_at' => now(),
                                 'updated_at' => now(),

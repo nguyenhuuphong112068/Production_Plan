@@ -52,7 +52,7 @@
                     <div class="form-group">
                         <label for="name">Tên Sản Phẩm Theo BPR</label>
                         <select class="form-control" name="product_name_id">
-                            <option> --- Chọn Sản Phẩm --- </option>
+                            <option value=""> --- Chọn Sản Phẩm --- </option>
                             @foreach ($productNames as $productName)
                                 <option value="{{ $productName->id }}"
                                     {{ old('product_name_id') == $productName->id ? 'selected' : '' }}>
@@ -124,7 +124,7 @@
                             <div class="form-group">
                                 <label for="market_id"> Thị Trường </label>
                                 <select class="form-control" name="market_id">
-                                    <option> - Chọn Thị Trường - </option>
+                                    <option value=""> - Chọn Thị Trường - </option>
                                     @foreach ($markets as $market)
                                         <option value="{{ $market->id }}"
                                             {{ old('market_id') == $market->id ? 'selected' : '' }}>
@@ -142,7 +142,7 @@
                             <div class="form-group">
                                 <label for="specification_id">Qui Cách</label>
                                 <select class="form-control" name="specification_id">
-                                    <option> - Chọn Qui Cách - </option>
+                                    <option value=""> - Chọn Qui Cách - </option>
                                     @foreach ($specifications as $specification)
                                         <option value="{{ $specification->id }}"
                                             {{ old('specification_id') == $specification->id ? 'selected' : '' }}>

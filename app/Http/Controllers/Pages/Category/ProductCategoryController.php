@@ -233,19 +233,29 @@ class ProductCategoryController extends Controller
 
         public function deActive(Request $request){
         
+                // Vô hiệu hóa (hoặc hủy mã giả định) bắt buộc có lý do; kích hoạt lại thì không cần
+                $reason = trim((string) $request->deactive_reason);
+                $isDeactivating = $request->IsHypothesis == 1 || $request->active;
+                if ($isDeactivating && $reason === '') {
+                        return redirect()->back()->with('error', 'Vui lòng nhập lý do vô hiệu hóa.');
+                }
+                if (mb_strlen($reason) > 480) {
+                        return redirect()->back()->with('error', 'Lý do vô hiệu hóa tối đa 480 ký tự.');
+                }
+
                 $this->logHistory($request->id);
 
                 if ($request->IsHypothesis == 1){
                         DB::table('finished_product_category')->where('id', $request->id)->update([
                                 'cancel' => 1,
-                                'change_reason' => 'Hủy mã giả định',
+                                'change_reason' => 'Hủy mã giả định: ' . $reason,
                                 'prepared_by' => session('user')['fullName'],
                                 'updated_at' => now(),
                         ]);
                 }else{
                         DB::table('finished_product_category')->where('id', $request->id)->update([
                                 'Active' => !$request->active,
-                                'change_reason' => $request->active ? 'Vô hiệu hóa' : 'Kích hoạt lại',
+                                'change_reason' => $request->active ? 'Vô hiệu hóa: ' . $reason : 'Kích hoạt lại',
                                 'prepared_by' => session('user')['fullName'],
                                 'updated_at' => now(), 
                         ]);

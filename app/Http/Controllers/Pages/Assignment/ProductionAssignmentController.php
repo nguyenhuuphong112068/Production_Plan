@@ -312,10 +312,12 @@ class ProductionAssignmentController extends Controller
                         if (empty($items)) continue;
                         // Mỗi dòng là một .plan-item mang data-sp-id để ca công tác liên kết được với stage_plan;
                         // không sửa chữ được (contenteditable=false), giống dòng chép bằng >> / thêm bằng [+]
+                        // — chỉ khoá khi bật EMPLOYEE_PRODUCT_WARNING
                         $unique_items = array_values(collect($items)->unique('text')->all());
+                        $lockAttr = config('app.employee_product_warning') ? " contenteditable='false'" : '';
                         $jobDescription = "";
                         foreach ($unique_items as $idx => $item) {
-                            $jobDescription .= "<div class='plan-item' contenteditable='false' data-start='{$item['start']}' data-sp-id='{$item['sp_id']}' data-kind='{$item['kind']}'>"
+                            $jobDescription .= "<div class='plan-item'{$lockAttr} data-start='{$item['start']}' data-sp-id='{$item['sp_id']}' data-kind='{$item['kind']}'>"
                                 . "<span class='pi-no'>" . ($idx + 1) . ". </span>" . $item['text'] . "</div>";
                         }
                         $jobDescription .= "<div><br></div>";
@@ -446,15 +448,20 @@ class ProductionAssignmentController extends Controller
 
         // Đối chiếu sản phẩm đã khai báo (employee_products) với các lô trong ô Hoạt động — chỉ để cảnh báo.
         // Lô gồm lịch lý thuyết trong ngày + lô được tham chiếu trong nội dung đã lưu (có thể chép từ ngày khác).
-        $productService = app(EmployeeProductService::class);
-        $activitySpIds = array_merge(
-            $stagePlans->flatten()->pluck('id')->all(),
-            EmployeeProductService::spIdsInDescriptions($allAssignments->flatten()->pluck('Job_description'))
-        );
-        $productAuth = [
-            'plans' => (object) $productService->planProducts($activitySpIds),
-            'declared' => (object) $productService->declarations($personnel->pluck('id')->all()),
-        ];
+        // Tắt bằng EMPLOYEE_PRODUCT_WARNING=false (chưa có dữ liệu khai báo): không cảnh báo, dòng lô sửa chữ tự do.
+        $productWarning = (bool) config('app.employee_product_warning');
+        $productAuth = ['plans' => (object) [], 'declared' => (object) []];
+        if ($productWarning) {
+            $productService = app(EmployeeProductService::class);
+            $activitySpIds = array_merge(
+                $stagePlans->flatten()->pluck('id')->all(),
+                EmployeeProductService::spIdsInDescriptions($allAssignments->flatten()->pluck('Job_description'))
+            );
+            $productAuth = [
+                'plans' => (object) $productService->planProducts($activitySpIds),
+                'declared' => (object) $productService->declarations($personnel->pluck('id')->all()),
+            ];
+        }
 
         // Tạo danh sách ID nhân sự được phép để lọc sidebar ở client
         $allowedPersonnelCodes = $personnel->pluck('code')->toArray();
@@ -501,6 +508,7 @@ class ProductionAssignmentController extends Controller
             'personnel' => $personnel,
             'skills' => $skills, // Truyền dữ liệu bậc kỹ năng
             'productAuth' => $productAuth,
+            'productWarning' => $productWarning,
             'allowedPersonnelCodes' => $allowedPersonnelCodes,
             'rooms' => $rooms,
             'allRooms' => $allRooms,

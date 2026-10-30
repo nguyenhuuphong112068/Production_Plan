@@ -256,7 +256,7 @@
         const modal = $(modalSelector); 
  
           modal.find('input[name="intermediate_code"]').val(button.data('intermediate_code'));
-          modal.find('select[name="product_name_id"]').val(button.data('product_name_id'));
+          modal.find('select[name="product_name_id"]').val(button.data('product_name_id')).trigger('change.select2');
           modal.find('input[name="batch_size"]').val(button.data('batch_size'));
           modal.find('input[name="unit_batch_size"]').val(button.data('unit_batch_size'));
           modal.find('input[name="batch_qty"]').val(button.data('batch_qty')).attr('max', button.data('batch_qty'));

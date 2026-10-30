@@ -151,7 +151,6 @@
                 <th class="bg-warning" style="min-width: 140px;">Ngày AP DR/IR</th>
                 <th class="bg-warning" style="min-width: 100px;">OOS</th>
                 <th class="bg-warning" style="min-width: 140px;">Ngày AP OOS</th>
-                <th class="bg-warning" style="min-width: 140px;">Ngày AP DR/IR KCQ</th>
                 <th class="bg-warning" style="min-width: 140px;">Ngày AP OPV/PVR</th>
                 <th class="bg-warning" style="min-width: 150px;"
                     title="Ngày lô được đưa vào hàng chờ KCS đúng thứ tự lô. Cũng là một mốc xét Ngày Đủ Điều Kiện.">
@@ -283,9 +282,6 @@
                     <td><input type="date" class="form-control form-control-sm kcs-input" name="oos_approval_date"
                             value="{{ $value('oos_approval_date') }}" {{ $canUpdate ? '' : 'disabled' }}></td>
                     <td><input type="date" class="form-control form-control-sm kcs-input"
-                            name="dr_ir_kcq_approval_date" value="{{ $value('dr_ir_kcq_approval_date') }}"
-                            {{ $canUpdate ? '' : 'disabled' }}></td>
-                    <td><input type="date" class="form-control form-control-sm kcs-input"
                             name="opv_pvr_approval_date" value="{{ $value('opv_pvr_approval_date') }}"
                             {{ $canUpdate ? '' : 'disabled' }}></td>
                     <td><input type="date" class="form-control form-control-sm kcs-input" name="kcs_queue_date"
@@ -318,7 +314,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="31" class="text-center text-muted py-4">
+                    <td colspan="30" class="text-center text-muted py-4">
                         Không có lô sản xuất nào trong khoảng đã chọn
                     </td>
                 </tr>

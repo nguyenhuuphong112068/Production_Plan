@@ -122,7 +122,13 @@ return [
         'driver' => env('APP_MAINTENANCE_DRIVER', 'file'),
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
-    
+
+    /*
+    | Cảnh báo "Nhân viên chưa được đào tạo sản phẩm" ở Lịch công tác (đối chiếu bảng employee_products).
+    | true: cảnh báo + khoá chữ dòng lô trong ô Hoạt động; false: không cảnh báo, dòng lô sửa chữ tự do như trước.
+    */
+    'employee_product_warning' => (bool) env('EMPLOYEE_PRODUCT_WARNING', false),
+
 
 
 ];

@@ -1288,12 +1288,9 @@ class MaintenanceSchedualController extends SchedualController
                                             $yield = 2;
                                         }
 
-                                        // Cập nhật stage_plan thực tế
+                                        // Chỉ lấy kết quả từ CAL. Giờ thực tế + finished do Nhận / Trả phòng ở trang Thực Thi
+                                        // Sản Xuất ghi (30/10/2026); finished = 1 ở đây sẽ làm lịch không còn nhận phòng được.
                                         DB::table('stage_plan')->where('id', $spId)->where('finished', 0)->update([
-                                            'actual_start' => $res->Sch_caldone_to,
-                                            'actual_end' => $res->Sch_caldone_to,
-                                            'finished_by' => $res->Sch_cal_Done_by ?? null,
-                                            'finished' => 1,
                                             'yields' => $yield,
                                         ]);
                                         $count++;
