@@ -44,7 +44,9 @@ Schedule::command('employees:sync-roster')
 // lượt liền mạch là vượt hạn mức của eO2 và bị chặn từ giữa chừng. Tháng kế
 // tiếp ít người xem nên tách sang một lượt riêng lúc 21:00, ngoài giờ làm việc.
 //
-// withoutOverlapping: một lượt có nghỉ giãn nhịp nên kéo dài vài phút.
+// withoutOverlapping: eO2 quy định hai lần gọi `overtime` cách nhau 5 phút
+// (`shiftapi.overtime_gap`), mỗi bộ phận một lần (PXV1 hai lần vì gộp Kho) nên
+// lượt 1 tháng kéo dài ~45 phút, lượt 2 tháng lúc 00:00 ~90 phút.
 // Ba mốc bám theo nhịp làm việc: trước ca sáng, đầu giờ chiều, và cuối giờ
 // chiều. Khoảng cách lớn nhất giữa hai lượt là 8 giờ (16:00 -> 00:00), nên
 // `shiftapi.cache_ttl` phải dài hơn con số đó, nếu không cache sẽ nguội giữa

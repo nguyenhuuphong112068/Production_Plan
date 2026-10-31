@@ -965,6 +965,9 @@ class MaintenancePlanController extends Controller
                                         'campaign_code' => $campaignCode,
                                         'order_by' =>  $plan->id,
                                         'code' =>  $plan->id . "_" . $prefix,
+                                        // insert nhiều dòng cần cùng tập cột với nhánh có phòng
+                                        'resourceId' => null,
+                                        'required_room_code' => null,
                                         'deparment_code' => $plan->deparment_code,
                                         'created_date' => now(),
                                 ];

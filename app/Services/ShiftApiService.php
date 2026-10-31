@@ -1027,11 +1027,33 @@ class ShiftApiService
         $blindBlocks = 0;   // số lượt 429 mà eO2 không nói phải chờ bao lâu
 
         foreach (array_chunk($urls, $chunkSize, true) as $i => $chunk) {
+            $hasOvertime = $this->chunkHasOvertime($chunk);
+
+            // Cổng `overtime` đang đóng thì dừng luôn, khỏi ngủ `batch_pause`
+            // vô ích. Bỏ cả mẻ chứ không chỉ riêng `overtime`: ô thiếu một
+            // endpoint thì đằng nào cũng không được ghi cache.
+            if ($hasOvertime && ($gateWait = $this->overtimeGateWait()) !== null) {
+                $this->rateLimitedFor = $gateWait;
+                break;
+            }
+
             if ($i > 0 && $chunkPause > 0) {
                 sleep($chunkPause);
             }
 
+            // Giữ cổng NGUYÊN TỬ ngay trước khi gửi: tiến trình khác có thể vừa
+            // chiếm cổng trong lúc mình ngủ.
+            if ($hasOvertime && !$this->claimOvertimeGate()) {
+                $this->rateLimitedFor = $this->overtimeGateWait() ?? (int) config('shiftapi.overtime_gap', 330);
+                break;
+            }
+
             $batch = $this->fetchBatch($chunk, $timeout);
+
+            // Tính 5 phút từ lúc lần gọi KẾT THÚC, không phải lúc bắt đầu.
+            if ($hasOvertime) {
+                $this->closeOvertimeGate();
+            }
 
             foreach ($batch['results'] as $key => $payload) {
                 $result[$key] = $payload;
@@ -1059,6 +1081,76 @@ class ShiftApiService
         }
 
         return $result;
+    }
+
+    private const OVERTIME_GATE_KEY = 'shiftapi:overtime_gate';
+
+    private function chunkHasOvertime(array $chunk): bool
+    {
+        foreach (array_keys($chunk) as $key) {
+            if (str_ends_with($key, "\0overtime")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Còn bao nhiêu giây nữa mới được gọi `overtime`, null nếu được gọi ngay.
+     *
+     * Quy định của eO2: hai lần gọi `overtime` phải cách nhau 5 phút, không
+     * phân biệt bộ phận - xem `overtime_gap` trong config.
+     */
+    public function overtimeGateWait(): ?int
+    {
+        if ((int) config('shiftapi.overtime_gap', 330) <= 0) {
+            return null;
+        }
+
+        try {
+            $openAt = (int) Cache::get(self::OVERTIME_GATE_KEY, 0);
+        } catch (\Throwable $e) {
+            return null; // cache hỏng thì không vì thế mà chặn luôn tính năng
+        }
+
+        $wait = $openAt - time();
+        return $wait > 0 ? $wait : null;
+    }
+
+    /**
+     * Chiếm cổng `overtime` trước khi gửi. `Cache::add` chỉ ghi khi khoá chưa
+     * tồn tại nên hai tiến trình không thể cùng chiếm.
+     */
+    private function claimOvertimeGate(): bool
+    {
+        $gap = (int) config('shiftapi.overtime_gap', 330);
+        if ($gap <= 0) {
+            return true;
+        }
+
+        try {
+            // Khoá quá hạn không cần dọn tay: DatabaseStore::add gọi get() trước,
+            // và get() tự xoá dòng đã hết hạn.
+            return Cache::add(self::OVERTIME_GATE_KEY, time() + $gap, $gap);
+        } catch (\Throwable $e) {
+            Log::warning('Khong giu duoc cong overtime: ' . $e->getMessage());
+            return true;
+        }
+    }
+
+    /** Đóng cổng thêm trọn `overtime_gap` tính từ lúc lần gọi vừa kết thúc. */
+    private function closeOvertimeGate(): void
+    {
+        $gap = (int) config('shiftapi.overtime_gap', 330);
+        if ($gap <= 0) {
+            return;
+        }
+
+        try {
+            Cache::put(self::OVERTIME_GATE_KEY, time() + $gap, $gap);
+        } catch (\Throwable $e) {
+            Log::warning('Khong dong duoc cong overtime: ' . $e->getMessage());
+        }
     }
 
     /**

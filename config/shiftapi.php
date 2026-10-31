@@ -93,6 +93,22 @@ return [
     'batch_pause' => env('SHIFT_API_BATCH_PAUSE', 70),
 
     /*
+    | Khoảng cách tối thiểu (giây) giữa hai lần gọi endpoint `overtime`.
+    |
+    | QUY ĐỊNH CỦA eO2 (31/10/2026): `overtime` trả rất nhiều dữ liệu nên hai lần
+    | gọi phải cách nhau 5 phút, bất kể `department`, để không làm quá tải máy
+    | chủ eO2. Đặt 330s = 5 phút + 30s biên. Tính từ lúc lần gọi trước KẾT THÚC
+    | (một lượt `overtime` của PXV1 có thể mất vài chục giây).
+    |
+    | Cổng này nằm trong bảng `cache` nên mọi tiến trình (web, command, nút Đồng
+    | bộ) cùng tuân theo. Luồng web gặp cổng đóng thì rơi về bản sao lưu ngay;
+    | `shifts:warm-cache` thì chủ động chờ cổng mở rồi mới nạp bộ phận kế tiếp.
+    |
+    | Đặt 0 để tắt.
+    */
+    'overtime_gap' => env('SHIFT_API_OVERTIME_GAP', 330),
+
+    /*
     |--------------------------------------------------------------------------
     | Hạn ngạch dùng chung tới eO2 PMS
     |--------------------------------------------------------------------------

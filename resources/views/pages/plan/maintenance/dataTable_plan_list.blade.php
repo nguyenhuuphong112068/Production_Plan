@@ -236,7 +236,7 @@
     <script>
         Swal.fire({
             title: 'Cảnh báo!',
-            html: `{!! session('error') !!}`,
+            html: @json(session('error')),
             icon: 'warning',
             width: '80%',
             showConfirmButton: true
@@ -248,7 +248,7 @@
     <script>
         Swal.fire({
             title: 'Cảnh báo!',
-            html: `{!! session('warning') !!}`,
+            html: @json(session('warning')),
             icon: 'warning',
             width: '30%',
             showConfirmButton: true

@@ -76,6 +76,11 @@ class WarmShiftCache extends Command
                 }
                 $first = false;
 
+                // eO2 quy định hai lần gọi `overtime` cách nhau 5 phút, bất kể bộ
+                // phận. Chủ động chờ cổng mở thay vì gửi rồi bị trả về, để không
+                // tiêu mất lượt thử lại.
+                $this->waitOvertimeGate($shiftApi, $label);
+
                 if ($this->warmOne($shiftApi, $label, $code, $month, $year, $depId, $mergeWarehouse, $retries)) {
                     $ok++;
                 } else {
@@ -88,6 +93,15 @@ class WarmShiftCache extends Command
         $this->line("Xong: {$ok} thành công, {$failed} thất bại, tổng {$total}s");
 
         return $failed > 0 && $ok === 0 ? self::FAILURE : self::SUCCESS;
+    }
+
+    private function waitOvertimeGate(ShiftApiService $shiftApi, string $label): void
+    {
+        $wait = $shiftApi->overtimeGateWait();
+        if ($wait !== null) {
+            $this->line("  {$label}: chờ {$wait}s cho đủ 5 phút giữa hai lần gọi overtime ...");
+            sleep($wait + 1);
+        }
     }
 
     /**
@@ -165,7 +179,9 @@ class WarmShiftCache extends Command
                 return false;
             }
 
-            $this->warn("  {$label}: bị eO2 chặn (429), chờ {$wait}s rồi thử lại");
+            // Gồm cả trường hợp PXV1: ô Kho cần lần gọi `overtime` thứ hai nên
+            // phải chờ cổng 5 phút mở lại.
+            $this->warn("  {$label}: tạm dừng gọi eO2 (429 hoặc chờ đủ 5 phút overtime), chờ {$wait}s rồi thử lại");
             sleep($wait);
         }
 
