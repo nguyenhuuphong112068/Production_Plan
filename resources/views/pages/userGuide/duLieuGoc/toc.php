@@ -61,15 +61,15 @@ return [
             'sources' => ['app/Services/OffDaysSyncService.php', 'app/Console/Commands/SyncOffDays.php'],
             'keywords' => 'ngay nghi le tet chu nhat lam bu eo2 ca truc cap nhat ngay nghi khong sap lich'],
     ],
-    'Khuôn ép vỉ' => [
+    'Khuôn & nhóm máy' => [
         ['id' => 'khuon-mau', 'file' => 'blisterMold', 'title' => 'Khuôn Mẫu', 'icon' => 'fas fa-th',
             'path' => 'Dữ Liệu Gốc › Khuôn Mẫu', 'route' => 'pages.materData.blister_mold.list',
             'sources' => [$mc . 'BlisterMoldController.php', 'resources/views/pages/materData/BlisterMold'],
-            'keywords' => 'ma khuon so luong loai may ep vi'],
-        ['id' => 'loai-may-ep-vi', 'file' => 'blisterType', 'title' => 'Loại Máy Ép Vỉ', 'icon' => 'fas fa-cogs',
-            'path' => 'Dữ Liệu Gốc › Loại Máy Ép Vỉ', 'route' => 'pages.materData.blister_type.list', 'perm' => 'layout_test',
+            'keywords' => 'ma khuon so luong loai may ep vi khuon dinh hinh'],
+        ['id' => 'loai-may-ep-vi', 'file' => 'blisterType', 'title' => 'Nhóm Máy', 'icon' => 'fas fa-cogs',
+            'path' => 'Dữ Liệu Gốc › Nhóm Máy', 'route' => 'pages.materData.blister_type.list',
             'sources' => [$mc . 'BlisterTypeController.php', 'resources/views/pages/materData/BlisterType'],
-            'keywords' => 'ma nhom may loai may'],
+            'keywords' => 'ma nhom may loai may dinh hinh dong goi dap vien dong nang ima zibo kiem soat trung khuon'],
     ],
     'Phân quyền' => [
         ['id' => 'phan-quyen', 'file' => 'permissions', 'title' => 'Phân Quyền', 'icon' => 'fas fa-user-shield',

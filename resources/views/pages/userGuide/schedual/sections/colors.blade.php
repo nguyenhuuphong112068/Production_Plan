@@ -39,7 +39,7 @@
     </table>
 </div>
 
-<h3>Cảnh báo khuôn (Đóng gói, Định hình S23 / S24)</h3>
+<h3>Cảnh báo khuôn (Đóng gói, Định hình ở phòng có loại máy)</h3>
 <p>
     Lô có khuôn hiện mã khuôn ở cuối tên lô. Lô vi phạm về khuôn có nền <span class="ug-swatch" style="background:#ffd500"></span>
     vàng và dòng cảnh báo trên thanh lô; nút <b>Lịch trùng khuôn</b> trên thanh công cụ nhảy lần lượt tới từng lô bị cảnh báo.
@@ -48,7 +48,7 @@
     <li><b>⚠️ Trùng Khuôn</b>: số phòng dùng cùng khuôn trong cùng thời gian vượt số lượng khuôn đang có.</li>
     <li><b>❌ Thiếu Khuôn!</b>: lô đã lên phòng cần khuôn nhưng chưa được gán khuôn (sản phẩm chưa khai báo khuôn, hoặc
         mọi bộ khuôn đều bận). Dùng <i>Phân bổ khuôn</i> trong hộp thoại Sắp lịch tự động hoặc chọn khuôn ở danh sách lô chờ.</li>
-    <li><b>❌ Sai Khuôn</b> (chỉ Đóng gói): khuôn ép vỉ không lắp được cho loại máy của phòng.</li>
+    <li><b>❌ Sai Khuôn</b>: khuôn đã gán không lắp được cho loại máy của phòng (khuôn ép vỉ với máy ép vỉ, khuôn Định hình với máy Định hình).</li>
 </ul>
 
 <h3>Màu lịch Bảo trì, Hiệu chuẩn, Tiện ích</h3>

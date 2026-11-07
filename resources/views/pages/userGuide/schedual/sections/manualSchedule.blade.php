@@ -36,7 +36,7 @@
         đoạn trước, các lô khác vẫn bám sát nhau.</li>
     <li><b>Pha Chế:</b> các lô thả cùng một lần được gán <b>chung một mã chiến dịch</b> cho mọi công đoạn.</li>
     <li><b>Đóng gói lô chia nhỏ:</b> chọn một phần của lô đóng gói đã chia thì các phần còn lại của lô đó được xếp theo.</li>
-    <li><b>Khuôn:</b> Đóng gói và Định hình ở phòng cần khuôn được gán khuôn luôn, ưu tiên khuôn đã chọn ở cột Khuôn của
+    <li><b>Khuôn:</b> Đóng gói và Định hình ở phòng cần khuôn (phòng Định hình có loại máy) được gán khuôn luôn, chỉ khuôn lắp được cho loại máy của phòng, ưu tiên khuôn đã chọn ở cột Khuôn của
         danh sách KHSX.</li>
     <li><b>Ngày nhận bao bì</b> (Đóng gói) được đặt là ngày làm việc liền trước ngày bắt đầu, nếu bao bì chưa nhận.</li>
     <li>Lịch vừa xếp ở trạng thái <b>chưa Submit</b>. Ở PXV1, xác nhận của Lead trên lô (nếu có) bị gỡ để Lead xác nhận lại.</li>

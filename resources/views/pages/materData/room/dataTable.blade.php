@@ -34,7 +34,7 @@
                         <th>Thiết Bị Chính</th>
                         <th>Công Suất (ĐV/Giờ)</th>
                         <th>Công Đoạn</th>
-                        <th>Loại Máy Ép Vỉ</th>
+                        <th>Loại Máy (ĐH / Ép Vỉ)</th>
                         <th>Tổ Quản Lý</th>
                         <th>Phân Xưởng</th>
                         <th>Người Tạo</th>
@@ -169,12 +169,7 @@
             modal.find('input[name="capacity"]').val(button.data('capacity'));
             modal.find('select[name="blister_type_code"]').val(button.data('blister_type_code'));
             
-            if (button.data('stage_code') == '7') {
-                $('#update_blister_type_container').show();
-            } else {
-                $('#update_blister_type_container').hide();
-                $('#update_blister_type_code').val('');
-            }
+            roomMachineTypeToggle('update', button.data('stage_code'));
 
 
         });

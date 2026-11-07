@@ -13,9 +13,16 @@
     ['Tên Thiết Bị Chính', true, 'Thiết bị chính của phòng.'],
     ['Công Suất Máy', true, 'Công suất theo đơn vị / giờ, dùng cho báo cáo năng suất.'],
     ['Công Đoạn', true, 'Công đoạn phòng chạy (Cân, Pha chế, Trộn hoàn tất, Định hình, Bao phim, Đóng gói...). Không sửa được sau khi tạo.'],
-    ['Loại Máy Ép Vỉ', false, 'Chỉ với phòng Đóng gói có máy ép vỉ: dùng để chọn khuôn phù hợp khi phân bổ khuôn.'],
+    ['Loại Máy Ép Vỉ / Loại Máy Định Hình', false, 'Chỉ hiện với phòng <b>Đóng gói</b> (Loại Máy Ép Vỉ) và phòng <b>Định hình</b> (Loại Máy Định Hình); danh sách lấy từ <a href="#loai-may-ep-vi">Nhóm Máy</a>, chỉ các loại máy cùng công đoạn với phòng. Dùng để chọn khuôn lắp được cho máy khi phân bổ khuôn. Ô này <b>sửa được</b> sau khi tạo.'],
     ['Tổ Quản Lý', true, 'Tổ phụ trách phòng (danh sách ở <a href="#to-quan-ly">Tổ Quản Lý</a>). Không sửa được sau khi tạo.'],
 ]])
+
+<div class="ug-callout">
+    <i class="fas fa-info-circle"></i>
+    <div>Phòng <b>Định hình</b> có chọn loại máy thì lô Định hình xếp vào phòng đó được <b>kiểm soát trùng khuôn</b> (phải có khuôn
+        rảnh, báo Thiếu / Trùng / Sai Khuôn trên lịch). Để trống thì phòng không kiểm soát khuôn. Cột <b>Loại Máy (ĐH / Ép Vỉ)</b>
+        trên bảng hiện loại máy đã chọn.</div>
+</div>
 
 <div class="ug-callout is-warn">
     <i class="fas fa-exclamation-triangle"></i>

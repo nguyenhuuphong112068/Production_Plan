@@ -7,7 +7,7 @@
     <table class="table table-bordered ug-table">
         <thead><tr><th style="width: 190px">Nhóm menu</th><th>Dùng để</th><th style="width: 150px">Hướng dẫn</th></tr></thead>
         <tbody>
-            <tr><td>Dữ Liệu Gốc</td><td>Danh mục nền: tên sản phẩm, phòng sản xuất, đơn vị, thị trường, tổ, phòng ban, khuôn (ngày nghỉ công ty tự lấy từ eO2).</td>
+            <tr><td>Dữ Liệu Gốc</td><td>Danh mục nền: tên sản phẩm, phòng sản xuất, đơn vị, thị trường, tổ, phòng ban, khuôn, nhóm máy (ngày nghỉ công ty tự lấy từ eO2).</td>
                 <td><a href="{{ route('pages.userGuide.show', 'duLieuGoc') }}">Dữ Liệu Gốc</a></td></tr>
             <tr><td>Danh Mục</td><td>Danh mục bán thành phẩm, thành phẩm, theo dõi ấn bản, kiểm tra NL/BB, cảnh báo nguồn NL, danh mục BT-HC-TI.</td>
                 <td><a href="{{ route('pages.userGuide.show', 'danhMuc') }}">Danh Mục</a></td></tr>

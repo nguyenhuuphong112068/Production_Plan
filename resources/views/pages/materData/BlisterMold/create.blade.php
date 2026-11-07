@@ -36,11 +36,11 @@
                         </select>
                     </div>
                     <div class="form-group" id="create_blister_type_group">
-                        <label for="blister_type_code">Loại Máy Ép Vỉ <span class="text-danger">*</span></label>
+                        <label for="blister_type_code"><span class="js-mold-type-label">Loại Máy Ép Vỉ</span> <span class="text-danger">*</span></label>
                         <select name="blister_type_code[]" id="blister_type_code" class="form-control @error('blister_type_code', 'createErrors') is-invalid @enderror" multiple required>
                             @if(isset($blister_types))
                                 @foreach ($blister_types as $blister_type)
-                                    <option value="{{ $blister_type->code }}" {{ is_array(old('blister_type_code')) && in_array($blister_type->code, old('blister_type_code')) ? 'selected' : '' }}>
+                                    <option value="{{ $blister_type->code }}" data-stage="{{ $blister_type->stage_code ?? 7 }}" {{ is_array(old('blister_type_code')) && in_array($blister_type->code, old('blister_type_code')) ? 'selected' : '' }}>
                                         {{ $blister_type->name }}
                                     </option>
                                 @endforeach

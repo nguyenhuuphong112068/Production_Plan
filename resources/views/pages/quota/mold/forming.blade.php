@@ -37,7 +37,8 @@
             </div>
             <div class="card-body">
                 <p class="text-muted mb-2">
-                    Chỉ liệt kê BTP có định mức Định Hình ở phòng kiểm soát khuôn. Mỗi khuôn chỉ chạy được
+                    Chỉ liệt kê BTP có định mức Định Hình ở phòng kiểm soát khuôn (phòng đã khai Loại Máy ở Dữ liệu gốc &rsaquo; Phòng Sản Xuất).
+                    Ô khuôn chỉ hiện khuôn lắp được cho loại máy của các phòng đó. Mỗi khuôn chỉ chạy được
                     trên tối đa <b>Số Lượng</b> phòng cùng lúc; khai báo khuôn ở Dữ liệu gốc &rsaquo; Khuôn Mẫu (Công Đoạn: Định Hình).
                 </p>
                 @php
@@ -123,9 +124,17 @@
                                 }).join(' ');
                             }
 
-                            var options = moldsData.map(function(mold) {
+                            // Chỉ khuôn lắp được cho loại máy của phòng đã định mức (khuôn đang chọn luôn giữ lại)
+                            var roomTypes = row.room_types ? String(row.room_types).split(',') : [];
+                            var options = moldsData.filter(function(mold) {
+                                if (selectedIds.indexOf(parseInt(mold.id)) !== -1) return true;
+                                var moldTypes = mold.blister_type_code || [];
+                                if (roomTypes.length === 0 || moldTypes.length === 0) return true;
+                                return moldTypes.some(function(t) { return roomTypes.indexOf(String(t)) !== -1; });
+                            }).map(function(mold) {
                                 var isSelected = selectedIds.indexOf(parseInt(mold.id)) !== -1 ? 'selected' : '';
-                                return '<option value="' + mold.id + '" data-amount="' + (mold.amount ?? 0) + '" ' +
+                                return '<option value="' + mold.id + '" data-amount="' + (mold.amount ?? 0) + '" data-type="' +
+                                    escapeHtml(mold.type_name || '') + '" ' +
                                     isSelected + '>' + escapeHtml(mold.code) + '</option>';
                             }).join('');
 
@@ -154,7 +163,8 @@
                             return mold.text;
                         }
                         var amount = $(mold.element).data('amount');
-                        var $state = $('<span></span>').text(mold.text);
+                        var typeName = $(mold.element).data('type');
+                        var $state = $('<span></span>').text(mold.text + (typeName ? ' (' + typeName + ')' : ''));
                         $state.append(' <span class="badge badge-info ml-1" style="font-size: 0.8em; padding: 0.2em 0.5em;">SL: ' +
                             (amount || 0) + '</span>');
                         return $state;

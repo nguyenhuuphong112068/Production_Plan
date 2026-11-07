@@ -676,16 +676,17 @@ Trong `scheduleCampaignBody`, `$candidates` lấy ngày MUỘN NHẤT của mọ
 
 | | CĐ 7 Đóng gói | CĐ 5 Định Hình |
 | --- | --- | --- |
-| Danh mục | `blister_mold` `stage_code = 7` (có `blister_type_code`) | `blister_mold` `stage_code = 5` (`blister_type_code` NULL) |
+| Danh mục | `blister_mold` `stage_code = 7`, `blister_type_code` = loại máy ép vỉ | `blister_mold` `stage_code = 5`, `blister_type_code` = loại máy ĐH (từ 07/11/2026, bắt buộc) |
 | Định mức | `finished_product_mold` theo **TP** (`finished_product_category_id`) | `intermediate_mold` theo **BTP** (`intermediate_code`), trang `/quota/mold/forming` |
-| Phòng áp dụng | mọi phòng, lọc khuôn theo loại máy ép vỉ | chỉ `room.require_mold = 1` (S23, S24 – IMA Zibo; S25/S36 MG2 cùng BTP nhưng không lắp lẫn khuôn) |
+| Phòng áp dụng | mọi phòng, lọc khuôn theo loại máy | chỉ phòng ĐH có `room.blister_type_code` (từ 07/11/2026; hiện S23, S24 – loại máy IMA Zibo mã 13; S25/S36 MG2 chưa có loại máy nên không kiểm soát), lọc khuôn theo loại máy |
 | Hạn chế xuống khuôn | có (dưới) | **không** (user chọn 05/11/2026) |
 
 - Mọi chỗ dùng khuôn đi qua helper: `declaredMolds($stage, $catId)`, `moldsForRoom($stage, $catId, $roomId)` (null = không sắp khuôn; [] = có định mức nhưng không khuôn nào lắp vừa → bỏ phòng), `moldConcurrentRooms()`, `pickBlisterMoldForPlan(..., $stageCode)`, `sanitizeBlisterMoldId(..., $stageCode)`. Không viết lại truy vấn `stage_code = 7` cứng.
 - `stage_plan.blister_mold_id` dùng chung cho lô CĐ 5 và CĐ 7 (id khuôn duy nhất toàn bảng, đếm trùng theo `whereIn stage_code MOLD_STAGES`).
 - Từ 06/11/2026 khuôn tách theo phân xưởng: `blister_mold.deparment_code` (dữ liệu cũ = PXV1), mã khuôn chỉ không trùng trong cùng phân xưởng (unique `deparment_code + code`). `declaredMolds` chỉ lấy khuôn cùng phân xưởng với TP/BTP (`blister_mold.deparment_code = fpc.deparment_code`); `view()` chỉ trả `blister_molds` của phân xưởng đang xem. `intermediate_mold` khoá theo mã BTP, nên trang Khuôn Định Hình chỉ xoá/ghi các dòng có khuôn của phân xưởng đang chọn.
-- Cảnh báo `colorEvent`: Trùng khuôn (cả 2 CĐ), Sai khuôn (chỉ CĐ 7, loại máy), Thiếu khuôn (CĐ 7 phòng có `blister_type_code`; CĐ 5 phòng `require_mold`). Nút Kiểm tra định mức/Phân bổ khuôn (`checkMissingMoldQuotas`, `autoAllocateMold`) gồm lô CĐ 5 ở phòng `require_mold` (tên lô ĐH có tiền tố `[ĐH]`).
-- Client: `view()` trả thêm `intermediate_product_molds` (định mức BTP trải ra theo `finished_product_category_id`) và `resources[].require_mold`.
+- Cảnh báo `colorEvent`: Trùng khuôn, Sai khuôn (loại máy, hiện tên loại máy qua `blisterTypeName()`), Thiếu khuôn (phòng có `blister_type_code`) – cả 2 CĐ. Nút Kiểm tra định mức/Phân bổ khuôn (`checkMissingMoldQuotas`, `autoAllocateMold`) gồm lô CĐ 5 ở phòng ĐH có loại máy (tên lô ĐH có tiền tố `[ĐH]`).
+- Client: `view()` trả thêm `intermediate_product_molds` (định mức BTP trải ra theo `finished_product_category_id`) và `resources[].require_mold` – từ 07/11/2026 là cột tính `ROOM_REQUIRE_MOLD_SQL` (CĐ 5 và có `blister_type_code`), không đọc cột `room.require_mold` nữa (cột còn trong CSDL, bỏ không). FE `getCompatibleMolds` lọc khuôn CĐ 5 theo `moldFitsRoomType` như CĐ 7.
+- **Loại máy / nhóm máy** (07/11/2026, user yêu cầu mở rộng ngoài S23/S24): `blister_type.stage_code` (7 máy ép vỉ, 5 máy ĐH), trang Dữ Liệu Gốc › Nhóm Máy (tên cũ Loại Máy Ép Vỉ, route `pages.materData.blister_type.*` giữ nguyên; bỏ chặn `layout_test` trên menu). `code` = mã nhóm máy, các máy lắp lẫn khuôn chung mã; một mã chỉ thuộc một công đoạn (kiểm ở `BlisterTypeController::validator`) nên lõi không cần lọc theo stage khi so mã. Phòng SX chọn loại máy cho phòng CĐ 5/7 (chỉ loại máy cùng công đoạn, `RoomController::checkMachineType`); Khuôn Mẫu bắt buộc chọn loại máy cùng công đoạn với khuôn. Thêm máy ĐH cần kiểm soát khuôn = khai loại máy + chọn cho phòng + khai khuôn, **không sửa code**. Migration `2026_11_07_090000_add_stage_code_to_blister_type` / SQL `database/sql/2026_11_07_machine_type_for_forming.sql` tạo loại máy IMA Zibo (CĐ 5) và gán cho phòng `require_mold = 1` + khuôn ĐH cũ.
 
 **Hạn chế xuống khuôn (chỉ ĐG):** chọn phòng = phòng có giờ bắt đầu sớm nhất. Riêng stage 7 khi `limit_mold_change` bật: phòng có khuôn liền trước trùng mã khuôn được ưu tiên nếu bắt đầu trễ hơn phòng tốt nhất ≤ `mold_change_tolerance` giờ (mặc định 72).
 

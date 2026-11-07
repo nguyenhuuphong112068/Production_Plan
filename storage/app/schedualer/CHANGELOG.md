@@ -2,6 +2,18 @@
 
 Mục mới nhất ở trên cùng.
 
+## v1.4 – 07/11/2026
+
+Thư mục: `nguyen-ly/v1.4_2026-11-07/` (`.md`, `.docx`, `.pdf`)
+
+Kiểm soát trùng khuôn Định hình **mở rộng theo loại máy**, không còn cố định cho S23, S24:
+
+- Danh mục Loại máy (nhóm máy) có thêm công đoạn: máy ép vỉ (Đóng gói) và máy Định hình (dập viên, đóng nang). Các máy lắp lẫn khuôn cho nhau dùng chung một mã nhóm.
+- Phòng Định hình có khai loại máy thì được kiểm soát trùng khuôn; khuôn Định hình khai các loại máy lắp được, giống khuôn ép vỉ.
+- 1.1 Dữ liệu đầu vào: thêm dòng **Loại máy** (của phòng và của khuôn).
+- 1.4 bước 2 Tìm khoảng trống: khuôn phải lắp vừa loại máy của phòng (trước đây chỉ áp cho Đóng gói); phòng Định hình áp dụng = phòng có khai loại máy (dữ liệu hiện tại vẫn là S23, S24 – máy IMA Zibo).
+- Bản Word v1.3 không có chỗ nào người dùng sửa tay khác file `.md`.
+
 ## Ghi chú 06/11/2026 (không ra bản mới)
 
 Danh mục khuôn mẫu (ép vỉ + Định hình) **tách theo phân xưởng**: mỗi phân xưởng chỉ thấy và dùng khuôn của mình, cùng mã khuôn có thể có ở hai phân xưởng. Nguyên lý sắp lịch trong v1.3 không đổi (lô vẫn chỉ được gán khuôn trong định mức của sản phẩm).

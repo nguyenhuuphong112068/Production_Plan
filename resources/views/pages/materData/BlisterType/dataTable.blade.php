@@ -17,8 +17,10 @@
                 <thead style = "position: sticky; top: 60px; background-color: white; z-index: 1020">
                     <tr>
                         <th>STT</th>
-                        <th>Loại Máy Ép Vỉ</th>
+                        <th>Công Đoạn</th>
+                        <th>Loại Máy</th>
                         <th>Mã Nhóm Máy</th>
+                        <th>Phòng Đang Gán</th>
                         <th>Người Tạo/ Ngày Tạo</th>
                         <th>Trạng Thái</th>
                         <th>Cập Nhật</th>
@@ -29,12 +31,22 @@
                     @foreach ($datas as $data)
                         <tr>
                             <td>{{ $loop->iteration }} </td>
+                            <td>
+                                @if ((int) ($data->stage_code ?? 7) === 5)
+                                    <span class="badge badge-info">Định Hình</span>
+                                @else
+                                    <span class="badge badge-primary">Đóng Gói</span>
+                                @endif
+                            </td>
                             <td>{{ $data->name }}</td>
                             <td>
                                 @php
                                     $groupNames = collect($datas)->where('code', $data->code)->pluck('name')->join(', ');
                                 @endphp
                                 {{ $data->code }} ({{ $groupNames }})
+                            </td>
+                            <td>
+                                {{ collect($roomsByCode[$data->code] ?? [])->map(fn ($r) => $r->code . ' (' . $r->deparment_code . ')')->join(', ') ?: '-' }}
                             </td>
                             <td>
                                 <div> {{ $data->created_by }} </div>
@@ -47,18 +59,18 @@
                                     <input type="hidden" name="id" value="{{ $data->id }}">
                                     @if ($data->active)
                                         <button type="submit" class="btn btn-success btn-sm"
-                                            onclick="return confirm('Bạn có chắc muốn vô hiệu hóa Loại máy ép vỉ này?');">Đang
+                                            onclick="return confirm('Bạn có chắc muốn vô hiệu hóa Loại máy này?');">Đang
                                             Hoạt Động</button>
                                     @else
                                         <button type="submit" class="btn btn-secondary btn-sm"
-                                            onclick="return confirm('Bạn có chắc muốn kích hoạt Loại máy ép vỉ này?');">Đã
+                                            onclick="return confirm('Bạn có chắc muốn kích hoạt Loại máy này?');">Đã
                                             Vô Hiệu</button>
                                     @endif
                                 </form>
                             </td>
                             <td class="text-center align-middle">
                                 <button type="button" class="btn btn-warning btn-edit " data-id="{{ $data->id }}"
-                                    data-name="{{ $data->name }}" data-code="{{ $data->code }}" data-toggle="modal" data-target="#update_modal">
+                                    data-name="{{ $data->name }}" data-code="{{ $data->code }}" data-stage_code="{{ $data->stage_code ?? 7 }}" data-toggle="modal" data-target="#update_modal">
                                     <i class="fas fa-edit"></i>
                                 </button>
                             </td>
@@ -113,6 +125,7 @@
 
             modal.find('input[name="name"]').val(button.data('name'));
             modal.find('input[name="code"]').val(button.data('code'));
+            modal.find('select[name="stage_code"]').val(String(button.data('stage_code') || 7));
 
             const id = button.data('id');
 
@@ -155,6 +168,10 @@
 
 <script>
     $(document).ready(function() {
+        function stageName(code) {
+            return String(code) === '5' ? 'Định Hình' : 'Đóng Gói';
+        }
+
         $('.btn-history').off('click').on('click', function() {
             var id = $(this).data('id');
             $.ajax({
@@ -171,6 +188,7 @@
                         html += '<td class="text-center align-middle">Hiện Hành</td>';
                         html += '<td class="text-center align-middle">' + modifier + '</td>';
                         html += '<td class="text-center align-middle">' + (current.active !== null && current.active !== undefined ? current.active : '') + '</td>';
+                        html += '<td class="text-center align-middle">' + stageName(current.stage_code) + '</td>';
                         html += '<td class="text-center align-middle">' + (current.code !== null && current.code !== undefined ? current.code : '') + '</td>';
                         html += '<td class="text-center align-middle">' + (current.name !== null && current.name !== undefined ? current.name : '') + '</td>';
                         html += '</tr>';
@@ -186,6 +204,7 @@
                             html += '<td class="text-center align-middle">' + (item.updated_at ? item.updated_at : item.created_at) + '</td>';
                             html += '<td class="text-center align-middle">' + modifier + '</td>';
                             html += '<td class="text-center align-middle">' + (item.active !== null && item.active !== undefined ? item.active : '') + '</td>';
+                            html += '<td class="text-center align-middle">' + stageName(item.stage_code) + '</td>';
                             html += '<td class="text-center align-middle">' + (item.code !== null && item.code !== undefined ? item.code : '') + '</td>';
                             html += '<td class="text-center align-middle">' + (item.name !== null && item.name !== undefined ? item.name : '') + '</td>';
                             html += '</tr>';

@@ -81,18 +81,19 @@
 
                     {{-- Blister Type --}}
                     <div class="form-group" id="create_blister_type_container" style="display: none;">
-                        <label for="blister_type_code">Loại Máy Ép Vỉ</label>
+                        <label for="blister_type_code" id="create_blister_type_label">Loại Máy Ép Vỉ</label>
                         <select class="form-control" name="blister_type_code" id="create_blister_type_code">
                             <option value="">-- Chọn Loại Máy (Không bắt buộc) --</option>
                             @if(isset($blister_types))
                                 @foreach ($blister_types as $blister_type)
-                                    <option value="{{ $blister_type->code }}"
+                                    <option value="{{ $blister_type->code }}" data-stage="{{ $blister_type->stage_code ?? 7 }}"
                                         {{ old('blister_type_code') == $blister_type->code ? 'selected' : '' }}>
                                         {{ $blister_type->name }}
                                     </option>
                                 @endforeach
                             @endif
                         </select>
+                        <small class="text-muted d-none" id="create_blister_type_hint">Phòng Định Hình có Loại Máy thì được kiểm soát trùng khuôn Định Hình; để trống = không kiểm soát khuôn.</small>
                         @error('blister_type_code', 'createErrors')
                             <div class="alert alert-danger mt-1">{{ $message }}</div>
                         @enderror
@@ -143,14 +144,31 @@
 @endif
 
 <script>
+    function roomMachineTypeToggle(prefix, stage) {
+        stage = String(stage || '');
+        const container = $('#' + prefix + '_blister_type_container');
+        const select = $('#' + prefix + '_blister_type_code');
+        if (stage !== '5' && stage !== '7') {
+            container.hide();
+            select.val('');
+            return;
+        }
+        container.show();
+        $('#' + prefix + '_blister_type_label').text(stage === '5' ? 'Loại Máy Định Hình' : 'Loại Máy Ép Vỉ');
+        $('#' + prefix + '_blister_type_hint').toggleClass('d-none', stage !== '5');
+        select.find('option[data-stage]').each(function() {
+            const match = String($(this).data('stage')) === stage;
+            $(this).prop('disabled', !match).toggle(match);
+        });
+        if (select.find('option:selected').is(':disabled')) {
+            select.val('');
+        }
+    }
+
     $(document).ready(function() {
+        // Loại máy chỉ khai cho phòng Định Hình (5) và Đóng Gói (7); chỉ hiện loại máy cùng công đoạn
         function toggleBlisterType() {
-            if ($('#create_stage_code').val() == '7') {
-                $('#create_blister_type_container').show();
-            } else {
-                $('#create_blister_type_container').hide();
-                $('#create_blister_type_code').val('');
-            }
+            roomMachineTypeToggle('create', $('#create_stage_code').val());
         }
         
         $('#create_stage_code').on('change', toggleBlisterType);

@@ -7,7 +7,7 @@
         Ngày được phép cân (Đóng gói: Ngày có đủ BB), giờ công đoạn trước của lô kết thúc cộng thời gian chờ.</li>
     <li><b>Tìm khoảng trống</b> trong từng phòng có định mức cho sản phẩm và công đoạn đó: khoảng đầu tiên từ mốc trên
         đủ chứa lô (chuẩn bị + sản xuất), kể cả thời gian vệ sinh. Phòng đang chạy lô được tính bận tới giờ dự kiến kết
-        thúc. Lô cần khuôn (Đóng gói; Định hình ở phòng S23, S24) còn phải có ít nhất một khuôn trong định mức
+        thúc. Lô cần khuôn (Đóng gói; Định hình ở phòng có loại máy, hiện là S23, S24) còn phải có ít nhất một khuôn trong định mức, lắp được cho loại máy của phòng,
         <b>rảnh suốt khoảng đó</b>; nếu mọi bộ khuôn đang chạy ở phòng khác thì lô lùi tiếp tới khi có khuôn rảnh.
         Sản phẩm chưa khai báo khuôn vẫn được xếp bình thường nhưng lịch báo <i>Thiếu Khuôn</i>.</li>
     <li><b>Tránh ngày nghỉ:</b> lô không bắt đầu trong ngày nghỉ, nhưng lô đang chạy dở thì được chạy xuyên qua.</li>

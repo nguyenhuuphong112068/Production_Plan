@@ -753,7 +753,7 @@ class KcsTrackingController extends Controller
         $lot = DB::table('plan_master as pm')
             ->leftJoin('finished_product_category as fpc', 'pm.product_caterogy_id', '=', 'fpc.id')
             ->where('pm.id', $record->plan_master_id)
-            ->select('pm.batch', 'pm.actual_batch', 'fpc.finished_product_code')
+            ->select('pm.id', 'pm.batch', 'pm.actual_batch', 'fpc.finished_product_code')
             ->first();
 
         if (!$lot) {
@@ -761,7 +761,7 @@ class KcsTrackingController extends Controller
         }
 
         try {
-            $approval = MmsFgQc::approvalFor(
+            $receipts = MmsFgQc::receiptsFor(
                 $lot->finished_product_code,
                 $lot->actual_batch ?: $lot->batch
             );
@@ -769,6 +769,12 @@ class KcsTrackingController extends Controller
             // MMS trục trặc thì vẫn cho lưu các mốc người dùng nhập, giữ nguyên giá trị cũ
             return;
         }
+
+        // Cùng quy tắc với mmsSuggestions(): lô chia thì ghép theo số lượng từng phần
+        $family = $this->splitFamilies(collect([$lot]))[$lot->id] ?? null;
+        $approval = $family
+            ? (MmsFgQc::matchSplit($receipts, $family)[$lot->id] ?? null)
+            : MmsFgQc::earliest($receipts);
 
         if (!$approval) {
             return;
@@ -823,6 +829,7 @@ class KcsTrackingController extends Controller
 
         $suggestions = [];
         $mismatch = [];
+        $families = $this->splitFamilies($datas);
 
         foreach ($datas as $data) {
             $batch = trim((string) ($data->actual_batch ?: $data->batch));
@@ -833,10 +840,18 @@ class KcsTrackingController extends Controller
                 continue;
             }
 
-            $hit = $lookup['approvals'][$code . '|' . $batch] ?? null;
+            $receipts = $lookup['approvals'][$code . '|' . $batch] ?? [];
 
-            if ($hit) {
-                $suggestions[$data->id] = $hit;
+            if ($receipts) {
+                $hit = isset($families[$data->id])
+                    ? (MmsFgQc::matchSplit($receipts, $families[$data->id])[$data->id] ?? null)
+                    : MmsFgQc::earliest($receipts);
+
+                if ($hit) {
+                    $suggestions[$data->id] = $hit;
+                }
+
+                // Phần lô chia chưa ghép được phiếu nào là phần chưa KCS, không phải lệch mã
                 continue;
             }
 
@@ -856,6 +871,65 @@ class KcsTrackingController extends Controller
             'code_mismatch' => collect($mismatch),
             'available' => true,
         ];
+    }
+
+    /**
+     * Các lô CHIA trong $datas, dạng [plan_master_id => [id anh em => số lượng phần lô]].
+     *
+     * Lô chia = nhiều dòng kế hoạch cùng mã TP + số lô mà có ít nhất một dòng "chỉ đóng
+     * gói" (only_parkaging = 1); số lượng từng phần lấy từ number_parkaging. Đi tìm anh
+     * em trên toàn bộ kế hoạch chứ không chỉ trong $datas, vì lưới đang lọc có thể chỉ
+     * hiện một phần của lô.
+     *
+     * Cố ý KHÔNG coi mọi nhóm trùng mã TP + số lô là lô chia: có những lô bị lặp ở hai
+     * tháng kế hoạch (VD 10248 tháng 9 và 11058 tháng 10 cùng lô 121026, cùng 1.000.000
+     * viên) mà MMS chỉ có một phiếu nhập kho - ghép theo số lượng sẽ làm một dòng mất ngày
+     * KCS, nên những nhóm đó vẫn dùng chung lần duyệt sớm nhất như trước.
+     *
+     * @return array<int, array<int, float>>
+     */
+    private function splitFamilies($datas): array
+    {
+        $key = fn($row) => trim((string) $row->finished_product_code) . '|'
+            . trim((string) ($row->actual_batch ?: $row->batch));
+
+        $codes = $datas->pluck('finished_product_code')->filter()->unique()->values();
+        $batches = $datas->flatMap(fn($row) => [$row->actual_batch, $row->batch])
+            ->filter()->unique()->values();
+
+        if ($codes->isEmpty() || $batches->isEmpty()) {
+            return [];
+        }
+
+        // Cùng điều kiện lọc với batches() để chỉ xét các dòng đang được theo dõi
+        $groups = DB::table('plan_master as pm')
+            ->join('plan_list as pl', 'pm.plan_list_id', '=', 'pl.id')
+            ->join('finished_product_category as fpc', 'pm.product_caterogy_id', '=', 'fpc.id')
+            ->where('pm.active', 1)
+            ->where('pm.cancel', 0)
+            ->where('pl.type', 1)
+            ->whereIn('fpc.finished_product_code', $codes)
+            ->where(fn($q) => $q->whereIn('pm.actual_batch', $batches)->orWhereIn('pm.batch', $batches))
+            ->select('pm.id', 'pm.batch', 'pm.actual_batch', 'pm.only_parkaging', 'pm.number_parkaging',
+                'fpc.finished_product_code')
+            ->get()
+            ->groupBy($key);
+
+        $families = [];
+
+        foreach ($datas as $data) {
+            $group = $groups->get($key($data));
+
+            if (!$group || $group->count() < 2 || !$group->contains('only_parkaging', 1)) {
+                continue;
+            }
+
+            $families[$data->id] = $group->mapWithKeys(
+                fn($row) => [$row->id => (float) $row->number_parkaging]
+            )->all();
+        }
+
+        return $families;
     }
 
     /** Danh sách lô sản xuất cần theo dõi hồ sơ KCS trong khoảng tháng kế hoạch */

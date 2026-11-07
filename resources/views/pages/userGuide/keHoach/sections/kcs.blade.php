@@ -22,7 +22,8 @@
 
 <h3>Cột phần mềm tính</h3>
 <ul>
-    <li><b>Ngày KCS</b>: lấy từ MMS (bước QA Approval).</li>
+    <li><b>Ngày KCS</b>: lấy từ MMS (bước QA Approval), tra theo Mã TP + Số lô thực tế. Lô chia (có phần "chỉ đóng gói")
+        thì mỗi phần nhận ngày KCS của phiếu nhập kho có số lượng gần nhất; phần chưa có phiếu nhập kho được KCS duyệt thì để trống.</li>
     <li><b>Ngày Đủ Điều Kiện</b> và <b>Mốc Quyết Định</b>: mốc hoàn tất muộn nhất của lô - khâu giữ hồ sơ lâu nhất.</li>
     <li><b>Số Ngày HT</b>: số ngày làm việc từ Ngày Nhận Hồ Sơ tới Ngày KCS, đã loại Chủ nhật và ngày nghỉ công ty (tự lấy từ eO2).</li>
     <li><b>Kết Quả</b>: Đáp Ứng / Không Đáp Ứng. Chỉ lô đã có Ngày Đủ Điều Kiện mới chấm được.</li>

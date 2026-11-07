@@ -35,13 +35,12 @@ class BlisterMoldController extends Controller
             'code' => ['required', 'max:50', Rule::unique('blister_mold', 'code')->where('deparment_code', $this->department())],
             'amount' => 'nullable|integer|min:0',
             'stage_code' => 'required|in:5,7',
-            'blister_type_code' => 'required_if:stage_code,7|array',
+            'blister_type_code' => 'required|array',
             'blister_type_code.*' => 'integer',
         ], [
             'stage_code.required' => 'Vui lòng chọn Công Đoạn',
             'stage_code.in' => 'Công Đoạn chỉ được là Đóng Gói hoặc Định Hình',
-            'blister_type_code.required_if' => 'Khuôn Đóng Gói phải chọn Loại Máy Ép Vỉ',
-            'blister_type_code.required' => 'Vui lòng chọn Loại Máy Ép Vỉ',
+            'blister_type_code.required' => 'Vui lòng chọn Loại Máy lắp được khuôn',
             'code.required' => 'Vui lòng nhập Mã Khuôn Mẫu',
             'code.max' => 'Mã Khuôn Mẫu tối đa 50 ký tự',
             'code.unique' => 'Mã Khuôn Mẫu đã tồn tại trong phân xưởng.',
@@ -49,6 +48,7 @@ class BlisterMoldController extends Controller
             'amount.min' => 'Số lượng không được nhỏ hơn 0.',
         ]);
 
+        $this->checkMachineTypes($validator, $request);
         if ($validator->fails()) {
             return redirect()->back()->withErrors($validator, 'createErrors')->withInput();
         }
@@ -58,8 +58,8 @@ class BlisterMoldController extends Controller
             'deparment_code' => $this->department(),
             'amount' => $request->amount,
             'stage_code' => (int) $request->stage_code,
-            // Khuôn Định Hình không gắn loại máy ép vỉ
-            'blister_type_code' => (int) $request->stage_code === 7 ? json_encode($request->blister_type_code) : null,
+            // Loại máy lắp được khuôn (cùng công đoạn với khuôn), dạng JSON ["1","3"]
+            'blister_type_code' => json_encode(array_values(array_map('strval', $request->blister_type_code))),
             'active' => true,
             'created_by' => session('user')['fullName'] ?? 'Admin',
             'created_at' => now(),
@@ -74,13 +74,12 @@ class BlisterMoldController extends Controller
             'code' => ['required', 'max:50', Rule::unique('blister_mold', 'code')->where('deparment_code', $this->department())->ignore($request->id)],
             'amount' => 'nullable|integer|min:0',
             'stage_code' => 'required|in:5,7',
-            'blister_type_code' => 'required_if:stage_code,7|array',
+            'blister_type_code' => 'required|array',
             'blister_type_code.*' => 'integer',
         ], [
             'stage_code.required' => 'Vui lòng chọn Công Đoạn',
             'stage_code.in' => 'Công Đoạn chỉ được là Đóng Gói hoặc Định Hình',
-            'blister_type_code.required_if' => 'Khuôn Đóng Gói phải chọn Loại Máy Ép Vỉ',
-            'blister_type_code.required' => 'Vui lòng chọn Loại Máy Ép Vỉ',
+            'blister_type_code.required' => 'Vui lòng chọn Loại Máy lắp được khuôn',
             'code.required' => 'Vui lòng nhập Mã Khuôn Mẫu',
             'code.max' => 'Mã Khuôn Mẫu tối đa 50 ký tự',
             'code.unique' => 'Mã Khuôn Mẫu đã tồn tại trong phân xưởng.',
@@ -88,6 +87,7 @@ class BlisterMoldController extends Controller
             'amount.min' => 'Số lượng không được nhỏ hơn 0.',
         ]);
 
+        $this->checkMachineTypes($validator, $request);
         if ($validator->fails()) {
             return redirect()->back()->withErrors($validator, 'updateErrors')->withInput();
         }
@@ -101,8 +101,8 @@ class BlisterMoldController extends Controller
             'code' => $request->code,
             'amount' => $request->amount,
             'stage_code' => (int) $request->stage_code,
-            // Khuôn Định Hình không gắn loại máy ép vỉ
-            'blister_type_code' => (int) $request->stage_code === 7 ? json_encode($request->blister_type_code) : null,
+            // Loại máy lắp được khuôn (cùng công đoạn với khuôn), dạng JSON ["1","3"]
+            'blister_type_code' => json_encode(array_values(array_map('strval', $request->blister_type_code))),
             'updated_at' => now(),
         ]);
 
@@ -125,6 +125,25 @@ class BlisterMoldController extends Controller
         ]);
 
         return redirect()->back()->with('success', 'Đã thay đổi trạng thái thành công!');
+    }
+
+    /** Loại máy chọn cho khuôn phải cùng công đoạn với khuôn (ĐH ↔ máy Định Hình, ĐG ↔ máy ép vỉ). */
+    protected function checkMachineTypes($validator, Request $request)
+    {
+        $validator->after(function ($v) use ($request) {
+            if ($v->errors()->isNotEmpty()) {
+                return;
+            }
+            $codes = array_unique(array_map('intval', (array) $request->blister_type_code));
+            $valid = DB::table('blister_type')
+                ->whereIn('code', $codes ?: [0])
+                ->where('stage_code', (int) $request->stage_code)
+                ->distinct()
+                ->count('code');
+            if ($valid !== count($codes)) {
+                $v->errors()->add('blister_type_code', 'Loại máy phải cùng công đoạn với khuôn (khai ở Dữ Liệu Gốc › Nhóm Máy).');
+            }
+        });
     }
 
     protected function ownMold($id)

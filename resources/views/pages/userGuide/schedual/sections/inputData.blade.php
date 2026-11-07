@@ -48,7 +48,8 @@
                 <td>Định mức khuôn: khuôn ép vỉ theo thành phẩm (Định Mức › Khuôn EV), khuôn Định hình theo BTP
                     (Định Mức › Khuôn Định Hình); số lượng (số bộ) của mỗi khuôn ở Dữ Liệu Gốc › Khuôn Mẫu</td>
                 <td>Không để nhiều phòng dùng cùng một khuôn quá số bộ đang có (chống trùng khuôn). Khuôn Định hình chỉ
-                    áp dụng cho phòng có kiểm soát khuôn, hiện là S23 và S24.</td>
+                    áp dụng cho phòng Định hình đã chọn loại máy ở Dữ Liệu Gốc › Phòng Sản Xuất (hiện là S23 và S24);
+                    khuôn chỉ lắp được cho phòng có loại máy khai ở khuôn (cả Đóng gói và Định hình).</td>
             </tr>
             <tr>
                 <td>Khuôn ép vỉ đang gắn trên máy</td>

@@ -12,7 +12,7 @@
                     </a>
 
                     <h4 class="modal-title w-100 text-center" style="color: #CDC717">
-                        {{ 'Tạo Mới Loại Máy Ép Vỉ' }}
+                        {{ 'Tạo Mới Loại Máy' }}
                     </h4>
 
                     <button type="button" class="close" data-dismiss="modal" aria-label="Đóng">
@@ -21,9 +21,23 @@
                 </div>
 
                 <div class="modal-body">
+                    {{-- STAGE --}}
+                    <div class="form-group">
+                        <label for="stage_code">Công Đoạn</label>
+                        <select class="form-control" name="stage_code">
+                            @foreach ($stages as $stageCode => $stageName)
+                                <option value="{{ $stageCode }}" {{ (string) old('stage_code', 7) === (string) $stageCode ? 'selected' : '' }}>{{ $stageName }}</option>
+                            @endforeach
+                        </select>
+                        <small class="text-muted">Đóng Gói: máy ép vỉ, khớp khuôn ép vỉ. Định Hình: máy dập viên / đóng nang, khớp khuôn Định Hình.</small>
+                    </div>
+                    @error('stage_code', 'createErrors')
+                        <div class="alert alert-danger">{{ $message }}</div>
+                    @enderror
+
                     {{-- NAME --}}
                     <div class="form-group">
-                        <label for="name">Tên Loại Máy Ép Vỉ </label>
+                        <label for="name">Tên Loại Máy </label>
                         <input type="text" class="form-control" name="name" value="{{ old('name') }}">
                     </div>
                     @error('name', 'createErrors')
@@ -34,6 +48,7 @@
                     <div class="form-group mt-3">
                         <label for="code">Mã Nhóm Máy (Code) </label>
                         <input type="number" class="form-control" name="code" value="{{ old('code') }}" placeholder="Nhập mã (VD: 1, 2, 3, 4...)">
+                        <small class="text-muted">Các loại máy lắp lẫn khuôn cho nhau thì dùng chung một mã. Mã không được trùng với loại máy của công đoạn khác.</small>
                     </div>
                     @error('code', 'createErrors')
                         <div class="alert alert-danger">{{ $message }}</div>

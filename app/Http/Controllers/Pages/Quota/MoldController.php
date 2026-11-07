@@ -131,7 +131,7 @@ class MoldController extends Controller
 
     /**
      * Định mức khuôn Định Hình (CĐ 5) theo BTP. Chỉ liệt kê BTP có định mức sản xuất
-     * ở phòng ĐH bật room.require_mold (S23, S24).
+     * ở phòng ĐH đã khai Loại Máy (room.blister_type_code) – phòng có kiểm soát khuôn.
      */
     public function forming()
     {
@@ -145,7 +145,7 @@ class MoldController extends Controller
             })
             ->join('room as r', function ($join) {
                 $join->on('q.room_id', '=', 'r.id')
-                    ->where('r.require_mold', '=', 1);
+                    ->whereNotNull('r.blister_type_code');
             })
             ->leftJoin('product_name as pn', 'ic.product_name_id', '=', 'pn.id')
             ->leftJoin('intermediate_mold as im', function ($join) use ($production) {
@@ -164,7 +164,8 @@ class MoldController extends Controller
                 DB::raw('GROUP_CONCAT(DISTINCT im.blister_mold_id) as mold_ids'),
                 DB::raw('MAX(im.created_at) as mold_created_at'),
                 DB::raw('GROUP_CONCAT(DISTINCT im.created_by) as mold_created_by'),
-                DB::raw("GROUP_CONCAT(DISTINCT r.code ORDER BY r.code SEPARATOR ', ') as quota_rooms")
+                DB::raw("GROUP_CONCAT(DISTINCT r.code ORDER BY r.code SEPARATOR ', ') as quota_rooms"),
+                DB::raw('GROUP_CONCAT(DISTINCT r.blister_type_code) as room_types')
             )
             ->groupBy('ic.id', 'ic.intermediate_code', 'ic.batch_size', 'ic.unit_batch_size', 'pn.name')
             ->orderBy('ic.intermediate_code')
@@ -175,8 +176,19 @@ class MoldController extends Controller
             ->where('stage_code', 5)
             ->where('deparment_code', $production)
             ->orderBy('code')
-            ->select('id', 'code', 'amount')
+            ->select('id', 'code', 'amount', 'blister_type_code')
             ->get();
+
+        // Loại máy lắp được khuôn: để lọc khuôn theo loại máy của phòng đã định mức
+        $typeNames = DB::table('blister_type')->pluck('name', 'code');
+        foreach ($molds as $mold) {
+            $codes = json_decode((string) $mold->blister_type_code, true);
+            if (! is_array($codes)) {
+                $codes = $mold->blister_type_code !== null && $mold->blister_type_code !== '' ? [$mold->blister_type_code] : [];
+            }
+            $mold->blister_type_code = array_values(array_map('strval', $codes));
+            $mold->type_name = collect($codes)->map(fn ($c) => $typeNames[$c] ?? $c)->join(', ');
+        }
 
         session()->put(['title' => 'ĐỊNH MỨC - KHUÔN ĐỊNH HÌNH']);
 

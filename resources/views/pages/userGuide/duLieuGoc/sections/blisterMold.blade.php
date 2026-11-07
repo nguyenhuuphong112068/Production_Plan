@@ -14,5 +14,5 @@
     ['Mã Khuôn Mẫu', true, 'Tối đa 50 ký tự, không trùng trong cùng phân xưởng.'],
     ['Số Lượng', false, 'Số bộ khuôn đang có (số nguyên ≥ 0). Một khuôn chỉ chạy được ở tối đa <b>Số Lượng</b> phòng cùng lúc; khi sắp lịch, lô cần khuôn đang bận ở đủ số phòng sẽ phải chờ hoặc sang khuôn khác.'],
     ['Công Đoạn', true, '<b>Đóng Gói</b> hoặc <b>Định Hình</b>.'],
-    ['Loại Máy Ép Vỉ', false, 'Bắt buộc với khuôn <b>Đóng Gói</b>: chọn một hoặc nhiều loại máy lắp được khuôn (danh sách ở <a href="#loai-may-ep-vi">Loại Máy Ép Vỉ</a>). Khuôn chỉ được phân cho phòng có loại máy phù hợp.'],
+    ['Loại Máy Ép Vỉ / Loại Máy Định Hình', true, 'Chọn một hoặc nhiều loại máy lắp được khuôn. Ô chỉ hiện loại máy cùng công đoạn với khuôn (danh sách ở <a href="#loai-may-ep-vi">Nhóm Máy</a>); đổi Công Đoạn thì các loại máy khác công đoạn bị bỏ chọn. Khuôn chỉ được phân cho phòng có loại máy phù hợp.'],
 ]])

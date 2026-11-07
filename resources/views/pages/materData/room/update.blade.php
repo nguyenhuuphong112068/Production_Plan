@@ -88,18 +88,19 @@
 
             {{-- Blister Type --}}
             <div class="form-group" id="update_blister_type_container" style="display: none;">
-                <label for="blister_type_code">Loại Máy Ép Vỉ</label>
+                <label for="blister_type_code" id="update_blister_type_label">Loại Máy Ép Vỉ</label>
                 <select class="form-control" name="blister_type_code" id="update_blister_type_code">
                     <option value="">-- Chọn Loại Máy (Không bắt buộc) --</option>
                     @if(isset($blister_types))
                         @foreach ($blister_types as $blister_type)
-                            <option value="{{ $blister_type->code }}"
+                            <option value="{{ $blister_type->code }}" data-stage="{{ $blister_type->stage_code ?? 7 }}"
                                 {{ old('blister_type_code') == $blister_type->code ? 'selected' : '' }}>
                                 {{ $blister_type->name }}
                             </option>
                         @endforeach
                     @endif
                 </select>
+                <small class="text-muted d-none" id="update_blister_type_hint">Phòng Định Hình có Loại Máy thì được kiểm soát trùng khuôn Định Hình; để trống = không kiểm soát khuôn.</small>
                 @error('blister_type_code', 'updateErrors')
                     <div class="alert alert-danger mt-1">{{ $message }}</div>
                 @enderror

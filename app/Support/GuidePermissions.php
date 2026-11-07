@@ -44,6 +44,7 @@ class GuidePermissions
         'Record_KCS_Date' => 'Không còn nơi kiểm tra',
         'personnel_assignment' => 'Mục menu đã ẩn',
         'layout_monthly_report' => 'Báo Cáo Tháng đi theo quyền Xem Báo Cáo Tuần',
+        'layout_test' => 'Quyền thử nghiệm; menu Nhóm Máy (trước là Loại Máy Ép Vỉ) thôi dùng quyền này từ 07/11/2026',
     ];
 
     /**
@@ -75,8 +76,7 @@ class GuidePermissions
             ['Nguồn Nguyên Liệu (không có mục trên menu)', 'Thêm mới', ['perm' => 'materData_source_material_create']],
             ['Nguồn Nguyên Liệu (không có mục trên menu)', 'Cập nhật', ['perm' => 'materData_source_material_update']],
             ['Nguồn Nguyên Liệu (không có mục trên menu)', 'Vô hiệu / kích hoạt', ['perm' => 'materData_source_material_deActive']],
-            ['Tổ Quản Lý, Phòng Ban, Khuôn Mẫu', 'Thêm, cập nhật, vô hiệu', ['rule' => self::ALL]],
-            ['Loại Máy Ép Vỉ', 'Thấy mục trên menu', ['perm' => 'layout_test']],
+            ['Tổ Quản Lý, Phòng Ban, Khuôn Mẫu, Nhóm Máy', 'Thêm, cập nhật, vô hiệu', ['rule' => self::ALL]],
         ],
         'danhMuc' => [
             ['Bán Thành Phẩm', 'Thêm mới', ['perm' => 'category_intermediate_create']],

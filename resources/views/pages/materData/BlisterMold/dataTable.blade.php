@@ -45,7 +45,7 @@
                                      }
                                      $typeNames = collect($blister_types)->whereIn('code', $codes)->pluck('name')->join(', ');
                                  @endphp
-                                 {{ (int) ($data->stage_code ?? 7) === 5 ? '-' : ($typeNames ?: $data->blister_type_code) }}
+                                 {{ $typeNames ?: ($data->blister_type_code ?: '-') }}
                              </td>
                             <td class="text-center">
                                 @if($data->active)
@@ -151,15 +151,19 @@
             modal.find('#update_stage_code').val(String(button.data('stage_code') || 7)).trigger('change');
         });
 
-        // Khuôn Định Hình không gắn loại máy ép vỉ → ẩn và bỏ bắt buộc ô Loại Máy Ép Vỉ
+        // Ô Loại Máy chỉ hiện loại máy cùng công đoạn với khuôn (Dữ Liệu Gốc › Nhóm Máy)
         function toggleBlisterType(select) {
             const group = $($(select).data('type-group'));
-            const isBlister = String($(select).val()) === '7';
-            group.toggle(isBlister);
-            group.find('select').prop('required', isBlister);
-            if (!isBlister) {
-                group.find('select').val([]);
-            }
+            const stage = String($(select).val());
+            group.find('.js-mold-type-label').text(stage === '5' ? 'Loại Máy Định Hình' : 'Loại Máy Ép Vỉ');
+            const typeSelect = group.find('select');
+            typeSelect.find('option[data-stage]').each(function() {
+                const match = String($(this).data('stage')) === stage;
+                $(this).prop('disabled', !match).toggle(match);
+                if (!match) {
+                    $(this).prop('selected', false);
+                }
+            });
         }
         $(document).on('change', '.js-mold-stage', function() {
             toggleBlisterType(this);

@@ -71,7 +71,7 @@
                 </a>
 
                 <h5 class="modal-title w-100 text-center" id="historyModalLabel">
-                    Lịch Sử Thay Đổi: Loại Máy Ép Vỉ
+                    Lịch Sử Thay Đổi: Loại Máy
                 </h5>
 
                 <button type="button" class="close ml-auto" data-dismiss="modal" aria-label="Đóng">
@@ -85,6 +85,7 @@
                             <th class="text-center align-middle">Ngày Sửa</th>
                             <th class="text-center align-middle">Người Sửa</th>
                             <th class="text-center align-middle">Trạng Thái</th>
+                            <th class="text-center align-middle">Công Đoạn</th>
                             <th class="text-center align-middle">Mã Loại Máy</th>
                             <th class="text-center align-middle">Tên Loại Máy</th>
                         </tr>

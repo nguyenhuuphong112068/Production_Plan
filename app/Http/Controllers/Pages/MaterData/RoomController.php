@@ -42,7 +42,7 @@ class RoomController extends Controller
                         'code.required' => 'Vui lòng nhập nhập mã phòng sản xuất',
                         'code.unique' => 'Mã sản phẩm đã tồn tại trong hệ thống',
                         'name.required' => 'Vui lòng nhập tên phòng sản xuất',
-                        'name.required' => 'Tên Phòng đã tồn tại trong hệ thống',
+                        'name.unique' => 'Tên Phòng đã tồn tại trong hệ thống',
                         'stage_code.required' => 'Vui lòng chọn công đoạn',
                         'production_group.required' => 'Vui lòng nhập tổ quản lý',
                         'main_equiment_name.required' => 'Vui lòng nhập tên thiết bị chính ',
@@ -50,6 +50,7 @@ class RoomController extends Controller
 
                 ]);
 
+                $this->checkMachineType($validator, $request->stage_code, $request->blister_type_code);
                 if ($validator->fails()) {
                         return redirect()->back()->withErrors($validator, 'createErrors')->withInput();
                 }
@@ -67,7 +68,7 @@ class RoomController extends Controller
                         'stage_code' => $request->stage_code,
                         'group_code' => $request->stage_code,
                         'production_group' => $request->production_group,
-                        'blister_type_code' => $request->stage_code == 7 ? $request->blister_type_code : null,
+                        'blister_type_code' => $this->machineTypeFor($request->stage_code, $request->blister_type_code),
                         'deparment_code' => session('user')['production_code'],
                         'active' => true,
                         'only_maintenance' => $request->stage_code == 8 ? 1 : 0,
@@ -98,19 +99,18 @@ class RoomController extends Controller
 
                 ]);
 
+                $room = DB::table('room')->where('code', $request->code)->first();
+                $this->checkMachineType($validator, $room->stage_code ?? null, $request->blister_type_code);
                 if ($validator->fails()) {
                         return redirect()->back()->withErrors($validator, 'updateErrors')->withInput();
                 }
 
-                $room = DB::table('room')->where('code', $request->code)->first();
-
-                $room = DB::table('room')->where('code', $request->code)->first();
         if ($room) {$this->logHistory($room->id);}
         DB::table('room')->where('code', $request->code)->update([
 
                         'main_equiment_name' => $request->main_equiment_name,
                         'capacity' => $request->capacity,
-                        'blister_type_code' => $room->stage_code == 7 ? $request->blister_type_code : null,
+                        'blister_type_code' => $this->machineTypeFor($room->stage_code, $request->blister_type_code),
 
                         'prepareBy' => session('user')['fullName'],
                         'updated_at' => now(),
@@ -129,6 +129,29 @@ class RoomController extends Controller
                 return redirect()->back()->with('success', 'Vô Hiệu Hóa thành công!');
         }
 
+    /**
+     * Loại máy (Dữ Liệu Gốc › Nhóm Máy) chỉ khai cho phòng Định Hình (5) và Đóng Gói (7).
+     * Phòng ĐH có loại máy => được kiểm soát trùng khuôn Định Hình; phòng ĐG lọc khuôn ép vỉ theo loại máy.
+     */
+    protected function machineTypeFor($stageCode, $typeCode)
+    {
+        return in_array((int) $stageCode, [5, 7], true) && $typeCode !== null && $typeCode !== '' ? (int) $typeCode : null;
+    }
+
+    protected function checkMachineType($validator, $stageCode, $typeCode)
+    {
+        $validator->after(function ($v) use ($stageCode, $typeCode) {
+            $code = $this->machineTypeFor($stageCode, $typeCode);
+            if ($code === null) {
+                return;
+            }
+            $ok = DB::table('blister_type')->where('code', $code)->where('stage_code', (int) $stageCode)->where('active', 1)->exists();
+            if (! $ok) {
+                $v->errors()->add('blister_type_code', 'Loại máy không thuộc công đoạn của phòng hoặc đã ngưng hoạt động.');
+            }
+        });
+    }
+
     public function logHistory($id)
     {
         $current = DB::table('room')->where('id', $id)->first();
@@ -136,7 +159,10 @@ class RoomController extends Controller
             $data = (array) $current;
             $data['room_id'] = $data['id'];
             unset($data['id']);
-            DB::table('room_history')->insert($data);
+            // Chỉ chép cột room_history có: room thêm cột (vd require_mold 05/11/2026) mà bảng lịch sử
+            // chưa có thì insert lỗi "Unknown column" và mọi lần sửa phòng đều hỏng.
+            $columns = \Illuminate\Support\Facades\Schema::getColumnListing('room_history');
+            DB::table('room_history')->insert(array_intersect_key($data, array_flip($columns)));
         }
     }
 

@@ -83,7 +83,7 @@ const calendarViews = {
  *  - outline chỉ repaint -> nhanh hơn rất nhiều.
  * Ngoài ra không còn ghi đè viền cam của các thay đổi chưa lưu (pendingChanges).
  * ------------------------------------------------------------------------ */
-// Công đoạn có sắp khuôn chống trùng: 5 Định Hình (phòng require_mold), 7 Đóng gói (khuôn ép vỉ)
+// Công đoạn có sắp khuôn chống trùng: 5 Định Hình (phòng ĐH có loại máy), 7 Đóng gói (khuôn ép vỉ)
 const MOLD_STAGES = [5, 7];
 
 const SELECTED_CLASS = 'is-batch-selected';
@@ -2701,24 +2701,26 @@ const ScheduleTest = () => {
       return types.map(String).includes(String(rType));
     };
 
-    // CĐ 5 chỉ kiểm soát khuôn ở phòng bật require_mold (S23, S24)
+    // CĐ 5 chỉ kiểm soát khuôn ở phòng ĐH có loại máy (server trả require_mold = phòng CĐ 5 có blister_type_code)
     const getRoomRequireMold = (roomId) => {
       let room = allEvents.find(e => e.getResources && String(e.getResources()[0]?.id) === String(roomId))?.getResources()[0]
         || resources.find(r => String(r.id) === String(roomId));
       return Number(room?.extendedProps?.require_mold ?? room?.require_mold ?? 0) === 1;
     };
 
-    // CĐ 7: khuôn ép vỉ theo TP, lọc theo loại máy. CĐ 5: khuôn ĐH theo BTP, chỉ ở phòng require_mold.
+    // CĐ 7: khuôn ép vỉ theo TP. CĐ 5: khuôn ĐH theo BTP, chỉ ở phòng ĐH có loại máy.
+    // Cả 2 công đoạn lọc khuôn theo loại máy của phòng.
     const getCompatibleMolds = (ev, roomId) => {
       let catId = ev.extendedProps?.product_caterogy_id;
       if (!catId) return [];
       const stage = Number(ev.extendedProps?.stage_code);
+      let rType = getRoomBlisterType(roomId);
       if (stage === 5) {
         if (!getRoomRequireMold(roomId)) return [];
         let moldIds = intermediateProductMolds.filter(f => String(f.finished_product_category_id) === String(catId)).map(f => String(f.blister_mold_id));
-        return blisterMolds.filter(m => Number(m.stage_code) === 5 && moldIds.includes(String(m.id)));
+        return blisterMolds.filter(m => Number(m.stage_code) === 5 && moldIds.includes(String(m.id)))
+          .filter(m => moldFitsRoomType(m, rType));
       }
-      let rType = getRoomBlisterType(roomId);
 
       let moldIds = finishedProductMolds.filter(f => String(f.finished_product_category_id) === String(catId)).map(f => String(f.blister_mold_id));
       let compatible = blisterMolds.filter(m => Number(m.stage_code ?? 7) === 7 && moldIds.includes(String(m.id)));

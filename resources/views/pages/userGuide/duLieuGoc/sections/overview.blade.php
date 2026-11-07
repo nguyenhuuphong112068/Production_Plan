@@ -11,7 +11,7 @@
         <a href="#don-vi-tinh">Đơn Vị Tính</a>, <a href="#dang-bao-che">Dạng Bào Chế</a>, <a href="#thi-truong">Thị Trường</a>,
         <a href="#qui-cach">Qui Cách</a>, <a href="#ten-san-pham">Tên Sản Phẩm</a>.</div>
     <div class="ug-flow-step"><span class="ug-flow-no">3</span><b>Thiết bị</b>
-        <a href="#loai-may-ep-vi">Loại Máy Ép Vỉ</a>, <a href="#khuon-mau">Khuôn Mẫu</a>.</div>
+        <a href="#loai-may-ep-vi">Nhóm Máy</a>, <a href="#khuon-mau">Khuôn Mẫu</a>.</div>
     <div class="ug-flow-step"><span class="ug-flow-no">4</span><b>Phòng</b>
         <a href="#phong-san-xuat">Phòng Sản Xuất</a>, <a href="#lien-ket-phong">Liên Kết Phòng</a>.</div>
     <div class="ug-flow-step"><span class="ug-flow-no">5</span><b>Lịch làm việc</b>

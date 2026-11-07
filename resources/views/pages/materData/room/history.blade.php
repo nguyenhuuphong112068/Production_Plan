@@ -86,7 +86,7 @@
                             <th class="text-center align-middle">Thiết Bị Chính</th>
                             <th class="text-center align-middle">Công Suất</th>
                             <th class="text-center align-middle">Công Đoạn</th>
-                            <th class="text-center align-middle">Loại Máy Ép Vỉ</th>
+                            <th class="text-center align-middle">Loại Máy</th>
                             <th class="text-center align-middle">Tổ Quản Lý</th>
                             <th class="text-center align-middle">Phân Xưởng</th>
                         </tr>

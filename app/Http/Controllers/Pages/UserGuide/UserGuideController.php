@@ -33,8 +33,8 @@ class UserGuideController extends Controller
         'duLieuGoc' => [
             'title' => 'Dữ Liệu Gốc',
             'icon' => 'fas fa-database',
-            'summary' => 'Tên sản phẩm, dạng bào chế, đơn vị, thị trường, qui cách, phòng sản xuất, liên kết phòng, tổ quản lý, phòng ban, ngày nghỉ, khuôn mẫu và loại máy ép vỉ.',
-            'updated_at' => '2026-11-06',
+            'summary' => 'Tên sản phẩm, dạng bào chế, đơn vị, thị trường, qui cách, phòng sản xuất, liên kết phòng, tổ quản lý, phòng ban, ngày nghỉ, khuôn mẫu và nhóm máy (máy ép vỉ, máy Định hình).',
+            'updated_at' => '2026-11-07',
         ],
         'danhMuc' => [
             'title' => 'Danh Mục',
@@ -46,7 +46,7 @@ class UserGuideController extends Controller
             'title' => 'Định Mức',
             'icon' => 'fas fa-chart-line',
             'summary' => 'Định mức phòng và thời gian sản xuất, định mức khuôn ép vỉ và khuôn Định hình, danh sách nhân viên (tổ, phòng công tác, bậc kỹ năng) và sản phẩm nhân viên được phép làm.',
-            'updated_at' => '2026-11-06',
+            'updated_at' => '2026-11-07',
         ],
         'keHoach' => [
             'title' => 'Kế Hoạch',
@@ -58,7 +58,7 @@ class UserGuideController extends Controller
             'title' => 'Lịch Sản Xuất',
             'icon' => 'fas fa-industry',
             'summary' => 'Lịch Sản Xuất Chart (Gantt, màu cảnh báo), Sắp lịch thủ công (danh sách KHSX, thả lô vào phòng, chỉnh lịch kéo thả), Sắp lịch tự động và nguyên lý hoạt động, Kiểm soát tồn BTP; Thực thi sản xuất (Nhận / Trả phòng, tịnh tuyến lịch), xác nhận hoàn thành, phòng biệt trữ, lịch tuần, danh sách lịch, tiến trình, đề nghị thay đổi KH, lịch sử thay đổi, thẩm định vệ sinh, nhận bao bì, sản lượng.',
-            'updated_at' => '2026-11-06',
+            'updated_at' => '2026-11-07',
         ],
         'lichHcBt' => [
             'title' => 'Lịch HC-BT',

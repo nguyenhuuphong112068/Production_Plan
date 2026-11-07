@@ -25,7 +25,9 @@ class SchedualController extends Controller
      * Công đoạn có sắp khuôn chống trùng khuôn. Danh mục khuôn dùng chung bảng
      * blister_mold (cột stage_code) và lô ghi khuôn vào stage_plan.blister_mold_id:
      *  - 7 Đóng gói: khuôn ép vỉ, định mức theo TP (finished_product_mold), lọc theo loại máy ép vỉ.
-     *  - 5 Định Hình: khuôn ĐH, định mức theo BTP (intermediate_mold), chỉ phòng room.require_mold = 1.
+     *  - 5 Định Hình: khuôn ĐH, định mức theo BTP (intermediate_mold), chỉ phòng ĐH có loại máy
+     *    (room.blister_type_code, loại máy blister_type.stage_code = 5), lọc khuôn theo loại máy.
+     *  Từ 07/11/2026 cột room.require_mold không còn dùng.
      */
     public const MOLD_STAGES = [5, 7];
 
@@ -88,7 +90,7 @@ class SchedualController extends Controller
         if (! array_key_exists($roomId, $this->roomMoldInfoCache)) {
             $this->roomMoldInfoCache[$roomId] = DB::table('room')
                 ->where('id', $roomId)
-                ->select('id', 'blister_type_code', 'require_mold')
+                ->select('id', 'stage_code', 'blister_type_code')
                 ->first();
         }
 
@@ -109,7 +111,8 @@ class SchedualController extends Controller
 
     /**
      * Phòng có kiểm soát khuôn cho công đoạn hay không.
-     * CĐ 7: mọi phòng ĐG (giữ nguyên cách cũ). CĐ 5: chỉ phòng bật room.require_mold.
+     * CĐ 7: mọi phòng ĐG (giữ nguyên cách cũ). CĐ 5: chỉ phòng ĐH đã khai Loại Máy
+     * (Dữ Liệu Gốc › Phòng Sản Xuất), thay cho cờ room.require_mold trước 07/11/2026.
      */
     protected function roomUsesMold($stageCode, $roomId): bool
     {
@@ -118,10 +121,26 @@ class SchedualController extends Controller
             return true;
         }
         if ($stageCode === 5) {
-            return (bool) ($this->roomMoldInfo($roomId)->require_mold ?? false);
+            return ! empty($this->roomMoldInfo($roomId)->blister_type_code ?? null);
         }
 
         return false;
+    }
+
+    /** Biểu thức SQL (bảng room) đánh dấu phòng ĐH có kiểm soát khuôn, trả về cho client là require_mold. */
+    public const ROOM_REQUIRE_MOLD_SQL = 'CASE WHEN stage_code = 5 AND blister_type_code IS NOT NULL THEN 1 ELSE 0 END';
+
+    protected $blisterTypeNames = null;
+
+    /** Tên loại máy theo mã nhóm máy (nhiều loại chung mã thì nối bằng " / "). */
+    protected function blisterTypeName($code): string
+    {
+        if ($this->blisterTypeNames === null) {
+            $this->blisterTypeNames = DB::table('blister_type')->orderBy('name')->get(['code', 'name'])
+                ->groupBy('code')->map(fn ($g) => $g->pluck('name')->join(' / '))->all();
+        }
+
+        return $this->blisterTypeNames[$code] ?? (string) $code;
     }
 
     /**
@@ -138,7 +157,8 @@ class SchedualController extends Controller
         if ($molds->isEmpty()) {
             return null;
         }
-        $roomType = (int) $stageCode === 7 ? ($this->roomMoldInfo($roomId)->blister_type_code ?? null) : null;
+        // Cả 2 công đoạn lọc khuôn theo loại máy của phòng (khuôn chưa khai loại máy thì lắp được mọi máy)
+        $roomType = $this->roomMoldInfo($roomId)->blister_type_code ?? null;
 
         return $molds->filter(fn ($m) => $this->moldFitsRoomType($m, $roomType))->values()->all();
     }
@@ -1585,14 +1605,12 @@ class SchedualController extends Controller
             $color_event = '#40E0D0';
         }
 
-        // 🚨 Mold validation – CĐ 7 (khuôn ép vỉ) và CĐ 5 (khuôn ĐH ở phòng room.require_mold)
+        // 🚨 Mold validation – CĐ 7 (khuôn ép vỉ) và CĐ 5 (khuôn ĐH ở phòng ĐH có loại máy)
         $moldStage = (int) $plan->stage_code;
         if (in_array($moldStage, self::MOLD_STAGES, true) && $plan->finished == 0 && $plan->start && $plan->end && $plan->resourceId) {
             $room = $this->roomMoldInfo($plan->resourceId);
-            // Phòng bắt buộc có khuôn: CĐ 7 máy ép vỉ (có blister_type_code), CĐ 5 phòng bật require_mold
-            $roomNeedsMold = $moldStage === 7
-                ? ($room && !empty($room->blister_type_code))
-                : $this->roomUsesMold(5, $plan->resourceId);
+            // Phòng bắt buộc có khuôn: phòng có loại máy (CĐ 7 máy ép vỉ, CĐ 5 máy Định Hình)
+            $roomNeedsMold = $room && !empty($room->blister_type_code);
 
             if (!empty($plan->blister_mold_id)) {
                 // Đã được gán khuôn cụ thể. Kiểm tra xem có bị quá tải không (trùng).
@@ -1601,12 +1619,13 @@ class SchedualController extends Controller
                 if ($mold) {
                     $mold_code = $mold->code;
 
-                    if ($moldStage === 7 && $room && !$this->moldFitsRoomType($mold, $room->blister_type_code)) {
-                        $subtitles[] = "❌ Sai Khuôn: {$mold->code} không lắp được cho máy {$room->blister_type_code}";
+                    if ($room && !$this->moldFitsRoomType($mold, $room->blister_type_code)) {
+                        $machineName = $this->blisterTypeName($room->blister_type_code);
+                        $subtitles[] = "❌ Sai Khuôn: {$mold->code} không lắp được cho máy {$machineName}";
                         $color_event = '#ffd500ff'; // Vàng: nhóm cảnh báo khuôn
                         $textColor = '#ffffff';
                         $violation_colors[] = '#ffd500ff';
-                        $mold_warning = "❌ Sai Khuôn: {$mold->code} / {$room->blister_type_code}";
+                        $mold_warning = "❌ Sai Khuôn: {$mold->code} / {$machineName}";
                     } else {
                         $concurrentCount = $this->moldConcurrentRooms($mold->id, $plan->start, $plan->end);
 
@@ -2126,7 +2145,7 @@ class SchedualController extends Controller
                 'stage_code',
                 'production_group',
                 'blister_type_code',
-                'require_mold',
+                DB::raw(self::ROOM_REQUIRE_MOLD_SQL . ' AS require_mold'),
                 DB::raw("
                                 CASE
                                 WHEN stage_code IN (3, 4) THEN 'Pha chế'
@@ -2707,7 +2726,7 @@ class SchedualController extends Controller
                         'receive_second_packaging_date' => DB::raw("CASE WHEN received_second_packaging = 0 AND stage_code = 7 THEN '$receiveDateStr' ELSE receive_second_packaging_date END"),
                     ];
 
-                    // Công đoạn có sắp khuôn (ĐG khuôn ép vỉ, ĐH khuôn ở phòng require_mold):
+                    // Công đoạn có sắp khuôn (ĐG khuôn ép vỉ, ĐH khuôn ở phòng ĐH có loại máy):
                     // sắp lịch thủ công cũng phải sắp khuôn
                     if (in_array((int) $product['stage_code'], self::MOLD_STAGES, true)) {
 
@@ -8500,7 +8519,7 @@ class SchedualController extends Controller
 
             $C2_time_minutes = (float) $room->C2_time_minutes;
 
-            // Khuôn: CĐ 7 khuôn ép vỉ (lọc theo loại máy), CĐ 5 khuôn ĐH (chỉ phòng require_mold).
+            // Khuôn: lọc theo loại máy của phòng; CĐ 5 chỉ phòng ĐH có loại máy.
             // null = sắp lịch bình thường (phòng không kiểm soát khuôn hoặc SP chưa khai báo khuôn)
             $compatibleMolds = $this->moldsForRoom($stageCode, $task->product_caterogy_id, $room->room_id);
             if ($compatibleMolds !== null) {
@@ -9050,7 +9069,7 @@ class SchedualController extends Controller
                 $totalMunites = $totalTimeCampaign;
             }
 
-            // Khuôn: CĐ 7 khuôn ép vỉ (lọc theo loại máy), CĐ 5 khuôn ĐH (chỉ phòng require_mold).
+            // Khuôn: lọc theo loại máy của phòng; CĐ 5 chỉ phòng ĐH có loại máy.
             // null = sắp lịch bình thường (phòng không kiểm soát khuôn hoặc SP chưa khai báo khuôn)
             $compatibleMolds = $this->moldsForRoom($stageCode, $firstTask->product_caterogy_id, $room->room_id);
             if ($compatibleMolds !== null) {
@@ -10349,11 +10368,11 @@ class SchedualController extends Controller
     }
 
     /**
-     * Lô sắp tới thuộc công đoạn có sắp khuôn: CĐ 7 mọi phòng, CĐ 5 chỉ phòng require_mold.
+     * Lô sắp tới thuộc công đoạn có sắp khuôn: CĐ 7 mọi phòng, CĐ 5 chỉ phòng ĐH có loại máy.
      */
     protected function upcomingMoldPlansQuery($productionCode)
     {
-        $moldRoomIds = DB::table('room')->where('require_mold', 1)->pluck('id')->all();
+        $moldRoomIds = DB::table('room')->where('stage_code', 5)->whereNotNull('blister_type_code')->pluck('id')->all();
 
         return DB::table('stage_plan')
             ->where(function ($q) use ($moldRoomIds) {
