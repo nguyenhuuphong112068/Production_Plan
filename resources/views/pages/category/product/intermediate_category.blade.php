@@ -275,11 +275,8 @@
           const modal_type = button.data('modal_type');
           currentModalTarget = modal_type;
 
-          if (modal_type === '#create_hypothesis_modal') {
-              table.column(14).search('^1$', true, false).draw();
-          } else {
-              table.column(14).search('^0$', true, false).draw();
-          }
+          // Chỉ chọn được mã BTP thật (không phải mã giả định)
+          table.column(14).search('^0$', true, false).draw();
       });
 
 

@@ -58,12 +58,6 @@
         @php
             $auth_update = user_has_permission(session('user')['userId'], 'category_product_update', 'disabled');
             $auth_deActive = user_has_permission(session('user')['userId'], 'category_product_deActive', 'disabled');
-            // TẠM ẨN: chức năng "Thêm Danh Mục Giả Định" / "Cập Nhật DMGĐ"
-            // $create_i_Hypothesis_category = user_has_permission(
-            //     session('user')['userId'],
-            //     'create_intermediate_Hypothesis_category',
-            //     'boolean',
-            // );
         @endphp
 
         <!-- /.card-Body -->
@@ -75,15 +69,6 @@
                 </button>
             @endif
 
-            {{-- TẠM ẨN: nút "Thêm Danh Mục Giả Định"
-            @if ($create_i_Hypothesis_category)
-                <button class="btn btn-success btn-create-hypothesis mb-2" data-toggle="modal"
-                    data-target="#intermediate_category" data-modal_type="#create_hypothesis_modal"
-                    style="width: 255px">
-                    <i class="fas fa-plus"></i> Thêm Danh Mục Giả Định
-                </button>
-            @endif
-            --}}
 
             <table id="data_table_product_category" class="table table-bordered table-striped">
 
@@ -104,11 +89,6 @@
                         @if (!$auth_update)
                             <th>Cập Nhật</th>
                         @endif
-                        {{-- TẠM ẨN: cột "Cập Nhật DMGĐ"
-                        @if ($create_i_Hypothesis_category)
-                            <th>Cập Nhật DMGĐ</th>
-                        @endif
-                        --}}
                         <th>Vô Hiệu</th>
                         <th>Công Thức</th>
                         <th class="text-center align-middle">Lịch Sử</th>
@@ -197,27 +177,6 @@
                                 </td>
                             @endif
 
-                            {{-- TẠM ẨN: ô "Cập Nhật DMGĐ"
-                            @if ($create_i_Hypothesis_category)
-                                <td class="text-center align-middle">
-                                    <button type="button" class="btn btn-warning btn-edit-hypothesis"
-                                        data-id="{{ $data->id }}"
-                                        data-finished_product_code="{{ $data->finished_product_code }}"
-                                        data-intermediate_code="{{ $data->intermediate_code }}"
-                                        data-product_name_id="{{ $data->product_name_id }}"
-                                        data-market_id="{{ $data->market_id }}"
-                                        data-specification_id="{{ $data->specification_id }}"
-                                        data-batch_size="{{ $data->batch_size }}"
-                                        data-batch_qty="{{ $data->batch_qty }}"
-                                        data-unit_batch_qty="{{ $data->unit_batch_qty }}"
-                                        data-primary_parkaging="{{ $data->primary_parkaging }}" data-toggle="modal"
-                                        data-target="#update_hypothesis_modal"
-                                        {{ $data->IsHypothesis == 0 ? $auth_update : '' }}>
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                </td>
-                            @endif
-                            --}}
 
 
                             <td class="text-center align-middle">
@@ -374,23 +333,6 @@
                 'primary_parkaging'));
         });
 
-        // TẠM ẨN: handler của nút "Cập Nhật DMGĐ"
-        // $('.btn-edit-hypothesis').click(function() {
-        //     const button = $(this);
-        //     const modal = $('#update_hypothesis_modal');
-        //
-        //     // Gán dữ liệu vào input
-        //     modal.find('input[name="id"]').val(button.data('id'));
-        //     modal.find('input[name="finished_product_code"]').val(button.data('finished_product_code'));
-        //     modal.find('input[name="intermediate_code"]').val(button.data('intermediate_code'));
-        //     modal.find('select[name="product_name_id"]').val(button.data('product_name_id'));
-        //     modal.find('select[name="market_id"]').val(button.data('market_id'));
-        //     modal.find('select[name="specification_id"]').val(button.data('specification_id'));
-        //     modal.find('input[name="batch_size"]').val(button.data('batch_size'));
-        //     modal.find('input[name="batch_qty"]').val(button.data('batch_qty'));
-        //     modal.find('input[name="unit_batch_qty"]').val(button.data('unit_batch_qty'));
-        //
-        // });
 
         $('.form-deActive').on('submit', function(e) {
             e.preventDefault(); // chặn submit mặc định

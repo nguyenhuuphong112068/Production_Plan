@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Pages\User;
 
 use App\Http\Controllers\Controller;
+use App\Support\PermissionGroups;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -34,6 +35,7 @@ class UserPermissionController extends Controller
 
         $datas = DB::table('permissions')
             ->orderBy('permission_group', 'asc')
+            ->orderBy('id', 'asc')
             ->get()
             ->map(function ($permission) use ($fromRole, $overrides) {
                 if (array_key_exists($permission->id, $overrides)) {
@@ -45,7 +47,10 @@ class UserPermissionController extends Controller
                 return [
                     'id' => $permission->id,
                     'name' => $permission->display_name ?: $permission->name,
+                    'code' => $permission->name,
+                    'description' => $permission->description,
                     'permission_group' => $permission->permission_group,
+                    'group_name' => PermissionGroups::label($permission->permission_group),
                     'from_role' => isset($fromRole[$permission->id]),
                     'state' => $state,
                 ];
@@ -60,6 +65,12 @@ class UserPermissionController extends Controller
 
     public function store_or_update(Request $request)
     {
+        // Radio bị khoá trên giao diện không chặn được gửi tay, kiểm tra lại ở server
+        $currentUserId = session('user')['userId'] ?? null;
+        if (!$currentUserId || !user_has_permission($currentUserId, 'layout_User', 'boolean')) {
+            return response()->json(['error' => 'Bạn không có quyền cấp quyền riêng cho người dùng'], 403);
+        }
+
         try {
             $userId = $request->input('user_id');
             $permissionId = $request->input('permission_id');

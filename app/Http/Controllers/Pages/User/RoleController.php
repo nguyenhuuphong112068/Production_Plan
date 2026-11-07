@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Pages\User;
 
 use App\Http\Controllers\Controller;
+use App\Support\PermissionGroups;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -14,29 +15,6 @@ class RoleController extends Controller
 
     /** Quyền cần có để tạo / sửa / vô hiệu hoá nhóm quyền */
     private const MANAGE_PERMISSION = 'layout_User';
-
-    /**
-     * Tên nhóm chức năng theo permissions.permission_group.
-     * Mỗi nhóm là 1 card trên bảng, thứ tự khai báo cũng là thứ tự hiển thị.
-     */
-    private const GROUPS = [
-        0  => ['label' => 'Chức Năng Chung (Menu)', 'icon' => 'fa-layer-group'],
-        1  => ['label' => 'Kế Hoạch', 'icon' => 'fa-clipboard-list'],
-        2  => ['label' => 'Dữ Liệu Gốc', 'icon' => 'fa-database'],
-        3  => ['label' => 'Danh Mục', 'icon' => 'fa-list-alt'],
-        4  => ['label' => 'Định Mức', 'icon' => 'fa-chart-line'],
-        5  => ['label' => 'Thông Báo', 'icon' => 'fa-bell'],
-        6  => ['label' => 'Lịch Sản Xuất - Thực Thi', 'icon' => 'fa-industry'],
-        7  => ['label' => 'Báo Cáo', 'icon' => 'fa-chart-bar'],
-        8  => ['label' => 'Báo Cáo Ngày', 'icon' => 'fa-calendar-day'],
-        9  => ['label' => 'Bao Bì - Cảnh Báo', 'icon' => 'fa-exclamation-triangle'],
-        10 => ['label' => 'Phân Công Công Việc', 'icon' => 'fa-user-check'],
-        11 => ['label' => 'Chính Sách Sản Lượng', 'icon' => 'fa-balance-scale'],
-        12 => ['label' => 'Cảnh Báo Lịch NL/BB', 'icon' => 'fa-calendar-times'],
-        13 => ['label' => 'Tồn Kho MMS', 'icon' => 'fa-warehouse'],
-        14 => ['label' => 'Kế Hoạch Năm', 'icon' => 'fa-calendar-alt'],
-        15 => ['label' => 'Theo Dõi', 'icon' => 'fa-tasks'],
-    ];
 
     public function index()
     {
@@ -56,7 +34,7 @@ class RoleController extends Controller
         $roles = $allRoles->where('active', 1)->values();
 
         $permissions = DB::table('permissions')
-            ->select('id', 'name', 'display_name', 'permission_group')
+            ->select('id', 'name', 'display_name', 'description', 'permission_group')
             ->orderBy('permission_group', 'asc')
             ->orderBy('id', 'asc')
             ->get();
@@ -67,7 +45,7 @@ class RoleController extends Controller
             $key = $permission->permission_group;
 
             if (!isset($tree[$key])) {
-                $meta = self::GROUPS[$key] ?? ['label' => 'Khác', 'icon' => 'fa-ellipsis-h'];
+                $meta = PermissionGroups::meta($key);
                 $tree[$key] = ['label' => $meta['label'], 'icon' => $meta['icon'], 'permissions' => []];
             }
 
@@ -103,6 +81,11 @@ class RoleController extends Controller
      */
     public function store_or_update(Request $request)
     {
+        // Ô tick chỉ đọc trên giao diện không chặn được gửi tay, kiểm tra lại ở server
+        if (!$this->canManage()) {
+            return response()->json(['error' => 'Bạn không có quyền phân quyền cho nhóm'], 403);
+        }
+
         try {
             $roleId = $request->input('role_id');
             $permissionId = $request->input('permission_id');

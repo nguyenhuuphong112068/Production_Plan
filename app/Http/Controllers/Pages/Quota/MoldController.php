@@ -45,8 +45,11 @@ class MoldController extends Controller
 
         // Get all available molds for the multi-select
         $blister_types = DB::table('blister_type')->where('active', true)->get();
+        // Chỉ khuôn ép vỉ (ĐG); khuôn Định Hình khai báo theo BTP ở trang forming()
         $molds = DB::table('blister_mold')
             ->where('active', 1)
+            ->where('stage_code', 7)
+            ->where('deparment_code', session('user')['production_code'])
             ->select('id', 'code', 'blister_type_code')
             ->get();
 
@@ -59,7 +62,7 @@ class MoldController extends Controller
             $mold->type_name = $blister_types->whereIn('code', $codes)->pluck('name')->join(', ');
         }
 
-        session()->put(['title' => 'ĐỊNH MỨC - KHUÔN MẪU']);
+        session()->put(['title' => 'ĐỊNH MỨC - KHUÔN EV']);
 
         return view('pages.quota.mold.list', [
             'datas' => $datas,
@@ -72,7 +75,21 @@ class MoldController extends Controller
     {
         try {
             $fpc_id = $request->id;
-            $mold_ids = $request->mold_ids ?? []; // This should be an array from the multi-select
+            $mold_ids = array_values(array_filter((array) ($request->mold_ids ?? []))); // This should be an array from the multi-select
+
+            // Chỉ nhận khuôn ép vỉ đang hoạt động của phân xưởng đang chọn
+            $validCount = DB::table('blister_mold')
+                ->whereIn('id', $mold_ids ?: [0])
+                ->where('stage_code', 7)
+                ->where('active', 1)
+                ->where('deparment_code', session('user')['production_code'])
+                ->count();
+            if ($validCount !== count($mold_ids)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Có khuôn không phải khuôn ép vỉ của phân xưởng hoặc đã ngưng hoạt động'
+                ], 422);
+            }
 
             DB::beginTransaction();
 
@@ -105,6 +122,118 @@ class MoldController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error updating product mold: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Có lỗi xảy ra: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Định mức khuôn Định Hình (CĐ 5) theo BTP. Chỉ liệt kê BTP có định mức sản xuất
+     * ở phòng ĐH bật room.require_mold (S23, S24).
+     */
+    public function forming()
+    {
+        $production = session('user')['production_code'];
+
+        $datas = DB::table('intermediate_category as ic')
+            ->join('quota as q', function ($join) {
+                $join->on('ic.intermediate_code', '=', 'q.intermediate_code')
+                    ->where('q.stage_code', '=', 5)
+                    ->where('q.active', '=', 1);
+            })
+            ->join('room as r', function ($join) {
+                $join->on('q.room_id', '=', 'r.id')
+                    ->where('r.require_mold', '=', 1);
+            })
+            ->leftJoin('product_name as pn', 'ic.product_name_id', '=', 'pn.id')
+            ->leftJoin('intermediate_mold as im', function ($join) use ($production) {
+                // Chỉ hiện khuôn của phân xưởng đang chọn
+                $join->on('ic.intermediate_code', '=', 'im.intermediate_code')
+                    ->whereIn('im.blister_mold_id', DB::table('blister_mold')->where('deparment_code', $production)->select('id'));
+            })
+            ->where('ic.active', 1)
+            ->where('ic.deparment_code', $production)
+            ->select(
+                'ic.id',
+                'ic.intermediate_code',
+                'ic.batch_size',
+                'ic.unit_batch_size',
+                'pn.name as product_name',
+                DB::raw('GROUP_CONCAT(DISTINCT im.blister_mold_id) as mold_ids'),
+                DB::raw('MAX(im.created_at) as mold_created_at'),
+                DB::raw('GROUP_CONCAT(DISTINCT im.created_by) as mold_created_by'),
+                DB::raw("GROUP_CONCAT(DISTINCT r.code ORDER BY r.code SEPARATOR ', ') as quota_rooms")
+            )
+            ->groupBy('ic.id', 'ic.intermediate_code', 'ic.batch_size', 'ic.unit_batch_size', 'pn.name')
+            ->orderBy('ic.intermediate_code')
+            ->get();
+
+        $molds = DB::table('blister_mold')
+            ->where('active', 1)
+            ->where('stage_code', 5)
+            ->where('deparment_code', $production)
+            ->orderBy('code')
+            ->select('id', 'code', 'amount')
+            ->get();
+
+        session()->put(['title' => 'ĐỊNH MỨC - KHUÔN ĐỊNH HÌNH']);
+
+        return view('pages.quota.mold.forming', [
+            'datas' => $datas,
+            'molds' => $molds,
+        ]);
+    }
+
+    public function formingUpdate(Request $request)
+    {
+        $production = session('user')['production_code'];
+        $intermediateCode = $request->intermediate_code;
+        $moldIds = array_filter((array) ($request->mold_ids ?? []));
+
+        if (empty($intermediateCode)) {
+            return response()->json(['success' => false, 'message' => 'Thiếu mã BTP'], 422);
+        }
+
+        // Chỉ nhận khuôn Định Hình đang hoạt động
+        $validIds = DB::table('blister_mold')
+            ->whereIn('id', $moldIds ?: [0])
+            ->where('stage_code', 5)
+            ->where('active', 1)
+            ->where('deparment_code', $production)
+            ->pluck('id')
+            ->all();
+
+        if (count($validIds) !== count($moldIds)) {
+            return response()->json(['success' => false, 'message' => 'Có khuôn không phải khuôn Định Hình của phân xưởng hoặc đã ngưng hoạt động'], 422);
+        }
+
+        try {
+            DB::transaction(function () use ($intermediateCode, $validIds, $production) {
+                // Chỉ thay khuôn của phân xưởng đang chọn, không đụng khai báo của phân xưởng khác
+                DB::table('intermediate_mold')
+                    ->where('intermediate_code', $intermediateCode)
+                    ->whereIn('blister_mold_id', DB::table('blister_mold')->where('deparment_code', $production)->select('id'))
+                    ->delete();
+
+                $by = session('user')['fullName'] ?? 'Admin';
+                $rows = array_map(fn ($id) => [
+                    'intermediate_code' => $intermediateCode,
+                    'blister_mold_id' => $id,
+                    'created_by' => $by,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ], $validIds);
+
+                if ($rows) {
+                    DB::table('intermediate_mold')->insert($rows);
+                }
+            });
+
+            return response()->json(['success' => true, 'message' => 'Cập nhật khuôn Định Hình thành công']);
+        } catch (\Exception $e) {
+            Log::error('Error updating intermediate mold: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Có lỗi xảy ra: ' . $e->getMessage()

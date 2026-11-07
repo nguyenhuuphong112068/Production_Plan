@@ -5,7 +5,7 @@ description: Plugin app/Plugins/WipControl giới hạn tồn bán thành phẩm
 
 # Kiểm Soát Tồn BTP (plugin WipControl)
 
-> **Quy tắc bắt buộc** (người dùng yêu cầu 10/10/2026): thay đổi/bổ sung nguyên lý của plugin → cập nhật skill này VÀ tạo phiên bản mới của tài liệu Nguyên lý trong `storage/app/schedualer/` (quy trình: `storage/app/schedualer/README.md`, chi tiết ở mục 0 của skill `schedual`). Bản giải thích cho khách hàng: `storage/app/schedualer/nguyen-ly/<phiên bản mới nhất>/`.
+> **Quy tắc bắt buộc** (người dùng yêu cầu 10/10/2026): thay đổi/bổ sung nguyên lý của plugin → cập nhật skill này VÀ tạo phiên bản mới của tài liệu Nguyên lý trong `storage/app/schedualer/` (quy trình: `storage/app/schedualer/README.md`, chi tiết ở mục 0 của skill `schedual`). Bản giải thích cho khách hàng: `storage/app/schedualer/nguyen-ly/<phiên bản mới nhất>/`. Đồng thời sửa Hướng Dẫn Sử Dụng trong phần mềm: `resources/views/pages/userGuide/schedual/sections/wipControl|wipExamples|wipResult.blade.php` (quy tắc 5 của `common-rules`, skill `user-guide`).
 
 ## 1. Mục Đích Và Vị Trí Trong Luồng
 
@@ -71,7 +71,7 @@ Các bước khác trong vòng (`run()`): `roomStep` (đổi chỗ khối lô tr
 - **7 ngày NL/BB là hạn cứng, LUÔN bật** (`DATE_RULES`: được phép cân `min` stage 3; HH NL chính `max` stage 3; HH BB `max` stage 7; PC/THT/ĐH/BP trước `max` stage 3/4/5/6) + `STAGE_DEADLINES` (ĐG trước). So theo **ngày** như cảnh báo Gantt. Người dùng đã **bỏ checkbox tuỳ chọn** (10/2026) – không đề xuất lại. Cột `wip_control_settings.date_rules` (migration `2026_10_08_090000`) còn trong DB local nhưng không dùng.
 - Chỉ chặn vi phạm **MỚI**: `hardViolation()` bỏ qua nếu giờ cũ đã vi phạm cùng mốc (nếu không, bước ngưng nguồn không bao giờ hội tụ vì lịch xuôi đã có vi phạm sẵn).
 - Không đè giờ cùng phòng (trừ `overlap = 1`), đúng thứ tự công đoạn + thời gian chờ, không BẮT ĐẦU trong ngày nghỉ (`skipOff` nhảy tới cuối khoảng nghỉ; được chạy xuyên qua).
-- Lô đã chạy / đang chạy, lô bắt đầu trước ngày sắp lịch: khoá. Lô thẩm định VẪN được lùi (`lock_validation = false` cố định). Lô `immediately` vẫn được lùi.
+- Lô đã chạy / đang chạy, lô bắt đầu trước ngày sắp lịch: khoá. Lô thẩm định VẪN được lùi (`lock_validation = false` cố định). (Cột `immediately` không còn dùng từ 06/11/2026.)
 
 ## 6. An Toàn Và Kết Thúc
 

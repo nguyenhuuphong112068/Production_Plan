@@ -65,7 +65,6 @@ Route::prefix('/Schedual')
                 Route::put('Sorted', 'Sorted')->name('Sorted');
                 Route::put('submit', 'submit')->name('submit');
                 Route::put('required_room', 'required_room')->name('required_room');
-                Route::put('immediately', 'immediately')->name('immediately');
                 Route::put('clearningValidation', 'clearningValidation')->name('clearningValidation');
                 Route::put('groupGranulationAndBlending', 'groupGranulationAndBlending')->name('groupGranulationAndBlending');
                 Route::put('cleaninglevelchange', 'cleaninglevelchange')->name('cleaninglevelchange');
@@ -112,7 +111,8 @@ Route::get('/assignment/{any?}', function () {
 
 Route::get('/maintenance-calendar/{any?}', [MaintenanceSchedualController::class, 'index'])
         ->where('any', '.*')
-        ->middleware(CheckLogin::class);
+        ->middleware(CheckLogin::class)
+        ->name('pages.schedual.maintenance_calendar.index'); // tên route để nút "?" (Hướng Dẫn Sử Dụng) nhận ra màn hình
 
 Route::prefix('/MaintenanceSchedual')
         ->controller(MaintenanceSchedualController::class)

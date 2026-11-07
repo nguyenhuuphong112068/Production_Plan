@@ -180,7 +180,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
         visibleCols = allColumns.filter(col => ![
           "weight_dates", "pakaging_dates", "level",
           "batch", "market", "is_val", "source_material_name", "campaign_code",
-          "clearning_validation", "immediately", "expected_date", "responsed_date",
+          "clearning_validation", "expected_date", "responsed_date",
           "expired_material_date", "preperation_before_date", "coating_before_date", "blending_before_date", "allow_weight_before_date"
         ].includes(col.field));
       } else if (stageFilter === 9) {
@@ -240,10 +240,6 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
 
   const ValidationBodyTemplate = (rowData) => (
     <Checkbox checked={rowData.is_val ? true : false} />
-  );
-
-  const ImmediatelyBodyTemplate = (rowData) => (
-    <Checkbox checked={rowData.immediately ? true : false} />
   );
 
   const clearningValidationBodyTemplate = (rowData) => (
@@ -654,44 +650,6 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
     }));
 
     axios.put('/Schedual/createManualCampain', { data: filteredRows })
-      .then(res => {
-        let data = res.data;
-        if (typeof data === "string") {
-          data = data.replace(/^<!--.*?-->/, "").trim();
-          data = JSON.parse(data);
-        }
-        setPlan(data.plan);
-      }
-      ).catch(err => {
-        Swal.fire({
-          icon: 'error',
-          title: 'Lỗi',
-          timer: 1500
-        });
-        console.error("API error:", err.response?.data || err.message);
-      }
-      );
-
-    setIsSaving(false);
-    setSelectedRows([]);
-    return;
-  }
-
-  const handleImmediately = (e) => {
-    if (isSaving) return;
-    setIsSaving(true);
-
-    const filteredRows = selectedRows.map(row => ({
-      id: row.id,
-      plan_master_id: row.plan_master_id,
-      product_caterogy_id: row.product_caterogy_id,
-      predecessor_code: row.predecessor_code,
-      campaign_code: row.campaign_code,
-      code: row.code,
-      immediately: row.immediately
-    }));
-
-    axios.put('/Schedual/immediately', { data: filteredRows })
       .then(res => {
         let data = res.data;
         if (typeof data === "string") {
@@ -1530,7 +1488,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
   };
 
   const moldBodyTemplate = (rowData) => {
-    if (rowData.stage_code != 7) return null;
+    if (rowData.stage_code != 7 && rowData.stage_code != 5) return null;
     const molds = rowData.compatible_molds || [];
     if (molds.length === 0) return <span className="text-muted">Không có</span>;
 
@@ -1762,9 +1720,8 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
 
     { field: "source_material_name", header: "Nguồn nguyên liệu", sortable: true, body: naBody("source_material_name"), style: { width: '25rem', maxWidth: '25rem', ...longTextStyle } },
     { field: "campaign_code", header: "Mã Chiến Dịch", sortable: true, body: campaignCodeBody, style: { width: '8rem', maxWidth: '8rem', ...longTextStyle } },
-    { field: "immediately", header: (<><i className="fa fa-bolt me-1"></i></>), body: ImmediatelyBodyTemplate, style: { width: '5rem', maxWidth: '5rem', ...longTextStyle } },
     { field: "clearning_validation", header: "🚿", body: clearningValidationBodyTemplate, style: { width: '5rem', maxWidth: '5rem', ...longTextStyle } },
-    { field: "blister_mold_id", header: "Khuôn ép vỉ", body: moldBodyTemplate, style: { width: '10rem', maxWidth: '10rem', ...longTextStyle } },
+    { field: "blister_mold_id", header: "Khuôn", body: moldBodyTemplate, style: { width: '10rem', maxWidth: '10rem', ...longTextStyle } },
     { field: "note", header: "Ghi chú", sortable: true, body: naBody("note"), filter: false, filterField: "note", style: { width: '20%', maxWidth: '20%', ...longTextStyle } },
   ];
 
@@ -1833,11 +1790,6 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
                   <div className="fc-event  px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Xóa Mã Chiến Dịch Công Đoạn Của Các Dòng Được Chọn"
                     onClick={handleDeleteCampainStage}>
                     {isSaving === false ? <i className="fas fa-trash"></i> : <i className="fas fa-spinner fa-spin fa-lg"></i>}
-                  </div>
-
-                  <div className="fc-event  px-3 py-1 bg-green-100 border border-green-400 rounded text-md text-center cursor-pointer mr-3" title="Lệnh Sắp Ngay Sau Kết Thúc Công Đoạn Trước"
-                    onClick={handleImmediately}>
-                    {isSaving === false ? <i className="fa fa-bolt"></i> : <i className="fas fa-spinner fa-spin fa-lg"></i>}
                   </div>
 
                   {stageFilter == 3 && (

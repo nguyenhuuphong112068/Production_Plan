@@ -26,6 +26,13 @@
                         @enderror
                     </div>
                     <div class="form-group">
+                        <label for="update_stage_code">Công Đoạn <span class="text-danger">*</span></label>
+                        <select name="stage_code" id="update_stage_code" class="form-control js-mold-stage" data-type-group="#update_blister_type_group" required>
+                            <option value="7">Đóng Gói (khuôn ép vỉ)</option>
+                            <option value="5">Định Hình</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="update_blister_type_group">
                         <label for="update_blister_type_code">Loại Máy Ép Vỉ <span class="text-danger">*</span></label>
                         <select name="blister_type_code[]" id="update_blister_type_code" class="form-control @error('blister_type_code', 'updateErrors') is-invalid @enderror" multiple required>
                             @if(isset($blister_types))

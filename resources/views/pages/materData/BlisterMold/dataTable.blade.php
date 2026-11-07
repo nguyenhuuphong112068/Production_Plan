@@ -14,6 +14,7 @@
                     <tr>
                         <th>STT</th>
                         <th>Mã Khuôn Mẫu</th>
+                        <th>Công Đoạn</th>
                         <th>Số Lượng</th>
                         <th>Loại Máy</th>
                         <th>Trạng Thái</th>
@@ -28,6 +29,13 @@
                         <tr>
                              <td>{{ $loop->iteration }} </td>
                              <td>{{ $data->code }}</td>
+                             <td>
+                                 @if ((int) ($data->stage_code ?? 7) === 5)
+                                     <span class="badge badge-info">Định Hình</span>
+                                 @else
+                                     <span class="badge badge-primary">Đóng Gói</span>
+                                 @endif
+                             </td>
                              <td>{{ $data->amount }}</td>
                              <td>
                                  @php
@@ -37,7 +45,7 @@
                                      }
                                      $typeNames = collect($blister_types)->whereIn('code', $codes)->pluck('name')->join(', ');
                                  @endphp
-                                 {{ $typeNames ?: $data->blister_type_code }}
+                                 {{ (int) ($data->stage_code ?? 7) === 5 ? '-' : ($typeNames ?: $data->blister_type_code) }}
                              </td>
                             <td class="text-center">
                                 @if($data->active)
@@ -53,6 +61,7 @@
                                     data-id="{{ $data->id }}" 
                                      data-code="{{ $data->code }}"
                                      data-amount="{{ $data->amount }}"
+                                     data-stage_code="{{ $data->stage_code ?? 7 }}"
                                      @php
                                          $codes = json_decode($data->blister_type_code, true);
                                          if (!is_array($codes)) {
@@ -108,6 +117,16 @@
     </script>
 @endif
 
+@if (session('error'))
+    <script>
+        Swal.fire({
+            title: 'Không thực hiện được',
+            text: '{{ session('error') }}',
+            icon: 'error'
+        });
+    </script>
+@endif
+
 <script>
     $(document).ready(function() {
         document.body.style.overflowY = "auto";
@@ -129,6 +148,24 @@
                 typeCodes = [typeCodes];
             }
             modal.find('#update_blister_type_code').val(typeCodes);
+            modal.find('#update_stage_code').val(String(button.data('stage_code') || 7)).trigger('change');
+        });
+
+        // Khuôn Định Hình không gắn loại máy ép vỉ → ẩn và bỏ bắt buộc ô Loại Máy Ép Vỉ
+        function toggleBlisterType(select) {
+            const group = $($(select).data('type-group'));
+            const isBlister = String($(select).val()) === '7';
+            group.toggle(isBlister);
+            group.find('select').prop('required', isBlister);
+            if (!isBlister) {
+                group.find('select').val([]);
+            }
+        }
+        $(document).on('change', '.js-mold-stage', function() {
+            toggleBlisterType(this);
+        });
+        $('.js-mold-stage').each(function() {
+            toggleBlisterType(this);
         });
 
         $('.form-deActive').on('submit', function(e) {

@@ -437,10 +437,6 @@
 
         <!-- Menu truy cập nhanh bên dưới form -->
         <div class="quick-menu">
-            {{-- <a href="/status" class="quick-btn">
-                <i class="bi bi-activity"></i>
-                <span>Trạng Thái<br>Thời Gian Thực</span>
-            </a> --}}
             {{-- Trạng thái hiện tại các phòng sản xuất theo dữ liệu Thực Thi Sản Xuất (không cần đăng nhập) --}}
             <a href="{{ route('pages.execution.public') }}" class="quick-btn">
                 <i class="bi bi-activity"></i>

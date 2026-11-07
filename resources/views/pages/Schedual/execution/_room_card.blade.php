@@ -110,7 +110,8 @@
                         <div class="exec-group">
                             @foreach ($plans as $b)
                                 <div class="exec-group-row">
-                                    <span class="exec-group-batch"><i class="fas fa-wrench"></i> {{ $b->equipment_label }}</span>
+                                    {{-- Phòng có thể giữ cùng lúc lịch bảo trì và lô sản xuất: lô sản xuất không có equipment_label --}}
+                                    <span class="exec-group-batch"><i class="fas fa-wrench"></i> {{ $b->equipment_label ?? $b->label }}</span>
                                 </div>
                             @endforeach
                         </div>

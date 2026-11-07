@@ -6,7 +6,8 @@
         --role-primary-light: #0B5A75;
         --role-accent: #CDC717;
         --role-soft: #EEF5F7;
-        --role-line: #E6EEF1;
+        --role-line: #E2EBEF;
+        --role-lighter: #9FC3CF;
     }
 
     /* ===== Thanh công cụ ===== */
@@ -30,10 +31,11 @@
     .perm-toolbar-card .btn {
         border-radius: 8px;
         font-weight: 600;
+        font-size: 13.5px;
     }
 
     .role-search {
-        max-width: 320px;
+        max-width: 300px;
         border-radius: 8px;
     }
 
@@ -43,9 +45,99 @@
         background: #fff;
     }
 
-    .btn-outline-role:hover {
+    .btn-outline-role:hover,
+    .perm-role-filter.is-filtered>.btn {
         color: #fff;
         background: var(--role-primary);
+    }
+
+    /* Menu chọn nhóm quyền hiển thị */
+    .perm-role-filter {
+        position: relative;
+    }
+
+    .perm-role-menu {
+        position: absolute;
+        top: calc(100% + 6px);
+        left: 0;
+        z-index: 20;
+        min-width: 300px;
+        max-height: 380px;
+        overflow-y: auto;
+        padding: 8px 0;
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, .14);
+    }
+
+    .perm-role-menu-actions {
+        display: flex;
+        justify-content: space-between;
+        padding: 2px 14px 8px;
+        margin-bottom: 4px;
+        border-bottom: 1px solid var(--role-line);
+        font-size: 13px;
+    }
+
+    .perm-role-menu-actions a {
+        color: var(--role-primary-light);
+    }
+
+    .perm-role-option {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0;
+        padding: 6px 14px;
+        font-weight: 400;
+        font-size: 14px;
+        cursor: pointer;
+    }
+
+    .perm-role-option:hover {
+        background: var(--role-soft);
+    }
+
+    .perm-role-option .role-user-count {
+        margin-left: auto;
+        font-size: 12px;
+        color: #94A3B8;
+    }
+
+    .perm-role-option input,
+    .perm-only-granted input {
+        accent-color: var(--role-primary);
+    }
+
+    .perm-only-granted {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin: 0;
+        font-weight: 600;
+        font-size: 13.5px;
+        color: var(--role-primary);
+        cursor: pointer;
+    }
+
+    .perm-only-granted.is-disabled {
+        color: #A0AEC0;
+        cursor: default;
+    }
+
+    .perm-hint {
+        font-size: 12.5px;
+        color: #7B8A97;
+    }
+
+    .perm-readonly-note {
+        width: 100%;
+        margin: 0;
+        padding: 8px 12px;
+        border-radius: 8px;
+        background: #FFF8E1;
+        color: #8A6D00;
+        font-size: 13.5px;
     }
 
     /* ===== Mỗi nhóm chức năng = 1 card ===== */
@@ -53,7 +145,7 @@
         border: none;
         border-radius: 14px;
         box-shadow: 0 4px 16px rgba(0, 58, 79, .10);
-        overflow: hidden;
+        overflow: clip;
         margin-bottom: 22px;
     }
 
@@ -115,11 +207,10 @@
         padding: 0;
     }
 
-    /* ===== Bảng quyền trong card ===== */
-    /* Mỗi card có vùng cuộn riêng (ngang + dọc); tiêu đề role dính khi cuộn dọc */
+    /* ===== Bảng quyền trong card: ma trận gọn, tên nhóm quyền xoay dọc ===== */
+    /* Card hiện đủ mọi quyền (không cuộn dọc), chỉ cuộn ngang khi nhiều cột nhóm quyền */
     .perm-table-scroll {
-        overflow: auto;
-        max-height: 68vh;
+        overflow-x: auto;
     }
 
     .perm-table {
@@ -128,26 +219,32 @@
         table-layout: fixed;
         border-collapse: separate;
         border-spacing: 0;
-        font-size: 14.5px;
+        font-size: 13.5px;
     }
 
     .perm-table col.perm-col-name {
-        width: 340px;
+        width: 320px;
     }
 
     .perm-table col.perm-col-role {
-        width: 118px;
+        width: 44px;
     }
 
     .perm-table th,
     .perm-table td {
-        padding: 10px 16px;
+        padding: 6px 8px;
+        border-right: 1px solid var(--role-line);
         border-bottom: 1px solid var(--role-line);
     }
 
+    .perm-table .is-role-hidden {
+        display: none;
+    }
+
+    /* Tiêu đề: JS (syncStickyHeads) dịch xuống ngay dưới topNAV khi cuộn trang.
+       Không dùng position: sticky vì vùng cuộn ngang chặn dính theo trang */
     .perm-table thead th {
-        position: sticky;
-        top: 0;
+        position: relative;
         z-index: 3;
         background: #fff;
         color: var(--role-primary);
@@ -155,62 +252,155 @@
         box-shadow: inset 0 -2px 0 var(--role-accent);
     }
 
-    .perm-table thead th+th {
-        text-align: center;
-        font-size: 12px;
-        line-height: 1.25;
-        padding: 10px 6px;
-        vertical-align: middle;
+    .perm-table thead th.perm-name-head {
+        vertical-align: bottom;
+        font-size: 13.5px;
     }
 
-    /* Ghim cột "Quyền" khi cuộn ngang; ô góc trên-trái ghim cả hai chiều */
-    .perm-table th:first-child,
+    .perm-table thead th[data-role-col] {
+        padding: 8px 2px;
+        text-align: center;
+        vertical-align: bottom;
+        font-size: 12px;
+    }
+
+    .perm-table thead th[data-role-col]>span {
+        display: inline-block;
+        writing-mode: vertical-rl;
+        transform: rotate(180deg);
+        max-height: 180px;
+        line-height: 1.15;
+        text-align: left;
+    }
+
+    .perm-table thead th.is-admin {
+        background: #FBFAE6;
+    }
+
+    /* Ghim cột "Quyền" khi cuộn ngang */
+    .perm-table thead th.perm-name-head,
     .perm-table td:first-child {
         position: sticky;
         left: 0;
-        background: #fff;
         z-index: 2;
-        box-shadow: inset -1px 0 0 var(--role-line);
     }
 
-    .perm-table thead th:first-child {
+    .perm-table td:first-child {
+        background: #fff;
+    }
+
+    .perm-table thead th.perm-name-head {
         z-index: 4;
-        box-shadow: inset 0 -2px 0 var(--role-accent), inset -1px 0 0 var(--role-line);
     }
 
     .perm-table tbody tr.permission-row:hover td {
         background: var(--role-soft);
     }
 
-    .perm-name-cell .permission-name {
-        color: #2D3748;
+    /* Cột đang rê chuột: tô nhạt cả cột để dò đúng nhóm quyền */
+    .perm-table td.is-col-hover,
+    .perm-table th.is-col-hover {
+        background: var(--role-soft);
     }
 
-    .perm-name-cell .permission-code {
-        font-size: 11.5px;
-        color: #9AA7B4;
-        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    /* Hàng số quyền đã cấp của từng nhóm quyền trong card */
+    .perm-count-row td {
+        background: var(--role-soft) !important;
+        color: var(--role-primary);
+        font-weight: 700;
+        font-size: 12.5px;
+        text-align: center;
+        border-bottom: 2px solid var(--role-lighter);
+    }
+
+    .perm-count-row td:first-child {
+        text-align: left;
+    }
+
+    .perm-name-cell {
+        position: relative;
+        padding-right: 36px !important;
+    }
+
+    .perm-name-cell .permission-name {
+        color: #2D3748;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    /* Mã quyền + diễn giải: chỉ để ô tìm kiếm đọc được, xem bằng tooltip */
+    .perm-name-cell .permission-code,
+    .perm-name-cell .permission-desc {
+        display: none;
+    }
+
+    /* Nút tick / bỏ tick một quyền cho mọi nhóm quyền đang hiện, hiện khi rê chuột vào dòng */
+    .perm-row-all {
+        position: absolute;
+        top: 50%;
+        right: 6px;
+        width: 24px;
+        height: 22px;
+        padding: 0;
+        transform: translateY(-50%);
+        border: 1px solid var(--role-lighter);
+        border-radius: 6px;
+        background: #fff;
+        color: var(--role-primary);
+        font-size: 11px;
+        opacity: 0;
+        cursor: pointer;
+        transition: opacity .2s ease, background .2s ease, color .2s ease;
+    }
+
+    .permission-row:hover .perm-row-all,
+    .perm-row-all:focus {
+        opacity: 1;
+    }
+
+    .perm-row-all:hover {
+        background: var(--role-primary);
+        color: #fff;
+    }
+
+    /* Đang kéo chọn nhiều ô: không bôi đen chữ, ô dưới chuột sáng lên */
+    body.perm-dragging,
+    body.perm-dragging * {
+        user-select: none;
+        cursor: cell !important;
+    }
+
+    body.perm-dragging td.perm-cell:hover {
+        background: var(--role-lighter) !important;
     }
 
     .perm-cell {
+        padding: 4px 2px !important;
         text-align: center;
         vertical-align: middle;
     }
 
     .step-checkbox {
-        width: 19px;
-        height: 19px;
+        width: 16px;
+        height: 16px;
+        margin: 0;
+        vertical-align: middle;
         cursor: pointer;
         accent-color: var(--role-primary);
-        transition: box-shadow .2s ease, transform .1s ease;
-    }
-
-    .step-checkbox:checked {
-        box-shadow: 0 0 5px var(--role-primary-light);
+        transition: transform .1s ease;
     }
 
     .step-checkbox:active {
         transform: scale(.9);
+    }
+
+    .step-checkbox[aria-readonly="true"] {
+        cursor: default;
+    }
+
+    .step-checkbox[aria-readonly="true"]:active {
+        transform: none;
     }
 
     .perm-empty {
@@ -270,13 +460,61 @@
                         <i class="fas fa-users-cog mr-1"></i> Quản Lý Nhóm Quyền
                     </button>
                 @endif
+
                 <input type="text" class="form-control role-search" id="rolePermissionSearch"
-                    placeholder="Tìm quyền theo tên...">
+                    placeholder="Tìm quyền theo tên hoặc mã...">
+
+                <div class="perm-role-filter">
+                    <button type="button" class="btn btn-outline-role" id="btnRoleFilter">
+                        <i class="fas fa-users mr-1"></i> <span id="roleFilterLabel">Tất cả nhóm quyền</span>
+                        <i class="fas fa-caret-down ml-1"></i>
+                    </button>
+                    <div class="perm-role-menu" id="roleFilterMenu" hidden>
+                        <div class="perm-role-menu-actions">
+                            <a href="#" id="roleFilterAll">Chọn tất cả</a>
+                            <a href="#" id="roleFilterNone">Bỏ chọn</a>
+                        </div>
+                        @foreach ($roles as $role)
+                            <label class="perm-role-option">
+                                <input type="checkbox" class="role-filter-item" value="{{ $role->id }}">
+                                <span class="role-filter-name">{{ $role->name }}</span>
+                                <span class="role-user-count" title="Số người dùng thuộc nhóm">{{ $role->user_count }}
+                                    <i class="fas fa-user"></i></span>
+                            </label>
+                        @endforeach
+                    </div>
+                </div>
+
+                <label class="perm-only-granted"
+                    title="Chỉ hiện quyền mà ít nhất một nhóm quyền đang chọn đã được cấp">
+                    <input type="checkbox" id="onlyGranted" disabled> Chỉ quyền đã cấp
+                </label>
+
                 <button type="button" class="btn btn-outline-role ml-auto" id="btnToggleAllCards">
                     <i class="fas fa-compress-alt mr-1"></i> Thu gọn tất cả
                 </button>
+
+                @if ($canManage)
+                    <div class="perm-hint w-100">
+                        <i class="fas fa-mouse-pointer mr-1"></i> Bấm giữ rồi kéo để tick / bỏ tick nhiều ô cùng lúc.
+                        Nút <i class="fas fa-check-double"></i> cuối tên quyền: cấp quyền đó cho mọi nhóm quyền đang hiện.
+                        Rê chuột vào tên quyền để xem mã và diễn giải.
+                    </div>
+                @else
+                    <p class="perm-readonly-note">
+                        <i class="fas fa-lock mr-1"></i> Chế độ chỉ xem: bạn không có quyền phân quyền cho nhóm.
+                    </p>
+                @endif
             </div>
         </div>
+
+        @if (empty($tree))
+            <div class="card perm-model-card">
+                <div class="card-body p-3">
+                    <div class="alert alert-warning mb-0">Chưa có quyền nào trong hệ thống.</div>
+                </div>
+            </div>
+        @endif
 
         {{-- Mỗi nhóm chức năng một card riêng --}}
         @foreach ($tree as $groupKey => $group)
@@ -284,7 +522,7 @@
                 <div class="card-header perm-model-header">
                     <span class="perm-model-icon"><i class="fas {{ $group['icon'] }}"></i></span>
                     <span class="perm-model-name">{{ $group['label'] }}</span>
-                    <span class="perm-model-count">{{ count($group['permissions']) }}</span>
+                    <span class="perm-model-count" title="Số quyền trong nhóm chức năng">{{ count($group['permissions']) }}</span>
                     <i class="fas fa-chevron-down perm-model-toggle"></i>
                 </div>
 
@@ -294,34 +532,52 @@
                             <colgroup>
                                 <col class="perm-col-name">
                                 @foreach ($roles as $role)
-                                    <col class="perm-col-role">
+                                    <col class="perm-col-role" data-role-col="{{ $role->id }}">
                                 @endforeach
                             </colgroup>
                             <thead>
                                 <tr>
-                                    <th>Quyền</th>
+                                    <th class="perm-name-head">Quyền</th>
                                     @foreach ($roles as $role)
-                                        <th title="{{ $role->description }}">{{ $role->name }}</th>
+                                        <th class="{{ $role->id == 1 ? 'is-admin' : '' }}" data-role-col="{{ $role->id }}"
+                                            title="{{ $role->name }}{{ $role->description ? ' - ' . $role->description : '' }} ({{ $role->user_count }} người dùng){{ $role->id == 1 ? "\nNhóm Admin luôn giữ toàn quyền" : '' }}">
+                                            <span>@if ($role->id == 1)<i class="fas fa-lock mb-1" style="font-size: 10px"></i> @endif{{ $role->name }}</span>
+                                        </th>
                                     @endforeach
                                 </tr>
                             </thead>
                             <tbody>
+                                <tr class="perm-count-row">
+                                    <td title="Số quyền đã tick của từng nhóm quyền trong nhóm chức năng này">Số quyền đã cấp</td>
+                                    @foreach ($roles as $role)
+                                        <td data-role-col="{{ $role->id }}" data-count-role="{{ $role->id }}"
+                                            title="{{ $role->name }}"></td>
+                                    @endforeach
+                                </tr>
+
                                 @foreach ($group['permissions'] as $permission)
                                     <tr class="permission-row">
-                                        <td class="perm-name-cell">
-                                            <div class="permission-name">
-                                                {{ $permission->display_name ?: $permission->name }}
-                                            </div>
+                                        <td class="perm-name-cell"
+                                            title="{{ $permission->name }}{{ !empty($permission->description) && $permission->description !== $permission->display_name ? "\n" . $permission->description : '' }}">
+                                            <div class="permission-name">{{ $permission->display_name ?: $permission->name }}</div>
                                             <div class="permission-code">{{ $permission->name }}</div>
+                                            <div class="permission-desc">{{ $permission->description }}</div>
+                                            @if ($canManage)
+                                                <button type="button" class="perm-row-all"
+                                                    title="Tick quyền này cho tất cả nhóm quyền đang hiện (đã tick hết thì bỏ tick hết)">
+                                                    <i class="fas fa-check-double"></i>
+                                                </button>
+                                            @endif
                                         </td>
 
                                         @foreach ($roles as $role)
-                                            <td class="perm-cell">
+                                            <td class="perm-cell" data-role-col="{{ $role->id }}">
                                                 <input class="step-checkbox" type="checkbox"
                                                     data-role="{{ $role->id }}"
                                                     data-permission="{{ $permission->id }}"
                                                     id="checkbox-{{ $permission->id }}-{{ $role->id }}"
                                                     name="permission"
+                                                    @unless ($canManage) aria-readonly="true" tabindex="-1" @endunless
                                                     {{ isset($assigned[$role->id . '-' . $permission->id]) ? 'checked' : '' }}>
                                             </td>
                                         @endforeach
@@ -330,7 +586,7 @@
                             </tbody>
                         </table>
                     </div>
-                    <div class="perm-empty" hidden>Không có quyền nào khớp từ khoá tìm kiếm.</div>
+                    <div class="perm-empty" hidden>Không có quyền nào khớp bộ lọc.</div>
                 </div>
             </div>
         @endforeach
@@ -479,7 +735,7 @@
     <script>
         Swal.fire({
             title: 'Thành công!',
-            text: '{{ session('success') }}',
+            text: @json(session('success')),
             icon: 'success',
             timer: 2000, // tự đóng sau 2 giây
             showConfirmButton: false
@@ -488,6 +744,8 @@
 @endif
 
 <script>
+    var ADMIN_ROLE_ID = '1';
+
     // ----- Thu gọn / mở rộng card -----
     function setCardCollapsed($card, collapsed, save) {
         $card.toggleClass('is-collapsed', collapsed);
@@ -551,6 +809,131 @@
         refreshToggleAllLabel();
     });
 
+    // ----- Ô chỉ đọc (không có quyền phân quyền): chặn đổi trạng thái -----
+    $(document).on('click', '.step-checkbox[aria-readonly="true"]', function(e) {
+        e.preventDefault();
+    });
+
+    // Trang nạp 2 bản jQuery (1.12 ở cuối trang này, bản mới ở layout nạp sau): handler 'change' bên dưới gắn bằng
+    // bản cũ, còn code chạy lúc bấm dùng $ của bản mới nên .trigger('change') không tới handler -> phát sự kiện gốc
+    function fireChange($boxes) {
+        $boxes.each(function() {
+            this.dispatchEvent(new Event('change', {
+                bubbles: true
+            }));
+        });
+    }
+
+    // ----- Bấm giữ rồi kéo qua nhiều ô: mọi ô đi qua nhận cùng trạng thái mới của ô bắt đầu -----
+    // mousedown tự đổi ô bắt đầu nên click ngay sau đó của chính checkbox bị chặn (không đổi 2 lần);
+    // bấm phím cách trên ô vẫn đổi bình thường vì không có mousedown
+    var permDrag = null;
+    var permSuppressClick = false;
+
+    function paintCell(td) {
+        var box = $(td).find('.step-checkbox');
+        if (!box.length || box.is('[aria-readonly]') || $(td).hasClass('is-role-hidden')) return;
+        if (box.prop('checked') === permDrag.checked) return;
+        // Nhóm Admin luôn giữ toàn quyền nên không bỏ tick
+        if (!permDrag.checked && String(box.data('role')) === ADMIN_ROLE_ID) return;
+        fireChange(box.prop('checked', permDrag.checked));
+    }
+
+    $(document).on('mousedown', 'td.perm-cell', function(e) {
+        var box = $(this).find('.step-checkbox');
+        if (e.which !== 1 || !box.length || box.is('[aria-readonly]')) return;
+        e.preventDefault();
+        permDrag = {
+            checked: !box.prop('checked')
+        };
+        permSuppressClick = $(e.target).is('.step-checkbox');
+        $('body').addClass('perm-dragging');
+        paintCell(this);
+    });
+
+    $(document).on('mouseenter', 'td.perm-cell', function() {
+        if (permDrag) paintCell(this);
+    });
+
+    $(document).on('mouseup', function() {
+        if (!permDrag) return;
+        permDrag = null;
+        $('body').removeClass('perm-dragging');
+    });
+
+    $(document).on('click', '.step-checkbox', function(e) {
+        if (permSuppressClick) {
+            e.preventDefault();
+            permSuppressClick = false;
+        }
+    });
+
+    // ----- Tô nhạt cột nhóm quyền đang rê chuột -----
+    $(document).on('mouseenter', '.perm-table [data-role-col]', function() {
+        var col = $(this).data('role-col');
+        $(this).closest('.perm-table').find('[data-role-col="' + col + '"]').not('col').addClass('is-col-hover');
+    });
+
+    $(document).on('mouseleave', '.perm-table [data-role-col]', function() {
+        $(this).closest('.perm-table').find('.is-col-hover').removeClass('is-col-hover');
+    });
+
+    // ----- Một quyền cho mọi nhóm quyền đang hiện: chưa tick hết thì tick hết, đã tick hết thì bỏ hết -----
+    $(document).on('click', '.perm-row-all', function() {
+        var row = $(this).closest('tr');
+        var boxes = row.find('td.perm-cell:not(.is-role-hidden) .step-checkbox').not('[aria-readonly]');
+        var allOn = boxes.not(':checked').length === 0;
+        // Nhóm Admin luôn giữ toàn quyền nên không bỏ tick
+        var targets = allOn ?
+            boxes.filter(':checked').filter(function() {
+                return String($(this).data('role')) !== ADMIN_ROLE_ID;
+            }) :
+            boxes.not(':checked');
+
+        if (!targets.length) return;
+
+        var apply = function() {
+            fireChange(targets.prop('checked', !allOn));
+        };
+
+        if (!allOn) {
+            apply();
+            return;
+        }
+
+        Swal.fire({
+            title: 'Bỏ quyền cho tất cả?',
+            text: 'Bỏ quyền "' + $.trim(row.find('.permission-name').text()) + '" khỏi ' + targets.length +
+                ' nhóm quyền đang hiện?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Bỏ tick',
+            cancelButtonText: 'Huỷ',
+            confirmButtonColor: '#DC2626'
+        }).then(function(result) {
+            if (result.isConfirmed) apply();
+        });
+    });
+
+    // ----- Hàng "Số quyền đã cấp" của từng card: đếm ô đã tick theo nhóm quyền -----
+    function refreshCounts($cards) {
+        ($cards || $('.perm-model-card')).each(function() {
+            var card = $(this);
+            card.find('[data-count-role]').each(function() {
+                var count = card.find('.step-checkbox[data-role="' + $(this).data('count-role') + '"]:checked').length;
+                $(this).text(count || '—');
+            });
+        });
+    }
+
+    $(document).ready(function() {
+        refreshCounts();
+    });
+
+    $(document).on('change', '.step-checkbox', function() {
+        refreshCounts($(this).closest('.perm-model-card'));
+    });
+
     // ----- Ma trận phân quyền: bật / tắt 1 quyền cho 1 nhóm -----
     $(document).on('change', '.step-checkbox', function() {
         var input = $(this);
@@ -559,7 +942,7 @@
         $.ajax({
             url: "{{ route('pages.User.role.store_or_update') }}",
             type: 'POST',
-            dataType: 'json', // 👉 ép jQuery hiểu rõ kiểu dữ liệu trả về
+            dataType: 'json',
             data: {
                 _token: '{{ csrf_token() }}',
                 role_id: input.data('role'),
@@ -577,9 +960,50 @@
                 });
 
                 input.prop('checked', !checked);
+                refreshCounts(input.closest('.perm-model-card'));
             }
         });
     });
+
+    // ----- Tiêu đề dính: khi cuộn trang, dịch tiêu đề của bảng đang cắt ngang topNAV xuống ngay dưới nó -----
+    (function() {
+        var pending = false;
+
+        function syncStickyHeads() {
+            pending = false;
+            var nav = document.querySelector('.main-header');
+            var top = nav ? nav.getBoundingClientRect().bottom : 0;
+
+            document.querySelectorAll('.perm-table').forEach(function(table) {
+                var head = table.tHead;
+                if (!head || !table.offsetParent) return;
+                var rect = table.getBoundingClientRect();
+                var offset = Math.max(0, Math.min(top - rect.top, rect.height - head.offsetHeight));
+                var value = offset > 0 ? 'translateY(' + offset + 'px)' : '';
+                head.querySelectorAll('th').forEach(function(th) {
+                    if (th.style.transform !== value) th.style.transform = value;
+                });
+            });
+        }
+
+        function schedule() {
+            if (pending) return;
+            pending = true;
+            requestAnimationFrame(syncStickyHeads);
+        }
+
+        $(window).on('scroll resize load', schedule);
+        $(document).ready(function() {
+            schedule();
+            // Mở / thu card, lọc cột làm đổi kích thước bảng
+            if (window.ResizeObserver) {
+                var observer = new ResizeObserver(schedule);
+                document.querySelectorAll('.perm-table').forEach(function(el) {
+                    observer.observe(el);
+                });
+            }
+        });
+    })();
 
     // ----- Đồng bộ cuộn ngang giữa các card -----
     (function() {
@@ -598,34 +1022,141 @@
         });
     })();
 
-    // ----- Lọc theo tên quyền: ẩn dòng / cả card không còn kết quả -----
-    $(document).on('keyup', '#rolePermissionSearch', function() {
-        var keyword = $(this).val().toLowerCase();
-        var searching = keyword !== '';
+    // ----- Bộ lọc: tên / mã quyền + nhóm quyền hiển thị + chỉ quyền đã cấp -----
+    var permFilter = {
+        roles: [],
+        onlyGranted: false
+    };
 
-        if (!searching) {
-            applyStoredCollapse();
-        }
+    try {
+        var storedFilter = JSON.parse(localStorage.getItem('pmsPermRoleFilter') || 'null');
+        if (storedFilter) $.extend(permFilter, storedFilter);
+    } catch (e) {}
+
+    function saveFilter() {
+        try {
+            localStorage.setItem('pmsPermRoleFilter', JSON.stringify(permFilter));
+        } catch (e) {}
+    }
+
+    function applyFilters() {
+        var keyword = $('#rolePermissionSearch').val().toLowerCase();
+        var searching = keyword !== '';
+        var roles = permFilter.roles;
+        var onlyGranted = permFilter.onlyGranted && roles.length > 0;
+        var narrowing = searching || onlyGranted;
+
+        // Cột nhóm quyền: chỉ giữ các nhóm đang chọn (không chọn = tất cả)
+        $('.perm-table [data-role-col]').each(function() {
+            var hidden = roles.length > 0 && roles.indexOf(String($(this).data('role-col'))) === -1;
+            $(this).toggleClass('is-role-hidden', hidden);
+        });
 
         $('.perm-model-card').each(function() {
             var card = $(this);
             var hasMatch = false;
 
             card.find('tr.permission-row').each(function() {
-                var name = $(this).find('td:first').text().toLowerCase();
-                var show = name.indexOf(keyword) !== -1;
-                $(this).toggle(show);
+                var row = $(this);
+                var show = row.find('td:first').text().toLowerCase().indexOf(keyword) !== -1;
+
+                if (show && onlyGranted) {
+                    show = row.find('td.perm-cell:not(.is-role-hidden) .step-checkbox:checked').length > 0;
+                }
+
+                row.toggle(show);
                 if (show) hasMatch = true;
             });
 
-            // Khi đang tìm: mở tạm card có kết quả (không ghi nhớ), ẩn card không khớp
+            // Khi đang tìm theo tên: mở tạm card có kết quả (không ghi nhớ)
             if (searching) {
                 card.removeClass('is-collapsed');
                 card.children('.card-body').toggle(hasMatch);
             }
 
-            card.toggle(hasMatch || !searching);
+            card.find('.perm-table-scroll').toggle(hasMatch);
+            card.find('.perm-empty').prop('hidden', hasMatch || !narrowing);
+            card.toggle(hasMatch || !narrowing);
         });
+    }
+
+    // permFilter.roles rỗng = tất cả nhóm quyền (kể cả nhóm tạo sau);
+    // syncChecks = false khi người dùng đang tick dở trong menu (vd. vừa Bỏ chọn) để không tick lại hết
+    function refreshFilterControls(syncChecks) {
+        if (syncChecks !== false) {
+            $('.role-filter-item').each(function() {
+                this.checked = permFilter.roles.length === 0 || permFilter.roles.indexOf(this.value) !== -1;
+            });
+        }
+
+        var names = $('.role-filter-item').filter(function() {
+            return permFilter.roles.indexOf(this.value) !== -1;
+        }).map(function() {
+            return $.trim($(this).siblings('.role-filter-name').text());
+        }).get();
+
+        $('#roleFilterLabel').text(names.length === 0 ? 'Tất cả nhóm quyền' :
+            (names.length <= 2 ? names.join(', ') : names.length + ' nhóm quyền'));
+        $('.perm-role-filter').toggleClass('is-filtered', names.length > 0);
+
+        $('#onlyGranted').prop('disabled', names.length === 0).prop('checked', permFilter.onlyGranted && names.length > 0);
+        $('.perm-only-granted').toggleClass('is-disabled', names.length === 0);
+    }
+
+    function onFilterChanged(syncChecks) {
+        saveFilter();
+        refreshFilterControls(syncChecks);
+        if (!$('#rolePermissionSearch').val()) applyStoredCollapse();
+        applyFilters();
+    }
+
+    $(document).ready(function() {
+        // Bỏ nhóm quyền đã nhớ nhưng nay không còn (đã vô hiệu hoá)
+        var roleIds = $('.role-filter-item').map(function() {
+            return this.value;
+        }).get();
+        permFilter.roles = $.grep(permFilter.roles, function(id) {
+            return roleIds.indexOf(id) !== -1;
+        });
+        refreshFilterControls();
+        applyFilters();
+    });
+
+    $(document).on('keyup', '#rolePermissionSearch', function() {
+        if (!$(this).val()) applyStoredCollapse();
+        applyFilters();
+    });
+
+    $(document).on('click', '#btnRoleFilter', function(e) {
+        e.stopPropagation();
+        $('#roleFilterMenu').prop('hidden', !$('#roleFilterMenu').prop('hidden'));
+    });
+
+    $(document).on('click', function(e) {
+        if (!$(e.target).closest('.perm-role-filter').length) $('#roleFilterMenu').prop('hidden', true);
+    });
+
+    $(document).on('change', '.role-filter-item', function() {
+        var checked = $('.role-filter-item:checked').map(function() {
+            return this.value;
+        }).get();
+        // Tick đủ hoặc bỏ hết = không lọc, nhóm quyền tạo sau vẫn hiện
+        permFilter.roles = checked.length === $('.role-filter-item').length ? [] : checked;
+        onFilterChanged(checked.length > 0);
+    });
+
+    $(document).on('click', '#roleFilterAll, #roleFilterNone', function(e) {
+        e.preventDefault();
+        permFilter.roles = [];
+        if (this.id === 'roleFilterNone') {
+            $('.role-filter-item').prop('checked', false);
+        }
+        onFilterChanged(this.id === 'roleFilterAll');
+    });
+
+    $(document).on('change', '#onlyGranted', function() {
+        permFilter.onlyGranted = this.checked;
+        onFilterChanged();
     });
 
     // ----- Quản lý nhóm quyền: nạp dữ liệu 1 role vào form để sửa -----

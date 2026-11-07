@@ -2,6 +2,21 @@
 
 Mục mới nhất ở trên cùng.
 
+## Ghi chú 06/11/2026 (không ra bản mới)
+
+Danh mục khuôn mẫu (ép vỉ + Định hình) **tách theo phân xưởng**: mỗi phân xưởng chỉ thấy và dùng khuôn của mình, cùng mã khuôn có thể có ở hai phân xưởng. Nguyên lý sắp lịch trong v1.3 không đổi (lô vẫn chỉ được gán khuôn trong định mức của sản phẩm).
+
+## v1.3 – 05/11/2026
+
+Thư mục: `nguyen-ly/v1.3_2026-11-05/` (`.md`, `.docx`, `.pdf`, 9 trang)
+
+Bổ sung nguyên lý **sắp khuôn chống trùng khuôn cho công đoạn Định hình**:
+
+- 1.1 Dữ liệu đầu vào: thêm dòng **Định mức khuôn** (khuôn ép vỉ theo thành phẩm, khuôn Định hình theo BTP, số bộ của mỗi khuôn) dùng để không cho nhiều phòng dùng cùng một khuôn quá số bộ đang có.
+- 1.4 bước 2 Tìm khoảng trống: lô cần khuôn (Đóng gói; Định hình ở phòng có kiểm soát khuôn, hiện là S23 và S24) phải có khuôn trong định mức rảnh suốt khoảng chạy, không có thì lùi tới khi có khuôn rảnh; sản phẩm chưa khai báo khuôn vẫn xếp bình thường nhưng lịch báo Thiếu khuôn.
+- "Hạn chế xuống khuôn" vẫn chỉ áp cho Đóng gói (người dùng không cần cho Định hình).
+- Bản Word v1.2 không có chỗ nào người dùng sửa tay khác file `.md`.
+
 ## v1.2 – 10/10/2026
 
 Thư mục: `nguyen-ly/v1.2_2026-10-10/` (`.md`, `.docx`, `.pdf`, 9 trang)

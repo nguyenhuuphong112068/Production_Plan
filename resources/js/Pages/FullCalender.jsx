@@ -83,6 +83,9 @@ const calendarViews = {
  *  - outline chỉ repaint -> nhanh hơn rất nhiều.
  * Ngoài ra không còn ghi đè viền cam của các thay đổi chưa lưu (pendingChanges).
  * ------------------------------------------------------------------------ */
+// Công đoạn có sắp khuôn chống trùng: 5 Định Hình (phòng require_mold), 7 Đóng gói (khuôn ép vỉ)
+const MOLD_STAGES = [5, 7];
+
 const SELECTED_CLASS = 'is-batch-selected';
 
 // Các màu chặn submit và ý nghĩa của chúng. Một lô có thể mang nhiều màu cùng lúc:
@@ -322,6 +325,8 @@ const ScheduleTest = () => {
   const [roomLinks, setRoomLinks] = useState([]);
   const [blisterMolds, setBlisterMolds] = useState([]);
   const [finishedProductMolds, setFinishedProductMolds] = useState([]);
+  // Định mức khuôn ĐH (CĐ 5) theo BTP, server đã trải ra từng product_caterogy_id
+  const [intermediateProductMolds, setIntermediateProductMolds] = useState([]);
   const [stageMap, setStageMap] = useState({});
   const [contextMenuInfo, setContextMenuInfo] = useState({ visible: false, x: 0, y: 0, event: null });
   const [type, setType] = useState(true);
@@ -456,6 +461,7 @@ const ScheduleTest = () => {
           setRoomLinks(data.room_links ?? []);
           setBlisterMolds(data.blister_molds ?? []);
           setFinishedProductMolds(data.finished_product_molds ?? []);
+          setIntermediateProductMolds(data.intermediate_product_molds ?? []);
           setOffDays(data.off_days);
           setBkcCode(data.bkc_code);
           setUserID(data.UesrID);
@@ -2695,13 +2701,27 @@ const ScheduleTest = () => {
       return types.map(String).includes(String(rType));
     };
 
+    // CĐ 5 chỉ kiểm soát khuôn ở phòng bật require_mold (S23, S24)
+    const getRoomRequireMold = (roomId) => {
+      let room = allEvents.find(e => e.getResources && String(e.getResources()[0]?.id) === String(roomId))?.getResources()[0]
+        || resources.find(r => String(r.id) === String(roomId));
+      return Number(room?.extendedProps?.require_mold ?? room?.require_mold ?? 0) === 1;
+    };
+
+    // CĐ 7: khuôn ép vỉ theo TP, lọc theo loại máy. CĐ 5: khuôn ĐH theo BTP, chỉ ở phòng require_mold.
     const getCompatibleMolds = (ev, roomId) => {
       let catId = ev.extendedProps?.product_caterogy_id;
       if (!catId) return [];
+      const stage = Number(ev.extendedProps?.stage_code);
+      if (stage === 5) {
+        if (!getRoomRequireMold(roomId)) return [];
+        let moldIds = intermediateProductMolds.filter(f => String(f.finished_product_category_id) === String(catId)).map(f => String(f.blister_mold_id));
+        return blisterMolds.filter(m => Number(m.stage_code) === 5 && moldIds.includes(String(m.id)));
+      }
       let rType = getRoomBlisterType(roomId);
 
       let moldIds = finishedProductMolds.filter(f => String(f.finished_product_category_id) === String(catId)).map(f => String(f.blister_mold_id));
-      let compatible = blisterMolds.filter(m => moldIds.includes(String(m.id)));
+      let compatible = blisterMolds.filter(m => Number(m.stage_code ?? 7) === 7 && moldIds.includes(String(m.id)));
       return compatible.filter(m => moldFitsRoomType(m, rType));
     };
 
@@ -2713,7 +2733,7 @@ const ScheduleTest = () => {
       let concurrent = 0;
       for (let e of allEvents) {
         if (String(e.id) === String(evId) || String(e.id).endsWith('-cleaning')) continue;
-        if (Number(e.extendedProps?.stage_code) === 7) {
+        if (MOLD_STAGES.includes(Number(e.extendedProps?.stage_code))) {
           let eStart, eEnd;
           if (updatedTimes[e.id]) {
             eStart = new Date(updatedTimes[e.id].start);
@@ -2989,7 +3009,7 @@ const ScheduleTest = () => {
         let newSlot = findNextAvailableSlot(resourceId, duration, earliestStart, allEvents, offRanges, ignoreIds, updatedTimesById);
         let moldId = ev.extendedProps?.blister_mold_id;
 
-        if (Number(ev.extendedProps?.stage_code) === 7) {
+        if (MOLD_STAGES.includes(Number(ev.extendedProps?.stage_code))) {
           let compatibleMolds = getCompatibleMolds(ev, resourceId);
           let foundMold = false;
 
@@ -3534,7 +3554,7 @@ const ScheduleTest = () => {
           }
 
           let moldId = conf.event._def.extendedProps.blister_mold_id;
-          if (Number(conf.event._def.extendedProps.stage_code) === 7) {
+          if (MOLD_STAGES.includes(Number(conf.event._def.extendedProps.stage_code))) {
             let catId = conf.event._def.extendedProps.product_caterogy_id;
             if (catId) {
               let compatible = getCompatibleMolds(conf.event, conf.resId);
@@ -3543,7 +3563,7 @@ const ScheduleTest = () => {
                 let c = 0;
                 for (let e of calendarApi.getEvents()) {
                   if (String(e.id) === String(conf.event.id) || String(e.id).endsWith('-cleaning')) continue;
-                  if (Number(e.extendedProps?.stage_code) === 7 && String(e.extendedProps?.blister_mold_id) === String(mId)) {
+                  if (MOLD_STAGES.includes(Number(e.extendedProps?.stage_code)) && String(e.extendedProps?.blister_mold_id) === String(mId)) {
                     if (newStart < e.end && newEnd > e.start) c++;
                   }
                 }
@@ -5212,7 +5232,8 @@ const ScheduleTest = () => {
           </div>
 
           <div class="asm-section">
-            <label class="asm-label">Phân bổ khuôn (Auto)</label>
+            <label class="asm-label">Phân bổ khuôn Đóng gói + Định hình (Auto)</label>
+            <div class="asm-hint" style="font-size: 11px; color: #6c757d; margin: -2px 0 6px;">Gồm lô ĐG và lô ĐH ở phòng có kiểm soát khuôn (S23, S24). Chạy sắp lịch tự động đã tự chọn khuôn rảnh; nút này dùng khi đổi định mức khuôn hoặc kéo thả tay.</div>
             <div class="asm-btns">
               <button type="button" id="btn-allocate-missing" class="btn btn-info" style="color: white;">Bổ sung khuôn thiếu</button>
               <button type="button" id="btn-allocate-all" class="btn btn-warning">Làm mới & Phân bổ</button>
@@ -5518,12 +5539,13 @@ const ScheduleTest = () => {
 
           axios.post('/Schedual/autoAllocateMold', { type })
             .then(res => {
+              // Còn lô không có khuôn rảnh thì giữ thông báo để người dùng đọc
+              const unallocated = res.data.unallocated || 0;
               Swal.fire({
-                icon: 'success',
-                title: 'Thành công',
+                icon: unallocated > 0 ? 'warning' : 'success',
+                title: unallocated > 0 ? 'Phân bổ chưa đủ' : 'Thành công',
                 text: res.data.message,
-                timer: 2000,
-                showConfirmButton: false
+                ...(unallocated > 0 ? {} : { timer: 2500, showConfirmButton: false })
               });
               setLoading(v => !v); // reload calendar
             })
@@ -6644,7 +6666,7 @@ const ScheduleTest = () => {
               </span>
             ` : ''}
   
-            <b style="color: ${props.textColor};">  ${event.title} ${!props.is_clearning && showRenderBadge ? props.subtitle : ''} </b>${!props.is_clearning && props.blister_mold_code && props.stage_code == 7 ? `
+            <b style="color: ${props.textColor};">  ${event.title} ${!props.is_clearning && showRenderBadge ? props.subtitle : ''} </b>${!props.is_clearning && props.blister_mold_code && (props.stage_code == 7 || props.stage_code == 5) ? `
               <span class="px-1 py-0 rounded shadow-sm bg-[#3b82f6] text-white" style="font-size: 8.8px; line-height: 1.2; display: inline-block; vertical-align: middle; margin-left: 4px;">
                 <b>${props.blister_mold_code}</b>
               </span>

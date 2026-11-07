@@ -265,15 +265,6 @@
                             </a>
                         </li>
 
-                        @if (user_has_permission(session('user')['userId'], 'layout_test', 'boolean'))
-                            <li class="nav-item">
-                                <a href="{{ route('pages.materData.offdays.list') }}" class="nav-link">
-                                    <i class="far fa-circle nav-icon text-warning"></i>
-                                    <p>Cập nhật ngày nghỉ</p>
-                                </a>
-                            </li>
-                        @endif
-
                         <li class="nav-item">
                             <a href="{{ route('pages.materData.stageGroup.list') }}" class="nav-link">
                                 <i class="far fa-circle nav-icon text-info"></i>
@@ -438,11 +429,17 @@
                         <li class="nav-item">
                             <a href="{{ route('pages.quota.mold.list') }}" class="nav-link">
                                 <i class="far fa-circle nav-icon"></i>
-                                <p>Khuôn Mẫu</p>
+                                <p>Khuôn EV</p>
                             </a>
                         </li>
 
-                        {{-- @if (user_has_permission(session('user')['userId'], 'personnel_assignment', 'boolean')) --}}
+                        <li class="nav-item">
+                            <a href="{{ route('pages.quota.mold.forming') }}" class="nav-link">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Khuôn Định Hình</p>
+                            </a>
+                        </li>
+
                         <li class="nav-item">
                             <a href="{{ route('pages.quota.personnel.portal') }}"
                                 class="nav-link {{ str_contains(url()->current(), 'personnel') ? 'active' : '' }}">
@@ -450,51 +447,8 @@
                                 <p>Danh Sách Nhân Viên</p>
                             </a>
                         </li>
-                        {{-- @endif --}}
                     </ul>
                 </li>
-
-                <!-- Droplist MMS-->
-                {{-- @if (user_has_permission(session('user')['userId'], 'layout_MMS_bo', 'boolean'))
-                    <li class="nav-item has-treeview {{ str_contains(url()->current(), 'MMS') ? 'menu-open' : '' }}">
-                        <a href="#"
-                            class="nav-link {{ str_contains(url()->current(), 'MMS') ? 'active' : '' }}">
-
-                            <i class="nav-icon fas fa-warehouse"></i>
-                            <p>
-                                MMS
-                                <i class="right fas fa-angle-left"></i>
-                            </p>
-                        </a>
-
-                        <ul class="nav nav-treeview">
-
-                            <li class="nav-item">
-                                <a href="{{ route('pages.MMS.material.list') }}" class="nav-link">
-                                    <i class="far fa-circle nav-icon"></i>
-                                    <p>Tồn Kho Nguyên Liệu</p>
-                                </a>
-                            </li>
-
-                            <li class="nav-item">
-                                <a href="{{ route('pages.MMS.packaging.list') }}" class="nav-link">
-                                    <i class="far fa-circle nav-icon"></i>
-                                    <p>Tồn Kho Bao Bì</p>
-                                </a>
-                            </li>
-
-                            <li class="nav-item">
-                                <a href="{{ route('pages.MMS.finished_product.list') }}" class="nav-link">
-                                    <i class="far fa-circle nav-icon"></i>
-                                    <p>Tồn Kho Thành Phẩm</p>
-                                </a>
-                            </li>
-
-
-
-                        </ul>
-                    </li>
-                @endif --}}
 
                 <!-- Droplist Kế Hoạch-->
                 <li class="nav-item has-treeview {{ str_contains(url()->current(), 'plan') ? 'menu-open' : '' }}">
@@ -862,13 +816,6 @@
                                     <p> Báo Cáo Ngày SX </p>
                                 </a>
                             </li>
-                            {{-- <li class="nav-item">
-                                <a href="{{ route('pages.report.maintenance_daily_report.index') }}"
-                                    class="nav-link">
-                                    <i class="far fa-circle nav-icon text-warning"></i>
-                                    <p> Báo Cáo Ngày BT </p>
-                                </a>
-                            </li> --}}
                             @if (user_has_permission(session('user')['userId'], 'layout_weekly_report', 'boolean'))
                                 <li class="nav-item">
                                     <a href="{{ route('pages.report.weekly_report.index') }}" class="nav-link">
@@ -876,8 +823,6 @@
                                         <p> Báo Cáo Tuần </p>
                                     </a>
                                 </li>
-                                @if (user_has_permission(session('user')['userId'], 'layout_monthly_report', 'boolean'))
-                                @endif
                                 <li class="nav-item">
                                     <a href="{{ route('pages.report.monthly_report.index') }}" class="nav-link">
                                         <i class="far fa-circle nav-icon"></i>
@@ -936,75 +881,6 @@
                         </ul>
                     </li>
                 @endif
-
-                <!-- roplist Trang Thái Sản Xuất-->
-                {{-- @if (user_has_permission(session('user')['userId'], 'layout_status', 'boolean'))
-                    <li class="nav-item has-treeview">
-                        <a href="#" class="nav-link">
-                            <i class="nav-icon fas fa-recycle"></i>
-                            <p>
-                                Trang Thái SX
-                                <i class="right fas fa-angle-left"></i>
-                            </p>
-                        </a>
-
-                        <ul class="nav nav-treeview">
-
-                            <li class="nav-item">
-                                <a href="{{ route('pages.status.index') }}" class="nav-link">
-                                    <i class="far fa-circle nav-icon"></i>
-                                    <p> Tạo Mới Trang Thái </p>
-                                </a>
-                            </li>
-
-                            <li class="nav-item">
-                                <a href="{{ route('pages.status.history.index') }}" class="nav-link">
-                                    <i class="far fa-circle nav-icon"></i>
-                                    <p> Cập Nhật Trang Thái </p>
-                                </a>
-                            </li>
-
-                        </ul>
-                    </li>
-                @endif --}}
-
-                <!-- Droplist Thống Kê -->
-                {{-- @if (user_has_permission(session('user')['userId'], 'layout_statistics', 'boolean'))
-                    <li class="nav-item has-treeview">
-                        <a href="#" class="nav-link">
-                            <i class="nav-icon fas fa-chart-bar"></i>
-                            <p>
-                                Thống Kê
-                                <i class="right fas fa-angle-left"></i>
-                            </p>
-                        </a>
-
-                        <ul class="nav nav-treeview">
-
-                            <li class="nav-item">
-                                <a href="{{ route('pages.statistics.product.list') }}" class="nav-link">
-                                    <i class="far fa-circle nav-icon"></i>
-                                    <p> Sản Phẩm </p>
-                                </a>
-                            </li>
-
-                            <li class="nav-item">
-                                <a href="{{ route('pages.statistics.room.list') }}" class="nav-link">
-                                    <i class="far fa-circle nav-icon"></i>
-                                    <p> Phòng Sản Xuất </p>
-                                </a>
-                            </li>
-
-                            <li class="nav-item">
-                                <a href="{{ route('pages.statistics.stage.list') }}" class="nav-link">
-                                    <i class="far fa-circle nav-icon"></i>
-                                    <p> Công Đoạn Sản Xuất </p>
-                                </a>
-                            </li>
-
-                        </ul>
-                    </li>
-                @endif --}}
 
                 <!-- History-->
                 @if (user_has_permission(session('user')['userId'], 'layout_history', 'boolean'))
@@ -1097,6 +973,37 @@
                         </li>
                     </ul>
                 </li>
+
+                <!-- Hướng Dẫn Sử Dụng: cần quyền user_guide_view; mỗi tài liệu trong UserGuideController::GUIDES là một mục con -->
+                @if (\App\Http\Controllers\Pages\UserGuide\UserGuideController::canView())
+                <li class="nav-item has-treeview {{ request()->is('userGuide*') ? 'menu-open' : '' }}">
+                    <a href="#" class="nav-link {{ request()->is('userGuide*') ? 'active' : '' }}">
+                        <i class="nav-icon fas fa-book-open"></i>
+                        <p>
+                            Hướng Dẫn Sử Dụng
+                            <i class="right fas fa-angle-left"></i>
+                        </p>
+                    </a>
+                    <ul class="nav nav-treeview">
+                        <li class="nav-item">
+                            <a href="{{ route('pages.userGuide.list') }}"
+                                class="nav-link {{ request()->is('userGuide') ? 'active' : '' }}">
+                                <i class="fas fa-th-large nav-icon"></i>
+                                <p>Tất Cả Hướng Dẫn</p>
+                            </a>
+                        </li>
+                        @foreach (\App\Http\Controllers\Pages\UserGuide\UserGuideController::GUIDES as $ugKey => $ugGuide)
+                            <li class="nav-item">
+                                <a href="{{ route('pages.userGuide.show', $ugKey) }}"
+                                    class="nav-link {{ request()->is('userGuide/' . $ugKey) ? 'active' : '' }}">
+                                    <i class="{{ $ugGuide['icon'] }} nav-icon"></i>
+                                    <p>{{ $ugGuide['title'] }}</p>
+                                </a>
+                            </li>
+                        @endforeach
+                    </ul>
+                </li>
+                @endif
 
                 {{-- @if (user_has_permission(session('user')['userId'], 'layout_test', 'boolean'))
                     <li class="nav-item">

@@ -4,15 +4,6 @@
 <div class="modal fade" id="update_modal" tabindex="-1" role="dialog" aria-labelledby="productNameModalLabel"
     aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">
-        @php
-            if (user_has_permission(session('user')['userId'], 'create_Hypothesis_category', 'boolean')) {
-                $title = 'Tạo Mới Danh Mục Bán Thành Phẩm Giả Định';
-                $is_Hypothesis = 1;
-            } else {
-                $title = 'Tạo Mới Danh Mục Bán Thành Phẩm';
-                $is_Hypothesis = 0;
-            }
-        @endphp
 
         <form action="{{ route('pages.category.intermediate.update') }}" method="POST">
             @csrf
@@ -51,7 +42,6 @@
                         @enderror
                     </div>
                     <input type="hidden" class="form-control" name="id" value="{{ old('id') }}">
-                    <input type="hidden" class="form-control" name="is_Hypothesis" value="{{ $is_Hypothesis }}">
                     {{-- Mã TBP và Dạng Bào Chế --}}
                     <div class="row">
                         <div class="col-md-6">

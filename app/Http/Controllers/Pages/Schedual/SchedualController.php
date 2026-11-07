@@ -21,14 +21,152 @@ class SchedualController extends Controller
 
     /** @var array<int, array{0: Carbon, 1: Carbon}>|null phòng đang có lô giữ phòng => [nhận phòng, dự kiến trả phòng], nạp 1 lần */
     protected ?array $heldUntil = null;
+    /**
+     * Công đoạn có sắp khuôn chống trùng khuôn. Danh mục khuôn dùng chung bảng
+     * blister_mold (cột stage_code) và lô ghi khuôn vào stage_plan.blister_mold_id:
+     *  - 7 Đóng gói: khuôn ép vỉ, định mức theo TP (finished_product_mold), lọc theo loại máy ép vỉ.
+     *  - 5 Định Hình: khuôn ĐH, định mức theo BTP (intermediate_mold), chỉ phòng room.require_mold = 1.
+     */
+    public const MOLD_STAGES = [5, 7];
+
     protected $moldSchedules = [];
+
+    protected $declaredMoldCache = [];
+
+    protected $roomMoldInfoCache = [];
+
+    protected $moldRowCache = [];
+
+    /**
+     * Khuôn trong định mức của sản phẩm cho công đoạn (chưa lọc theo phòng).
+     * Trả về Collection (id, code, amount, blister_type_code); rỗng khi chưa khai báo.
+     */
+    protected function declaredMolds($stageCode, $productCategoryId)
+    {
+        $stageCode = (int) $stageCode;
+        if (! in_array($stageCode, self::MOLD_STAGES, true) || empty($productCategoryId)) {
+            return collect();
+        }
+
+        $key = $stageCode . '_' . $productCategoryId;
+        if (! array_key_exists($key, $this->declaredMoldCache)) {
+            if ($stageCode === 7) {
+                $molds = DB::table('finished_product_mold')
+                    ->join('blister_mold', 'finished_product_mold.blister_mold_id', '=', 'blister_mold.id')
+                    ->join('finished_product_category as fpc', 'fpc.id', '=', 'finished_product_mold.finished_product_category_id')
+                    ->whereColumn('blister_mold.deparment_code', 'fpc.deparment_code')
+                    ->where('finished_product_mold.finished_product_category_id', $productCategoryId)
+                    ->where('blister_mold.active', 1)
+                    ->where('blister_mold.stage_code', 7)
+                    ->select('blister_mold.id', 'blister_mold.code', 'blister_mold.amount', 'blister_mold.blister_type_code')
+                    ->orderBy('blister_mold.id')
+                    ->get();
+            } else {
+                $molds = DB::table('finished_product_category as fpc')
+                    ->join('intermediate_mold as im', 'im.intermediate_code', '=', 'fpc.intermediate_code')
+                    ->join('blister_mold', 'im.blister_mold_id', '=', 'blister_mold.id')
+                    ->whereColumn('blister_mold.deparment_code', 'fpc.deparment_code')
+                    ->where('fpc.id', $productCategoryId)
+                    ->where('blister_mold.active', 1)
+                    ->where('blister_mold.stage_code', 5)
+                    ->select('blister_mold.id', 'blister_mold.code', 'blister_mold.amount', 'blister_mold.blister_type_code')
+                    ->distinct()
+                    ->orderBy('blister_mold.id')
+                    ->get();
+            }
+            $this->declaredMoldCache[$key] = $molds;
+        }
+
+        return $this->declaredMoldCache[$key];
+    }
+
+    protected function roomMoldInfo($roomId)
+    {
+        if (empty($roomId)) {
+            return null;
+        }
+        if (! array_key_exists($roomId, $this->roomMoldInfoCache)) {
+            $this->roomMoldInfoCache[$roomId] = DB::table('room')
+                ->where('id', $roomId)
+                ->select('id', 'blister_type_code', 'require_mold')
+                ->first();
+        }
+
+        return $this->roomMoldInfoCache[$roomId];
+    }
+
+    /** blister_type_code của khuôn có thể là số, chuỗi số hoặc chuỗi JSON dạng ["1","3"]. */
+    protected function moldFitsRoomType($mold, $roomType): bool
+    {
+        if (empty($roomType) || empty($mold->blister_type_code)) {
+            return true;
+        }
+        $decoded = json_decode($mold->blister_type_code, true);
+        $moldTypes = is_array($decoded) ? $decoded : [$mold->blister_type_code];
+
+        return in_array($roomType, $moldTypes);
+    }
+
+    /**
+     * Phòng có kiểm soát khuôn cho công đoạn hay không.
+     * CĐ 7: mọi phòng ĐG (giữ nguyên cách cũ). CĐ 5: chỉ phòng bật room.require_mold.
+     */
+    protected function roomUsesMold($stageCode, $roomId): bool
+    {
+        $stageCode = (int) $stageCode;
+        if ($stageCode === 7) {
+            return true;
+        }
+        if ($stageCode === 5) {
+            return (bool) ($this->roomMoldInfo($roomId)->require_mold ?? false);
+        }
+
+        return false;
+    }
+
+    /**
+     * Khuôn trong định mức lắp được cho phòng.
+     * null  = lô không phải sắp khuôn ở phòng này (công đoạn/phòng không kiểm soát, hoặc SP chưa khai báo khuôn).
+     * mảng rỗng = SP có khai báo nhưng không khuôn nào lắp được cho máy của phòng.
+     */
+    protected function moldsForRoom($stageCode, $productCategoryId, $roomId)
+    {
+        if (! $this->roomUsesMold($stageCode, $roomId)) {
+            return null;
+        }
+        $molds = $this->declaredMolds($stageCode, $productCategoryId);
+        if ($molds->isEmpty()) {
+            return null;
+        }
+        $roomType = (int) $stageCode === 7 ? ($this->roomMoldInfo($roomId)->blister_type_code ?? null) : null;
+
+        return $molds->filter(fn ($m) => $this->moldFitsRoomType($m, $roomType))->values()->all();
+    }
+
+    /** Số phòng đang dùng khuôn trong khoảng [start, end), không tính lô $excludeStagePlanId. */
+    protected function moldConcurrentRooms($moldId, $start, $end, $excludeStagePlanId = null): int
+    {
+        return DB::table('stage_plan')
+            ->whereIn('stage_code', self::MOLD_STAGES)
+            ->where('blister_mold_id', $moldId)
+            ->where('active', 1)
+            ->where('finished', 0)
+            ->whereNotNull('start')
+            ->whereNotNull('resourceId')
+            ->where('start', '<', $end)
+            ->where('end', '>', $start)
+            ->when($excludeStagePlanId, fn ($q) => $q->where('id', '!=', $excludeStagePlanId))
+            ->pluck('resourceId')
+            ->unique()
+            ->count();
+    }
 
     protected function loadMoldSchedules(array $moldIds)
     {
         $toLoad = array_diff($moldIds, array_keys($this->moldSchedules));
         if (!empty($toLoad)) {
             $schedules = DB::table('stage_plan')
-                ->where('stage_code', 7)
+                ->whereIn('stage_code', self::MOLD_STAGES)
                 ->whereIn('blister_mold_id', $toLoad)
                 ->where('active', 1)
                 ->where('finished', 0)
@@ -79,81 +217,47 @@ class SchedualController extends Controller
     }
 
     /**
-     * Chỉ chấp nhận khuôn do client gửi lên khi khuôn đó còn nằm trong định mức
-     * của sản phẩm và lắp được cho máy của phòng đích. Ngược lại trả về null
-     * để lịch không mang theo khuôn sai.
+     * Chỉ chấp nhận khuôn do client gửi lên khi lô thuộc công đoạn có sắp khuôn,
+     * phòng đích có kiểm soát khuôn, khuôn còn nằm trong định mức của sản phẩm
+     * và lắp được cho máy của phòng đích. Ngược lại trả về null để lịch không
+     * mang theo khuôn sai.
      */
-    protected function sanitizeBlisterMoldId($moldId, $productCategoryId, $roomId)
+    protected function sanitizeBlisterMoldId($moldId, $productCategoryId, $roomId, $stageCode = 7)
     {
         if (empty($moldId) || empty($productCategoryId)) {
             return null;
         }
 
-        $mold = DB::table('finished_product_mold')
-            ->join('blister_mold', 'finished_product_mold.blister_mold_id', '=', 'blister_mold.id')
-            ->where('finished_product_mold.finished_product_category_id', $productCategoryId)
-            ->where('finished_product_mold.blister_mold_id', $moldId)
-            ->where('blister_mold.active', 1)
-            ->select('blister_mold.id', 'blister_mold.blister_type_code')
-            ->first();
-
-        // Khuôn không có trong định mức khuôn mẫu của sản phẩm
-        if (! $mold) {
-            return null;
-        }
-
-        $roomType = $roomId ? DB::table('room')->where('id', $roomId)->value('blister_type_code') : null;
-
-        if (! empty($roomType) && ! empty($mold->blister_type_code)) {
-            $decoded = json_decode($mold->blister_type_code, true);
-            $moldTypes = is_array($decoded) ? $decoded : [$mold->blister_type_code];
-
-            // Khuôn không lắp được cho máy của phòng
-            if (! in_array($roomType, $moldTypes)) {
-                return null;
+        // Lô chưa xếp phòng (sidebar): chỉ cần khuôn nằm trong định mức
+        $molds = empty($roomId)
+            ? $this->declaredMolds($stageCode, $productCategoryId)->all()
+            : ($this->moldsForRoom($stageCode, $productCategoryId, $roomId) ?? []);
+        foreach ($molds as $mold) {
+            if ((string) $mold->id === (string) $moldId) {
+                return $mold->id;
             }
         }
 
-        return $mold->id;
+        return null;
     }
 
     /**
-     * Chọn khuôn ép vỉ cho một lịch đóng gói (công đoạn 7) khi sắp lịch thủ công.
-     * Ưu tiên giữ lại khuôn đang gán nếu vẫn hợp lệ và còn trống, ngược lại lấy
-     * khuôn đầu tiên còn trống trong khoảng sản xuất. Trả về null khi không còn
-     * khuôn nào rảnh để lịch hiển thị cảnh báo thiếu khuôn.
+     * Chọn khuôn cho một lịch thuộc công đoạn có sắp khuôn (5 ĐH, 7 ĐG) khi sắp
+     * lịch thủ công. Ưu tiên giữ lại khuôn đang gán nếu vẫn hợp lệ và còn trống,
+     * ngược lại lấy khuôn đầu tiên còn trống trong khoảng sản xuất. Trả về null khi
+     * không phải sắp khuôn hoặc không còn khuôn nào rảnh (lịch hiện cảnh báo thiếu khuôn).
      */
-    protected function pickBlisterMoldForPlan($productCategoryId, $roomId, $start, $end, $excludeStagePlanId = null, $currentMoldId = null)
+    protected function pickBlisterMoldForPlan($productCategoryId, $roomId, $start, $end, $excludeStagePlanId = null, $currentMoldId = null, $stageCode = 7)
     {
         if (empty($productCategoryId) || empty($start) || empty($end)) {
             return null;
         }
 
-        $molds = DB::table('finished_product_mold')
-            ->join('blister_mold', 'finished_product_mold.blister_mold_id', '=', 'blister_mold.id')
-            ->where('finished_product_mold.finished_product_category_id', $productCategoryId)
-            ->where('blister_mold.active', 1)
-            ->select('blister_mold.id', 'blister_mold.amount', 'blister_mold.blister_type_code')
-            ->get();
-
-        // SP chưa khai báo định mức khuôn → không gán khuôn
-        if ($molds->isEmpty()) {
+        // Phòng không kiểm soát khuôn, hoặc SP chưa khai báo định mức khuôn → không gán khuôn
+        $molds = $this->moldsForRoom($stageCode, $productCategoryId, $roomId);
+        if (empty($molds)) {
             return null;
         }
-
-        $roomType = $roomId ? DB::table('room')->where('id', $roomId)->value('blister_type_code') : null;
-
-        // Chỉ giữ khuôn lắp được cho máy của phòng đích
-        $molds = $molds->filter(function ($mold) use ($roomType) {
-            if (empty($roomType) || empty($mold->blister_type_code)) {
-                return true;
-            }
-
-            $decoded = json_decode($mold->blister_type_code, true);
-            $moldTypes = is_array($decoded) ? $decoded : [$mold->blister_type_code];
-
-            return in_array($roomType, $moldTypes);
-        })->values();
 
         // Xét khuôn đang gán trước để hạn chế đổi khuôn không cần thiết
         $candidates = [];
@@ -173,23 +277,7 @@ class SchedualController extends Controller
             }
 
             // Một khuôn chỉ dùng được cho tối đa `amount` phòng cùng lúc
-            $query = DB::table('stage_plan')
-                ->where('stage_code', 7)
-                ->where('blister_mold_id', $mold->id)
-                ->where('active', 1)
-                ->where('finished', 0)
-                ->whereNotNull('start')
-                ->whereNotNull('resourceId')
-                ->where('start', '<', $end)
-                ->where('end', '>', $start);
-
-            if (! empty($excludeStagePlanId)) {
-                $query->where('id', '!=', $excludeStagePlanId);
-            }
-
-            $concurrentRooms = $query->pluck('resourceId')->unique()->count();
-
-            if ($concurrentRooms < $amount) {
+            if ($this->moldConcurrentRooms($mold->id, $start, $end, $excludeStagePlanId) < $amount) {
                 return $mold->id;
             }
         }
@@ -1497,42 +1585,30 @@ class SchedualController extends Controller
             $color_event = '#40E0D0';
         }
 
-        // 🚨 Mold validation
+        // 🚨 Mold validation – CĐ 7 (khuôn ép vỉ) và CĐ 5 (khuôn ĐH ở phòng room.require_mold)
+        $moldStage = (int) $plan->stage_code;
+        if (in_array($moldStage, self::MOLD_STAGES, true) && $plan->finished == 0 && $plan->start && $plan->end && $plan->resourceId) {
+            $room = $this->roomMoldInfo($plan->resourceId);
+            // Phòng bắt buộc có khuôn: CĐ 7 máy ép vỉ (có blister_type_code), CĐ 5 phòng bật require_mold
+            $roomNeedsMold = $moldStage === 7
+                ? ($room && !empty($room->blister_type_code))
+                : $this->roomUsesMold(5, $plan->resourceId);
 
-        if ($plan->stage_code == 7 && $plan->finished == 0 && $plan->start && $plan->end && $plan->resourceId) {
             if (!empty($plan->blister_mold_id)) {
                 // Đã được gán khuôn cụ thể. Kiểm tra xem có bị quá tải không (trùng).
-                $mold = DB::table('blister_mold')->where('id', $plan->blister_mold_id)->first();
+                $mold = $this->moldRowCache[$plan->blister_mold_id]
+                    ??= DB::table('blister_mold')->where('id', $plan->blister_mold_id)->first();
                 if ($mold) {
                     $mold_code = $mold->code;
-                    $room = DB::table('room')->where('id', $plan->resourceId)->first();
 
-                    $moldTypes = [];
-                    if (!empty($mold->blister_type_code)) {
-                        $decoded = json_decode($mold->blister_type_code, true);
-                        $moldTypes = is_array($decoded) ? $decoded : [$mold->blister_type_code];
-                    }
-                    if ($room && !empty($room->blister_type_code) && !empty($mold->blister_type_code) && !in_array($room->blister_type_code, $moldTypes)) {
+                    if ($moldStage === 7 && $room && !$this->moldFitsRoomType($mold, $room->blister_type_code)) {
                         $subtitles[] = "❌ Sai Khuôn: {$mold->code} không lắp được cho máy {$room->blister_type_code}";
                         $color_event = '#ffd500ff'; // Vàng: nhóm cảnh báo khuôn
                         $textColor = '#ffffff';
                         $violation_colors[] = '#ffd500ff';
                         $mold_warning = "❌ Sai Khuôn: {$mold->code} / {$room->blister_type_code}";
                     } else {
-                        $concurrentCount = DB::table('stage_plan')
-                            ->where('stage_code', 7)
-                            ->where('blister_mold_id', $mold->id)
-                            ->where('active', 1)
-                            ->where('finished', 0)
-                            ->whereNotNull('start')
-                            ->whereNotNull('resourceId')
-                            ->where(function ($q) use ($plan) {
-                                $q->where('start', '<', $plan->end)
-                                    ->where('end', '>', $plan->start);
-                            })
-                            ->pluck('resourceId')
-                            ->unique()
-                            ->count();
+                        $concurrentCount = $this->moldConcurrentRooms($mold->id, $plan->start, $plan->end);
 
                         if ($concurrentCount > $mold->amount) {
                             $subtitles[] = "⚠️ Trùng Khuôn: {$mold->code} (Đang dùng: {$concurrentCount}, Tổng: {$mold->amount})";
@@ -1543,16 +1619,13 @@ class SchedualController extends Controller
                         }
                     }
                 }
-            } else {
-                // Cảnh báo thiếu khuôn nếu lô được xếp lên máy ép vỉ (có blister_type_code) nhưng chưa gán khuôn
-                $room = DB::table('room')->where('id', $plan->resourceId)->first();
-                if ($room && !empty($room->blister_type_code)) {
-                    $subtitles[] = "❌ Thiếu Khuôn!";
-                    $color_event = '#ffd500ff'; // Vàng: nhóm cảnh báo khuôn
-                    $textColor = '#ffffff';
-                    $violation_colors[] = '#ffd500ff';
-                    $mold_warning = "❌ Thiếu Khuôn!";
-                }
+            } elseif ($roomNeedsMold) {
+                // Cảnh báo thiếu khuôn nếu lô được xếp lên phòng bắt buộc có khuôn nhưng chưa gán khuôn
+                $subtitles[] = "❌ Thiếu Khuôn!";
+                $color_event = '#ffd500ff'; // Vàng: nhóm cảnh báo khuôn
+                $textColor = '#ffffff';
+                $violation_colors[] = '#ffd500ff';
+                $mold_warning = "❌ Thiếu Khuôn!";
             }
         }
 
@@ -2016,21 +2089,10 @@ class SchedualController extends Controller
             // ✅ Thêm field để React có thể filter/search nhanh
             $plan->permisson_room_filter = $plan->permisson_room->values()->implode(', ');
 
-            // Lấy danh sách khuôn cho stage 7
-            if ($plan->stage_code == 7) {
-                static $moldCache = [];
-                if (!array_key_exists($plan->product_caterogy_id, $moldCache)) {
-                    $moldCache[$plan->product_caterogy_id] = DB::table('finished_product_mold')
-                        ->join('blister_mold', 'finished_product_mold.blister_mold_id', '=', 'blister_mold.id')
-                        ->where('finished_product_mold.finished_product_category_id', $plan->product_caterogy_id)
-                        ->where('blister_mold.active', 1)
-                        ->select('blister_mold.id', 'blister_mold.code', 'blister_mold.amount')
-                        ->get();
-                }
-                $plan->compatible_molds = $moldCache[$plan->product_caterogy_id];
-            } else {
-                $plan->compatible_molds = [];
-            }
+            // Danh sách khuôn trong định mức: CĐ 7 theo TP, CĐ 5 theo BTP
+            $plan->compatible_molds = $this->declaredMolds($plan->stage_code, $plan->product_caterogy_id)
+                ->map(fn ($m) => (object) ['id' => $m->id, 'code' => $m->code, 'amount' => $m->amount])
+                ->values();
 
             return $plan;
         });
@@ -2064,6 +2126,7 @@ class SchedualController extends Controller
                 'stage_code',
                 'production_group',
                 'blister_type_code',
+                'require_mold',
                 DB::raw("
                                 CASE
                                 WHEN stage_code IN (3, 4) THEN 'Pha chế'
@@ -2118,6 +2181,7 @@ class SchedualController extends Controller
             $personnelSub->production_group = $room->production_group;
             $personnelSub->stage_name = $room->stage_name;
             $personnelSub->blister_type_code = null;
+            $personnelSub->require_mold = 0;
             $personnelSub->sheet_1 = 0;
             $personnelSub->sheet_2 = 0;
             $personnelSub->sheet_3 = 0;
@@ -2336,8 +2400,18 @@ class SchedualController extends Controller
                 ->select('room_links.source_room_id', 'room_links.target_room_id')
                 ->get();
 
-            $blister_molds = DB::table('blister_mold')->where('active', 1)->get();
+            $blister_molds = DB::table('blister_mold')->where('active', 1)->where('deparment_code', $production)->get();
             $finished_product_molds = DB::table('finished_product_mold')->get();
+            // Định mức khuôn ĐH theo BTP, trải ra từng TP để client tra theo product_caterogy_id như khuôn ép vỉ
+            $intermediate_product_molds = DB::table('finished_product_category as fpc')
+                ->join('intermediate_mold as im', 'im.intermediate_code', '=', 'fpc.intermediate_code')
+                ->join('blister_mold as bm', function ($join) {
+                    $join->on('bm.id', '=', 'im.blister_mold_id')->on('bm.deparment_code', '=', 'fpc.deparment_code');
+                })
+                ->where('fpc.deparment_code', $production)
+                ->select('fpc.id as finished_product_category_id', 'im.blister_mold_id')
+                ->distinct()
+                ->get();
 
             return response()->json([
                 'title' => $title,
@@ -2365,6 +2439,7 @@ class SchedualController extends Controller
                 'room_links' => $room_links,
                 'blister_molds' => $blister_molds,
                 'finished_product_molds' => $finished_product_molds,
+                'intermediate_product_molds' => $intermediate_product_molds,
             ]);
         } catch (\Throwable  $e) {
 
@@ -2632,8 +2707,9 @@ class SchedualController extends Controller
                         'receive_second_packaging_date' => DB::raw("CASE WHEN received_second_packaging = 0 AND stage_code = 7 THEN '$receiveDateStr' ELSE receive_second_packaging_date END"),
                     ];
 
-                    // Công đoạn đóng gói: sắp lịch thủ công cũng phải sắp khuôn ép vỉ
-                    if ((int) $product['stage_code'] === 7) {
+                    // Công đoạn có sắp khuôn (ĐG khuôn ép vỉ, ĐH khuôn ở phòng require_mold):
+                    // sắp lịch thủ công cũng phải sắp khuôn
+                    if (in_array((int) $product['stage_code'], self::MOLD_STAGES, true)) {
 
                         $current_row = DB::table('stage_plan')
                             ->where('id', $product['id'])
@@ -2646,7 +2722,8 @@ class SchedualController extends Controller
                             $current_start,
                             $end_man,
                             $product['id'],
-                            $current_row->blister_mold_id ?? null
+                            $current_row->blister_mold_id ?? null,
+                            (int) $product['stage_code']
                         );
                     }
 
@@ -3532,7 +3609,8 @@ class SchedualController extends Controller
                                 $updateData['blister_mold_id'] = $this->sanitizeBlisterMoldId(
                                     $change['blister_mold_id'],
                                     $original_event->product_caterogy_id ?? null,
-                                    $updateData['resourceId']
+                                    $updateData['resourceId'],
+                                    $original_event->stage_code ?? 7
                                 );
                             }
                             if ($isMoveSelectedBatches && !$sharedResource) {
@@ -4370,56 +4448,6 @@ class SchedualController extends Controller
             return response()->json(['error' => 'Lỗi hệ thống'], 500);
         }
 
-        return response()->json([
-            'plan' => $this->getPlanWaiting(session('user.production_code')),
-        ]);
-    }
-
-    public function immediately(Request $request)
-    {
-
-        $datas = $request->input('data', []);
-
-        $modeCreate = true;
-        // mặc định true
-        try {
-
-            // không có dữ liệu → bỏ qua
-            if (empty($datas)) {
-
-                return response()->json(['error' => 'No data'], 400);
-            }
-
-            // 1. kiểm tra nếu bất kỳ dòng nào đang có immediately = true
-            foreach ($datas as $data) {
-
-                if ($data['immediately'] == true) {
-
-                    $modeCreate = false;
-
-                    break;
-                }
-            }
-
-            // 2. Nếu KHÔNG có dòng nào có immediately → BẬT cho tất cả
-            $ids = collect($datas)->pluck('id')->filter()->toArray();
-
-            DB::table('stage_plan')
-                ->whereIn('id', $ids)
-                ->update([
-                    'immediately' => $modeCreate,
-                ]);
-        } catch (\Exception  $e) {
-
-            Log::error('Lỗi cập nhật sự kiện immediately:', [
-                'error' => $e->getMessage(),
-                'line' => $e->getLine(),
-            ]);
-
-            return response()->json(['error' => 'Lỗi hệ thống'], 500);
-        }
-
-        // trả lại dữ liệu mới
         return response()->json([
             'plan' => $this->getPlanWaiting(session('user.production_code')),
         ]);
@@ -8465,16 +8493,6 @@ class SchedualController extends Controller
             }
         }
 
-        $allCompatibleMolds = null;
-        if ($stageCode == 7) {
-            $allCompatibleMolds = DB::table('finished_product_mold')
-                ->join('blister_mold', 'finished_product_mold.blister_mold_id', '=', 'blister_mold.id')
-                ->where('finished_product_mold.finished_product_category_id', $task->product_caterogy_id)
-                ->where('blister_mold.active', 1)
-                ->select('blister_mold.id', 'blister_mold.code', 'blister_mold.amount', 'blister_mold.blister_type_code')
-                ->get();
-        }
-
         foreach ($rooms as $room) {
             $p_adj = (float) $room->p_time_minutes * $ratio;
             $m_adj = (float) $room->m_time_minutes * $ratio;
@@ -8482,38 +8500,26 @@ class SchedualController extends Controller
 
             $C2_time_minutes = (float) $room->C2_time_minutes;
 
-            $compatibleMolds = null;
-            if ($stageCode == 7 && $allCompatibleMolds && $allCompatibleMolds->isNotEmpty()) {
-                // SP có khai báo khuôn → lọc theo loại máy
-                $roomType = DB::table('room')->where('id', $room->room_id)->value('blister_type_code');
-                $filtered = $allCompatibleMolds->filter(function ($m) use ($roomType) {
-                    $moldTypes = [];
-                    if (!empty($m->blister_type_code)) {
-                        $decoded = json_decode($m->blister_type_code, true);
-                        $moldTypes = is_array($decoded) ? $decoded : [$m->blister_type_code];
-                    }
-                    return empty($roomType) || empty($m->blister_type_code) || in_array($roomType, $moldTypes);
-                })->values()->toArray();
-
-                if (empty($filtered)) {
+            // Khuôn: CĐ 7 khuôn ép vỉ (lọc theo loại máy), CĐ 5 khuôn ĐH (chỉ phòng require_mold).
+            // null = sắp lịch bình thường (phòng không kiểm soát khuôn hoặc SP chưa khai báo khuôn)
+            $compatibleMolds = $this->moldsForRoom($stageCode, $task->product_caterogy_id, $room->room_id);
+            if ($compatibleMolds !== null) {
+                if (empty($compatibleMolds)) {
                     continue; // Phòng này không có khuôn lắp vừa → bỏ qua
                 }
 
-                // Hạn chế xuống khuôn: đẩy khuôn đang lắp sẵn của phòng lên đầu danh sách
+                // Hạn chế xuống khuôn (chỉ ĐG): đẩy khuôn đang lắp sẵn của phòng lên đầu danh sách
                 // để checkMoldAvailability() chọn đúng khuôn đó nếu còn trống.
-                if ($this->limit_mold_change) {
+                if ($stageCode == 7 && $this->limit_mold_change) {
                     $mountedMold = $this->getPreviousMoldInRoom($room->room_id);
 
                     if ($mountedMold) {
-                        usort($filtered, function ($a, $b) use ($mountedMold) {
+                        usort($compatibleMolds, function ($a, $b) use ($mountedMold) {
                             return ((int) $b->id === (int) $mountedMold) <=> ((int) $a->id === (int) $mountedMold);
                         });
                     }
                 }
-
-                $compatibleMolds = $filtered;
             }
-            // Nếu SP chưa khai báo khuôn: $compatibleMolds = null → sắp lịch bình thường
 
             $candidate = $this->findEarliestSlot2(
                 $room->room_id,
@@ -9032,16 +9038,6 @@ class SchedualController extends Controller
             }
         }
 
-        $allCompatibleMolds = null;
-        if ($stageCode == 7) {
-            $allCompatibleMolds = DB::table('finished_product_mold')
-                ->join('blister_mold', 'finished_product_mold.blister_mold_id', '=', 'blister_mold.id')
-                ->where('finished_product_mold.finished_product_category_id', $firstTask->product_caterogy_id)
-                ->where('blister_mold.active', 1)
-                ->select('blister_mold.id', 'blister_mold.code', 'blister_mold.amount', 'blister_mold.blister_type_code')
-                ->get();
-        }
-
         foreach ($rooms as $room) {
             $p_adj = (float) $room->p_time_minutes * $campaign_ratio;
             $m_adj = (float) $room->m_time_minutes * $campaign_ratio;
@@ -9054,38 +9050,26 @@ class SchedualController extends Controller
                 $totalMunites = $totalTimeCampaign;
             }
 
-            $compatibleMolds = null;
-            if ($stageCode == 7 && $allCompatibleMolds && $allCompatibleMolds->isNotEmpty()) {
-                // SP có khai báo khuôn → lọc theo loại máy
-                $roomType = DB::table('room')->where('id', $room->room_id)->value('blister_type_code');
-                $filtered = $allCompatibleMolds->filter(function ($m) use ($roomType) {
-                    $moldTypes = [];
-                    if (!empty($m->blister_type_code)) {
-                        $decoded = json_decode($m->blister_type_code, true);
-                        $moldTypes = is_array($decoded) ? $decoded : [$m->blister_type_code];
-                    }
-                    return empty($roomType) || empty($m->blister_type_code) || in_array($roomType, $moldTypes);
-                })->values()->toArray();
-
-                if (empty($filtered)) {
+            // Khuôn: CĐ 7 khuôn ép vỉ (lọc theo loại máy), CĐ 5 khuôn ĐH (chỉ phòng require_mold).
+            // null = sắp lịch bình thường (phòng không kiểm soát khuôn hoặc SP chưa khai báo khuôn)
+            $compatibleMolds = $this->moldsForRoom($stageCode, $firstTask->product_caterogy_id, $room->room_id);
+            if ($compatibleMolds !== null) {
+                if (empty($compatibleMolds)) {
                     continue; // Phòng này không có khuôn lắp vừa → bỏ qua
                 }
 
-                // Hạn chế xuống khuôn: đẩy khuôn đang lắp sẵn của phòng lên đầu danh sách
+                // Hạn chế xuống khuôn (chỉ ĐG): đẩy khuôn đang lắp sẵn của phòng lên đầu danh sách
                 // để checkMoldAvailability() chọn đúng khuôn đó nếu còn trống.
-                if ($this->limit_mold_change) {
+                if ($stageCode == 7 && $this->limit_mold_change) {
                     $mountedMold = $this->getPreviousMoldInRoom($room->room_id);
 
                     if ($mountedMold) {
-                        usort($filtered, function ($a, $b) use ($mountedMold) {
+                        usort($compatibleMolds, function ($a, $b) use ($mountedMold) {
                             return ((int) $b->id === (int) $mountedMold) <=> ((int) $a->id === (int) $mountedMold);
                         });
                     }
                 }
-
-                $compatibleMolds = $filtered;
             }
-            // Nếu SP chưa khai báo khuôn: $compatibleMolds = null → sắp lịch bình thường
 
             // Nhịp mỗi lô của CHÍNH phòng này (m_time + C1_time), không dùng trung bình các phòng nữa.
             // Lô thứ N bắt đầu tại T + N*slot → để lô N không sớm hơn công đoạn trước: T >= predReady[N] - N*slot
@@ -9272,11 +9256,8 @@ class SchedualController extends Controller
             ? (int) (explode('_', $firstTask->nextcessor_code)[1] ?? 0)
             : 0;
 
-        $hasImmediately = true;
-
-        collect($campaignTasks)->contains('immediately', 1);
-
-        if ($next_stage_code <= $this->max_Step && $hasImmediately) {
+        // Luôn xếp tiếp công đoạn sau tới max_Step (cột stage_plan.immediately không còn dùng, 06/11/2026)
+        if ($next_stage_code <= $this->max_Step) {
 
             $nextcessor_codes = $campaignTasks->pluck('nextcessor_code');
 
@@ -10367,22 +10348,34 @@ class SchedualController extends Controller
         return response()->json(['products' => $result]);
     }
 
+    /**
+     * Lô sắp tới thuộc công đoạn có sắp khuôn: CĐ 7 mọi phòng, CĐ 5 chỉ phòng require_mold.
+     */
+    protected function upcomingMoldPlansQuery($productionCode)
+    {
+        $moldRoomIds = DB::table('room')->where('require_mold', 1)->pluck('id')->all();
+
+        return DB::table('stage_plan')
+            ->where(function ($q) use ($moldRoomIds) {
+                $q->where('stage_code', 7)
+                    ->orWhere(function ($q5) use ($moldRoomIds) {
+                        $q5->where('stage_code', 5)->whereIn('resourceId', $moldRoomIds ?: [0]);
+                    });
+            })
+            ->where('active', 1)
+            ->where('finished', 0)
+            ->whereNotNull('start')
+            ->where('start', '>=', now())
+            ->when($productionCode, fn ($q) => $q->where('deparment_code', $productionCode));
+    }
+
     public function checkMissingMoldQuotas(Request $request)
     {
         try {
             $type = $request->input('type', 'missing');
-            $now = now();
             $productionCode = session('user')['production_code'] ?? null;
 
-            $query = DB::table('stage_plan')
-                ->where('stage_code', 7)
-                ->where('finished', 0)
-                ->whereNotNull('start')
-                ->where('start', '>=', $now);
-
-            if ($productionCode) {
-                $query->where('deparment_code', $productionCode);
-            }
+            $query = $this->upcomingMoldPlansQuery($productionCode);
 
             if ($type === 'missing') {
                 $query->whereNull('blister_mold_id');
@@ -10392,24 +10385,10 @@ class SchedualController extends Controller
 
             $missingProducts = [];
 
-            // Lấy danh sách danh mục sản phẩm (ID)
-            $categoryIds = $plans->pluck('product_caterogy_id')->unique()->filter()->toArray();
-
-            if (!empty($categoryIds)) {
-                // Kiểm tra xem danh mục nào KHÔNG CÓ khuôn hợp lệ
-                $categoriesWithMolds = DB::table('finished_product_mold')
-                    ->join('blister_mold', 'finished_product_mold.blister_mold_id', '=', 'blister_mold.id')
-                    ->whereIn('finished_product_mold.finished_product_category_id', $categoryIds)
-                    ->where('blister_mold.active', 1)
-                    ->pluck('finished_product_mold.finished_product_category_id')
-                    ->unique()
-                    ->toArray();
-
-                foreach ($plans as $plan) {
-                    if ($plan->product_caterogy_id && !in_array($plan->product_caterogy_id, $categoriesWithMolds)) {
-                        // Sản phẩm này không có khai báo khuôn
-                        $missingProducts[] = $plan->title;
-                    }
+            foreach ($plans as $plan) {
+                // Sản phẩm chưa khai báo khuôn (CĐ 7 theo TP, CĐ 5 theo BTP)
+                if ($plan->product_caterogy_id && $this->declaredMolds($plan->stage_code, $plan->product_caterogy_id)->isEmpty()) {
+                    $missingProducts[] = ((int) $plan->stage_code === 5 ? '[ĐH] ' : '') . $plan->title;
                 }
             }
 
@@ -10432,86 +10411,61 @@ class SchedualController extends Controller
     {
         try {
             $type = $request->input('type', 'missing');
-            $now = now();
             $productionCode = session('user')['production_code'] ?? null;
 
             if ($type === 'all') {
-                $resetQuery = DB::table('stage_plan')
-                    ->where('stage_code', 7)
+                // Gỡ khuôn của mọi lô ĐG/ĐH sắp tới (kể cả lô ĐH ở phòng không kiểm soát khuôn)
+                DB::table('stage_plan')
+                    ->whereIn('stage_code', self::MOLD_STAGES)
                     ->where('finished', 0)
-                    ->where('start', '>=', $now);
-
-                if ($productionCode) {
-                    $resetQuery->where('deparment_code', $productionCode);
-                }
-
-                $resetQuery->update(['blister_mold_id' => null]);
+                    ->where('start', '>=', now())
+                    ->when($productionCode, fn ($q) => $q->where('deparment_code', $productionCode))
+                    ->update(['blister_mold_id' => null]);
             }
 
-            $plansQuery = DB::table('stage_plan')
-                ->where('stage_code', 7)
-                ->where('finished', 0)
+            $plans = $this->upcomingMoldPlansQuery($productionCode)
                 ->whereNull('blister_mold_id')
-                ->whereNotNull('start')
-                ->where('start', '>=', $now);
-
-            if ($productionCode) {
-                $plansQuery->where('deparment_code', $productionCode);
-            }
-
-            $plans = $plansQuery->orderBy('start', 'asc')->get();
+                ->orderBy('start', 'asc')
+                ->get();
 
             $allocatedCount = 0;
+            $allocatedByStage = [5 => 0, 7 => 0];
+            $unallocatedByStage = [5 => 0, 7 => 0];
 
             foreach ($plans as $plan) {
-                $room = DB::table('room')->where('id', $plan->resourceId)->first();
-                $roomType = $room ? $room->blister_type_code : null;
+                $moldId = $this->pickBlisterMoldForPlan(
+                    $plan->product_caterogy_id,
+                    $plan->resourceId,
+                    $plan->start,
+                    $plan->end,
+                    $plan->id,
+                    null,
+                    $plan->stage_code
+                );
 
-                $compatibleMoldsQuery = DB::table('finished_product_mold')
-                    ->join('blister_mold', 'finished_product_mold.blister_mold_id', '=', 'blister_mold.id')
-                    ->where('finished_product_mold.finished_product_category_id', $plan->product_caterogy_id)
-                    ->where('blister_mold.active', 1);
-
-                if (!empty($roomType)) {
-                    $compatibleMoldsQuery->where(function ($q) use ($roomType) {
-                        $q->where('blister_mold.blister_type_code', $roomType)
-                            ->orWhere('blister_mold.blister_type_code', 'LIKE', '%"' . $roomType . '"%')
-                            ->orWhereNull('blister_mold.blister_type_code');
-                    });
+                if ($moldId) {
+                    DB::table('stage_plan')
+                        ->where('id', $plan->id)
+                        ->update(['blister_mold_id' => $moldId]);
+                    $allocatedCount++;
+                    $allocatedByStage[(int) $plan->stage_code] = ($allocatedByStage[(int) $plan->stage_code] ?? 0) + 1;
+                } elseif ($plan->product_caterogy_id && $this->declaredMolds($plan->stage_code, $plan->product_caterogy_id)->isNotEmpty()) {
+                    // Có định mức khuôn nhưng mọi khuôn đều bận / không lắp vừa phòng → lô báo Thiếu Khuôn trên lịch
+                    $unallocatedByStage[(int) $plan->stage_code] = ($unallocatedByStage[(int) $plan->stage_code] ?? 0) + 1;
                 }
+            }
 
-                $compatibleMolds = $compatibleMoldsQuery->select('blister_mold.id', 'blister_mold.code', 'blister_mold.amount')->get();
-
-                foreach ($compatibleMolds as $mold) {
-                    if ($mold->amount > 0) {
-                        $concurrentCount = DB::table('stage_plan')
-                            ->where('stage_code', 7)
-                            ->where('blister_mold_id', $mold->id)
-                            ->where('active', 1)
-                            ->where('finished', 0)
-                            ->whereNotNull('start')
-                            ->where(function ($q) use ($plan) {
-                                $q->where('start', '<', $plan->end)
-                                    ->where('end', '>', $plan->start);
-                            })
-                            ->pluck('resourceId')
-                            ->unique()
-                            ->count();
-
-                        if ($concurrentCount < $mold->amount) {
-                            DB::table('stage_plan')
-                                ->where('id', $plan->id)
-                                ->update(['blister_mold_id' => $mold->id]);
-                            $allocatedCount++;
-                            break;
-                        }
-                    }
-                }
+            $message = "Đã phân bổ khuôn cho {$allocatedCount} lô (Đóng gói: {$allocatedByStage[7]}, Định hình: {$allocatedByStage[5]}).";
+            $unallocated = array_sum($unallocatedByStage);
+            if ($unallocated > 0) {
+                $message .= " Còn {$unallocated} lô không có khuôn rảnh trong giờ chạy (Đóng gói: {$unallocatedByStage[7]}, Định hình: {$unallocatedByStage[5]}), lô hiện cảnh báo Thiếu Khuôn: dời lô, chạy lại sắp lịch tự động hoặc tăng số bộ khuôn.";
             }
 
             return response()->json([
                 'success' => true,
-                'message' => "Đã phân bổ khuôn cho {$allocatedCount} lô sản xuất.",
+                'message' => $message,
+                'allocated' => $allocatedByStage,
+                'unallocated' => $unallocated,
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -10533,7 +10487,7 @@ class SchedualController extends Controller
                 return response()->json(['success' => false, 'message' => 'Không tìm thấy lịch'], 404);
             }
 
-            $validMoldId = $this->sanitizeBlisterMoldId($moldId, $plan->product_caterogy_id, $plan->resourceId);
+            $validMoldId = $this->sanitizeBlisterMoldId($moldId, $plan->product_caterogy_id, $plan->resourceId, $plan->stage_code);
 
             if ($moldId && ! $validMoldId) {
                 return response()->json([

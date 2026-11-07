@@ -176,7 +176,7 @@ class ProductCategoryController extends Controller
                         'unit_batch_qty'=> $intermediate->unit_batch_qty ?? $request->unit_batch_qty,
                         'primary_parkaging'=> $request->primary_parkaging == "on"? true:false,
                         'secondary_parkaging' => false,
-                         'IsHypothesis' => $request->is_Hypothesis??0,
+                         'IsHypothesis' => 0, // chức năng tạo mã giả định đã xoá 06/11/2026
                         'deparment_code'=> session('user')['production_code'],
                         'prepared_by' => session('user')['fullName'],
                         'created_at' => now(),

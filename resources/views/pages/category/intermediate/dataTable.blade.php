@@ -82,12 +82,6 @@
                     'category_intermediate_create',
                     'boolean',
                 );
-                // TẠM ẨN: chức năng "Thêm Danh Mục Giả Định" / "Cập Nhật DMGĐ"
-                // $create_i_Hypothesis_category = user_has_permission(
-                //     session('user')['userId'],
-                //     'create_intermediate_Hypothesis_category',
-                //     'boolean',
-                // );
             @endphp
 
             @if ($category_intermediate_create)
@@ -97,14 +91,6 @@
                 </button>
             @endif
 
-            {{-- TẠM ẨN: nút "Thêm Danh Mục Giả Định"
-            @if ($create_i_Hypothesis_category)
-                <button class="btn btn-success btn-create mb-2" data-toggle="modal"
-                    data-target="#create_hypothesis_modal" style="width: 255px">
-                    <i class="fas fa-plus"></i> Thêm Danh Mục Giả Định
-                </button>
-            @endif
-            --}}
 
 
             <table id="data_table_intermediate_category" class="table table-bordered table-striped">
@@ -129,11 +115,6 @@
                         @if (!$auth_update)
                             <th rowspan="2">Cập Nhật</th>
                         @endif
-                        {{-- TẠM ẨN: cột "Cập Nhật DMGĐ"
-                        @if ($create_i_Hypothesis_category)
-                            <th rowspan="2">Cập Nhật DMGĐ</th>
-                        @endif
-                        --}}
                         <th rowspan="2">Vô Hiệu</th>
                         <th rowspan="2">Công Thức</th>
                     </tr>
@@ -351,27 +332,6 @@
                                 </td>
                             @endif
 
-                            {{-- TẠM ẨN: ô "Cập Nhật DMGĐ"
-                            @if ($create_i_Hypothesis_category)
-                                <td class="text-center align-middle">
-                                    <button type="button" class="btn btn-warning btn-edit-hypothesis"
-                                        data-id="{{ $data->id }}"
-                                        data-intermediate_code="{{ $data->intermediate_code }}"
-                                        data-product_name_id="{{ $data->product_name_id }}"
-                                        data-batch_size="{{ $data->batch_size }}"
-                                        data-unit_batch_size="{{ $data->unit_batch_size }}"
-                                        data-batch_qty="{{ $data->batch_qty }}"
-                                        data-unit_batch_qty="{{ $data->unit_batch_qty }}"
-                                        data-dosage_id="{{ $data->dosage_id }}"
-                                        data-pharmacist_id="{{ $data->pharmacist_id }}" data-toggle="modal"
-                                        data-target="#update_hypothesis_modal"
-                                        {{ $data->IsHypothesis == 0 ? $auth_update : '' }}>
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-
-                                </td>
-                            @endif
-                            --}}
 
 
                             <td class="text-center align-middle">
@@ -579,23 +539,6 @@
 
         });
 
-        // TẠM ẨN: handler của nút "Cập Nhật DMGĐ"
-        // $('.btn-edit-hypothesis').click(function() {
-        //     const button = $(this);
-        //     const modal = $('#update_hypothesis_modal');
-        //
-        //     // Gán dữ liệu vào input
-        //     modal.find('input[name="id"]').val(button.data('id'));
-        //     modal.find('input[name="intermediate_code"]').val(button.data('intermediate_code'));
-        //     modal.find('select[name="product_name_id"]').val(button.data('product_name_id')).trigger('change.select2');
-        //     modal.find('input[name="batch_size"]').val(button.data('batch_size'));
-        //     modal.find('input[name="batch_qty"]').val(button.data('batch_qty'));
-        //     modal.find('select[name="unit_batch_qty"]').val(button.data('unit_batch_qty')).trigger('change.select2');
-        //     modal.find('input[name="excution_time"]').val(button.data('excution-time'));
-        //     modal.find('select[name="dosage_id"]').val(button.data('dosage_id')).trigger('change.select2');
-        //     modal.find('select[name="pharmacist_id"]').val(button.data('pharmacist_id') || '');
-        //
-        // });
 
         $('.form-deActive').on('submit', function(e) {
             e.preventDefault(); // chặn submit mặc định

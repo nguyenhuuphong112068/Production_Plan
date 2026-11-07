@@ -5,13 +5,20 @@ namespace App\Http\Controllers\Pages\MaterData;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Validator;
 
 class BlisterMoldController extends Controller
 {
+    /** Khuôn mẫu tách theo phân xưởng đang chọn */
+    protected function department()
+    {
+        return session('user')['production_code'];
+    }
+
     public function index()
     {
-        $datas = DB::table('blister_mold')->orderBy('code', 'asc')->get();
+        $datas = DB::table('blister_mold')->where('deparment_code', $this->department())->orderBy('code', 'asc')->get();
         $blister_types = DB::table('blister_type')->where('active', true)->get();
         session()->put(['title' => 'DỮ LIỆU GỐC - KHUÔN MẪU']);
         $historyCounts = DB::table('blister_mold_history')->select('blister_mold_id', DB::raw('count(*) as total'))->groupBy('blister_mold_id')->get()->keyBy('blister_mold_id');
@@ -25,15 +32,19 @@ class BlisterMoldController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'code' => 'required|max:50|unique:blister_mold,code',
+            'code' => ['required', 'max:50', Rule::unique('blister_mold', 'code')->where('deparment_code', $this->department())],
             'amount' => 'nullable|integer|min:0',
-            'blister_type_code' => 'required|array',
+            'stage_code' => 'required|in:5,7',
+            'blister_type_code' => 'required_if:stage_code,7|array',
             'blister_type_code.*' => 'integer',
         ], [
+            'stage_code.required' => 'Vui lòng chọn Công Đoạn',
+            'stage_code.in' => 'Công Đoạn chỉ được là Đóng Gói hoặc Định Hình',
+            'blister_type_code.required_if' => 'Khuôn Đóng Gói phải chọn Loại Máy Ép Vỉ',
             'blister_type_code.required' => 'Vui lòng chọn Loại Máy Ép Vỉ',
             'code.required' => 'Vui lòng nhập Mã Khuôn Mẫu',
             'code.max' => 'Mã Khuôn Mẫu tối đa 50 ký tự',
-            'code.unique' => 'Mã Khuôn Mẫu đã tồn tại.',
+            'code.unique' => 'Mã Khuôn Mẫu đã tồn tại trong phân xưởng.',
             'amount.integer' => 'Số lượng phải là một số nguyên.',
             'amount.min' => 'Số lượng không được nhỏ hơn 0.',
         ]);
@@ -44,8 +55,11 @@ class BlisterMoldController extends Controller
 
         DB::table('blister_mold')->insert([
             'code' => $request->code,
+            'deparment_code' => $this->department(),
             'amount' => $request->amount,
-            'blister_type_code' => json_encode($request->blister_type_code),
+            'stage_code' => (int) $request->stage_code,
+            // Khuôn Định Hình không gắn loại máy ép vỉ
+            'blister_type_code' => (int) $request->stage_code === 7 ? json_encode($request->blister_type_code) : null,
             'active' => true,
             'created_by' => session('user')['fullName'] ?? 'Admin',
             'created_at' => now(),
@@ -57,15 +71,19 @@ class BlisterMoldController extends Controller
     public function update(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'code' => 'required|max:50|unique:blister_mold,code,' . $request->id,
+            'code' => ['required', 'max:50', Rule::unique('blister_mold', 'code')->where('deparment_code', $this->department())->ignore($request->id)],
             'amount' => 'nullable|integer|min:0',
-            'blister_type_code' => 'required|array',
+            'stage_code' => 'required|in:5,7',
+            'blister_type_code' => 'required_if:stage_code,7|array',
             'blister_type_code.*' => 'integer',
         ], [
+            'stage_code.required' => 'Vui lòng chọn Công Đoạn',
+            'stage_code.in' => 'Công Đoạn chỉ được là Đóng Gói hoặc Định Hình',
+            'blister_type_code.required_if' => 'Khuôn Đóng Gói phải chọn Loại Máy Ép Vỉ',
             'blister_type_code.required' => 'Vui lòng chọn Loại Máy Ép Vỉ',
             'code.required' => 'Vui lòng nhập Mã Khuôn Mẫu',
             'code.max' => 'Mã Khuôn Mẫu tối đa 50 ký tự',
-            'code.unique' => 'Mã Khuôn Mẫu đã tồn tại.',
+            'code.unique' => 'Mã Khuôn Mẫu đã tồn tại trong phân xưởng.',
             'amount.integer' => 'Số lượng phải là một số nguyên.',
             'amount.min' => 'Số lượng không được nhỏ hơn 0.',
         ]);
@@ -74,11 +92,17 @@ class BlisterMoldController extends Controller
             return redirect()->back()->withErrors($validator, 'updateErrors')->withInput();
         }
 
+        if (! $this->ownMold($request->id)) {
+            return redirect()->back()->with('error', 'Khuôn không thuộc phân xưởng đang chọn.');
+        }
+
         $this->logHistory($request->id);
         DB::table('blister_mold')->where('id', $request->id)->update([
             'code' => $request->code,
             'amount' => $request->amount,
-            'blister_type_code' => json_encode($request->blister_type_code),
+            'stage_code' => (int) $request->stage_code,
+            // Khuôn Định Hình không gắn loại máy ép vỉ
+            'blister_type_code' => (int) $request->stage_code === 7 ? json_encode($request->blister_type_code) : null,
             'updated_at' => now(),
         ]);
 
@@ -90,6 +114,10 @@ class BlisterMoldController extends Controller
         $id = $request->id;
         $active = $request->active;
 
+        if (! $this->ownMold($id)) {
+            return redirect()->back()->with('error', 'Khuôn không thuộc phân xưởng đang chọn.');
+        }
+
         $this->logHistory($id);
         DB::table('blister_mold')->where('id', $id)->update([
             'active' => !$active,
@@ -97,6 +125,11 @@ class BlisterMoldController extends Controller
         ]);
 
         return redirect()->back()->with('success', 'Đã thay đổi trạng thái thành công!');
+    }
+
+    protected function ownMold($id)
+    {
+        return DB::table('blister_mold')->where('id', $id)->where('deparment_code', $this->department())->exists();
     }
 
     public function logHistory($id)

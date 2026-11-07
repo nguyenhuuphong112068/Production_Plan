@@ -22,7 +22,6 @@
                 </div>
 
                 <div class="modal-body">
-                    <input type="hidden" class="form-control" name="is_Hypothesis" value="0">
 
                     {{-- NAME --}}
                     <div class="form-group">

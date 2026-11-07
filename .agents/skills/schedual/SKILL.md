@@ -17,7 +17,8 @@ Người dùng (Nguyễn Hữu Phong) yêu cầu từ 10/10/2026: **mỗi khi th
    - sửa file `.md` (viết cho khách hàng: tiếng Việt dễ hiểu, không tên hàm/tên bảng), sửa dòng "Phiên bản … · ngày";
    - xuất Word bằng `python storage/app/schedualer/_tools/md_to_docx.py "<file .md>"`, rồi PDF bằng `powershell -ExecutionPolicy Bypass -File storage/app/schedualer/_tools/docx_to_pdf.ps1 "<file .docx>"` (cần Microsoft Word); mở PDF kiểm tra bố cục;
    - thêm mục ở đầu `storage/app/schedualer/CHANGELOG.md`.
-3. Nếu thay đổi chỉ là sửa lỗi code mà nguyên lý không đổi thì không cần phiên bản mới, nhưng vẫn cập nhật skill nếu skill mô tả sai.
+3. **Cập nhật Hướng Dẫn Sử Dụng trong phần mềm** (quy tắc 5 của `common-rules`, từ 05/11/2026): các mục Nguyên lý trong `resources/views/pages/userGuide/schedual/sections/` (`principle`, `inputData`, `campaign`, `priority`, `roomSlot`, `selfCheck`, `result`, `wipControl`, `wipExamples`, `wipResult`) phải khớp bản tài liệu mới; đổi giao diện Gantt / hộp thoại Sắp lịch tự động thì sửa `gantt`, `colors`, `manualEdit`, `autoDialog`, `faq`. Đổi `updated_at` trong `UserGuideController::GUIDES`, chạy `php artisan pms:user-guide-check`. Cách viết: skill `user-guide`.
+4. Nếu thay đổi chỉ là sửa lỗi code mà nguyên lý không đổi thì không cần phiên bản mới, nhưng vẫn cập nhật skill nếu skill mô tả sai, và vẫn sửa hướng dẫn nếu người dùng thấy khác.
 
 Bản trực tuyến v1.0 (Claude Docs): https://claude.ai/artifact/SZRvWgbQheSqVwHp41KuBw — nội dung giống `storage/app/schedualer/nguyen-ly/v1.0_2026-10-10/`.
 
@@ -405,7 +406,7 @@ foreach batchPlan:
 
 #### Bước 5: Đệ Quy Campaign Kế Tiếp
 
-Nếu có `nextcessor_code` và `hasImmediately`:
+Nếu có `nextcessor_code` và stage kế `<= max_Step` (LUÔN LUÔN, không xét `immediately` — xem bảng cột `stage_plan`):
 → Gom tất cả `nextcessor_code` từ campaign tasks.
 → Query task ở stage kế → gọi `scheduleCampaign()` cho campaign công đoạn sau.
 → Truyền `totalTimeCampaign` để pipeline balancing.
@@ -430,6 +431,10 @@ Nếu có `nextcessor_code` và `hasImmediately`:
 #### `loadOffDate(string $sort)` – Tải Ngày Nghỉ
 **Vị trí:** [L4140-L4222](file:///c:/PMS/Production_Plan/app/Http/Controllers/Pages/Schedual/SchedualController.php#L4140-L4222)
 
+- Nguồn mặc định của `selectedDates` là bảng `off_days`. Từ 06/11/2026 bảng này KHÔNG nhập tay nữa (đã bỏ màn hình
+  Dữ Liệu Gốc › Cập nhật ngày nghỉ) mà do `php artisan offdays:sync` (05:30 hằng ngày, `OffDaysSyncService`) đồng bộ
+  6 tháng tới từ cờ `is_holiday` của API eO2 `range` (bộ phận 4, nhẹ nhất; lịch nghỉ giống nhau mọi bộ phận) + mọi
+  Chủ nhật (quy tắc chung thắng cả Chủ nhật làm bù của eO2). Ngày đã qua giữ nguyên.
 - Parse `selectedDates` thành các khoảng off `[start: 06:00, end: 06:00 ngày sau]`.
 - **Gộp ngày liên tiếp** thành 1 block lớn (tối ưu hóa).
 - Sort theo `start` (asc/desc).
@@ -572,7 +577,7 @@ Hàm phụ trợ dùng chung:
 | `keep_dry` | Cần AHU/hút ẩm (0/1) |
 | `order_by` | Thứ tự ưu tiên |
 | `required_room_code` | Mã phòng bắt buộc (null = tự chọn) |
-| `immediately` | Cần chạy liền sau predecessor (0/1) |
+| `immediately` | **KHÔNG DÙNG** (06/11/2026): lõi luôn xếp tiếp công đoạn sau tới `max_Step` cho mọi lô (`sheduleNotCampaing` và `scheduleCampaignBody`); đã gỡ nút/cột ⚡ ở KHSX, route `PUT /Schedual/immediately` và hàm `immediately()`. Cột CSDL còn giữ, chỉ còn trong `select`/sao lưu. Đừng thêm lại điều kiện theo cột này. |
 | `finished` | Đã hoàn thành (0/1) |
 | `active` | Còn hoạt động (0/1) |
 | `not_schedule` | Loại trừ khỏi lịch tự động (0/1) |
@@ -665,9 +670,24 @@ Hàm phụ trợ dùng chung:
 
 Trong `scheduleCampaignBody`, `$candidates` lấy ngày MUỘN NHẤT của mọi lô trong campaign: stage ≤ 6 `after_weigth_date`, `allow_weight_before_date`; stage 7 `after_parkaging_date`. Lỗi cũ: điều kiện ngày được phép cân kiểm tra biến `$task` không tồn tại nên luôn bỏ qua, và chỉ xét lô đầu (sự cố Stadlacil 071026, 08/10/2026).
 
-### 6.5. Hạn Chế Xuống Khuôn (ĐG)
+### 6.5. Sắp Khuôn Chống Trùng (ĐG + ĐH) Và Hạn Chế Xuống Khuôn (ĐG)
 
-Chọn phòng = phòng có giờ bắt đầu sớm nhất. Riêng stage 7 khi `limit_mold_change` bật: phòng có khuôn liền trước trùng mã khuôn được ưu tiên nếu bắt đầu trễ hơn phòng tốt nhất ≤ `mold_change_tolerance` giờ (mặc định 72).
+**Sắp khuôn chống trùng** (từ 05/11/2026 áp cho cả CĐ 5): `SchedualController::MOLD_STAGES = [5, 7]` (FE cũng có `MOLD_STAGES`). Một khuôn chỉ chạy trên tối đa `blister_mold.amount` phòng cùng lúc; khi sắp tự động, `findEarliestSlot2(..., $compatibleMolds)` dời giờ bắt đầu (bước 30 phút) tới khi có khuôn rảnh rồi ghi `stage_plan.blister_mold_id`.
+
+| | CĐ 7 Đóng gói | CĐ 5 Định Hình |
+| --- | --- | --- |
+| Danh mục | `blister_mold` `stage_code = 7` (có `blister_type_code`) | `blister_mold` `stage_code = 5` (`blister_type_code` NULL) |
+| Định mức | `finished_product_mold` theo **TP** (`finished_product_category_id`) | `intermediate_mold` theo **BTP** (`intermediate_code`), trang `/quota/mold/forming` |
+| Phòng áp dụng | mọi phòng, lọc khuôn theo loại máy ép vỉ | chỉ `room.require_mold = 1` (S23, S24 – IMA Zibo; S25/S36 MG2 cùng BTP nhưng không lắp lẫn khuôn) |
+| Hạn chế xuống khuôn | có (dưới) | **không** (user chọn 05/11/2026) |
+
+- Mọi chỗ dùng khuôn đi qua helper: `declaredMolds($stage, $catId)`, `moldsForRoom($stage, $catId, $roomId)` (null = không sắp khuôn; [] = có định mức nhưng không khuôn nào lắp vừa → bỏ phòng), `moldConcurrentRooms()`, `pickBlisterMoldForPlan(..., $stageCode)`, `sanitizeBlisterMoldId(..., $stageCode)`. Không viết lại truy vấn `stage_code = 7` cứng.
+- `stage_plan.blister_mold_id` dùng chung cho lô CĐ 5 và CĐ 7 (id khuôn duy nhất toàn bảng, đếm trùng theo `whereIn stage_code MOLD_STAGES`).
+- Từ 06/11/2026 khuôn tách theo phân xưởng: `blister_mold.deparment_code` (dữ liệu cũ = PXV1), mã khuôn chỉ không trùng trong cùng phân xưởng (unique `deparment_code + code`). `declaredMolds` chỉ lấy khuôn cùng phân xưởng với TP/BTP (`blister_mold.deparment_code = fpc.deparment_code`); `view()` chỉ trả `blister_molds` của phân xưởng đang xem. `intermediate_mold` khoá theo mã BTP, nên trang Khuôn Định Hình chỉ xoá/ghi các dòng có khuôn của phân xưởng đang chọn.
+- Cảnh báo `colorEvent`: Trùng khuôn (cả 2 CĐ), Sai khuôn (chỉ CĐ 7, loại máy), Thiếu khuôn (CĐ 7 phòng có `blister_type_code`; CĐ 5 phòng `require_mold`). Nút Kiểm tra định mức/Phân bổ khuôn (`checkMissingMoldQuotas`, `autoAllocateMold`) gồm lô CĐ 5 ở phòng `require_mold` (tên lô ĐH có tiền tố `[ĐH]`).
+- Client: `view()` trả thêm `intermediate_product_molds` (định mức BTP trải ra theo `finished_product_category_id`) và `resources[].require_mold`.
+
+**Hạn chế xuống khuôn (chỉ ĐG):** chọn phòng = phòng có giờ bắt đầu sớm nhất. Riêng stage 7 khi `limit_mold_change` bật: phòng có khuôn liền trước trùng mã khuôn được ưu tiên nếu bắt đầu trễ hơn phòng tốt nhất ≤ `mold_change_tolerance` giờ (mặc định 72).
 
 ### 6.6. Quyết Định Của Người Dùng – KHÔNG Làm Lại
 
@@ -678,6 +698,7 @@ Chọn phòng = phòng có giờ bắt đầu sớm nhất. Riêng stage 7 khi `
 | 08/10/2026 | Phương án 1: chỉ đổi thứ tự trong nhóm bán thành phẩm theo hạn | Người dùng chọn **phương án 2** (chen + sắp lại, mục 6.1). |
 | 10/2026 | Checkbox "cho phép vi phạm" 7 ngày NL/BB trong plugin | **Bỏ**: 7 ngày luôn là hạn cứng. |
 | 08/10/2026 | Dòng "Khả thi / Không khả thi" trên modal kết quả BTP | Bỏ. |
+| 05/11/2026 | Ưu tiên giữ khuôn đang lắp / giới hạn thay khuôn cho khuôn ĐH | **Không cần**. Khuôn ĐH chỉ chống trùng. |
 
 ### 6.7. Bẫy Đã Gặp
 

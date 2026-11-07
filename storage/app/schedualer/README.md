@@ -38,3 +38,4 @@ Mỗi phiên bản là một thư mục riêng, **không sửa đè thư mục p
    - Quy ước markdown công cụ hiểu: `#` tiêu đề (lên bìa), dòng `Phiên bản X.Y · dd/mm/yyyy`, `##` Heading 1 (`## Phần …` sang trang mới), `###` Heading 2 (đánh số `1.1.`), `####` Heading 3, bảng `| |`, danh sách `- ` / `1. `, ảnh `![chú thích](file.png)`, khung nổi bật `> …`.
 6. Ghi một mục mới ở đầu `CHANGELOG.md`.
 7. Nếu có bản trực tuyến (Claude Docs) thì cập nhật cho khớp; link bản trực tuyến ghi trong `CHANGELOG.md`.
+8. Cập nhật Hướng Dẫn Sử Dụng tích hợp trong phần mềm (menu Hướng Dẫn Sử Dụng › Lịch Sản Xuất & Sắp Lịch Tự Động, file `resources/views/pages/userGuide/schedual/sections/`) cho khớp bản mới, rồi chạy `php artisan pms:user-guide-check` (skill `user-guide`).

@@ -157,7 +157,7 @@ class IntermediateCategoryController extends Controller
                         'quarantine_forming' => $request->quarantine_forming ?? 0,
                         'quarantine_coating' => $request->quarantine_coating ?? 0,
                         'quarantine_time_unit' => $request->quarantine_time_unit === "on" ? true : false,
-                        'IsHypothesis' => $request->is_Hypothesis ?? 0,
+                        'IsHypothesis' => 0, // chức năng tạo mã giả định đã xoá 06/11/2026
                         'deparment_code' => session('user')['production_code'],
                         'pharmacist_id' => $request->pharmacist_id ?: null,
                         'prepared_by' => session('user')['fullName'],

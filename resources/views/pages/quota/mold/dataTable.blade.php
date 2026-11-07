@@ -22,7 +22,7 @@
 <div class="content-wrapper">
     <div class="card">
         <div class="card-header mt-4">
-            <h3 class="card-title">Định mức Khuôn mẫu cho Sản phẩm</h3>
+            <h3 class="card-title">Định mức Khuôn EV cho Sản phẩm</h3>
         </div>
         <div class="card-body">
             @php
@@ -38,7 +38,7 @@
                         <th>Cỡ Lô</th>
                         <th>Thị Trường</th>
                         <th>Qui Cách</th>
-                        <th style="width: 30%;">Khuôn mẫu</th>
+                        <th style="width: 30%;">Khuôn EV</th>
                         <th>Phòng SX Đã định mức</th>
                         <th>Người Tạo/ Ngày Tạo</th>
                     </tr>
@@ -253,7 +253,7 @@
                     }
                 },
                 error: function(xhr) {
-                    Swal.fire('Lỗi server', 'Không thể cập nhật khuôn mẫu', 'error');
+                    Swal.fire('Lỗi', xhr.responseJSON?.message || 'Không thể cập nhật khuôn mẫu', 'error');
                 }
             });
         });

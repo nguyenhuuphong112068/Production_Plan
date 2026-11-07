@@ -47,7 +47,7 @@
         <b>Công thức:</b> Số lô đúng hạn / Số lô đã chấm được × 100%.
         Một lô đúng hạn khi <b>Ngày KCS</b> cách <b>Ngày đủ điều kiện</b> không quá
         {{ PlanMasterKcs::ON_TIME_DAYS }} <b>ngày làm việc</b> - đã loại Chủ nhật và các ngày
-        nghỉ theo lịch công ty (Dữ Liệu Gốc &rsaquo; Cập nhật ngày nghỉ).
+        nghỉ theo lịch công ty (tự lấy từ eO2).
         <span class="ml-3">
             <span class="badge badge-success">Mục tiêu ≥ {{ PlanMasterKcs::TARGET_RATE }}%</span>
             <span class="badge badge-warning">Cảnh báo</span>

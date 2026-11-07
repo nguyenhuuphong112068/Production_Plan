@@ -17,6 +17,24 @@
     <ul class="navbar-nav ms-auto">
         <!-- Thông báo cũ đã được chuyển sang Floating Button -->
 
+        {{-- Nút "?": mở mục Hướng Dẫn Sử Dụng của màn hình hiện tại (App\Support\UserGuideLinks, khai trong toc.php).
+             Chỉ hiện với tài khoản có quyền xem hướng dẫn (UserGuideController::PERMISSION). --}}
+        @php
+            $ugRouteName = request()->route()?->getName() ?? '';
+            $ugCanView = \App\Http\Controllers\Pages\UserGuide\UserGuideController::canView();
+            $ugHelp = $ugCanView ? \App\Support\UserGuideLinks::forRoute($ugRouteName) : [];
+        @endphp
+        @unless (!$ugCanView || str_starts_with($ugRouteName, 'pages.userGuide.'))
+            <li class="nav-item d-flex align-items-center" style="margin-right: 14px;">
+                <a id="ug-help-btn" class="ug-help-btn" target="_blank" rel="noopener"
+                    href="{{ $ugHelp[0]['url'] ?? route('pages.userGuide.list') }}"
+                    title="{{ $ugHelp ? 'Hướng dẫn: ' . $ugHelp[0]['title'] : 'Hướng dẫn sử dụng' }}"
+                    data-links='@json($ugHelp)'>
+                    <i class="fas fa-question"></i>
+                </a>
+            </li>
+        @endunless
+
         <li class="nav-item d-flex align-items-center" style="margin-right: 20px; position: relative;">
             <div id="notif-bell-btn"
                 style="border: 2px solid #CDC717; border-radius: 50%; width: 35px; height: 35px; display: flex; justify-content: center; align-items: center; cursor: pointer; position: relative;">
@@ -47,3 +65,63 @@
         </li>
     </ul>
 </nav>
+
+<style>
+    .ug-help-btn {
+        width: 35px;
+        height: 35px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 2px solid #CDC717;
+        border-radius: 50%;
+        color: #CDC717;
+        font-size: 16px;
+        transition: .15s ease;
+    }
+
+    .ug-help-btn:hover {
+        background: #CDC717;
+        color: #fff;
+        text-decoration: none;
+    }
+</style>
+
+<script>
+    // Màn hình nhiều tab: chọn mục hướng dẫn của tab đang hiện (id vùng nội dung khai 'pane' trong toc.php),
+    // sau đó theo ?tab= trên URL, cuối cùng là mục đầu tiên
+    document.addEventListener('DOMContentLoaded', function() {
+        var btn = document.getElementById('ug-help-btn');
+        if (!btn) return;
+
+        var links = [];
+        try {
+            links = JSON.parse(btn.getAttribute('data-links') || '[]');
+        } catch (e) {}
+        if (links.length < 2) return;
+
+        function pick() {
+            for (var i = 0; i < links.length; i++) {
+                for (var j = 0; j < links[i].panes.length; j++) {
+                    var pane = document.getElementById(links[i].panes[j]);
+                    if (pane && pane.offsetParent !== null) return links[i];
+                }
+            }
+            var tab = new URLSearchParams(window.location.search).get('tab');
+            for (var k = 0; tab && k < links.length; k++) {
+                if (links[k].tab === tab) return links[k];
+            }
+            return links[0];
+        }
+
+        function sync() {
+            var link = pick();
+            btn.href = link.url;
+            btn.title = 'Hướng dẫn: ' + link.title;
+        }
+
+        btn.addEventListener('mouseenter', sync);
+        btn.addEventListener('focus', sync);
+        btn.addEventListener('click', sync);
+    });
+</script>

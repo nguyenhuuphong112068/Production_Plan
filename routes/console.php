@@ -34,6 +34,15 @@ Schedule::command('employees:sync-roster')
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/sync-roster.log'));
 
+// Ngày nghỉ công ty (`off_days`) lấy từ cờ `is_holiday` của API eO2, 6 tháng tới.
+// Màn hình nhập tay đã bỏ từ 06/11/2026. Chỉ 1 request nhẹ (~25KB) tới `range`,
+// đặt 05:30 để cách xa lượt `employees:sync-roster` (05:00) và `shifts:warm-cache`
+// (05:55) cũng gọi `range`.
+Schedule::command('offdays:sync')
+    ->dailyAt('05:30')
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/sync-offdays.log'));
+
 // Nạp sẵn cache lịch trực cho trang Lịch công tác.
 //
 // Chạy mỗi giờ trong khung giờ làm việc, ngắn hơn `shiftapi.cache_ttl` (2h) nên

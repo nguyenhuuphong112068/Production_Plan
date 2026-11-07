@@ -8,7 +8,6 @@ use App\Http\Controllers\Pages\MaterData\RoomController;
 use App\Http\Controllers\Pages\MaterData\SourceMaterialController;
 use App\Http\Controllers\Pages\MaterData\SpecificationController;
 use App\Http\Controllers\Pages\MaterData\UnitController;
-use App\Http\Controllers\Pages\MaterData\OffDaysController;
 use App\Http\Controllers\Pages\MaterData\StageGroupController;
 use App\Http\Controllers\Pages\MaterData\DepartmentController;
 use App\Http\Controllers\Pages\MaterData\BlisterMoldController;
@@ -131,19 +130,8 @@ Route::prefix('/materData')
           
         });
 
-        Route::prefix('/offdays')
-        ->name('offdays.')
-        ->controller(OffDaysController::class)
-        ->group(function(){
-                Route::get('','index')->name('list');
-                Route::post('store','store')->name('store');
-                Route::post('store_ajax','storeAjax')->name('store_ajax');
-                Route::post('delete_ajax','deleteAjax')->name('delete_ajax');
-                Route::post('flags/store_ajax','storeFlagAjax')->name('flags_store_ajax');
-                Route::post('flags/delete_ajax','deleteFlagAjax')->name('flags_delete_ajax');
-            Route::get('history', 'history')->name('history');
-
-        });
+        // Màn hình "Cập nhật ngày nghỉ" (/offdays) đã bỏ 06/11/2026: off_days nay
+        // đồng bộ tự động từ API eO2 bằng lệnh `offdays:sync`.
 
         Route::prefix('/stageGroup')
         ->name('stageGroup.')

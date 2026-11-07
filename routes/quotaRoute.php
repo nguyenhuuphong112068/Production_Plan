@@ -62,5 +62,8 @@ Route::prefix('/quota')
             ->group(function () {
                 Route::get('', 'index')->name('list');
                 Route::post('update', 'update')->name('update');
+                // Khuôn Định Hình (CĐ 5) theo BTP
+                Route::get('forming', 'forming')->name('forming');
+                Route::post('forming/update', 'formingUpdate')->name('forming.update');
             });
     });

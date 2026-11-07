@@ -29,6 +29,13 @@
                         @enderror
                     </div>
                     <div class="form-group">
+                        <label for="stage_code">Công Đoạn <span class="text-danger">*</span></label>
+                        <select name="stage_code" id="stage_code" class="form-control js-mold-stage" data-type-group="#create_blister_type_group" required>
+                            <option value="7" {{ old('stage_code', 7) == 7 ? 'selected' : '' }}>Đóng Gói (khuôn ép vỉ)</option>
+                            <option value="5" {{ old('stage_code') == 5 ? 'selected' : '' }}>Định Hình</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="create_blister_type_group">
                         <label for="blister_type_code">Loại Máy Ép Vỉ <span class="text-danger">*</span></label>
                         <select name="blister_type_code[]" id="blister_type_code" class="form-control @error('blister_type_code', 'createErrors') is-invalid @enderror" multiple required>
                             @if(isset($blister_types))

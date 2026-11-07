@@ -22,7 +22,6 @@
                 </div>
 
                 <div class="modal-body">
-                    <input type="hidden" class="form-control" name="is_Hypothesis" value="0">
                     {{-- Mã Sản Phẩm --}}
                     <div class="row">
                         <div class="col-md-6">
