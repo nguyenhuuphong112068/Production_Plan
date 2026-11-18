@@ -1,10 +1,16 @@
 @php
     // Gợi ý người đọc hồ sơ từ những tên đã được nhập trước đó
     $readerOptions = $records->pluck('reader')->filter()->unique()->sort()->values();
+
+    // Lọc theo Tháng KCS hoặc Ngày Dự Kiến KCS thì khoảng tháng kế hoạch không áp dụng
+    // (xem KcsTrackingController::queryFilters())
+    $hasExpected = $expectedFrom !== '' || $expectedTo !== '';
+    $planIgnored = $kcsMonth !== '' || $hasExpected;
+    $planIgnoredBy = $kcsMonth !== '' ? 'Tháng KCS' : 'Ngày Dự Kiến KCS';
 @endphp
 
 <form method="GET" action="{{ route('pages.plan.kcs_tracking.list') }}" class="form-row align-items-end mb-3">
-    <div class="col-md-2">
+    <div class="col-md">
         <label class="mb-1"><i class="fas fa-industry text-primary"></i> Phân Xưởng</label>
         <select class="form-control form-control-sm" name="department">
             <option value="">Tất cả phân xưởng</option>
@@ -14,33 +20,46 @@
             @endforeach
         </select>
     </div>
-    <div class="col-md-2">
-        <label class="mb-1 {{ $kcsMonth !== '' ? 'text-muted' : '' }}">
+    <div class="col-md">
+        <label class="mb-1 {{ $planIgnored ? 'text-muted' : '' }}">
             Từ tháng kế hoạch
-            @if ($kcsMonth !== '')
-                <i class="fas fa-ban" title="Không áp dụng khi đang lọc theo Tháng KCS"></i>
+            @if ($planIgnored)
+                <i class="fas fa-ban" title="Không áp dụng khi đang lọc theo {{ $planIgnoredBy }}"></i>
             @endif
         </label>
         <input type="month" class="form-control form-control-sm" name="from_month" value="{{ $fromMonth }}"
-            {{ $kcsMonth !== '' ? 'style=opacity:.5' : '' }}>
+            {{ $planIgnored ? 'style=opacity:.5' : '' }}>
     </div>
-    <div class="col-md-2">
-        <label class="mb-1 {{ $kcsMonth !== '' ? 'text-muted' : '' }}">
+    <div class="col-md">
+        <label class="mb-1 {{ $planIgnored ? 'text-muted' : '' }}">
             Đến tháng kế hoạch
-            @if ($kcsMonth !== '')
-                <i class="fas fa-ban" title="Không áp dụng khi đang lọc theo Tháng KCS"></i>
+            @if ($planIgnored)
+                <i class="fas fa-ban" title="Không áp dụng khi đang lọc theo {{ $planIgnoredBy }}"></i>
             @endif
         </label>
         <input type="month" class="form-control form-control-sm" name="to_month" value="{{ $toMonth }}"
-            {{ $kcsMonth !== '' ? 'style=opacity:.5' : '' }}>
+            {{ $planIgnored ? 'style=opacity:.5' : '' }}>
     </div>
-    <div class="col-md-2">
+    <div class="col-md">
         <label class="mb-1" title="Lọc theo tháng của Ngày KCS thật (từ MMS), không phải tháng kế hoạch.">
             <i class="fas fa-clipboard-check text-success"></i> Tháng KCS
         </label>
         <input type="month" class="form-control form-control-sm" name="kcs_month" value="{{ $kcsMonth }}">
     </div>
-    <div class="col-md-2">
+    <div class="col-md-3">
+        <label class="mb-1"
+            title="Lọc theo Ngày dự kiến KCS trên Kế Hoạch Sản Xuất. Bỏ trống một đầu để lọc mở (từ ngày... / đến ngày...).">
+            <i class="fas fa-calendar-alt text-info"></i> Ngày Dự Kiến KCS
+        </label>
+        <div class="d-flex align-items-center">
+            <input type="date" class="form-control form-control-sm" name="expected_from"
+                value="{{ $expectedFrom }}" title="Từ ngày">
+            <span class="mx-1 text-muted">-</span>
+            <input type="date" class="form-control form-control-sm" name="expected_to"
+                value="{{ $expectedTo }}" title="Đến ngày">
+        </div>
+    </div>
+    <div class="col-md">
         <label class="mb-1" title="Chỉ lô đã có dòng theo dõi và đã chấm được kết quả mới hiện ra.">
             <i class="fas fa-check-circle text-success"></i> Kết Quả
         </label>
@@ -52,7 +71,7 @@
                 {{ $result === \App\Models\PlanMasterKcs::RESULT_NOT_MET ? 'selected' : '' }}>Trễ Hạn</option>
         </select>
     </div>
-    <div class="col-md-2">
+    <div class="col-md">
         <label class="mb-1">Tìm kiếm</label>
         <input type="text" class="form-control form-control-sm" name="keyword" value="{{ $keyword }}"
             placeholder="Mã / tên SP / số lô...">
@@ -69,6 +88,8 @@
             'to_month' => $toMonth,
             'kcs_month' => $kcsMonth,
             'result' => $result,
+            'expected_from' => $expectedFrom,
+            'expected_to' => $expectedTo,
             'keyword' => $keyword,
         ]) }}" class="btn btn-sm btn-success" title="Xuất Excel đúng dữ liệu đang lọc trên lưới">
             <i class="fas fa-file-excel"></i> Xuất Excel
@@ -83,13 +104,29 @@
                 {{ $result === \App\Models\PlanMasterKcs::RESULT_MET ? 'Đáp Ứng' : 'Trễ Hạn' }}
             </span>
         @endif
+        @if ($hasExpected)
+            <span class="badge badge-info">
+                DK KCS
+                {{ $expectedFrom !== '' ? \Carbon\Carbon::parse($expectedFrom)->format('d/m/Y') : '...' }}
+                -
+                {{ $expectedTo !== '' ? \Carbon\Carbon::parse($expectedTo)->format('d/m/Y') : '...' }}
+            </span>
+        @endif
         @if ($kcsMonth !== '')
             <span class="text-muted small ml-2">
                 <i class="fas fa-info-circle"></i>
                 Đang lọc theo <b>Tháng KCS</b> nên <b>khoảng tháng kế hoạch không áp dụng</b> - lô kế hoạch
                 tháng trước vẫn hiện nếu được KCS trong tháng này, nhờ vậy số lô khớp với tab Tổng Kết Tỉ Lệ.
             </span>
+        @elseif ($hasExpected)
+            <span class="text-muted small ml-2">
+                <i class="fas fa-info-circle"></i>
+                Đang lọc theo <b>Ngày Dự Kiến KCS</b> nên <b>khoảng tháng kế hoạch không áp dụng</b>.
+            </span>
         @endif
+        <span class="text-muted small ml-2">
+            <i class="fas fa-sort"></i> Bấm tiêu đề cột để sắp xếp (bấm lần nữa để đảo chiều).
+        </span>
     </div>
 </form>
 {{--
@@ -139,6 +176,9 @@
                 <th class="bg-light" style="min-width: 150px;">Quy Cách</th>
                 <th class="bg-light" style="min-width: 100px;">Cỡ Lô</th>
                 <th class="bg-light" style="min-width: 70px;">Lô TĐ</th>
+                <th class="bg-light" style="min-width: 100px;"
+                    title="Ngày dự kiến KCS trên Kế Hoạch Sản Xuất (plan_master.expected_date), chỉ xem.">
+                    Ngày Dự Kiến KCS</th>
 
                 <th class="bg-warning" style="min-width: 140px;">Ngày Nhận Hồ Sơ</th>
                 <th class="bg-warning" style="min-width: 110px;">Người Đọc</th>
@@ -248,13 +288,16 @@
                     </td>
                     <td class="align-middle">{{ $data->market }}</td>
                     <td class="align-middle">{{ $data->specification }}</td>
-                    <td class="text-right align-middle">
+                    <td class="text-right align-middle" data-sort="{{ (float) $data->batch_qty }}">
                         {{ number_format((float) $data->batch_qty, 0, ',', '.') }} {{ $data->unit_batch_qty }}
                     </td>
                     <td class="text-center align-middle">
                         @if ($data->is_val)
                             <span class="badge badge-info">TĐ</span>
                         @endif
+                    </td>
+                    <td class="text-center align-middle">
+                        {{ $data->expected_date ? \Carbon\Carbon::parse($data->expected_date)->format('d/m/Y') : '' }}
                     </td>
 
                     <td><input type="date" class="form-control form-control-sm kcs-input"
@@ -314,7 +357,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="30" class="text-center text-muted py-4">
+                    <td colspan="31"class="text-center text-muted py-4">
                         Không có lô sản xuất nào trong khoảng đã chọn
                     </td>
                 </tr>
@@ -382,6 +425,20 @@
         z-index: 3;
         font-size: 12px;
         white-space: normal;
+    }
+
+    #kcs_tracking_table th.kcs-sortable {
+        cursor: pointer;
+        user-select: none;
+    }
+
+    #kcs_tracking_table .kcs-sort-icon {
+        opacity: .35;
+        font-size: 10px;
+    }
+
+    #kcs_tracking_table .kcs-sort-icon.kcs-sort-active {
+        opacity: 1;
     }
 
     #kcs_tracking_table td {
@@ -560,6 +617,94 @@
                     toastr.error(message);
                 }
             });
+        });
+
+        // ---- Sắp xếp theo cột (phía trình duyệt, không tải lại trang) ----
+        // Bấm tiêu đề: tăng dần, bấm lần nữa: giảm dần. Ô trống luôn xuống cuối dù chiều nào.
+        // Bấm cột STT để về lại thứ tự gốc của server (STT giữ nguyên số ban đầu của dòng).
+        const $kcsTable = $('#kcs_tracking_table');
+        let sortState = {
+            col: null,
+            dir: 1
+        };
+
+        $kcsTable.find('thead th').each(function(index) {
+            // Cột LS chỉ có nút xem lịch sử, không có gì để sắp
+            if ($(this).text().trim() === 'LS') {
+                return;
+            }
+
+            $(this).addClass('kcs-sortable').attr('data-col', index)
+                .append(' <i class="fas fa-sort kcs-sort-icon"></i>');
+        });
+
+        // Giá trị dùng để so: ưu tiên data-sort, sau đó giá trị ô nhập (ô date cho Y-m-d sẵn),
+        // cuối cùng là chữ hiển thị. Ngày dạng d/m/Y đổi về Y-m-d để so đúng thứ tự thời gian
+        // (các ô dẫn xuất được JS ghi lại dạng d/m/Y sau mỗi lần lưu nên không dùng data-sort).
+        function sortValue(td) {
+            if (!td) {
+                return '';
+            }
+
+            if (td.dataset.sort !== undefined) {
+                return td.dataset.sort;
+            }
+
+            const input = td.querySelector('input');
+            const raw = (input ? input.value : td.textContent).trim().replace(/\s+/g, ' ');
+            const dmy = raw.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+
+            return dmy ? dmy[3] + '-' + dmy[2] + '-' + dmy[1] : raw;
+        }
+
+        function compareValues(a, b) {
+            const na = Number(a);
+            const nb = Number(b);
+
+            if (!isNaN(na) && !isNaN(nb)) {
+                return na - nb;
+            }
+
+            return a.localeCompare(b, 'vi', {
+                numeric: true,
+                sensitivity: 'base'
+            });
+        }
+
+        $kcsTable.on('click', 'th.kcs-sortable', function() {
+            const col = Number($(this).attr('data-col'));
+            const $tbody = $kcsTable.find('tbody');
+            const rows = $tbody.children('tr[data-plan-master-id]').get();
+
+            if (rows.length < 2) {
+                return;
+            }
+
+            sortState = {
+                col: col,
+                dir: sortState.col === col ? -sortState.dir : 1
+            };
+
+            const keyed = rows.map(function(tr, i) {
+                return {
+                    tr: tr,
+                    i: i,
+                    v: sortValue(tr.children[col])
+                };
+            });
+
+            keyed.sort(function(x, y) {
+                if (x.v === '' && y.v !== '') return 1;
+                if (y.v === '' && x.v !== '') return -1;
+
+                return (compareValues(x.v, y.v) * sortState.dir) || (x.i - y.i);
+            });
+
+            $tbody.append(keyed.map(k => k.tr));
+
+            $kcsTable.find('.kcs-sort-icon').attr('class', 'fas fa-sort kcs-sort-icon');
+            $(this).find('.kcs-sort-icon').attr('class',
+                'fas kcs-sort-icon kcs-sort-active ' + (sortState.dir === 1 ? 'fa-sort-up' : 'fa-sort-down'));
         });
 
         // Sau khi lưu, dòng đã có bản ghi nên bỏ dấu "chưa lưu"

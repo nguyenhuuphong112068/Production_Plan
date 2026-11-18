@@ -72,6 +72,8 @@ class KcsTrackingController extends Controller
             'keyword' => $filters['keyword'],
             'kcsMonth' => $filters['kcsMonth'],
             'result' => $filters['result'],
+            'expectedFrom' => $filters['expectedFrom'],
+            'expectedTo' => $filters['expectedTo'],
             'canUpdate' => user_has_permission(session('user')['userId'], 'kcs_tracking_update', 'boolean'),
         ]));
     }
@@ -131,6 +133,21 @@ class KcsTrackingController extends Controller
             : '';
         $summaryYear = (int) ($request->query('summary_year') ?: Carbon::now()->year);
 
+        // Khoảng Ngày Dự Kiến KCS (plan_master.expected_date), dạng 'YYYY-MM-DD'.
+        // Chỉ nhận đúng định dạng của ô date để không đưa chuỗi tự chế vào câu truy vấn.
+        $dateOrEmpty = function (string $key) use ($request): string {
+            $value = trim((string) $request->query($key, ''));
+
+            return preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) ? $value : '';
+        };
+        $expectedFrom = $dateOrEmpty('expected_from');
+        $expectedTo = $dateOrEmpty('expected_to');
+
+        // Người dùng chọn ngược chiều thì tự đảo lại thay vì trả về lưới rỗng
+        if ($expectedFrom !== '' && $expectedTo !== '' && $expectedFrom > $expectedTo) {
+            [$expectedFrom, $expectedTo] = [$expectedTo, $expectedFrom];
+        }
+
         // Tháng KCS và tháng kế hoạch là hai trục thời gian khác nhau: lô kế hoạch tháng 6
         // vẫn có thể được KCS trong tháng 8. Giữ cả hai bộ lọc cùng lúc sẽ cắt mất phần lớn
         // lô của tháng KCS đang xem (VD PXV1 tháng 8/2026: 199 lô còn 33), khiến lưới không
@@ -146,6 +163,16 @@ class KcsTrackingController extends Controller
             $anchor = Carbon::parse($kcsMonth . '-01');
             $planFrom = $anchor->copy()->subMonths(12)->format('Y-m');
             $planTo = $anchor->copy()->addMonths(2)->format('Y-m');
+        } elseif ($expectedFrom !== '' || $expectedTo !== '') {
+            // Lọc theo Ngày Dự Kiến KCS cũng là một trục thời gian riêng: lô kế hoạch tháng
+            // trước vẫn có thể dự kiến KCS trong khoảng đang xem, nên bỏ khoảng tháng kế
+            // hoạch như với Tháng KCS. Cửa sổ dưới đây chỉ để giới hạn phần tra MMS
+            // (mmsSuggestions() lùi thêm 3 tháng từ planFrom); câu truy vấn lô đã bị chặn
+            // bởi chính điều kiện expected_date.
+            $start = Carbon::parse($expectedFrom ?: $expectedTo);
+            $end = Carbon::parse($expectedTo ?: $expectedFrom);
+            $planFrom = $start->copy()->subMonths(12)->format('Y-m');
+            $planTo = $end->copy()->addMonths(2)->format('Y-m');
         }
 
         return compact(
@@ -155,6 +182,8 @@ class KcsTrackingController extends Controller
             'keyword',
             'kcsMonth',
             'result',
+            'expectedFrom',
+            'expectedTo',
             'summaryYear',
             'planFrom',
             'planTo'
@@ -179,10 +208,12 @@ class KcsTrackingController extends Controller
             'planTo' => $planTo,
             'keyword' => $keyword,
             'kcsMonth' => $kcsMonth,
-            'result' => $result
+            'result' => $result,
+            'expectedFrom' => $expectedFrom,
+            'expectedTo' => $expectedTo
         ] = $filters;
 
-        $datas = $this->batches($department, $planFrom, $planTo, $keyword);
+        $datas = $this->batches($department, $planFrom, $planTo, $keyword, $expectedFrom, $expectedTo);
 
         $bomVersions = $this->captureBomVersions($datas);
         $mms = $this->mmsSuggestions($datas, $planFrom, $kcsMonth);
@@ -253,6 +284,7 @@ class KcsTrackingController extends Controller
             'Quy Cách',
             'Cỡ Lô',
             'Lô TĐ',
+            'Ngày Dự Kiến KCS',
             'Ngày Nhận Hồ Sơ',
             'Người Đọc',
             'Ngày Đọc Xong HS',
@@ -345,6 +377,7 @@ class KcsTrackingController extends Controller
                 $datum->specification,
                 trim(number_format((float) $datum->batch_qty, 0, ',', '.') . ' ' . $datum->unit_batch_qty),
                 $datum->is_val ? 'TĐ' : '',
+                $formatDate($datum->expected_date),
 
                 $formatDate($value('record_received_date')),
                 $value('reader'),
@@ -389,7 +422,7 @@ class KcsTrackingController extends Controller
 
         // Tên sản phẩm dài để auto size sẽ tràn màn hình
         $sheet->getColumnDimension('D')->setAutoSize(false)->setWidth(35);
-        $sheet->getColumnDimension('W')->setAutoSize(false)->setWidth(25); // Ghi Chú
+        $sheet->getColumnDimension('X')->setAutoSize(false)->setWidth(25); // Ghi Chú
 
         // Ghim tiêu đề + 3 cột định danh đầu (Số Lệnh, Số Lô), giống vùng ghim của lưới
         $sheet->freezePane('D' . ($headerRow + 1));
@@ -406,10 +439,17 @@ class KcsTrackingController extends Controller
             ? (self::DEPARTMENTS[$filters['department']] ?? $filters['department'])
             : 'Tất cả');
 
+        $hasExpected = $filters['expectedFrom'] !== '' || $filters['expectedTo'] !== '';
+
         if ($filters['kcsMonth'] !== '') {
             $parts[] = 'Tháng KCS: ' . Carbon::parse($filters['kcsMonth'] . '-01')->format('m/Y');
-        } else {
+        } elseif (!$hasExpected) {
             $parts[] = 'Tháng kế hoạch: ' . $filters['fromMonth'] . ' - ' . $filters['toMonth'];
+        }
+
+        if ($hasExpected) {
+            $fmt = fn($d) => $d !== '' ? Carbon::parse($d)->format('d/m/Y') : '...';
+            $parts[] = 'Ngày dự kiến KCS: ' . $fmt($filters['expectedFrom']) . ' - ' . $fmt($filters['expectedTo']);
         }
 
         if ($filters['result'] !== '') {
@@ -933,8 +973,14 @@ class KcsTrackingController extends Controller
     }
 
     /** Danh sách lô sản xuất cần theo dõi hồ sơ KCS trong khoảng tháng kế hoạch */
-    private function batches(string $department, string $fromMonth, string $toMonth, string $keyword)
-    {
+    private function batches(
+        string $department,
+        string $fromMonth,
+        string $toMonth,
+        string $keyword,
+        string $expectedFrom = '',
+        string $expectedTo = ''
+    ) {
         $query = DB::table('plan_master')
             ->join('plan_list as pl', 'plan_master.plan_list_id', '=', 'pl.id')
             ->leftJoin('finished_product_category', 'plan_master.product_caterogy_id', '=', 'finished_product_category.id')
@@ -979,6 +1025,14 @@ class KcsTrackingController extends Controller
 
         if ($toMonth) {
             $query->whereRaw("STR_TO_DATE(CONCAT('01-', pl.month, '-', pl.year), '%d-%c-%Y') <= ?", [$toMonth . '-01']);
+        }
+
+        if ($expectedFrom !== '') {
+            $query->whereDate('plan_master.expected_date', '>=', $expectedFrom);
+        }
+
+        if ($expectedTo !== '') {
+            $query->whereDate('plan_master.expected_date', '<=', $expectedTo);
         }
 
         if ($keyword) {

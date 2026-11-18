@@ -6,7 +6,11 @@
 
 <h3>Lọc</h3>
 <p><b>Phân Xưởng</b>, <b>Từ / Đến tháng kế hoạch</b>, <b>Tháng KCS</b> (theo ngày KCS thật từ MMS, không phải tháng kế hoạch),
+    <b>Ngày Dự Kiến KCS</b> (từ ngày - đến ngày, có thể bỏ trống một đầu),
     <b>Kết Quả</b>, ô <b>Tìm kiếm</b> (mã / tên SP / số lô), bấm <b>Lọc</b>. <b>Xuất Excel</b> đúng dữ liệu đang lọc.</p>
+<p>Khi lọc theo <b>Tháng KCS</b> hoặc <b>Ngày Dự Kiến KCS</b>, khoảng tháng kế hoạch không áp dụng (ô mờ đi).</p>
+<p><b>Sắp xếp</b>: bấm tiêu đề cột để sắp tăng dần, bấm lần nữa để giảm dần; ô trống luôn nằm cuối.
+    Bấm cột <b>STT</b> để về lại thứ tự ban đầu. Sắp xếp chỉ trên màn hình, bấm <b>Lọc</b> lại thì về thứ tự mặc định.</p>
 
 <h3>Các cột nhập</h3>
 @include('pages.userGuide.shared.fields', ['fields' => [
@@ -22,6 +26,7 @@
 
 <h3>Cột phần mềm tính</h3>
 <ul>
+    <li><b>Ngày Dự Kiến KCS</b> (sau cột Lô TĐ): lấy từ Ngày dự kiến KCS của lô trên Kế Hoạch Sản Xuất, chỉ xem, không sửa ở đây.</li>
     <li><b>Ngày KCS</b>: lấy từ MMS (bước QA Approval), tra theo Mã TP + Số lô thực tế. Lô chia (có phần "chỉ đóng gói")
         thì mỗi phần nhận ngày KCS của phiếu nhập kho có số lượng gần nhất; phần chưa có phiếu nhập kho được KCS duyệt thì để trống.</li>
     <li><b>Ngày Đủ Điều Kiện</b> và <b>Mốc Quyết Định</b>: mốc hoàn tất muộn nhất của lô - khâu giữ hồ sơ lâu nhất.</li>
