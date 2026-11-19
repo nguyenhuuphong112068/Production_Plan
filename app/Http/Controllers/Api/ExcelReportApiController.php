@@ -174,13 +174,27 @@ class ExcelReportApiController extends Controller
                 ]];
             }
         }
+        // Mọi phòng sản xuất đang hoạt động của phân xưởng; phòng không có hoạt động trong ngày vẫn có 1 dòng trống
+        $rooms = DB::table('room')
+            ->where('deparment_code', $production)
+            ->where('active', 1)
+            ->where('stage_code', '!=', 8)
+            ->where(fn ($w) => $w->whereNull('only_maintenance')->orWhere('only_maintenance', 0))
+            ->get(['code', 'name', 'order_by']);
+        foreach ($rooms as $r) {
+            if (! collect($items)->contains(fn ($i) => $i[1] === $r->code)) {
+                $items[] = [$r->order_by, $r->code, '', ['room' => trim($r->code . ' - ' . $r->name), 'batch' => ' ', 'quota' => ' ']];
+            }
+        }
+
         usort($items, fn ($a, $b) => [$a[0], $a[1], $a[2]] <=> [$b[0], $b[1], $b[2]]);
         $rows = array_column($items, 3);
+        $activityCount = count(array_filter($rows, fn ($r) => $r['batch'] !== ' '));
 
         return $this->xml('batches', $rows, [
             'from' => $from->format('Y-m-d H:i'),
             'to' => $to->format('Y-m-d H:i'),
-            'count' => count($rows),
+            'count' => $activityCount,
         ]);
     }
 }
