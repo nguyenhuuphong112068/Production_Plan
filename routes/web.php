@@ -19,6 +19,7 @@ require(__DIR__ . '/exportExcelRoute.php');
 require(__DIR__ . '/NotificationRoute.php');
 require(__DIR__ . '/ChatRoute.php');
 require(__DIR__ . '/userGuideRoute.php');
+require(__DIR__ . '/excelApiRoute.php');
 
 use App\Http\Controllers\UserTablePreferenceController;
 

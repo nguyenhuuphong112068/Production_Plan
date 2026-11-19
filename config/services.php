@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+
+    // Khoá API cho file Excel lấy lô thực tế (/api/excel/*)
+    'pm_excel' => [
+        'key' => env('PM_EXCEL_API_KEY'),
+    ],
+
 ];

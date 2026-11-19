@@ -11,7 +11,7 @@
             <tr><td>Cập nhật / Vô hiệu (trên dòng)</td><td>Sửa lô: bắt buộc ghi <b>Lý do cập nhật</b>. Hủy lô: nhập lý do hủy, lô
                 chuyển tình trạng <i>Hủy</i>.</td></tr>
             <tr><td><b>Sửa Nhiều Lô (n)</b></td><td>Tick ô <b>Chọn</b> trên nhiều dòng rồi bấm: hộp thoại <i>Chỉnh sửa hàng loạt</i>
-                sửa cùng lúc các ngày NL/BB, hạn dùng, ưu tiên, khuyến mãi, ghi chú cho các lô đã chọn (kèm lý do).</td></tr>
+                sửa cùng lúc các ngày NL/BB, hạn dùng, các mốc Pha chế / THT / Định Hình / Bao Phim trước ngày, ưu tiên, khuyến mãi, ghi chú cho các lô đã chọn (kèm lý do).</td></tr>
             <tr><td><b>Hủy Nhiều Lô (n)</b></td><td>Hủy các lô đã chọn (có hỏi xác nhận).</td></tr>
             <tr><td><b>Chia Lô Đóng Gói</b></td><td>Chia một lô thành nhiều phần đóng gói: nhập <b>% Đóng gói</b>, nguồn, ngày cần,
                 bao bì. Phần chia ra chỉ có công đoạn Đóng gói, thời gian đóng gói tính theo tỷ lệ.</td></tr>

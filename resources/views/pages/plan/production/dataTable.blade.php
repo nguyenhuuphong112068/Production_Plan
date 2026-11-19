@@ -297,6 +297,10 @@
                             data-allow-weight-before-date="{{ $data->allow_weight_before_date ? \Carbon\Carbon::parse($data->allow_weight_before_date)->format('Y-m-d') : '' }}"
                             data-expired-material-date="{{ $data->expired_material_date ? \Carbon\Carbon::parse($data->expired_material_date)->format('Y-m-d') : '' }}"
                             data-expired-packing-date="{{ $data->expired_packing_date ? \Carbon\Carbon::parse($data->expired_packing_date)->format('Y-m-d') : '' }}"
+                            data-preperation-before-date="{{ $data->preperation_before_date ? \Carbon\Carbon::parse($data->preperation_before_date)->format('Y-m-d') : '' }}"
+                            data-blending-before-date="{{ $data->blending_before_date ? \Carbon\Carbon::parse($data->blending_before_date)->format('Y-m-d') : '' }}"
+                            data-forming-before-date="{{ $data->forming_before_date ? \Carbon\Carbon::parse($data->forming_before_date)->format('Y-m-d') : '' }}"
+                            data-coating-before-date="{{ $data->coating_before_date ? \Carbon\Carbon::parse($data->coating_before_date)->format('Y-m-d') : '' }}"
                             data-note="{{ $data->note }}"
                             data-promotional_products="{{ $data->promotional_products }}" style="cursor: pointer;">
 
@@ -793,6 +797,26 @@
                                             BB</label>
                                         <input type="date" class="form-control form-control-sm"
                                             id="bulk_expired_packing_date">
+                                    </div>
+                                    <div class="col-md-6 mb-2">
+                                        <label class="font-weight-bold mb-1" style="font-size: 11px;">Pha chế trước ngày</label>
+                                        <input type="date" class="form-control form-control-sm"
+                                            id="bulk_preperation_before_date">
+                                    </div>
+                                    <div class="col-md-6 mb-2">
+                                        <label class="font-weight-bold mb-1" style="font-size: 11px;">THT trước ngày</label>
+                                        <input type="date" class="form-control form-control-sm"
+                                            id="bulk_blending_before_date">
+                                    </div>
+                                    <div class="col-md-6 mb-2">
+                                        <label class="font-weight-bold mb-1" style="font-size: 11px;">Định Hình trước ngày</label>
+                                        <input type="date" class="form-control form-control-sm"
+                                            id="bulk_forming_before_date">
+                                    </div>
+                                    <div class="col-md-6 mb-2">
+                                        <label class="font-weight-bold mb-1" style="font-size: 11px;">Bao Phim trước ngày</label>
+                                        <input type="date" class="form-control form-control-sm"
+                                            id="bulk_coating_before_date">
                                     </div>
                                 </div>
 
@@ -1798,6 +1822,10 @@
                 $('#bulk_allow_weight_before_date').val(firstRow.data('allow-weight-before-date') || '');
                 $('#bulk_expired_material_date').val(firstRow.data('expired-material-date') || '');
                 $('#bulk_expired_packing_date').val(firstRow.data('expired-packing-date') || '');
+                $('#bulk_preperation_before_date').val(firstRow.data('preperation-before-date') || '');
+                $('#bulk_blending_before_date').val(firstRow.data('blending-before-date') || '');
+                $('#bulk_forming_before_date').val(firstRow.data('forming-before-date') || '');
+                $('#bulk_coating_before_date').val(firstRow.data('coating-before-date') || '');
                 $('#bulk_promotional_products').prop('checked', firstRow.data('promotional_products') ==
                     1 || firstRow.data('promotional_products') === true);
                 $('#bulk_note').val(firstRow.data('note') || '');
@@ -1956,6 +1984,10 @@
                 fields['allow_weight_before_date'] = $('#bulk_allow_weight_before_date').val();
                 fields['expired_material_date'] = $('#bulk_expired_material_date').val();
                 fields['expired_packing_date'] = $('#bulk_expired_packing_date').val();
+                fields['preperation_before_date'] = $('#bulk_preperation_before_date').val();
+                fields['blending_before_date'] = $('#bulk_blending_before_date').val();
+                fields['forming_before_date'] = $('#bulk_forming_before_date').val();
+                fields['coating_before_date'] = $('#bulk_coating_before_date').val();
                 fields['promotional_products'] = $('#bulk_promotional_products').is(':checked') ? 1 : 0;
                 fields['note'] = $('#bulk_note').val();
 
