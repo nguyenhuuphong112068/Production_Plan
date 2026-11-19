@@ -140,26 +140,46 @@ class MmsFgQc
     public static function matchSplit(array $receipts, array $plans): array
     {
         $receipts = self::sortReceipts($receipts);
-        $result = array_fill_keys(array_keys($plans), null);
 
         if ($receipts === []) {
-            return $result;
+            return array_fill_keys(array_keys($plans), null);
         }
 
-        $hasQty = true;
+        $paired = self::pairByQty($receipts, $plans);
 
-        foreach ($receipts as $receipt) {
-            $hasQty = $hasQty && $receipt['qty'] > 0;
-        }
-
-        foreach ($plans as $qty) {
-            $hasQty = $hasQty && (float) $qty > 0;
-        }
-
-        if (!$hasQty) {
+        if ($paired === null) {
             return array_fill_keys(array_keys($plans), self::earliest($receipts));
         }
 
+        return array_map(fn($receipt) => $receipt === null ? null : self::approval($receipt), $paired);
+    }
+
+    /**
+     * Ghép từng phiếu nhập kho với dòng kế hoạch có số lượng gần nhất, mỗi phiếu dùng cho
+     * đúng một dòng (quy tắc lô chia, xem matchSplit()). Dùng chung cho Ngày KCS và Ngày
+     * nhập kho để hai cột luôn chỉ về cùng một phiếu.
+     *
+     * @param  list<array{qty: float}>  $receipts  đã xếp theo thời gian, phiếu sớm nhất trước
+     * @param  array<int, float>  $plans  [plan_master_id => số lượng của phần lô đó]
+     * @return array<int, array|null>|null  [plan_master_id => phiếu ghép được hoặc null];
+     *                                      null khi thiếu số lượng (phiếu cũ totalqty = 0)
+     *                                      nên không ghép được
+     */
+    private static function pairByQty(array $receipts, array $plans): ?array
+    {
+        foreach ($receipts as $receipt) {
+            if ($receipt['qty'] <= 0) {
+                return null;
+            }
+        }
+
+        foreach ($plans as $qty) {
+            if ((float) $qty <= 0) {
+                return null;
+            }
+        }
+
+        $result = array_fill_keys(array_keys($plans), null);
         $pairs = [];
 
         foreach ($plans as $planId => $planQty) {
@@ -168,7 +188,7 @@ class MmsFgQc
             }
         }
 
-        // Lệch số lượng ít nhất ghép trước; bằng nhau thì phiếu duyệt sớm hơn (index nhỏ)
+        // Lệch số lượng ít nhất ghép trước; bằng nhau thì phiếu sớm hơn (index nhỏ)
         // đi với dòng kế hoạch tạo trước (id nhỏ) để kết quả luôn ổn định.
         usort($pairs, fn($a, $b) => $a <=> $b);
 
@@ -179,11 +199,101 @@ class MmsFgQc
                 continue;
             }
 
-            $result[$planId] = self::approval($receipts[$index]);
+            $result[$planId] = $receipts[$index];
             $usedReceipts[$index] = true;
         }
 
         return $result;
+    }
+
+    /** Kết quả đã tra của stockInsSince() theo từng mốc thời gian, cache trong 1 request */
+    private static array $stockInCache = [];
+
+    /**
+     * Các phiếu nhập kho thành phẩm (FGGRN) tạo từ $since trở đi, KHÔNG cần đã được KCS
+     * duyệt: lô đã nhập kho nhưng đang chờ KCS vẫn phải thấy ngày nhập kho.
+     *
+     * Ngày nhập kho = FGGRN.CRON (lúc kho tạo phiếu, có đủ 100% phiếu). Không dùng GRNAP:
+     * phần giờ lệch 12 tiếng (CRON 16:07 -> GRNAP 04:07), và thiếu ở vài phiếu.
+     *
+     * @return array<string, list<array{grn: string, date: string, qty: float}>>
+     *         khoá "mã TP|số lô", mỗi lô xếp theo ngày nhập, phiếu đầu tiên trước
+     */
+    public static function stockInsSince(DateTimeInterface $since): array
+    {
+        $key = $since->format('Y-m-d');
+
+        if (isset(self::$stockInCache[$key])) {
+            return self::$stockInCache[$key];
+        }
+
+        $sql = "
+            SELECT GRNNO, MatID, Mfgbatchno, totalqty, CRON
+            FROM FGGRN
+            WHERE CRON >= ?
+        ";
+
+        $lots = [];
+
+        foreach (DB::connection('mms')->select($sql, [$key]) as $row) {
+            $code = trim((string) $row->MatID);
+            $batch = trim((string) $row->Mfgbatchno);
+
+            if ($code === '' || $batch === '' || !$row->CRON) {
+                continue;
+            }
+
+            $lots[$code . '|' . $batch][] = [
+                'grn' => trim((string) $row->GRNNO),
+                'date' => substr((string) $row->CRON, 0, 10),
+                'qty' => (float) $row->totalqty,
+            ];
+        }
+
+        foreach ($lots as &$receipts) {
+            usort($receipts, fn($a, $b) => [$a['date'], $a['grn']] <=> [$b['date'], $b['grn']]);
+        }
+        unset($receipts);
+
+        return self::$stockInCache[$key] = $lots;
+    }
+
+    /**
+     * Ngày nhập kho của một dòng kế hoạch từ các phiếu nhập kho của lô.
+     *
+     * Lô không chia: phiếu nhập đầu tiên. Lô chia: phiếu có số lượng gần nhất với phần
+     * lô đó (cùng quy tắc với Ngày KCS); phần chưa ghép được phiếu nào là chưa nhập kho.
+     *
+     * @param  list<array{grn: string, date: string, qty: float}>  $receipts  từ stockInsSince()
+     * @param  array<int, float>|null  $plans  anh em của lô chia (splitFamilies), null nếu không chia
+     * @return array{date: string, grn: string, qty: float, count: int}|null
+     */
+    public static function stockInFor(array $receipts, ?array $plans, int $planId): ?array
+    {
+        if ($receipts === []) {
+            return null;
+        }
+
+        $receipt = $receipts[0];
+
+        if ($plans) {
+            $paired = self::pairByQty($receipts, $plans);
+
+            if ($paired !== null) {
+                $receipt = $paired[$planId] ?? null;
+            }
+        }
+
+        if ($receipt === null) {
+            return null;
+        }
+
+        return [
+            'date' => $receipt['date'],
+            'grn' => $receipt['grn'],
+            'qty' => $receipt['qty'],
+            'count' => count($receipts),
+        ];
     }
 
     /** Gộp một dòng duyệt vào danh sách phiếu nhập kho, mỗi phiếu giữ lần duyệt sớm nhất */

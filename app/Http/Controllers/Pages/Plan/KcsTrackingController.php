@@ -133,13 +133,9 @@ class KcsTrackingController extends Controller
             : '';
         $summaryYear = (int) ($request->query('summary_year') ?: Carbon::now()->year);
 
-        // Khoảng Ngày Dự Kiến KCS (plan_master.expected_date), dạng 'YYYY-MM-DD'.
-        // Chỉ nhận đúng định dạng của ô date để không đưa chuỗi tự chế vào câu truy vấn.
-        $dateOrEmpty = function (string $key) use ($request): string {
-            $value = trim((string) $request->query($key, ''));
-
-            return preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) ? $value : '';
-        };
+        // Khoảng Ngày Dự Kiến KCS (plan_master.expected_date). Ô lọc gửi dd/mm/yyyy,
+        // vẫn nhận 'YYYY-MM-DD' cho link cũ; trả về 'YYYY-MM-DD' hoặc '' nếu sai định dạng.
+        $dateOrEmpty = fn(string $key): string => self::toIsoDate($request->query($key, '')) ?? '';
         $expectedFrom = $dateOrEmpty('expected_from');
         $expectedTo = $dateOrEmpty('expected_to');
 
@@ -252,6 +248,7 @@ class KcsTrackingController extends Controller
             'kcsDates' => $kcsDates,
             'mmsSuggestions' => $mms['suggestions'],
             'mmsCodeMismatch' => $mms['code_mismatch'],
+            'mmsStockIn' => $mms['stock_in'],
             'mmsAvailable' => $mms['available'],
         ];
     }
@@ -268,7 +265,8 @@ class KcsTrackingController extends Controller
             'records' => $records,
             'bomVersions' => $bomVersions,
             'kcsDates' => $kcsDates,
-            'mmsSuggestions' => $mmsSuggestions
+            'mmsSuggestions' => $mmsSuggestions,
+            'mmsStockIn' => $mmsStockIn
         ] = $filtered;
 
         $prefill = self::PREFILL_FROM_PLAN_MASTER;
@@ -296,6 +294,7 @@ class KcsTrackingController extends Controller
             'Ngày AP OOS',
             'Ngày AP OPV/PVR',
             'Ngày Chờ KCS Theo Đúng Thứ Tự Lô',
+            'Ngày Nhập Kho',
             'Ngày KCS',
             'Ghi Chú',
             'Ngày Đủ Điều Kiện',
@@ -390,6 +389,7 @@ class KcsTrackingController extends Controller
                 $formatDate($value('oos_approval_date')),
                 $formatDate($value('opv_pvr_approval_date')),
                 $formatDate($value('kcs_queue_date')),
+                $formatDate($mmsStockIn->get($datum->id)['date'] ?? null),
                 $formatDate($kcsDate),
                 $value('note'),
 
@@ -422,7 +422,8 @@ class KcsTrackingController extends Controller
 
         // Tên sản phẩm dài để auto size sẽ tràn màn hình
         $sheet->getColumnDimension('D')->setAutoSize(false)->setWidth(35);
-        $sheet->getColumnDimension('X')->setAutoSize(false)->setWidth(25); // Ghi Chú
+        $noteColumn = Coordinate::stringFromColumnIndex(array_search('Ghi Chú', $headers, true) + 1);
+        $sheet->getColumnDimension($noteColumn)->setAutoSize(false)->setWidth(25);
 
         // Ghim tiêu đề + 3 cột định danh đầu (Số Lệnh, Số Lô), giống vùng ghim của lưới
         $sheet->freezePane('D' . ($headerRow + 1));
@@ -465,6 +466,38 @@ class KcsTrackingController extends Controller
         return implode('   |   ', $parts);
     }
 
+    /** Các ô ngày người dùng nhập trên lưới (gửi lên dạng dd/mm/yyyy hoặc Y-m-d) */
+    private const INPUT_DATE_FIELDS = [
+        'record_received_date',
+        'record_done_date',
+        'coatp_received_date',
+        'dr_ir_approval_date',
+        'oos_approval_date',
+        'dr_ir_kcq_approval_date',
+        'opv_pvr_approval_date',
+        'kcs_queue_date',
+    ];
+
+    /**
+     * Đổi chuỗi ngày dd/mm/yyyy (hoặc đã là Y-m-d) về 'Y-m-d'; sai định dạng / ngày không
+     * tồn tại (31/02...) thì trả null. Không dùng Carbon::parse vì nó hiểu 05/11/2026 là
+     * ngày 11 tháng 5 (kiểu Mỹ).
+     */
+    private static function toIsoDate($value): ?string
+    {
+        $value = trim((string) $value);
+
+        if (preg_match('#^(\d{1,2})/(\d{1,2})/(\d{4})$#', $value, $m)) {
+            [$day, $month, $year] = [(int) $m[1], (int) $m[2], (int) $m[3]];
+        } elseif (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $value, $m)) {
+            [$year, $month, $day] = [(int) $m[1], (int) $m[2], (int) $m[3]];
+        } else {
+            return null;
+        }
+
+        return checkdate($month, $day, $year) ? sprintf('%04d-%02d-%02d', $year, $month, $day) : null;
+    }
+
     /**
      * Lưu một dòng theo dõi. Các cột dẫn xuất được tính lại từ toàn bộ dữ liệu
      * sau khi ghép thay đổi, nên sửa lẻ một ô vẫn cho kết quả đúng.
@@ -473,6 +506,27 @@ class KcsTrackingController extends Controller
     {
         if (!user_has_permission(session('user')['userId'], 'kcs_tracking_update', 'boolean')) {
             return response()->json(['success' => false, 'message' => 'Bạn không có quyền cập nhật theo dõi hồ sơ KCS'], 403);
+        }
+
+        // Lưới gửi ngày dạng dd/mm/yyyy: đổi về Y-m-d trước khi validate. Chuỗi không đổi được
+        // thì báo lỗi ngay, không để rule 'date' tự hiểu kiểu Mỹ (05/31/2026 = 31 tháng 5).
+        foreach (self::INPUT_DATE_FIELDS as $field) {
+            $raw = $request->input($field);
+
+            if (!is_string($raw) || trim($raw) === '') {
+                continue;
+            }
+
+            $iso = self::toIsoDate($raw);
+
+            if ($iso === null) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ngày "' . $raw . '" không hợp lệ, nhập theo dạng dd/mm/yyyy',
+                ], 422);
+            }
+
+            $request->merge([$field => $iso]);
         }
 
         $request->validate([
@@ -841,12 +895,15 @@ class KcsTrackingController extends Controller
      * hết là nhiễu. Chỉ báo khi số lệnh khớp mà mã TP khác - lúc đó mới thật sự là hai hệ
      * thống ghi khác nhau về cùng một lô.
      *
-     * @return array{suggestions: \Illuminate\Support\Collection, code_mismatch: \Illuminate\Support\Collection, available: bool}
+     * Kèm Ngày nhập kho (stock_in) của từng lô từ FGGRN, xem MmsFgQc::stockInFor().
+     *
+     * @return array{suggestions: \Illuminate\Support\Collection, code_mismatch: \Illuminate\Support\Collection,
+     *               stock_in: \Illuminate\Support\Collection, available: bool}
      */
     private function mmsSuggestions($datas, string $fromMonth, string $kcsMonth = ''): array
     {
         if ($datas->isEmpty()) {
-            return ['suggestions' => collect(), 'code_mismatch' => collect(), 'available' => true];
+            return ['suggestions' => collect(), 'code_mismatch' => collect(), 'stock_in' => collect(), 'available' => true];
         }
 
         try {
@@ -862,12 +919,17 @@ class KcsTrackingController extends Controller
             }
 
             $lookup = MmsFgQc::approvalsSince($since);
+
+            // Nhập kho luôn trước KCS nên lùi thêm 1 tháng để không hụt phiếu của lô KCS
+            // ở đầu cửa sổ
+            $stockIns = MmsFgQc::stockInsSince($since->copy()->subMonth());
         } catch (\Throwable) {
             // MMS không kết nối được thì trang vẫn dùng bình thường, chỉ mất phần gợi ý
-            return ['suggestions' => collect(), 'code_mismatch' => collect(), 'available' => false];
+            return ['suggestions' => collect(), 'code_mismatch' => collect(), 'stock_in' => collect(), 'available' => false];
         }
 
         $suggestions = [];
+        $stockIn = [];
         $mismatch = [];
         $families = $this->splitFamilies($datas);
 
@@ -878,6 +940,17 @@ class KcsTrackingController extends Controller
             // Thiếu một trong hai thì không đủ khoá để tra, cũng không phải lệch mã
             if ($batch === '' || $code === '') {
                 continue;
+            }
+
+            // Ngày nhập kho tra riêng trên FGGRN, không phụ thuộc lô đã được KCS duyệt chưa
+            $stock = MmsFgQc::stockInFor(
+                $stockIns[$code . '|' . $batch] ?? [],
+                $families[$data->id] ?? null,
+                $data->id
+            );
+
+            if ($stock) {
+                $stockIn[$data->id] = $stock;
             }
 
             $receipts = $lookup['approvals'][$code . '|' . $batch] ?? [];
@@ -909,6 +982,7 @@ class KcsTrackingController extends Controller
         return [
             'suggestions' => collect($suggestions),
             'code_mismatch' => collect($mismatch),
+            'stock_in' => collect($stockIn),
             'available' => true,
         ];
     }

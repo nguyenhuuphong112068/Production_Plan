@@ -648,6 +648,13 @@ class RoomOccupancyService
             ->where('sp.finished', 0)
             ->whereNull('sp.actual_start')
             ->whereNotNull('sp.start')
+            // Bỏ lô mà công đoạn sau đã xác nhận hoàn thành (công đoạn này bị bỏ sót xác nhận) - không còn nhận phòng được
+            ->whereNotExists(fn($q) => $q->select(DB::raw(1))
+                ->from('stage_plan as nx')
+                ->whereColumn('nx.plan_master_id', 'sp.plan_master_id')
+                ->whereColumn('nx.code', 'sp.nextcessor_code')
+                ->where('nx.active', 1)
+                ->where('nx.finished', 1))
             ->where(function ($q) use ($room, $weighing) {
                 $q->where('sp.resourceId', $room->id);
                 if ($weighing) {

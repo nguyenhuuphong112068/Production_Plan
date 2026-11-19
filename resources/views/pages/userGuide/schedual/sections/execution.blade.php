@@ -16,7 +16,8 @@
 <ol class="ug-steps">
     <li>Bấm <b>Nhận phòng</b> trên thẻ phòng Sẵn Sàng.</li>
     <li>Chọn chế độ <b>Nhận phòng sản xuất</b> (lô sản xuất) hoặc <b>Nhận phòng BT</b> (lịch Bảo trì / Tiện ích / Hiệu chuẩn đã sắp
-        vào phòng). Lọc <i>Tất cả công đoạn</i> hoặc từng công đoạn; ô tìm sản phẩm, số lô, thiết bị, mã.</li>
+        vào phòng). Lọc <i>Tất cả công đoạn</i> hoặc từng công đoạn; ô tìm sản phẩm, số lô, thiết bị, mã.
+        Lô mà công đoạn kế tiếp đã xác nhận hoàn thành không hiện trong danh sách.</li>
     <li>Chọn lô / lịch rồi bấm <b>Nhận phòng</b>. Phòng chuyển sang Bận. Nhận phòng trễ so với lịch thì các lô sau được đẩy trễ
         theo (xem <a href="#tinh-tuyen-lich">Tịnh tuyến lịch</a>).</li>
 </ol>

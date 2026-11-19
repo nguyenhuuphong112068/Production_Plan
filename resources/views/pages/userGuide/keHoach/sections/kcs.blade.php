@@ -10,7 +10,12 @@
     <b>Kết Quả</b>, ô <b>Tìm kiếm</b> (mã / tên SP / số lô), bấm <b>Lọc</b>. <b>Xuất Excel</b> đúng dữ liệu đang lọc.</p>
 <p>Khi lọc theo <b>Tháng KCS</b> hoặc <b>Ngày Dự Kiến KCS</b>, khoảng tháng kế hoạch không áp dụng (ô mờ đi).</p>
 <p><b>Sắp xếp</b>: bấm tiêu đề cột để sắp tăng dần, bấm lần nữa để giảm dần; ô trống luôn nằm cuối.
-    Bấm cột <b>STT</b> để về lại thứ tự ban đầu. Sắp xếp chỉ trên màn hình, bấm <b>Lọc</b> lại thì về thứ tự mặc định.</p>
+    Giữ <b>Shift</b> + bấm tiêu đề cột khác để <b>sắp theo nhiều cột</b> (số nhỏ cạnh mũi tên là thứ tự ưu tiên;
+    Shift + bấm lại cột đã chọn để đảo chiều cột đó). Bấm cột <b>STT</b> để về lại thứ tự ban đầu.
+    Sắp xếp chỉ trên màn hình, bấm <b>Lọc</b> lại thì về thứ tự mặc định.</p>
+<p><b>Ô ngày</b> hiển thị và nhập theo dạng <b>dd/mm/yyyy</b> (không phụ thuộc cài đặt ngày của Windows):
+    gõ tay (VD 05/11/2026) hoặc bấm vào ô để chọn trên lịch. Gõ sai định dạng hoặc ngày không có thật
+    (VD 31/02/2026) thì ô bị tô đỏ và dòng không được lưu.</p>
 
 <h3>Các cột nhập</h3>
 @include('pages.userGuide.shared.fields', ['fields' => [
@@ -27,6 +32,9 @@
 <h3>Cột phần mềm tính</h3>
 <ul>
     <li><b>Ngày Dự Kiến KCS</b> (sau cột Lô TĐ): lấy từ Ngày dự kiến KCS của lô trên Kế Hoạch Sản Xuất, chỉ xem, không sửa ở đây.</li>
+    <li><b>Ngày Nhập Kho</b> (trước cột Ngày KCS): lấy từ MMS - ngày kho tạo phiếu nhập kho thành phẩm, tra theo Mã TP + Số lô
+        thực tế; có cả lô đã nhập kho nhưng chưa KCS. Lô nhập kho nhiều đợt lấy phiếu đầu tiên; lô chia thì mỗi phần lấy phiếu
+        có số lượng gần nhất (cùng quy tắc với Ngày KCS). Rê chuột vào ô để xem số phiếu và số lượng nhập kho. Chỉ xem, không sửa.</li>
     <li><b>Ngày KCS</b>: lấy từ MMS (bước QA Approval), tra theo Mã TP + Số lô thực tế. Lô chia (có phần "chỉ đóng gói")
         thì mỗi phần nhận ngày KCS của phiếu nhập kho có số lượng gần nhất; phần chưa có phiếu nhập kho được KCS duyệt thì để trống.</li>
     <li><b>Ngày Đủ Điều Kiện</b> và <b>Mốc Quyết Định</b>: mốc hoàn tất muộn nhất của lô - khâu giữ hồ sơ lâu nhất.</li>
