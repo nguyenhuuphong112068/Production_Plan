@@ -141,8 +141,9 @@ class ProductionExecutionController extends Controller
                 if (!$room) {
                         return response()->json(['message' => $this->roomDeniedMessage()], 403);
                 }
-                if (!$this->can('execution_receive')) {
-                        return response()->json(['message' => self::PERMISSION_DENIED['execution_receive']], 403);
+                // Đổi sản phẩm (?change=1) dùng chung danh sách lô với modal Nhận phòng, quyền Leader trở lên
+                if ($request->boolean('change') ? !self::canChangeProduct() : !$this->can('execution_receive')) {
+                        return response()->json(['message' => $request->boolean('change') ? self::CHANGE_DENIED : self::PERMISSION_DENIED['execution_receive']], 403);
                 }
                 if (!$this->canOperate($room->deparment_code)) {
                         return response()->json(['message' => $this->operateDeniedMessage($room->deparment_code)], 403);
@@ -225,7 +226,35 @@ class ProductionExecutionController extends Controller
         /** Trả phòng: actual_end_clearning (bảo trì: actual_end) = giờ hệ thống; công tắc phân xưởng bật thì tịnh tuyến lịch */
         public function release(Request $request)
         {
-                return $this->act($request, fn() => $this->service->release((int) $request->room_id), 'execution_release');
+                return $this->act($request, fn() => $this->service->release((int) $request->room_id, $request->boolean('clean_after_hc'), $request->integer('stage_plan_id') ?: null), 'execution_release');
+        }
+
+        /** Đổi sản phẩm phòng đang Bận (nhận nhầm lô): giữ nguyên giờ nhận phòng, chỉ Leader trở lên */
+        public function changeProduct(Request $request)
+        {
+                if (!self::canChangeProduct()) {
+                        return response()->json(['message' => self::CHANGE_DENIED], 403);
+                }
+
+                return $this->act($request, fn() => $this->service->changeProduct(
+                        (int) $request->room_id,
+                        (array) $request->input('stage_plan_ids', [])
+                ), null);
+        }
+
+        private const CHANGE_DENIED = '❌ Chỉ Leader trở lên (Leader, Schedualer, Admin) mới được đổi sản phẩm';
+
+        /** Leader trở lên: có 1 trong các nhóm quyền Leader / Schedualer / Admin (role đang hoạt động) */
+        public static function canChangeProduct(): bool
+        {
+                static $cache = null;
+
+                return $cache ??= DB::table('user_role as ur')
+                        ->join('roles as r', 'r.id', '=', 'ur.role_id')
+                        ->where('ur.user_id', session('user')['userId'] ?? 0)
+                        ->where('r.active', 1)
+                        ->whereIn('r.name', ['Leader', 'Schedualer', 'Admin'])
+                        ->exists();
         }
 
         /**
@@ -244,10 +273,10 @@ class ProductionExecutionController extends Controller
          * Chạy 1 thao tác và trả về thông báo + HTML card phòng mới để trình duyệt thay tại chỗ.
          * Thao tác ghi vào stage_plan nên chờ nếu phân xưởng đang sắp lịch tự động.
          */
-        private function act(Request $request, callable $fn, string $permission)
+        private function act(Request $request, callable $fn, ?string $permission)
         {
                 // Quyền thao tác (bảng permissions, nhóm Lịch Sản Xuất - Thực Thi); kiểm tra ở server, không chỉ ẩn nút
-                if (!$this->can($permission)) {
+                if ($permission && !$this->can($permission)) {
                         return response()->json(['message' => self::PERMISSION_DENIED[$permission]], 403);
                 }
 

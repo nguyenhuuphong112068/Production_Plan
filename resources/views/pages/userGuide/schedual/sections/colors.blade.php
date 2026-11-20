@@ -51,6 +51,14 @@
     <li><b>❌ Sai Khuôn</b>: khuôn đã gán không lắp được cho loại máy của phòng (khuôn ép vỉ với máy ép vỉ, khuôn Định hình với máy Định hình).</li>
 </ul>
 
+<h3>Huy hiệu ⚖ (khi bật nút Lô cần cân)</h3>
+<p>
+    Chỉ hiện khi bật <b>⚖ Lô cần cân</b>: vòng tròn ⚖ vắt qua góc trên bên trái của lô PC / THT / ĐH / BP còn công đoạn cân
+    chưa cân xong. <span class="ug-swatch" style="background:#ea580c"></span> cam = chưa có lịch cân,
+    <span class="ug-swatch" style="background:#16a34a"></span> xanh = đã có lịch cân. Xem
+    <a href="#sap-lich-can">Sắp lịch cân bán tự động</a>.
+</p>
+
 <h3>Màu lịch Bảo trì, Hiệu chuẩn, Tiện ích</h3>
 <div class="table-responsive">
     <table class="table table-bordered ug-table">

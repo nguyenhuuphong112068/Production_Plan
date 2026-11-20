@@ -370,6 +370,8 @@
         .btn-exec-check { background: linear-gradient(135deg, #65a30d, #3f6212); }
         .btn-exec-undo { background: #fff; color: #b91c1c !important; border: 1px solid #fca5a5; margin-top: 6px; font-size: .85rem; }
         .btn-exec-undo:hover { background: #fef2f2; filter: none; }
+        .btn-exec-change { background: #fff; color: #1d4ed8 !important; border: 1px solid #93c5fd; margin-top: 6px; font-size: .85rem; }
+        .btn-exec-change:hover { background: #eff6ff; filter: none; }
 
         .exec-room-foot { display: flex; border-top: 1px solid #eef1f5; }
         .exec-room-foot button {

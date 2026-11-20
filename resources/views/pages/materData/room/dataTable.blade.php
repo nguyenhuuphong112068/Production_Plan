@@ -79,6 +79,7 @@
                                     data-capacity="{{ $data->capacity }}"
                                     data-main_equiment_name="{{ $data->main_equiment_name }}"
                                     data-blister_type_code="{{ $data->blister_type_code }}"
+                                    data-max_parallel="{{ $data->max_parallel ?? 1 }}"
 
                                     data-toggle="modal"
                                     data-target="#updateModal"
@@ -168,7 +169,8 @@
             modal.find('input[name="main_equiment_name"]').val(button.data('main_equiment_name'));
             modal.find('input[name="capacity"]').val(button.data('capacity'));
             modal.find('select[name="blister_type_code"]').val(button.data('blister_type_code'));
-            
+            modal.find('select[name="max_parallel"]').val(String(button.data('max_parallel') || 1));
+
             roomMachineTypeToggle('update', button.data('stage_code'));
 
 

@@ -23,6 +23,7 @@ $gantt = ['resources/js/Pages/FullCalender.jsx'];
 $khsx = ['resources/js/Components/ModalSidebar.jsx'];
 $core = ['app/Http/Controllers/Pages/Schedual/SchedualController.php', 'app/Services/MaintenanceShiftService.php'];
 $wip = ['app/Plugins/WipControl', 'resources/js/Plugins/WipControl/index.js'];
+$weigh = ['resources/js/Plugins/WeighAssist/index.jsx', 'app/Services/WeighingAssistService.php', 'app/Http/Controllers/Pages/Schedual/WeighingAssistController.php'];
 
 return [
     'Bắt đầu' => [
@@ -50,6 +51,9 @@ return [
         ['id' => 'chinh-lich-tay', 'sources' => $gantt, 'file' => 'manualEdit', 'title' => 'Chỉnh Lịch Trên Gantt & Lưu', 'icon' => 'fas fa-hand-pointer',
             'path' => 'Lịch Sản Xuất › Lịch Sản Xuất Chart', 'chips' => [$edit],
             'keywords' => 'keo tha luu ctrl s ctrl z nhap tinh tien cascade xoa lich submit khoa ttsx sua gio chon nhieu lo chuot phai loi den xem truoc chuoi'],
+        ['id' => 'sap-lich-can', 'sources' => array_merge($gantt, $weigh), 'file' => 'weighAssist', 'title' => 'Sắp Lịch Cân Bán Tự Động', 'icon' => 'fas fa-balance-scale',
+            'path' => 'Lịch Sản Xuất › Lịch Sản Xuất Chart › ⚖ Lô cần cân / Gợi ý lịch cân', 'chips' => [$edit],
+            'keywords' => 'can nguyen lieu can nl khac lo can can goi y lich can phong can som nhat ngay nghi chien dich can chung loc lo can chuan bi'],
     ],
     'Sắp Lịch Tự Động' => [
         ['id' => 'hop-thoai-sap-lich', 'sources' => $gantt, 'file' => 'autoDialog', 'title' => 'Hộp Thoại Sắp Lịch Tự Động', 'icon' => 'fas fa-robot',

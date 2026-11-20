@@ -10,6 +10,8 @@
     $cleanWait = $st->state === $ROS::CLEAN_WAIT; // bảo trì xong, chờ nhận phòng vệ sinh
     $cleaning = $st->state === $ROS::CLEANING;    // đang vệ sinh sau bảo trì
     $maint = $plan && $plan->maintenance;
+    // Phòng đôi gói đầu đang giữ nhiều lô sản xuất (room.max_parallel), khác phòng cân nhận chung nhiều lô
+    $multiLot = $busy && !$maint && $plans->count() > 1 && !in_array((int) $room->stage_code, $ROS::GROUP_STAGES, true);
     [$stateClass, $stateIcon] = $ROS::STATE_META[$st->state];
 
     $fmt = fn($t) => $t ? \Carbon\Carbon::parse($t)->format('H:i d/m') : '—';
@@ -54,6 +56,12 @@
         'since'    => $st->since ? $fmt($st->since) : null,
         // Trạng thái sau khi Trả phòng (hộp xác nhận): bảo trì có vệ sinh → Chờ VS Sau BT
         'after'    => $ROS::STATE_LABELS[$busy && $maint && $plans->every(fn($p) => $p->title_clearning) ? $ROS::CLEAN_WAIT : $ROS::READY],
+        // Chỉ giữ lịch HC (không có vệ sinh): hộp Trả phòng hỏi có vệ sinh phòng sau HC không
+        'hc_only'  => $busy && $plans->isNotEmpty() && $plans->every(fn($p) => $p->maintenance && $p->maintenance_type === 'HC' && !$p->title_clearning),
+        // Phòng đôi gói đầu: còn chỗ nhận thêm lô cùng BTP; đang giữ nhiều lô thì Trả phòng chọn từng lô
+        'overlap'  => (bool) ($st->overlap ?? false),
+        'btp'      => $plan->intermediate_code ?? null,
+        'lots'     => $multiLot ? $plans->map(fn($p) => ['id' => $p->id, 'label' => $p->label, 'since' => $fmt($p->actual_start)])->values() : [],
     ];
 
     // Nhân sự đang được phân công (Lịch Công Tác): nhãn A, B, C... theo đúng thứ tự hiển thị bên Lịch Công Tác → Sản Xuất
@@ -116,7 +124,7 @@
                             @endforeach
                         </div>
                     @elseif ($plans->count() > 1)
-                        <div class="exec-live-batch"><b>{{ $plans->count() }} lô</b> cân chung · {{ $plan->intermediate_code }}</div>
+                        <div class="exec-live-batch"><b>{{ $plans->count() }} lô</b> {{ $multiLot ? 'gói đầu' : 'cân chung' }} · {{ $plan->intermediate_code }}</div>
                         <div class="exec-group">
                             @foreach ($plans as $b)
                                 <div class="exec-group-row">
@@ -201,13 +209,21 @@
                 $undo = $room->undo ?? null;
                 $undoLeft = $undo ? (int) now()->diffInSeconds($undo->until, false) : 0;
                 $canUndo = $undoLeft > 0 && user_has_permission($uid, $undo->permission, 'boolean');
+                // Đổi sản phẩm: phòng Bận với lô sản xuất (không phải bảo trì), chỉ Leader trở lên
+                $canChange = $busy && !$maint && !$multiLot && $plans->every(fn($p) => !$p->actual_end) && \App\Http\Controllers\Pages\Schedual\ProductionExecutionController::canChangeProduct();
             @endphp
-            @if ((($busy || $cleaning) && $canRelease) || ($cleanWait && $canReceiveCleaning) || (!$busy && !$cleaning && !$cleanWait && $canReceive) || $canUndo)
+            @if ($canChange || (($st->overlap ?? false) && $canReceive) || (($busy || $cleaning) && $canRelease) || ($cleanWait && $canReceiveCleaning) || (!$busy && !$cleaning && !$cleanWait && $canReceive) || $canUndo)
                 <div class="exec-room-actions">
                     @if ($busy || $cleaning)
                         @if ($canRelease)
                             <button type="button" class="btn btn-exec btn-exec-stop js-act" data-act="release">
                                 <i class="fas fa-sign-out-alt"></i> Trả phòng
+                            </button>
+                        @endif
+                        @if ($canChange)
+                            <button type="button" class="btn btn-exec btn-exec-change js-act" data-act="change"
+                                title="Nhận nhầm lô: đổi sang lô khác, giữ nguyên giờ nhận phòng (Leader trở lên)">
+                                <i class="fas fa-exchange-alt"></i> Đổi sản phẩm
                             </button>
                         @endif
                     @elseif ($cleanWait)
@@ -219,6 +235,12 @@
                     @elseif ($canReceive)
                         <button type="button" class="btn btn-exec btn-exec-go js-act" data-act="receive">
                             <i class="fas fa-door-open"></i> Nhận phòng
+                        </button>
+                    @endif
+                    @if (($st->overlap ?? false) && $canReceive)
+                        <button type="button" class="btn btn-exec btn-exec-go js-act" data-act="overlap"
+                            title="Phòng đôi: nhận thêm 1 lô cùng mã BTP {{ $plan->intermediate_code }} khi lô đang chạy chưa trả phòng">
+                            <i class="fas fa-layer-group"></i> Nhận lô gói đầu
                         </button>
                     @endif
                     @if ($canUndo)

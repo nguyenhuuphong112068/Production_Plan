@@ -14,6 +14,7 @@
     ['Công Suất Máy', true, 'Công suất theo đơn vị / giờ, dùng cho báo cáo năng suất.'],
     ['Công Đoạn', true, 'Công đoạn phòng chạy (Cân, Pha chế, Trộn hoàn tất, Định hình, Bao phim, Đóng gói...). Không sửa được sau khi tạo.'],
     ['Loại Máy Ép Vỉ / Loại Máy Định Hình', false, 'Chỉ hiện với phòng <b>Đóng gói</b> (Loại Máy Ép Vỉ) và phòng <b>Định hình</b> (Loại Máy Định Hình); danh sách lấy từ <a href="#loai-may-ep-vi">Nhóm Máy</a>, chỉ các loại máy cùng công đoạn với phòng. Dùng để chọn khuôn lắp được cho máy khi phân bổ khuôn. Ô này <b>sửa được</b> sau khi tạo.'],
+    ['Số lô giữ phòng cùng lúc (gói đầu)', false, 'Chỉ có trong cửa sổ <b>Sửa</b>. <b>1 lô</b> = bình thường; <b>2 lô</b> = phòng gối đầu (vd S3, S7+S8, S10+S11): ở trang Thực Thi Sản Xuất, phòng đang Bận vẫn <b>Nhận lô gói đầu</b> được 1 lô cùng mã BTP, mỗi lô Trả phòng riêng.'],
     ['Tổ Quản Lý', true, 'Tổ phụ trách phòng (danh sách ở <a href="#to-quan-ly">Tổ Quản Lý</a>). Không sửa được sau khi tạo.'],
 ]])
 

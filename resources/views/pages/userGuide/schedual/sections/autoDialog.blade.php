@@ -17,7 +17,7 @@
 <h3>① Phạm vi sắp lịch</h3>
 @include('pages.userGuide.shared.fields', ['fields' => [
     ['Ngày bắt đầu sắp lịch', true, 'Lịch mới bắt đầu từ <b>06:00</b> ngày này (không sớm hơn giờ hiện tại). Mặc định hôm nay.'],
-    ['Kiểu sắp lịch: Theo Công Đoạn', false, 'Mặc định. Chọn <b>công đoạn cuối</b> cần xếp trên dải bước: <b>PC</b> (chỉ Pha chế), <b>THT</b> (Pha chế → Trộn hoàn tất), <b>ĐH</b>, <b>BP</b>, <b>ĐG</b> (Pha chế → Đóng gói). Bước <b>CNL</b> chỉ xếp lịch Cân nguyên liệu, lùi từ ngày bắt đầu công đoạn sau của lô đã có lịch.'],
+    ['Kiểu sắp lịch: Theo Công Đoạn', false, 'Mặc định. Chọn <b>công đoạn cuối</b> cần xếp trên dải bước: <b>PC</b> (chỉ Pha chế), <b>THT</b> (Pha chế → Trộn hoàn tất), <b>ĐH</b>, <b>BP</b>, <b>ĐG</b> (Pha chế → Đóng gói). Bước <b>CNL</b> chỉ xếp lịch Cân nguyên liệu, lùi từ ngày bắt đầu công đoạn sau của lô đã có lịch. Muốn xếp cân sớm nhất cho một số lô chọn trên lịch, dùng <a href="#sap-lich-can">Gợi ý lịch cân</a>.'],
     ['Kiểu sắp lịch: Theo Line', false, 'Chọn một Line (phòng): các lô đang chờ của Line đó được xếp vào đúng phòng này theo thứ tự trên danh sách của Line. Chế độ này không chạy Kiểm soát tồn BTP.'],
 ]])
 

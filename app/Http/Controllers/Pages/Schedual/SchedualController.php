@@ -4959,16 +4959,35 @@ class SchedualController extends Controller
             return response()->json(['message' => 'Vui lòng chọn ít nhất một lô sản phẩm.'], 400);
         }
 
+        $merged = 0;
+        $skipped = []; // lô bị bỏ qua vì không có đủ cả PC (3) và THT (4)
+
         DB::beginTransaction();
         try {
             foreach ($ids as $id) {
                 // Lấy thông tin công đoạn đang được chọn để gộp (3 hoặc 4)
                 $currentStage = DB::table('stage_plan')->where('id', $id)->first();
-                if (! $currentStage) {
+                if (! $currentStage || ! in_array((int) $currentStage->stage_code, [3, 4], true)) {
                     continue;
                 }
 
                 $pmId = $currentStage->plan_master_id;
+
+                // Chỉ gộp khi plan_master còn đủ cả 2 công đoạn PC (3) và THT (4) đang active.
+                // Thiếu 1 trong 2 (kể cả đã gộp trước đó) thì bỏ qua plan_master này.
+                $activeStages = DB::table('stage_plan')
+                    ->where('plan_master_id', $pmId)
+                    ->where('active', 1)
+                    ->whereIn('stage_code', [3, 4])
+                    ->distinct()
+                    ->pluck('stage_code')
+                    ->map(fn($c) => (int) $c)
+                    ->all();
+
+                if (! in_array(3, $activeStages, true) || ! in_array(4, $activeStages, true)) {
+                    $skipped[] = DB::table('plan_master')->where('id', $pmId)->value('batch') ?? $pmId;
+                    continue;
+                }
                 $currentCode = $currentStage->code;
                 $preCode = $currentStage->predecessor_code;
                 $nextCode = $currentStage->nextcessor_code;
@@ -4993,6 +5012,8 @@ class SchedualController extends Controller
                         ->where('code', $nextCode)
                         ->update(['predecessor_code' => $preCode]);
                 }
+
+                $merged++;
             }
             DB::commit();
         } catch (\Exception  $e) {
@@ -5003,6 +5024,8 @@ class SchedualController extends Controller
 
         return response()->json([
             'plan' => $this->getPlanWaiting(session('user.production_code')),
+            'merged' => $merged,
+            'skipped' => array_values(array_unique($skipped)),
         ]);
     }
 

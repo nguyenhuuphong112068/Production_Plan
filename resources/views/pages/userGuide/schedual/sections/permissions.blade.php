@@ -13,7 +13,7 @@
         <tbody>
             <tr>
                 <td>Nhóm quyền chính <b>Admin</b> hoặc <b>Schedualer</b></td>
-                <td>Sửa lịch và sắp lịch tự động, <b>chỉ khi phân xưởng đang chọn trùng phòng ban của tài khoản</b>.
+                <td>Sửa lịch, sắp lịch tự động và <a href="#sap-lich-can">gợi ý lịch cân</a>, <b>chỉ khi phân xưởng đang chọn trùng phòng ban của tài khoản</b>.
                     Chuyển sang phân xưởng khác (menu chọn phân xưởng PXV1, PXV2...) thì chỉ xem.</td>
             </tr>
             <tr>
@@ -22,7 +22,8 @@
             </tr>
             <tr>
                 <td>Các tài khoản khác</td>
-                <td>Chỉ xem. Các nút sửa lịch (<span class="ug-emoji">🤖 🗑️ 💾 🚫</span>...) bấm vào không có tác dụng.</td>
+                <td>Chỉ xem. Các nút sửa lịch (<span class="ug-emoji">🤖 🗑️ 💾 🚫</span>...) bấm vào không có tác dụng.
+                    Vẫn bật được nút <b>⚖ Lô cần cân</b> để xem lô cần chuẩn bị cân; nút <b>Gợi ý lịch cân</b> không hiện.</td>
             </tr>
         </tbody>
     </table>

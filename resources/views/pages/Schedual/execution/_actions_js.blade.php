@@ -16,6 +16,7 @@
                 [R.receive]: ['Đang nhận phòng...', 'Đang ghi giờ nhận phòng'],
                 [R.release]: ['Đang xử lý dời lịch...', 'Đang trả phòng và tịnh tuyến lại lịch lý thuyết (nếu đang bật), vui lòng chờ'],
                 [R.receiveCleaning]: ['Đang nhận phòng vệ sinh...', 'Đang ghi giờ bắt đầu vệ sinh'],
+                [R.changeProduct]: ['Đang đổi sản phẩm...', 'Đang chuyển giờ nhận phòng sang lô mới'],
                 [R.undo]: ['Đang hoàn tác...', 'Đang khôi phục trạng thái phòng và lịch đã dời (nếu có), vui lòng chờ'],
             };
 
@@ -119,11 +120,27 @@
             // Phòng cân chọn được nhiều lô cùng BTP (selected = danh sách id), phòng khác 1 lô / 1 lịch bảo trì
             let plans = [],
                 selected = [],
-                receiveMode = 'production'; // 'production' = lô sản xuất, 'maintenance' = lịch BT / TI / HC
+                receiveMode = 'production', // 'production' = lô sản xuất, 'maintenance' = lịch BT / TI / HC
+                changing = false, // modal đang dùng cho Đổi sản phẩm (Leader trở lên)
+                overlapping = false; // Nhận lô gói đầu (phòng đôi): 1 lô sản xuất cùng BTP với lô đang giữ phòng
 
-            function openReceive() {
+            const RECEIVE_TITLE = $('#execReceiveModal .modal-title').html();
+
+            function openReceive(change = false, overlap = false) {
+                changing = change;
+                overlapping = overlap;
                 const $m = $('#execReceiveModal');
+                $m.find('.modal-title').html(change ?
+                    '<i class="fas fa-exchange-alt"></i> Đổi sản phẩm <span class="js-room"></span>' : overlap ?
+                    '<i class="fas fa-layer-group"></i> Nhận lô gói đầu <span class="js-room"></span>' : RECEIVE_TITLE);
                 $m.find('.js-room').text(ctx.room);
+                $('#execReceiveMode').toggle(!change && !overlap);
+                $m.find('.exec-now').html(change ?
+                    '<i class="far fa-clock"></i> Lô mới giữ nguyên giờ nhận phòng cũ <b>' + esc(ctx.since || '') + '</b> · đang giữ: <b>' + ctx.plans.map(esc).join(', ') + '</b>' :
+                    overlap ?
+                    '<i class="fas fa-layer-group"></i> Đang giữ: <b>' + ctx.plans.map(esc).join(', ') + '</b> · chỉ nhận lô cùng mã BTP <b>' + esc(ctx.btp || '') + '</b>' +
+                    '<br><i class="far fa-clock"></i> Giờ nhận phòng ghi theo giờ hệ thống lúc bấm nút · bây giờ <b class="js-now"></b>' :
+                    '<i class="far fa-clock"></i> Thời gian nhận phòng ghi theo giờ hệ thống lúc bấm nút · bây giờ <b class="js-now"></b>');
                 setReceiveMode('production');
                 $m.modal('show');
             }
@@ -134,7 +151,8 @@
                     const on = $(this).attr('data-mode') === mode;
                     $(this).toggleClass('active', on).attr('aria-pressed', on);
                 });
-                $('#execReceiveSubmit').html(mode === 'maintenance' ?
+                $('#execReceiveSubmit').html(changing ? '<i class="fas fa-exchange-alt"></i> Đổi sản phẩm' :
+                    overlapping ? '<i class="fas fa-layer-group"></i> Nhận lô gói đầu' : mode === 'maintenance' ?
                     '<i class="fas fa-tools"></i> Nhận phòng BT' : '<i class="fas fa-door-open"></i> Nhận phòng sản xuất');
                 $('#execPlanSearch').val('');
                 $('#execPlanHint').text('');
@@ -154,7 +172,8 @@
                     `<div class="exec-plan-empty"><i class="fas fa-spinner fa-spin"></i> Đang tải ${mode === 'maintenance' ? 'lịch BT / TI / HC' : 'danh sách lô'}...</div>`);
                 $.get(R.plans, {
                     room_id: ctx.room_id,
-                    mode: mode
+                    mode: mode,
+                    change: changing ? 1 : 0
                 }).done(list => {
                     if (mode !== receiveMode) return; // đã đổi chế độ trong lúc tải
                     plans = list;
@@ -189,7 +208,8 @@
                 const btp = selectedBtp();
                 // Số lô cùng lịch lý thuyết + cùng BTP (được chọn theo nhau)
                 const sameCount = key => key ? plans.filter(x => x.plan_key === key).length : 0;
-                $('#execPlanHint').html(maintList() ?
+                $('#execPlanHint').html(overlapping ?
+                    `Gói đầu: chỉ chọn được <b>1</b> lô cùng mã BTP <b>${esc(ctx.btp || '')}</b> với lô đang giữ phòng.` : maintList() ?
                     (selected.length > 1 ? `Đã chọn <b>${selected.length}</b> thiết bị` :
                         'Chọn được nhiều thiết bị; thiết bị cùng nhóm lịch được chọn theo nhau (bỏ chọn được).') :
                     ctx.weighing ?
@@ -198,7 +218,7 @@
                 $('#execPlanList').html(rows.map(p => {
                     const on = selected.includes(p.id);
                     // Không chọn chung lịch bảo trì với lô sản xuất; phòng cân không chọn chung lô khác BTP
-                    const off = multi() && selected.length && !on &&
+                    const off = overlapping ? (p.maintenance || p.btp !== ctx.btp) : multi() && selected.length && !on &&
                         (selectedMaint() ? !p.maintenance : (p.maintenance || p.btp !== btp));
                     const same = multi() && sameCount(p.plan_key) > 1 ? (p.maintenance ?
                         `<span class="exec-plan-same" title="Cùng nhóm lịch bảo trì">${sameCount(p.plan_key)} thiết bị cùng lịch</span>` :
@@ -242,8 +262,11 @@
             $('#execReceiveSubmit').on('click', function() {
                 if (!selected.length) return Swal.fire({
                     icon: 'warning',
-                    title: 'Chọn lô / lịch cần nhận phòng'
+                    title: changing ? 'Chọn lô sản phẩm mới' : 'Chọn lô / lịch cần nhận phòng'
                 });
+                if (changing) return send(R.changeProduct, {
+                    stage_plan_ids: selected
+                }, $('#execReceiveModal'));
                 send(R.receive, {
                     stage_plan_ids: selected,
                     mode: receiveMode
@@ -255,15 +278,32 @@
                 Swal.fire({
                     icon: 'question',
                     title: 'Trả phòng ' + ctx.room + '?',
-                    html: (ctx.plans.length ? 'Đang giữ phòng: <b>' + ctx.plans.map(esc).join(', ') + '</b><br>' : '') +
+                    html: ctx.lots.length ?
+                        // Phòng đôi gói đầu: chọn lô trả phòng, mặc định lô nhận sớm nhất; phòng vẫn Bận với lô còn lại
+                        '<div class="text-left" style="font-size:14px"><div class="mb-1"><b>Chọn lô trả phòng:</b></div>' +
+                        ctx.lots.map((l, i) => '<label class="d-block mb-1 p-2 border rounded" style="cursor:pointer">' +
+                            `<input type="radio" name="execReleaseLot" value="${l.id}" ${i === 0 ? 'checked' : ''}> <b>${esc(l.label)}</b>` +
+                            ` <small class="text-muted">· nhận phòng ${esc(l.since)}</small></label>`).join('') +
+                        '</div><small>Thời gian trả phòng ghi theo giờ hệ thống lúc bấm nút. Phòng vẫn <b>Phòng Bận</b> với lô còn lại.</small>' :
+                        (ctx.plans.length ? 'Đang giữ phòng: <b>' + ctx.plans.map(esc).join(', ') + '</b><br>' : '') +
                         (ctx.since ? 'Nhận phòng lúc <b>' + esc(ctx.since) + '</b><br>' : '') +
-                        '<small>Thời gian trả phòng ghi theo giờ hệ thống lúc bấm nút. Phòng chuyển sang <b>' + esc(ctx.after) + '</b>.</small>',
+                        (ctx.hc_only ?
+                            '<small>Thời gian trả phòng ghi theo giờ hệ thống lúc bấm nút.</small>' +
+                            '<div class="mt-3 p-2 border rounded text-left" style="font-size:14px">' +
+                            '<div class="mb-1"><b>Có vệ sinh phòng sau Hiệu chuẩn không?</b></div>' +
+                            '<label class="d-block mb-1" style="cursor:pointer"><input type="radio" name="execCleanAfterHc" value="0" checked> Không · phòng chuyển sang <b>Sẵn Sàng</b></label>' +
+                            '<label class="d-block mb-0" style="cursor:pointer"><input type="radio" name="execCleanAfterHc" value="1"> Có · phòng chuyển sang <b>Chờ VS Sau BT</b></label>' +
+                            '</div>' :
+                            '<small>Thời gian trả phòng ghi theo giờ hệ thống lúc bấm nút. Phòng chuyển sang <b>' + esc(ctx.after) + '</b>.</small>'),
                     showCancelButton: true,
                     confirmButtonText: 'Trả phòng',
                     cancelButtonText: 'Không',
                     confirmButtonColor: '#dc2626',
+                    preConfirm: () => ctx.lots.length ? +$('input[name="execReleaseLot"]:checked').val() :
+                        ctx.hc_only && $('input[name="execCleanAfterHc"]:checked').val() === '1' ? 1 : 0,
                 }).then(r => {
-                    if (r.isConfirmed) send(R.release, {}, null);
+                    if (r.isConfirmed) send(R.release, Object.assign({clean_after_hc: ctx.hc_only ? r.value : 0},
+                        ctx.lots.length ? {stage_plan_id: r.value} : {}), null);
                 });
             }
 
@@ -346,6 +386,10 @@
                         return openReceive();
                     case 'release':
                         return confirmRelease();
+                    case 'change':
+                        return openReceive(true);
+                    case 'overlap':
+                        return openReceive(false, true);
                     case 'receive_cleaning':
                         return confirmReceiveCleaning();
                     case 'undo':

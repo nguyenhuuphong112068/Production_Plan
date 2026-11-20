@@ -690,6 +690,19 @@ Trong `scheduleCampaignBody`, `$candidates` lấy ngày MUỘN NHẤT của mọ
 
 **Hạn chế xuống khuôn (chỉ ĐG):** chọn phòng = phòng có giờ bắt đầu sớm nhất. Riêng stage 7 khi `limit_mold_change` bật: phòng có khuôn liền trước trùng mã khuôn được ưu tiên nếu bắt đầu trễ hơn phòng tốt nhất ≤ `mold_change_tolerance` giờ (mặc định 72).
 
+### 6.5b. Sắp Lịch Cân Bán Tự Động Trên Gantt (20/11/2026)
+
+Công cụ thủ công, KHÔNG thuộc lõi `scheduleAll` (không đổi nguyên lý sắp lịch tự động, chưa có trong tài liệu Nguyên lý cho khách hàng). File: `app/Services/WeighingAssistService.php` (nghiệp vụ), `app/Http/Controllers/Pages/Schedual/WeighingAssistController.php` (kế thừa SchedualController chỉ để trả `events/plan/sumBatchByStage` như `store()`), route `/Schedual/weighing/{status,suggest}` (POST, chỉ đọc) + `apply` (PUT, `AutoLockExecution`, kiểm quyền như `authorization` của Gantt: Admin/Schedualer cùng phân xưởng hoặc BOD), frontend `resources/js/Plugins/WeighAssist/index.jsx` (dòng chú thích "WeighAssist" trong FullCalender.jsx), CSS `.fc-weigh-need/.fc-weigh-planned` trong `calendar.css`.
+
+- **Liên kết cân ↔ công đoạn sau** theo `w.nextcessor_code = n.code` của DÒNG CÂN: CĐ 1 → PC (3) hoặc THT (4, lô không có PC: ~1.630 dòng); CĐ 2 → ĐH (5) / BP (6), ít lô ĐG (7). Chỉ PC có `predecessor_code` trỏ về cân; ĐH/BP thì không.
+- **⚖ Lô cần cân** (`status`): lô sau `finished=0`, chưa `actual_start`, có `start`, còn dòng cân `finished=0` → `need` (còn dòng cân `start` null) / `planned`. Bật thì ẩn mọi event khác (class `fc-event-hidden`), ẩn lịch cân đã xong, giữ BT/phòng bận trên phòng cân; lọc phòng: phòng cân luôn hiện (bỏ qua bộ lọc công đoạn/phòng) + phòng có lô cần cân.
+- **Gợi ý** (`suggest`, không ghi): nhóm lô cùng `campaign_code` + stage + BTP (lô không chiến dịch đi một mình), nhóm có lô sau bắt đầu sớm nhất xếp trước; mỗi khối tối đa `quota.maxofbatch_campaign` lô của phòng đang xét; phòng = quota `intermediate_code` + stage + `finished_product_code='NA'` + active, phòng cùng phân xưởng, tôn trọng `required_room_code`; chọn phòng giờ bắt đầu sớm nhất (hoà → khối nhiều lô hơn → kết thúc sớm hơn).
+- **Mốc sớm nhất** = max(now làm tròn 15', `after_weigth_date`, `allow_weight_before_date`, CĐ 1: `next.start − quarantine_weight` của BTP). CĐ 2 KHÔNG áp 45 cứng như getEvents. Không có cận "7 ngày làm việc trước CĐ sau" như `scheduleweight()` – user yêu cầu "sớm nhất".
+- **Thời lượng khối n lô** = p + m × (1 + (campaign_index − 1) × (n − 1)); 1 lô = p + m (lõi `scheduleweight` dùng `× n` và đếm cả chiến dịch, `store()` dùng `p + m × ci` cho mọi n – 3 công thức khác nhau, đây là công thức thứ tư, đã báo user). VS sau khối: C2 > 0 → VS-II, không thì C1 / VS-I.
+- **Giờ trống** (`findSlot`): khối + VS nằm trong ca phòng (sheet_regular 7–16; 3 ca liền = 24h), không giao ngày nghỉ `off_days` (06:00→06:00, chạm thì nhảy tới cuối khoảng nghỉ), không giao lịch `finished=0` của phòng (kể cả CĐ 8) + `heldUntil`; khối vừa gợi ý được giữ chỗ trong bộ nhớ.
+- **Ghi** (`apply`): kiểm lại dòng cân còn `start` null, phòng còn định mức, phòng không có lịch chen/lô giữ phòng; ghi như `store()` + `first_in_campaign=1`, `AHU_group`; lịch sử chỉ khi `submit=1`; `submit=0`; `LeadConfirmation::reset`.
+- Test (đọc + ghi rollback): bootstrap, session `production_code/fullName/userName/userGroup/department`, `status()` → `suggest(ids)` → `apply()` trong `DB::beginTransaction()/rollBack()`. PXV1 20/11/2026: 71 lô cần cân, 41 khối, 0,65 s.
+
 ### 6.6. Quyết Định Của Người Dùng – KHÔNG Làm Lại
 
 | Ngày | Đã thử / đề xuất | Quyết định |

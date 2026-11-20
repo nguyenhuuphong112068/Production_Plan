@@ -1671,12 +1671,21 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
             }
             setPlan(data.plan);
             setSelectedRows([]);
-            Swal.fire({
-              icon: 'success',
-              title: 'Gộp thành công',
-              timer: 1000,
-              showConfirmButton: false,
-            });
+            const skipped = data.skipped || [];
+            if (skipped.length > 0) {
+              Swal.fire({
+                icon: 'warning',
+                title: `Đã gộp ${data.merged || 0} lô`,
+                html: `Bỏ qua ${skipped.length} lô không có đủ cả Pha Chế và Trộn Hoàn Tất:<br><b>${skipped.join(', ')}</b>`,
+              });
+            } else {
+              Swal.fire({
+                icon: 'success',
+                title: 'Gộp thành công',
+                timer: 1000,
+                showConfirmButton: false,
+              });
+            }
           })
           .catch(err => {
             console.error(err);

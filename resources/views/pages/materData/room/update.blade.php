@@ -106,6 +106,16 @@
                 @enderror
             </div>
 
+            {{-- Phòng đôi gói đầu --}}
+            <div class="form-group">
+                <label for="max_parallel">Số lô giữ phòng cùng lúc (gói đầu)</label>
+                <select class="form-control" name="max_parallel">
+                    <option value="1">1 lô (bình thường)</option>
+                    <option value="2">2 lô (phòng đôi, cho nhận lô gói đầu cùng mã BTP)</option>
+                </select>
+                <small class="text-muted">Trang Thực Thi Sản Xuất: phòng đang Bận với 1 lô vẫn được Nhận lô gói đầu, mỗi lô Trả phòng riêng.</small>
+            </div>
+
             {{-- Stage_groups --}}
             <div class="form-group">
                 <label for="belongGroup_id">Tổ Quản Lý</label>

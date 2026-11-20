@@ -35,6 +35,12 @@
     </table>
 </div>
 
+<div class="ug-callout">
+    <i class="fas fa-balance-scale"></i>
+    <div>Sắp lịch tự động chỉ xếp công đoạn cân khi chọn bước <b>CNL</b>. Chạy tới PC / BP / ĐG xong, bật
+        <b>⚖ Lô cần cân</b> để thấy các lô chưa có lịch cân rồi dùng <a href="#sap-lich-can">Gợi ý lịch cân</a>.</div>
+</div>
+
 <h3>Sao lưu và khôi phục</h3>
 <ol class="ug-steps">
     <li>Trước khi chạy: mở <span class="ug-emoji">🤖</span>, khối ③, bấm <b>Tạo bản sao lưu</b>. Mã sao lưu mới được thêm

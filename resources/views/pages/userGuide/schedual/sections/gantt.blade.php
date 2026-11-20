@@ -50,6 +50,12 @@
     </table>
 </div>
 
+<p>
+    Thanh trên cùng (phía trên thanh công cụ) có các nút trạng thái như <b>Lô đang chọn</b>, <b>Lịch chưa submit</b>,
+    <b>Tồn BTP</b>, <b>Chỗ trùng giờ</b>... Nút <b>⚖ Lô cần cân</b> và <b>Gợi ý lịch cân</b> dùng để
+    <a href="#sap-lich-can">sắp lịch cân bán tự động</a>.
+</p>
+
 <div class="ug-callout">
     <i class="fas fa-info-circle"></i>
     <div>Phòng đang có lô đã <b>Nhận phòng</b> (trang Thực Thi Sản Xuất) hiện thêm thanh "phòng đang bận" chỉ để xem:

@@ -7,7 +7,9 @@
 <h3>Chọn lô</h3>
 <ul>
     <li><b>Bấm</b> vào thanh lô để chọn (viền nổi bật); bấm lần nữa để bỏ chọn. Chọn được nhiều lô, kể cả ở nhiều phòng.</li>
-    <li>Các nút 🚫, ✅, 🚿, 🆚 trên thanh công cụ và hộp thoại sửa giờ áp dụng cho <b>các lô đang chọn</b>.</li>
+    <li>Các nút 🚫, ✅, 🚿, 🆚 trên thanh công cụ và hộp thoại sửa giờ áp dụng cho <b>các lô đang chọn</b>; nút
+        <b>Gợi ý lịch cân</b> xếp công đoạn cân cho các lô PC / THT / ĐH / BP đang chọn (xem
+        <a href="#sap-lich-can">Sắp lịch cân bán tự động</a>).</li>
 </ul>
 
 <h3>Kéo thả và lưu</h3>

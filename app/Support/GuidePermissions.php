@@ -130,7 +130,7 @@ class GuidePermissions
         'schedual' => [
             ['Lịch Sản Xuất Chart', 'Xem biểu đồ', ['rule' => self::ALL]],
             ['Lịch Sản Xuất Chart', 'Tải danh sách KHSX (lô chờ sắp lịch)', ['perm' => 'loading_plan_waiting']],
-            ['Lịch Sản Xuất Chart', 'Sửa lịch, sắp lịch tự động, Submit, Khóa TTSX', ['rule' => 'Nhóm quyền chính Admin hoặc Schedualer, và phân xưởng đang chọn trùng phòng ban của tài khoản. Phòng ban BOD sửa được mọi phân xưởng.', 'roles' => ['Admin', 'Schedualer']]],
+            ['Lịch Sản Xuất Chart', 'Sửa lịch, sắp lịch tự động, gợi ý lịch cân, Submit, Khóa TTSX', ['rule' => 'Nhóm quyền chính Admin hoặc Schedualer, và phân xưởng đang chọn trùng phòng ban của tài khoản. Phòng ban BOD sửa được mọi phân xưởng.', 'roles' => ['Admin', 'Schedualer']]],
             ['Lịch Sản Xuất Chart', 'Dòng tồn BTP chờ vào phòng', ['perm' => 'schedual_wip_rows']],
             ['Lịch Sản Xuất Chart', 'Lịch sử tịnh tuyến (chuột phải)', ['rule' => 'Chỉ các tài khoản được chỉ định trong mã (ScheduleRerouteService).']],
             ['Lịch tuần, Danh sách lịch, Tiến trình, Nhận bao bì', 'Thấy lịch chưa Submit', ['rule' => 'Nhóm quyền chính Admin, Schedualer hoặc Leader. Người khác chỉ thấy lịch đã Submit.', 'roles' => ['Admin', 'Schedualer', 'Leader']]],
@@ -139,6 +139,7 @@ class GuidePermissions
             ['Thực Thi Sản Xuất', 'Nhận phòng', ['perm' => 'execution_receive']],
             ['Thực Thi Sản Xuất', 'Nhận phòng vệ sinh sau bảo trì', ['perm' => 'execution_receive_cleaning']],
             ['Thực Thi Sản Xuất', 'Trả phòng', ['perm' => 'execution_release']],
+            ['Thực Thi Sản Xuất, Ghi Nhận Sản Xuất', 'Đổi sản phẩm (phòng đang bận)', ['rule' => 'Có nhóm quyền Leader, Schedualer hoặc Admin (Leader trở lên).', 'roles' => ['Leader', 'Schedualer', 'Admin']]],
             ['Ghi Nhận Sản Xuất', 'Vào trang', ['perm' => 'layout_production_record']],
             ['Ghi Nhận Sản Xuất', 'Chỉ vào được trang này', ['rule' => 'Tài khoản có nhóm quyền chính Executor: mọi màn hình khác tự chuyển về Ghi Nhận Sản Xuất.', 'roles' => ['Executor']]],
             ['Đề Nghị Thay Đổi KH', 'Thấy mục trên menu', ['perm' => 'layout_warning']],

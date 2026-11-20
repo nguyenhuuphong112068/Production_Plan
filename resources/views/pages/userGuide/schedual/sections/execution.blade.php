@@ -26,8 +26,17 @@
 <ul>
     <li>Lô sản xuất: bấm <b>Trả phòng</b> khi xong sản xuất và vệ sinh; phòng về Sẵn Sàng.</li>
     <li>Lịch BT / TI có vệ sinh: Trả phòng kết thúc bảo trì → phòng ở trạng thái chờ vệ sinh → bấm <b>Nhận phòng vệ sinh sau BT</b>
-        → vệ sinh xong bấm Trả phòng. Lịch hiệu chuẩn không có vệ sinh: Trả phòng là xong.</li>
+        → vệ sinh xong bấm Trả phòng. Phòng chỉ giữ lịch hiệu chuẩn (HC): hộp Trả phòng hỏi
+        <b>Có vệ sinh phòng sau Hiệu chuẩn không?</b> — chọn <b>Không</b> thì xong, phòng về Sẵn Sàng; chọn <b>Có</b> thì phòng
+        chuyển sang chờ vệ sinh và làm tiếp như lịch BT.</li>
     <li>Bấm nhầm: nút <b>Hoàn tác</b> trên thẻ, chỉ trong <b>2 phút</b> sau thao tác.</li>
+    <li>Nhận nhầm lô: <b>Leader trở lên</b> bấm <b>Đổi sản phẩm</b> trên thẻ phòng đang bận, chọn lô đúng. Lô mới giữ nguyên giờ
+        nhận phòng cũ, lô cũ trở về chưa nhận phòng. Không đổi được khi phòng giữ lịch bảo trì hoặc lô đã được xác nhận
+        ở trang Xác nhận hoàn thành.</li>
+    <li>Phòng đôi làm chiến dịch gói đầu (S3, S7+S8, S10+S11 — đặt ở Dữ Liệu Gốc → Phòng Sản Xuất, ô <b>Số lô giữ phòng cùng lúc</b>):
+        phòng đang Bận với 1 lô có thêm nút <b>Nhận lô gói đầu</b>, chỉ chọn được <b>1 lô cùng mã BTP</b>, tối đa <b>2 lô</b> cùng lúc.
+        Khi giữ 2 lô, <b>Trả phòng</b> hỏi trả lô nào (mặc định lô nhận trước), phòng vẫn Bận với lô còn lại; trả lô cuối thì về
+        Sẵn Sàng. Phòng giữ 2 lô thì không Đổi sản phẩm được — dùng Hoàn tác hoặc Trả phòng lô nhầm.</li>
 </ul>
 
 <div class="ug-callout is-warn">

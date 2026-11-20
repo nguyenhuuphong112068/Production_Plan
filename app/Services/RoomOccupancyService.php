@@ -168,7 +168,7 @@ class RoomOccupancyService
             ->orderBy('stage_code')
             ->orderBy('order_by')
             ->orderBy('code')
-            ->select('id', 'code', 'name', 'main_equiment_name', 'stage', 'stage_code', 'deparment_code', 'active');
+            ->select('id', 'code', 'name', 'main_equiment_name', 'stage', 'stage_code', 'deparment_code', 'active', 'max_parallel');
     }
 
     /**
@@ -191,10 +191,12 @@ class RoomOccupancyService
             $state = $this->stateOf($plans);
 
             $room->st = (object) [
-                'state' => $state,
-                'label' => self::STATE_LABELS[$state],
-                'since' => $this->sinceOf($state, $plans),
-                'plans' => $plans,
+                'state'   => $state,
+                'label'   => self::STATE_LABELS[$state],
+                'since'   => $this->sinceOf($state, $plans),
+                'plans'   => $plans,
+                // Phòng đôi gói đầu: đang Bận với lô sản xuất, còn chỗ cho lô cùng mã BTP
+                'overlap' => self::canOverlap($room, $state, $plans),
             ];
             $room->stage_group = in_array((int) $room->stage_code, self::GROUP_STAGES, true) ? 1 : (int) $room->stage_code;
             $room->staff = $staff->get($room->id, collect());
@@ -233,7 +235,7 @@ class RoomOccupancyService
         $expected = [
             'Nhận phòng'                => [self::BUSY],
             'Nhận phòng vệ sinh sau BT' => [self::CLEANING],
-            'Trả phòng'                 => [self::READY, self::CLEAN_WAIT],
+            'Trả phòng'                 => [self::READY, self::CLEAN_WAIT, self::BUSY], // BUSY: trả 1 lô ở phòng đôi gói đầu
             'Trả phòng vệ sinh sau BT'  => [self::READY],
         ];
 
@@ -404,12 +406,14 @@ class RoomOccupancyService
         $held = [];
         foreach ($open as $roomId => $rows) {
             $received = Carbon::parse($rows->min('actual_start'));
-            $plannedSec = (int) $rows->max(function ($r) use ($planned) {
+            // Mỗi lô: nhận phòng + thời lượng theo lịch (phòng đôi gói đầu: lô 2 nhận sau nên tính riêng từng lô)
+            $until = $rows->map(function ($r) use ($planned) {
                 $p = $planned->get($r->id);
-                return $p && $p->start && ($p->end_clearning ?? $p->end)
-                    ? max(0, Carbon::parse($p->start)->diffInSeconds(Carbon::parse($p->end_clearning ?? $p->end), false)) : 0;
-            });
-            $held[(int) $roomId] = [$received, $received->copy()->addSeconds($plannedSec)->max($now)];
+                $sec = $p && $p->start && ($p->end_clearning ?? $p->end)
+                    ? max(0, (int) Carbon::parse($p->start)->diffInSeconds(Carbon::parse($p->end_clearning ?? $p->end), false)) : 0;
+                return Carbon::parse($r->actual_start)->addSeconds($sec);
+            })->max();
+            $held[(int) $roomId] = [$received, $until->max($now)];
         }
 
         return $held;
@@ -497,19 +501,54 @@ class RoomOccupancyService
             ->all();
     }
 
-    /** Các lô đang giữ phòng: đã nhận phòng (actual_start), chưa trả phòng, nhận sau lần trả phòng gần nhất */
+    /**
+     * Các lô đang giữ phòng: đã nhận phòng (actual_start), chưa trả phòng, nhận sau lần trả phòng gần nhất.
+     * Phòng đôi gói đầu (room.max_parallel = n > 1): lô 1 trả phòng khi lô 2 còn chạy nên không lọc theo lần trả phòng gần
+     * nhất; lô chỉ bị coi là bỏ quên khi đã có từ n lô nhận phòng SAU nó được trả phòng.
+     */
     private function openPlans(array $roomIds, array $released): Collection
     {
-        return DB::table('stage_plan')
+        $open = DB::table('stage_plan')
             ->whereIn('resourceId', $roomIds)
             ->where('active', 1)
             ->where('actual_start', '>=', self::TRACK_FROM)
             ->whereRaw('(' . self::RELEASE_SQL . ') IS NULL')
             ->orderBy('actual_start')
             ->orderBy('id')
-            ->get(['id', 'resourceId', 'actual_start'])
-            ->filter(fn($p) => !isset($released[$p->resourceId]) || $p->actual_start >= $released[$p->resourceId])
+            ->get(['id', 'resourceId', 'actual_start']);
+
+        $parallel = $open->isEmpty() ? collect() : DB::table('room')
+            ->whereIn('id', $open->pluck('resourceId')->unique()->values()->all())
+            ->where('max_parallel', '>', 1)
+            ->pluck('max_parallel', 'id');
+        // Lô đã trả phòng của phòng đôi, nhận từ lô mở sớm nhất trở đi
+        $closed = $parallel->isEmpty() ? collect() : DB::table('stage_plan')
+            ->whereIn('resourceId', $parallel->keys()->all())
+            ->where('active', 1)
+            ->where('actual_start', '>=', $open->whereIn('resourceId', $parallel->keys()->all())->min('actual_start'))
+            ->whereRaw('(' . self::RELEASE_SQL . ') IS NOT NULL')
+            ->get(['resourceId', 'actual_start'])
             ->groupBy('resourceId');
+
+        return $open
+            ->filter(function ($p) use ($released, $parallel, $closed) {
+                if ($n = (int) ($parallel[$p->resourceId] ?? 0)) {
+                    return $closed->get($p->resourceId, collect())->where('actual_start', '>', $p->actual_start)->count() < $n;
+                }
+                return !isset($released[$p->resourceId]) || $p->actual_start >= $released[$p->resourceId];
+            })
+            ->groupBy('resourceId');
+    }
+
+    /** Phòng đôi gói đầu đang Bận chỉ với lô sản xuất (không phải phòng cân), còn chỗ nhận thêm lô */
+    private static function canOverlap(object $room, int $state, Collection $plans): bool
+    {
+        return $state === self::BUSY
+            && (int) ($room->max_parallel ?? 1) > 1
+            && !in_array((int) $room->stage_code, self::GROUP_STAGES, true)
+            && $plans->isNotEmpty()
+            && $plans->every(fn($p) => !$p->maintenance)
+            && $plans->count() < (int) $room->max_parallel;
     }
 
     public function planDetails(array $ids): Collection
@@ -705,12 +744,34 @@ class RoomOccupancyService
         }
 
         [$message, $deparmentCode, $productionIds] = DB::transaction(function () use ($roomId, $stagePlanIds, $mode) {
-            [$room] = $this->lockState($roomId, [self::READY]);
+            [$room, $state, $held] = $this->lockState($roomId, [self::READY, self::BUSY]);
+            // Phòng Bận chỉ nhận thêm được lô gói đầu ở phòng đôi (room.max_parallel): 1 lô, cùng mã BTP với lô đang giữ
+            $overlap = $state === self::BUSY;
+            if ($overlap) {
+                if (!self::canOverlap($room, $state, $held)) {
+                    throw new ProductionExecutionException('⚠️ Phòng đang ' . self::STATE_LABELS[$state]
+                        . ' (có thể do người khác vừa thao tác). Đã tải lại thông tin phòng.', 409);
+                }
+                if (self::receiveMode($mode) !== self::RECEIVE_PRODUCTION || count($stagePlanIds) !== 1) {
+                    throw new ProductionExecutionException('❌ Gói đầu: chỉ nhận thêm 1 lô sản xuất');
+                }
+            }
 
             $plans = $this->candidateQuery($room, $mode)->whereIn('sp.id', $stagePlanIds)->lockForUpdate()
                 ->get(['sp.id', 'sp.stage_code', 'sp.resourceId']);
             if ($plans->count() !== count($stagePlanIds)) {
                 throw new ProductionExecutionException('❌ Lô / lịch không hợp lệ, đã hoàn thành hoặc đã được nhận phòng', 409);
+            }
+            if ($overlap) {
+                $btp = DB::table('stage_plan as sp')
+                    ->join('finished_product_category as fpc', 'sp.product_caterogy_id', '=', 'fpc.id')
+                    ->whereIn('sp.id', array_merge($stagePlanIds, $held->pluck('id')->all()))
+                    ->distinct()
+                    ->count('fpc.intermediate_code');
+                if ($btp > 1) {
+                    throw new ProductionExecutionException('❌ Gói đầu: lô nhận thêm phải cùng mã bán thành phẩm (BTP) với lô đang giữ phòng ('
+                        . $held->pluck('intermediate_code')->filter()->unique()->implode(', ') . ')');
+                }
             }
             $maintenance = $plans->where('stage_code', self::MAINTENANCE_STAGE)->count();
             if ($maintenance && $maintenance !== $plans->count()) {
@@ -742,12 +803,12 @@ class RoomOccupancyService
             $assigned = $plans->whereNull('resourceId')->pluck('id')->all();
             foreach ($labels as $id => $label) {
                 AuditTrialController::log('Nhận phòng', 'stage_plan', $id, 'NA',
-                    'Phòng ' . $room->code . ' · actual_start ' . $now->format('Y-m-d H:i:s') . ' · ' . $label
+                    'Phòng ' . $room->code . ' · actual_start ' . $now->format('Y-m-d H:i:s') . ($overlap ? ' · gói đầu' : '') . ' · ' . $label
                     . (in_array($id, $assigned) ? self::ASSIGNED_MARK : ''));
             }
 
             return [
-                '✅ Đã nhận phòng ' . $room->code . ' lúc ' . $now->format('H:i') . ' cho ' . $labels->implode(', '),
+                '✅ Đã nhận phòng ' . $room->code . ($overlap ? ' (gói đầu)' : '') . ' lúc ' . $now->format('H:i') . ' cho ' . $labels->implode(', '),
                 $room->deparment_code,
                 $maintenance ? [] : $plans->pluck('id')->all(),
             ];
@@ -757,6 +818,79 @@ class RoomOccupancyService
         $reroute = $this->rerouteAfter($productionIds, $deparmentCode, 'rerouteOnReceive', self::REROUTE_RECEIVE_AUDIT);
 
         return ['message' => $message, 'reroute' => $reroute && ($reroute['count'] || $reroute['error']) ? $reroute : null];
+    }
+
+    /**
+     * Đổi sản phẩm (20/11/2026, chỉ Leader trở lên): phòng đang Bận với lô sản xuất nhận nhầm → bỏ actual_start của lô
+     * đang giữ (bỏ gán phòng nếu lúc Nhận phòng lô được gán vào phòng này) và ghi actual_start cho lô mới bằng ĐÚNG giờ
+     * nhận phòng cũ (thời gian giữ phòng không đổi). Không tịnh tuyến lịch, không hoàn tác được (đổi lại lần nữa).
+     */
+    public function changeProduct(int $roomId, array $stagePlanIds): string
+    {
+        $stagePlanIds = array_values(array_unique(array_map('intval', array_filter($stagePlanIds))));
+        if (!$stagePlanIds) {
+            throw new ProductionExecutionException('❌ Chọn lô sản phẩm mới');
+        }
+
+        return DB::transaction(function () use ($roomId, $stagePlanIds) {
+            [$room, , $old] = $this->lockState($roomId, [self::BUSY]);
+
+            if ($old->contains(fn($p) => $p->maintenance)) {
+                throw new ProductionExecutionException('❌ Phòng đang giữ lịch bảo trì, không đổi sản phẩm được');
+            }
+            if ($old->count() > 1 && !in_array((int) $room->stage_code, self::GROUP_STAGES, true)) {
+                throw new ProductionExecutionException('❌ Phòng đang giữ 2 lô gói đầu, không đổi sản phẩm được: Hoàn tác hoặc Trả phòng lô nhận nhầm rồi nhận lại');
+            }
+            $oldRows = DB::table('stage_plan')->whereIn('id', $old->pluck('id'))->lockForUpdate()
+                ->get(['id', 'actual_start', 'actual_end', 'finished']);
+            if ($oldRows->contains(fn($p) => (int) $p->finished === 1 || $p->actual_end)) {
+                throw new ProductionExecutionException('❌ Lô đang giữ phòng đã được xác nhận ở trang Xác nhận hoàn thành, không đổi sản phẩm được', 409);
+            }
+            $since = $oldRows->min('actual_start');
+
+            $new = $this->candidateQuery($room, self::RECEIVE_PRODUCTION)->whereIn('sp.id', $stagePlanIds)->lockForUpdate()
+                ->get(['sp.id', 'sp.resourceId']);
+            if ($new->count() !== count($stagePlanIds)) {
+                throw new ProductionExecutionException('❌ Lô không hợp lệ, đã hoàn thành hoặc đã được nhận phòng', 409);
+            }
+            if (count($stagePlanIds) > 1) {
+                if (!in_array((int) $room->stage_code, self::GROUP_STAGES, true)) {
+                    throw new ProductionExecutionException('❌ Chỉ phòng cân nguyên liệu được giữ nhiều lô');
+                }
+                $btp = DB::table('stage_plan as sp')
+                    ->join('finished_product_category as fpc', 'sp.product_caterogy_id', '=', 'fpc.id')
+                    ->whereIn('sp.id', $stagePlanIds)->distinct()->count('fpc.intermediate_code');
+                if ($btp > 1) {
+                    throw new ProductionExecutionException('❌ Chỉ giữ chung các lô cùng mã bán thành phẩm (BTP)');
+                }
+            }
+
+            // Lô cũ được gán vào phòng lúc Nhận phòng (trước đó chưa có phòng) thì bỏ gán
+            $assigned = DB::table('audittriallog')->where('table_Audit', 'stage_plan')->whereIn('action', ['Nhận phòng', 'Đổi sản phẩm'])
+                ->whereIn('record_Id_AuditTrial', $old->pluck('id'))
+                ->where('new_values', 'like', '%' . self::ASSIGNED_MARK . '%')
+                ->pluck('record_Id_AuditTrial')->map(fn($x) => (int) $x)->all();
+
+            $newLabels = $this->planDetails($stagePlanIds)->pluck('label', 'id');
+            foreach ($old as $p) {
+                DB::table('stage_plan')->where('id', $p->id)->update(['actual_start' => null]
+                    + (in_array((int) $p->id, $assigned, true) ? ['resourceId' => null] : []));
+                AuditTrialController::log('Đổi sản phẩm', 'stage_plan', $p->id, 'Phòng ' . $room->code . ' · ' . $p->label,
+                    'actual_start = NULL · đổi sang ' . $newLabels->implode(', '));
+            }
+            foreach ($new as $p) {
+                DB::table('stage_plan')->where('id', $p->id)->update(array_filter([
+                    'actual_start' => $since,
+                    'resourceId'   => $p->resourceId ? null : $room->id,
+                ]));
+                AuditTrialController::log('Đổi sản phẩm', 'stage_plan', $p->id, $old->pluck('label')->implode(', '),
+                    'Phòng ' . $room->code . ' · actual_start ' . Carbon::parse($since)->format('Y-m-d H:i:s') . ' · ' . ($newLabels[$p->id] ?? '')
+                    . ($p->resourceId ? '' : self::ASSIGNED_MARK));
+            }
+
+            return '✅ Đã đổi sản phẩm phòng ' . $room->code . ' sang ' . $newLabels->implode(', ')
+                . ' (giữ giờ nhận phòng ' . Carbon::parse($since)->format('H:i d/m') . ')';
+        });
     }
 
     /**
@@ -770,27 +904,50 @@ class RoomOccupancyService
      *
      * @return array{message: string, reroute: ?array}
      */
-    public function release(int $roomId): array
+    public function release(int $roomId, bool $cleanAfterHc = false, ?int $stagePlanId = null): array
     {
-        return $this->withRerouteLock($roomId, fn() => $this->releaseLocked($roomId));
+        return $this->withRerouteLock($roomId, fn() => $this->releaseLocked($roomId, $cleanAfterHc, $stagePlanId));
     }
 
-    private function releaseLocked(int $roomId): array
+    /** Phòng Bận chỉ giữ lịch HC không có vệ sinh: Trả phòng được chọn có vệ sinh sau HC hay không */
+    private static function hcOnly(int $state, Collection $plans): bool
     {
-        [$message, $deparmentCode, $reroutePlan] = DB::transaction(function () use ($roomId) {
+        return $state === self::BUSY && $plans->isNotEmpty()
+            && $plans->every(fn($p) => $p->maintenance && $p->maintenance_type === 'HC' && !$p->title_clearning);
+    }
+
+    /**
+     * $cleanAfterHc (chỉ khi phòng chỉ giữ lịch HC): người trả phòng chọn có vệ sinh sau HC → ghi title_clearning = VS-II
+     * (start_clearning để NULL, dùng nhận ra khi hoàn tác), chưa xác nhận hoàn thành → Chờ VS Sau BT như lịch BT.
+     */
+    private function releaseLocked(int $roomId, bool $cleanAfterHc = false, ?int $stagePlanId = null): array
+    {
+        [$message, $deparmentCode, $reroutePlan] = DB::transaction(function () use ($roomId, $cleanAfterHc, $stagePlanId) {
             [$room, $state, $plans] = $this->lockState($roomId, [self::BUSY, self::CLEANING]);
+            $cleanAfterHc = $cleanAfterHc && self::hcOnly($state, $plans);
+            // Phòng đôi gói đầu giữ nhiều lô sản xuất: trả phòng từng lô ($stagePlanId)
+            if ($state === self::BUSY && (int) ($room->max_parallel ?? 1) > 1
+                && !in_array((int) $room->stage_code, self::GROUP_STAGES, true) && $plans->count() > 1) {
+                if (!$stagePlanId || !$plans->contains('id', $stagePlanId)) {
+                    throw new ProductionExecutionException('⚠️ Phòng đang giữ ' . $plans->count() . ' lô gói đầu: chọn lô cần trả phòng. Đã tải lại thông tin phòng.', 409);
+                }
+                $plans = $plans->where('id', $stagePlanId)->values();
+            }
 
             $now = now();
             foreach ($plans as $p) {
                 $column = $state === self::CLEANING || !$p->maintenance ? 'actual_end_clearning' : 'actual_end';
-                $finish = $p->maintenance && ($state === self::CLEANING || !$p->title_clearning);
-                DB::table('stage_plan')->where('id', $p->id)->update([$column => $now] + ($finish ? [
+                $finish = !$cleanAfterHc && $p->maintenance && ($state === self::CLEANING || !$p->title_clearning);
+                DB::table('stage_plan')->where('id', $p->id)->update([$column => $now]
+                    + ($cleanAfterHc ? ['title_clearning' => 'VS-II'] : [])
+                    + ($finish ? [
                     'finished'      => 1,
                     'finished_date' => $now,
                     'finished_by'   => session('user')['fullName'] ?? null,
                 ] : []));
                 AuditTrialController::log($state === self::CLEANING ? 'Trả phòng vệ sinh sau BT' : 'Trả phòng', 'stage_plan', $p->id, 'NA',
-                    'Phòng ' . $room->code . ' · ' . $column . ' ' . $now->format('Y-m-d H:i:s') . ($finish ? ' · xác nhận hoàn thành' : '') . ' · ' . $p->label);
+                    'Phòng ' . $room->code . ' · ' . $column . ' ' . $now->format('Y-m-d H:i:s') . ($finish ? ' · xác nhận hoàn thành' : '')
+                    . ($cleanAfterHc ? ' · có vệ sinh sau HC' : '') . ' · ' . $p->label);
             }
 
             $after = $this->stateOf($this->planDetails(
@@ -805,7 +962,9 @@ class RoomOccupancyService
 
             return [
                 '✅ Đã trả phòng ' . $room->code . ' lúc ' . $now->format('H:i')
-                    . ($after === self::CLEAN_WAIT ? ' · phòng chuyển sang ' . self::STATE_LABELS[self::CLEAN_WAIT] : ''),
+                    . ($plans->count() === 1 && !$plans->first()->maintenance ? ' cho ' . $plans->first()->label : '')
+                    . ($after === self::CLEAN_WAIT ? ' · phòng chuyển sang ' . self::STATE_LABELS[self::CLEAN_WAIT] : '')
+                    . ($after === self::BUSY ? ' · phòng vẫn Bận với lô gói đầu' : ''),
                 $room->deparment_code,
                 [$rerouteIds, $state === self::BUSY ? 'rerouteOnRelease' : 'rerouteOnMaintenanceRelease'],
             ];
@@ -905,7 +1064,7 @@ class RoomOccupancyService
                     . (self::UNDO_SECONDS / 60) . ' phút. Đã tải lại thông tin phòng.', 409);
             }
 
-            $plans = DB::table('stage_plan')->whereIn('id', $undo->plan_ids)->get(['id', 'stage_code', 'finished', 'actual_end', 'actual_start_clearning', 'title', 'title_clearning']);
+            $plans = DB::table('stage_plan')->whereIn('id', $undo->plan_ids)->get(['id', 'stage_code', 'finished', 'actual_end', 'actual_start_clearning', 'title', 'title_clearning', 'start_clearning']);
             $labels = $this->planDetails($undo->plan_ids)->pluck('label', 'id');
             $note = '';
 
@@ -929,7 +1088,9 @@ class RoomOccupancyService
                             throw new ProductionExecutionException("❌ Lô \"$name\" đã xác nhận vệ sinh (✓✓), không hoàn tác Trả phòng được", 409);
                         }
                         $update = [$maint ? 'actual_end' : 'actual_end_clearning' => null]
-                            + ($maint && !$p->title_clearning ? self::UNFINISH : []);
+                            + ($maint && !$p->title_clearning ? self::UNFINISH : [])
+                            // HC trả phòng có chọn vệ sinh sau HC: VS-II ghi lúc trả phòng (lịch BT luôn có start_clearning) → gỡ
+                            + ($maint && $p->title_clearning && !$p->start_clearning ? ['title_clearning' => null] : []);
                         $note .= $this->undoReroute((int) $p->id, self::REROUTE_AUDIT);
                         break;
                     default: // Trả phòng vệ sinh sau BT

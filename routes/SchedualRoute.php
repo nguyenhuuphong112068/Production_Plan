@@ -18,6 +18,7 @@ use App\Http\Controllers\Pages\MaintenanceSchedual\MaintenanceSchedualController
 use App\Http\Controllers\Pages\Schedual\ShedualYieldController;
 use App\Http\Controllers\Pages\Schedual\YieldPolicyController;
 use App\Http\Controllers\Pages\Schedual\WipCoverageController;
+use App\Http\Controllers\Pages\Schedual\WeighingAssistController;
 use App\Http\Middleware\AutoLockExecution;
 use App\Http\Middleware\CheckLogin;
 use Illuminate\Support\Facades\Route;
@@ -93,6 +94,17 @@ Route::prefix('/Schedual')
 
 
                 Route::get('test', 'test')->name('test');
+        });
+
+// Sắp lịch cân bán tự động trên Gantt: nút "Lô cần cân" (lọc) + "Gợi ý lịch cân"
+Route::prefix('/Schedual/weighing')
+        ->controller(WeighingAssistController::class)
+        ->name('pages.Schedual.weighing.')
+        ->middleware(CheckLogin::class)
+        ->group(function () {
+                Route::post('status', 'status')->name('status');
+                Route::post('suggest', 'suggest')->name('suggest');
+                Route::put('apply', 'apply')->middleware(AutoLockExecution::class)->name('apply');
         });
 
 Route::prefix('/Schedual')
@@ -257,6 +269,7 @@ Route::prefix('/Schedual')
                                 Route::post('release', 'release')->name('release');
                                 Route::post('receive_cleaning', 'receiveCleaning')->name('receive_cleaning');
                                 Route::post('undo', 'undo')->name('undo');
+                                Route::post('change_product', 'changeProduct')->name('change_product');
                                 // Công tắc tịnh tuyến lịch: trang Xác nhận hoàn thành đang dùng
                                 Route::post('reroute_switch', 'rerouteSwitch')->name('reroute_switch');
                         });
@@ -273,6 +286,7 @@ Route::prefix('/Schedual')
                                 Route::post('release', 'release')->name('release');
                                 Route::post('receive_cleaning', 'receiveCleaning')->name('receive_cleaning');
                                 Route::post('undo', 'undo')->name('undo');
+                                Route::post('change_product', 'changeProduct')->name('change_product');
                         });
 
                 Route::prefix('/quarantine_room')

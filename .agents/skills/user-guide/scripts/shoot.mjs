@@ -20,6 +20,7 @@ const READ_ONLY_POST = [
     /^\/Schedual\/view$/,              // SchedualController::view - đọc lịch, tài nguyên, danh sách KHSX
     /^\/MaintenanceSchedual\/view$/,   // MaintenanceSchedualController::view - đọc lịch HC-BT, danh sách chờ
     /^\/Schedual\/wip_coverage\/(view|room_view|detail)$/, // WipCoverageController - tính tồn lý thuyết (WipCoverageService chỉ đọc)
+    /^\/Schedual\/weighing\/(status|suggest)$/, // WeighingAssistController - lô cần cân / gợi ý lịch cân (chỉ đọc; apply là PUT, vẫn chặn)
 ];
 
 const here = dirname(fileURLToPath(import.meta.url));

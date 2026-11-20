@@ -84,6 +84,7 @@
                 receive: @json(route('pages.Schedual.execution.receive')),
                 release: @json(route('pages.Schedual.execution.release')),
                 receiveCleaning: @json(route('pages.Schedual.execution.receive_cleaning')),
+                changeProduct: @json(route('pages.Schedual.execution.change_product')),
                 undo: @json(route('pages.Schedual.execution.undo')),
                 history: @json(route('pages.Schedual.execution.history')),
             };

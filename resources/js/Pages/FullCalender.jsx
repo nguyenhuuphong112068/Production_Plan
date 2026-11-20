@@ -32,6 +32,7 @@ import NoteModal from '../Components/NoteModal';
 import { wipControlSectionHtml, initWipControl, collectWipControl, hasWipLimits, runWipControl } from '../Plugins/WipControl';
 import { useLotLinks } from '../Plugins/LotLinks'; // LotLinks (thử nghiệm)
 import { useRoomWip, isRoomWipRow, RoomWipToggle } from '../Plugins/RoomWip'; // RoomWip (thử nghiệm)
+import { useWeighAssist, WeighAssistBar } from '../Plugins/WeighAssist'; // WeighAssist: sắp lịch cân bán tự động
 
 //import History from '../Components/History';
 //import { CheckAuthorization } from '../Components/CheckAuthorization';
@@ -6769,6 +6770,26 @@ const ScheduleTest = () => {
   const lotLinks = useLotLinks(calendarRef, activePlanMasterIds, events); // LotLinks (thử nghiệm)
   const roomWip = useRoomWip(calendarRef, events); // RoomWip (thử nghiệm)
 
+  // WeighAssist: nút "⚖ Lô cần cân" (lọc) + "Gợi ý lịch cân"
+  const selectWeighEvents = useCallback((list) => {
+    clearAllEventSelection();
+    setSelectedEvents(list);
+    selectedEventsRef.current = list;
+    list.forEach(sel => markEventSelected(document.querySelector(`.fc-event[data-event-id="${sel.id}"]`)));
+  }, []);
+  const applyWeighResult = useCallback((data) => {
+    if (data.events) setEvents(data.events);
+    if (data.plan) setPlan(data.plan);
+    if (data.sumBatchByStage) setSumBatchByStage(data.sumBatchByStage);
+    clearAllEventSelection();
+    setSelectedEvents([]);
+    selectedEventsRef.current = [];
+  }, []);
+  const weighAssist = useWeighAssist({
+    calendarRef, events, resources, authorization, selectedEvents,
+    onSelect: selectWeighEvents, onApplied: applyWeighResult,
+  });
+
   const calendarEvents = useMemo(() => {
     const base = [
       ...events,                     // event sản xuất
@@ -6786,6 +6807,7 @@ const ScheduleTest = () => {
     if (!showPersonnel) {
       baseRes = baseRes.filter(r => !r.is_personnel_sub);
     }
+    const beforeUserFilter = baseRes; // WeighAssist: phòng cân luôn hiện khi bật "Lô cần cân"
     if (selectedStagesFilter && selectedStagesFilter.length > 0) {
       baseRes = baseRes.filter(r => selectedStagesFilter.includes(r.stage_name));
     }
@@ -6793,8 +6815,9 @@ const ScheduleTest = () => {
       baseRes = baseRes.filter(r => selectedRoomsFilter.includes(r.title));
     }
     baseRes = lotLinks.filterResources(baseRes); // LotLinks (thử nghiệm): Ctrl + double-click ẩn phòng không liên quan
+    baseRes = weighAssist.filterResources(baseRes, beforeUserFilter); // WeighAssist: chỉ phòng cân + phòng có lô cần cân
     return roomWip.resources(baseRes); // RoomWip (thử nghiệm): thêm dòng con Tồn chờ vào
-  }, [resources, showPersonnel, selectedStagesFilter, selectedRoomsFilter, roomWip.resources, lotLinks.filterResources]);
+  }, [resources, showPersonnel, selectedStagesFilter, selectedRoomsFilter, roomWip.resources, lotLinks.filterResources, weighAssist.filterResources]);
 
   const handleConfirmClearningValidation = (e) => {
     const ids = selectedEvents.map(row =>
@@ -7087,6 +7110,7 @@ const ScheduleTest = () => {
     undoStack.length,
     overlapIds,
     roomWip.highlight, // RoomWip (thử nghiệm)
+    weighAssist.on, weighAssist.targets, // WeighAssist
   ];
 
   return (
@@ -7181,6 +7205,7 @@ const ScheduleTest = () => {
             </div>
           )}
           <RoomWipToggle roomWip={roomWip} />{/* RoomWip (thử nghiệm) */}
+          <WeighAssistBar wa={weighAssist} />{/* WeighAssist: lọc lô cần cân + gợi ý lịch cân */}
           {moldWarningEvents.length > 0 && (
             <div
               className="flex align-items-center gap-2 bg-yellow-100 text-yellow-800 px-3 py-1 border-round-2xl shadow-1 border-1 border-yellow-300 cursor-pointer hover:bg-yellow-200 transition-colors"
@@ -7267,6 +7292,7 @@ const ScheduleTest = () => {
             }
 
             classes.push(...roomWip.classesFor(arg.event)); // RoomWip (thử nghiệm): sáng lô nguồn / tiêu thụ
+            classes.push(...weighAssist.classesFor(arg.event)); // WeighAssist: ẩn lô không cần chuẩn bị cân, huy hiệu ⚖
 
             // Active Plan Master IDs focusing (logic from line 2956)
             if (activePlanMasterIds.length > 0) {

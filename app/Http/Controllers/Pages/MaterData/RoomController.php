@@ -111,6 +111,8 @@ class RoomController extends Controller
                         'main_equiment_name' => $request->main_equiment_name,
                         'capacity' => $request->capacity,
                         'blister_type_code' => $this->machineTypeFor($room->stage_code, $request->blister_type_code),
+                        // Phòng đôi gói đầu: số lô sản xuất giữ phòng cùng lúc ở Thực Thi Sản Xuất (1 hoặc 2)
+                        'max_parallel' => $request->filled('max_parallel') ? max(1, min(2, (int) $request->max_parallel)) : ($room->max_parallel ?? 1),
 
                         'prepareBy' => session('user')['fullName'],
                         'updated_at' => now(),
