@@ -42,5 +42,36 @@
         </ul>
     </div>
 </div>
+<h3>Cảnh báo khi Nhận / Trả phòng bị chặn</h3>
+<p>
+    Nhận phòng, Trả phòng và Hoàn tác có thể <b>dời lịch</b> các lô sau (tịnh tuyến lịch). Để lịch không bị ghi đè lẫn nhau,
+    phần mềm chặn thao tác trong các trường hợp dưới đây. Khi gặp các cảnh báo này, thao tác <b>chưa được lưu</b>: chờ rồi bấm lại.
+</p>
+
+<h4>1. Người sắp lịch đang khóa (Khóa TTSX)</h4>
+<p>
+    Người sắp lịch bật <b>Khóa TTSX</b> trên Gantt (hoặc phần mềm tự khóa khi họ sửa lịch thủ công mà quên khóa). Đầu trang
+    Thực Thi hiện dải vàng, và bấm Nhận / Trả phòng sẽ báo lỗi. Khóa tự mở khi người sắp lịch mở khóa hoặc không sắp lịch thêm
+    10 phút.
+</p>
+@include('pages.userGuide.shared.shot', ['src' => 'img/userGuide/schedual/canh-bao-banner-khoa.png', 'caption' => 'Dải cảnh báo đầu trang khi phân xưởng đang bị khóa'])
+<div class="ug-shot-row">
+    @include('pages.userGuide.shared.shot', ['src' => 'img/userGuide/schedual/canh-bao-khoa-ttsx.png', 'caption' => 'Người sắp lịch đang khóa TTSX'])
+    @include('pages.userGuide.shared.shot', ['src' => 'img/userGuide/schedual/canh-bao-sap-lich-tu-dong.png', 'caption' => 'Phân xưởng đang chạy sắp lịch tự động'])
+</div>
+
+<h4>2. Nhiều người Nhận / Trả phòng cùng lúc</h4>
+<ul>
+    <li>Hai phòng cùng phân xưởng bấm cùng lúc và cùng phải dời lịch: các thao tác chạy <b>lần lượt</b>, người sau chờ người
+        trước dời lịch xong. Thường chỉ chờ vài giây.</li>
+    <li>Chờ quá <b>60 giây</b>: thông báo <i>"đang có thao tác khác tịnh tuyến lịch… CHƯA được lưu"</i>, bấm lại.</li>
+    <li>Hai người cùng bấm trên <b>một phòng</b>: người bấm sau nhận thông báo phòng đã đổi trạng thái; thẻ phòng tự tải lại,
+        kiểm tra rồi thao tác tiếp nếu cần.</li>
+</ul>
+<div class="ug-shot-row">
+    @include('pages.userGuide.shared.shot', ['src' => 'img/userGuide/schedual/canh-bao-dang-tinh-tuyen.png', 'caption' => 'Phòng khác đang dời lịch quá 60 giây'])
+    @include('pages.userGuide.shared.shot', ['src' => 'img/userGuide/schedual/canh-bao-nguoi-khac-vua-thao-tac.png', 'caption' => 'Người khác vừa thao tác trên cùng phòng'])
+</div>
+
 <p class="text-muted small">Sản lượng thực tế, số thùng xác nhận ở <a href="#xac-nhan-hoan-thanh">Xác Nhận Hoàn Thành</a>.
     Màn hình xem nhanh <i>Trạng Thái · Sản Xuất</i> trên trang đăng nhập hiển thị đúng bảng này, không cần đăng nhập.</p>
