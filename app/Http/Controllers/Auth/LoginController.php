@@ -29,6 +29,9 @@ class LoginController extends Controller
 
         // $hash = Hash::make("Abc@123"); //  password_hash("Abc@123", PASSWORD_DEFAULT);
 
+        // Bàn phím máy tính bảng hay chèn khoảng trắng đầu/cuối tên đăng nhập
+        $request->merge(['username' => trim((string) $request->username)]);
+
         $getUser = DB::table('user_management')->where('userName', '=', $request->username)->first();
 
         if (is_null($getUser)) {

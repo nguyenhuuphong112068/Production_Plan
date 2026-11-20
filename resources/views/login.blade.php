@@ -340,6 +340,7 @@
                 <div class="mb-4">
                     <label for="username" class="form-label">Tài khoản</label>
                     <input type="text" name="username" class="form-control" placeholder="Nhập tên đăng nhập" required
+                        autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false"
                         autofocus value="{{ old('username') }}">
                 </div>
 
@@ -347,6 +348,7 @@
                     <label for="loginPassword" class="form-label">Mật khẩu</label>
                     <div class="password-wrapper">
                         <input type="password" id="loginPassword" name="passWord" class="form-control"
+                            autocomplete="current-password" autocapitalize="none" autocorrect="off" spellcheck="false"
                             placeholder="••••••••" required>
                         <i class="bi bi-eye-slash toggle-password" onclick="togglePassword('loginPassword', this)"></i>
                     </div>
