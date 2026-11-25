@@ -36,6 +36,14 @@ INSERT INTO `permissions` (`permission_group`, `name`, `display_name`, `descript
 SELECT 15, 'coc_tracking_update', 'Nhập Ngày Lập Phiếu COC', 'Nhập / sửa Ngày Lập Phiếu COC trên trang Theo Dõi Xuất Kho EU (chỉ lô đã xuất kho)', NOW(), NOW()
 WHERE NOT EXISTS (SELECT 1 FROM `permissions` WHERE `name` = 'coc_tracking_update');
 
+-- Đã có sẵn thì cập nhật lại (giống updateOrInsert của migration)
+UPDATE `permissions`
+   SET `permission_group` = 15,
+       `display_name` = 'Nhập Ngày Lập Phiếu COC',
+       `description` = 'Nhập / sửa Ngày Lập Phiếu COC trên trang Theo Dõi Xuất Kho EU (chỉ lô đã xuất kho)',
+       `updated_at` = NOW()
+ WHERE `name` = 'coc_tracking_update';
+
 INSERT INTO `role_permission` (`role_id`, `permission_id`)
 SELECT `r`.`id`, `p`.`id`
   FROM `roles` `r`
@@ -48,3 +56,10 @@ SELECT `p`.`id`, `p`.`name`, COUNT(`rp`.`role_id`) AS `so_nhom_quyen`
   FROM `permissions` `p` LEFT JOIN `role_permission` `rp` ON `rp`.`permission_id` = `p`.`id`
  WHERE `p`.`name` = 'coc_tracking_update'
  GROUP BY `p`.`id`, `p`.`name`;
+
+-- GỠ BỎ (tương đương down() của migration) - chỉ chạy khi cần huỷ:
+-- DELETE FROM `role_permission` WHERE `permission_id` IN (SELECT `id` FROM `permissions` WHERE `name` = 'coc_tracking_update');
+-- DELETE FROM `user_permission` WHERE `permission_id` IN (SELECT `id` FROM `permissions` WHERE `name` = 'coc_tracking_update');
+-- DELETE FROM `permissions` WHERE `name` = 'coc_tracking_update';
+-- DROP TABLE IF EXISTS `plan_master_coc_history`;
+-- DROP TABLE IF EXISTS `plan_master_coc`;

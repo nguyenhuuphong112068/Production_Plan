@@ -584,6 +584,11 @@
                             </td>
 
                             <td class="text-center align-middle">
+                                <button type="button" class="btn btn-info btn-view mb-2" title="Xem thông tin lô"
+                                    data-id="{{ $data->id }}">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+
                                 <button type="button" class="btn btn-warning btn-edit mb-2" {{ $auth_update }}
                                     {{ $data->active ? '' : 'disabled' }} data-id="{{ $data->id }}"
                                     data-name="{{ $data->finished_product_name }}"
@@ -1099,8 +1104,34 @@
             document.body.style.overflowY = "auto";
             preventDoubleSubmit("#send_form", "#send_btn");
 
+            // Nút 👁: mở modal Sửa ở chế độ chỉ xem (khoá mọi ô, ẩn nút Lưu — xem update.blade.php)
+            $(document).on('click', '.btn-view', function() {
+                const row = $(this).closest('tr');
+                const editBtn = row.find('.btn-edit');
+                const modal = $('#updateModal');
+                fillUpdateModal(editBtn);
+
+                // Các ngày ràng buộc lấy đúng giá trị đang hiện trên dòng
+                ['expected_date', 'after_weigth_date', 'after_parkaging_date', 'allow_weight_before_date',
+                    'expired_material_date', 'expired_packing_date', 'preperation_before_date',
+                    'blending_before_date', 'forming_before_date', 'coating_before_date'
+                ].forEach(function(name) {
+                    const src = row.find('.updateInput[name="' + name + '"]');
+                    if (src.length) modal.find('input[name="' + name + '"]').val(src.val());
+                });
+                modal.find('textarea[name="note"]').val($.trim(row.find('textarea.updateInput[name="note"]')
+                    .val() ?? editBtn.data('note')));
+
+                modal.data('viewOnly', true);
+                modal.modal('show');
+            });
+
             $('.btn-edit').click(function() {
-                const button = $(this);
+                $('#updateModal').data('viewOnly', false);
+                fillUpdateModal($(this));
+            });
+
+            function fillUpdateModal(button) {
                 const modal = $('#updateModal');
 
                 //bỏ tick thẩm định
@@ -1159,7 +1190,7 @@
                     'intermediate_code'));
                 create_soure_modal.find('input[name="product_name"]').val(button.data('name'));
                 create_soure_modal.find('input[name="mode"]').val("update");
-            });
+            }
 
             $('.btn-splitting').click(function() {
                 const button = $(this);

@@ -39,5 +39,8 @@
 <p>
     Cột <b>Tình Trạng</b> lọc được theo Hủy / Chưa làm / Đã Cân / Đã Pha chế / Đã THT / Đã định hình / Đã Bao phim / Hoàn Tất ĐG.
     Ô <b>Ưu Tiên/KH</b> sửa trực tiếp (số nguyên dương) - đây là thứ tự ưu tiên khi sắp lịch nhóm thương mại.
+    Nút <span class="btn btn-sm btn-info ug-ui"><i class="fas fa-eye"></i></span> ở cột <b>Cập Nhật/Vô Hiệu</b> mở hộp thoại
+    thông tin lô (ngày ràng buộc, mức ưu tiên, lô thẩm định, công thức NL/BB đã chọn) ở chế độ <b>chỉ xem</b> - không sửa
+    và không có nút Lưu, dùng được cả khi không có quyền sửa hay KH đã gửi.
     Nút <span class="btn btn-sm btn-info ug-ui"><i class="fas fa-history"></i></span> xem lịch sử thay đổi của lô.
 </p>

@@ -68,6 +68,14 @@
     .step-checkbox:checked {
         box-shadow: 0 0 5px #007bff;
     }
+
+    /* Chế độ chỉ xem: checkbox/radio giữ màu nhưng không bấm được */
+    #updateModal.view-only .modal-body input[type="checkbox"],
+    #updateModal.view-only .modal-body input[type="radio"],
+    #updateModal.view-only .modal-body input[type="checkbox"]+label,
+    #updateModal.view-only .modal-body input[type="radio"]+label {
+        cursor: default !important;
+    }
 </style>
 
 <!-- Modal -->
@@ -490,6 +498,46 @@
             $(this).bootstrapSwitch('state', $(this).prop('checked'));
         });
 
+        // ===== Chế độ chỉ xem (nút 👁 ở dataTable.blade.php đặt data('viewOnly')) =====
+        const updateTitleDefault = $('#pModalLabel').text();
+
+        function applyUpdateModalViewOnly() {
+            const modal = $('#updateModal');
+            if (!modal.data('viewOnly')) return;
+            // Checkbox / radio không disable (giữ màu) - chặn đổi bằng handler click bên dưới
+            modal.find('.modal-body').find('input, textarea, select, button')
+                .not(':disabled').not('[type="checkbox"], [type="radio"]')
+                .prop('disabled', true).addClass('view-only-locked');
+        }
+
+        $(document).on('click keydown',
+            '#updateModal.view-only input[type="checkbox"], #updateModal.view-only input[type="radio"]',
+            function(e) {
+                if (e.type === 'keydown' && e.key !== ' ' && e.key !== 'Enter') return;
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                return false;
+            });
+
+        $('#updateModal').on('show.bs.modal', function(e) {
+            if (e.target !== this) return;
+            const viewOnly = !!$(this).data('viewOnly');
+            $(this).toggleClass('view-only', viewOnly);
+            $('#pModalLabel').text(viewOnly ? 'Xem Thông Tin Lô' : updateTitleDefault);
+            $(this).find('#btnSave').toggle(!viewOnly);
+            $(this).find('input[name="format_batch_no"]').bootstrapSwitch('disabled', viewOnly);
+            applyUpdateModalViewOnly();
+        });
+
+        $('#updateModal').on('hidden.bs.modal', function(e) {
+            if (e.target !== this) return;
+            $(this).find('.view-only-locked').prop('disabled', false).removeClass('view-only-locked');
+            $(this).find('input[name="format_batch_no"]').bootstrapSwitch('disabled', false);
+            $(this).find('#btnSave').show();
+            $('#pModalLabel').text(updateTitleDefault);
+            $(this).removeClass('view-only').data('viewOnly', false);
+        });
+
         // Nếu muốn khi modal mở mới khởi tạo
         $('#updateModal').on('shown.bs.modal', function() {
 
@@ -630,6 +678,8 @@
                     );
                 }
             });
+
+            $.when(req1, req2).always(applyUpdateModalViewOnly);
 
             $.when(req1, req2).done(function() {
                 let intermediateCode = $('#updateModal').find('input[name="intermediate_code"]')
