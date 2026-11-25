@@ -32,7 +32,7 @@ import NoteModal from '../Components/NoteModal';
 import { wipControlSectionHtml, initWipControl, collectWipControl, hasWipLimits, runWipControl } from '../Plugins/WipControl';
 import { useLotLinks } from '../Plugins/LotLinks'; // LotLinks (thử nghiệm)
 import { useRoomWip, isRoomWipRow, RoomWipToggle } from '../Plugins/RoomWip'; // RoomWip (thử nghiệm)
-import { useWeighAssist, WeighAssistBar, followWeighCleaning, placeWeighCleaning } from '../Plugins/WeighAssist'; // WeighAssist: sắp lịch cân bán tự động
+import { useWeighAssist, WeighAssistBar, followWeighCleaning, placeWeighCleaning, weighKindClass } from '../Plugins/WeighAssist'; // WeighAssist: sắp lịch cân bán tự động
 
 //import History from '../Components/History';
 //import { CheckAuthorization } from '../Components/CheckAuthorization';
@@ -7496,6 +7496,8 @@ const ScheduleTest = () => {
 
             classes.push(...roomWip.classesFor(arg.event)); // RoomWip (thử nghiệm): sáng lô nguồn / tiêu thụ
             classes.push(...weighAssist.classesFor(arg.event)); // WeighAssist: ẩn lô không cần chuẩn bị cân, huy hiệu ⚖
+            const weighKind = weighKindClass(arg.event); // nhãn loại cân phía trên thanh lịch: NL PC / Nang rỗng / NL BP
+            if (weighKind) classes.push('fc-weigh-kind', weighKind);
 
             // Active Plan Master IDs focusing (logic from line 2956)
             if (activePlanMasterIds.length > 0) {

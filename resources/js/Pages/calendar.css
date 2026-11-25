@@ -442,6 +442,41 @@ input:checked + .slider:before {
   background: #0ea5e9;
 }
 
+/* Nhãn loại lịch cân phía trên bên trái thanh lịch cân (weighKindClass trong Plugins/WeighAssist):
+   NL PC / NL THT (Cân NL), Nang rỗng / NL BP / NL ĐG (Cân NL khác). Dùng ::before như huy hiệu ⚖
+   (huy hiệu ⚖ chỉ gắn vào lô công đoạn sau, không bao giờ vào lịch cân nên không đụng nhau). */
+.fc-event.fc-weigh-kind {
+  overflow: visible;
+}
+
+.fc-event.fc-weigh-kind::before {
+  position: absolute;
+  top: -11px;
+  left: 2px;
+  height: 14px;
+  padding: 0 4px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  box-sizing: border-box;
+  border-radius: 7px;
+  border: 1px solid #ffffff;
+  color: #ffffff;
+  font-size: 9.5px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  box-shadow: 0 0 2px rgba(0, 0, 0, .5);
+  pointer-events: none;
+  z-index: 29;
+}
+
+.fc-event.fc-weigh-kind-pc::before { content: "🧪 NL PC"; background: #1d4ed8; }
+.fc-event.fc-weigh-kind-tht::before { content: "🧪 NL THT"; background: #1d4ed8; }
+.fc-event.fc-weigh-kind-nang::before { content: "💊 Nang rỗng"; background: #7e22ce; }
+.fc-event.fc-weigh-kind-bp::before { content: "🖌️ NL BP"; background: #be185d; }
+.fc-event.fc-weigh-kind-dg::before { content: "📦 NL ĐG"; background: #475569; }
+
 .group {
   position: relative;
 }

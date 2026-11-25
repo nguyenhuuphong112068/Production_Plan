@@ -23,6 +23,22 @@
     có lịch nhưng chưa nhận phòng / chưa hoàn thành.
 </p>
 
+<h3>Nhãn loại cân trên lịch cân</h3>
+<p>
+    Mỗi thanh lịch cân (kể cả khối cân nháp) có một nhãn nhỏ ở mép trên bên trái, cho biết nguyên liệu cân cấp cho công đoạn nào:
+</p>
+<div class="table-responsive">
+    <table class="table table-bordered ug-table">
+        <thead><tr><th style="width: 180px">Nhãn</th><th>Ý nghĩa</th></tr></thead>
+        <tbody>
+            <tr><td><span class="badge" style="background:#1d4ed8;color:#fff">🧪 NL PC</span></td><td>Cân NL cho <b>PC</b> (<span class="badge" style="background:#1d4ed8;color:#fff">🧪 NL THT</span>: lô không có PC, cấp thẳng cho <b>THT</b>).</td></tr>
+            <tr><td><span class="badge" style="background:#7e22ce;color:#fff">💊 Nang rỗng</span></td><td>Cân NL khác: nang rỗng cho <b>ĐH</b>.</td></tr>
+            <tr><td><span class="badge" style="background:#be185d;color:#fff">🖌️ NL BP</span></td><td>Cân NL khác: nguyên liệu (tá dược) cho <b>BP</b>.</td></tr>
+            <tr><td><span class="badge" style="background:#475569;color:#fff">📦 NL ĐG</span></td><td>Cân NL khác cho <b>ĐG</b> (rất ít lô).</td></tr>
+        </tbody>
+    </table>
+</div>
+
 <h3>Nút "⚖ Lô cần cân": chỉ hiện lô cần chuẩn bị cân</h3>
 @include('pages.userGuide.shared.shot', ['src' => 'img/userGuide/schedual/sap-lich-can.png', 'caption' => 'Đang bật ⚖ Lô cần cân: chỉ còn phòng cân và các phòng có lô cần chuẩn bị cân'])
 <ul>

@@ -58,6 +58,27 @@ const nextStageIds = (selected) => [...new Set((selected || [])
   .map((s) => Number(planId(s.id)))
   .filter(Boolean))];
 
+/**
+ * Loại lịch cân để gắn nhãn phía trên thanh lịch (yêu cầu user 25/11/2026): NL PC / NL THT (Cân NL, stage 1),
+ * Nang rỗng (Cân NL khác → ĐH), NL BP (Cân NL khác → BP), NL ĐG (Cân NL khác → ĐG, hiếm). Theo công đoạn nhận
+ * (hậu tố nextcessor_code; khối nháp mang next_stage), thiếu thì theo hậu tố tên lịch "-Nang Rỗng" / "-Tá dược BP".
+ * Trả class CSS fc-weigh-kind-* (calendar.css) hoặc null với lịch không phải cân / vệ sinh.
+ */
+export function weighKindClass(event) {
+  const p = event?.extendedProps || {};
+  const stage = Number(p.stage_code);
+  if (!WEIGH_STAGES.includes(stage) || p.is_clearning) return null;
+  const next = Number(p.next_stage ?? String(p.nextcessor_code ?? '').split('_').pop()) || null;
+  if (stage === 1) return next === 4 ? 'fc-weigh-kind-tht' : 'fc-weigh-kind-pc';
+  if (next === 5) return 'fc-weigh-kind-nang';
+  if (next === 6) return 'fc-weigh-kind-bp';
+  if (next === 7) return 'fc-weigh-kind-dg';
+  const title = String(event.title || '');
+  if (/Nang Rỗng$/i.test(title)) return 'fc-weigh-kind-nang';
+  if (/Tá dược BP$/i.test(title)) return 'fc-weigh-kind-bp';
+  return null;
+}
+
 /** Khối gợi ý -> 2 sự kiện nháp (cân + vệ sinh), cùng dạng sự kiện thật của getEvents */
 const draftPair = (b) => {
   const base = b.lots.map((l) => l.id).join(',');
@@ -81,6 +102,7 @@ const draftPair = (b) => {
     product_name: first.product_name,
     batch_name: b.lots.map((l) => l.batch).join(', '),
     code: first.code,
+    next_stage: first.next_stage,  // nhãn loại cân (weighKindClass)
     title_clearning: b.clearning_type,
     is_weigh_draft: true,
   };

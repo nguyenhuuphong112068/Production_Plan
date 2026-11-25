@@ -912,6 +912,7 @@ class SchedualController extends Controller
                         'actual_batch' => $plan->actual_batch,
                         'code' => $plan->code,
                         'predecessor_code' => $plan->predecessor_code,
+                        'nextcessor_code' => $plan->nextcessor_code,
                         'schedualed_by' => $plan->schedualed_by,
                         'title_clearning' => $plan->title_clearning,
                         'mold_warning' => $mold_warning,
@@ -957,6 +958,7 @@ class SchedualController extends Controller
                         'actual_batch' => $plan->actual_batch,
                         'code' => $plan->code,
                         'predecessor_code' => $plan->predecessor_code,
+                        'nextcessor_code' => $plan->nextcessor_code,
                         'expected_date' => $plan->expected_date ? Carbon::parse($plan->expected_date)->format('Y-m-d') : null,
                         'title_clearning' => $plan->title_clearning,
                     ]);
@@ -972,6 +974,7 @@ class SchedualController extends Controller
                         'end' => $plan->end,
                         'code' => $plan->code,
                         'predecessor_code' => $plan->predecessor_code,
+                        'nextcessor_code' => $plan->nextcessor_code,
                         'resourceId' => $plan->resourceId,
                         'color' => '#aed9f1',
                         'textColor' => '#003A4F',
@@ -1035,6 +1038,7 @@ class SchedualController extends Controller
                             'actual_batch' => $plan->actual_batch,
                             'code' => $plan->code,
                             'predecessor_code' => $plan->predecessor_code,
+                            'nextcessor_code' => $plan->nextcessor_code,
                             'expected_date' => $plan->expected_date ? Carbon::parse($plan->expected_date)->format('Y-m-d') : null,
                             'mold_warning' => $mold_warning,
                             'blister_mold_code' => $plan->blister_mold_code ?? $mold_code,
@@ -1073,6 +1077,7 @@ class SchedualController extends Controller
                                 'actual_batch' => $plan->actual_batch,
                                 'code' => $plan->code,
                                 'predecessor_code' => $plan->predecessor_code,
+                                'nextcessor_code' => $plan->nextcessor_code,
                                 'expected_date' => $plan->expected_date ? Carbon::parse($plan->expected_date)->format('Y-m-d') : null,
                                 'title_clearning' => $plan->title_clearning,
                             ]);
@@ -1110,6 +1115,7 @@ class SchedualController extends Controller
                                 'actual_batch' => $plan->actual_batch,
                                 'code' => $plan->code,
                                 'predecessor_code' => $plan->predecessor_code,
+                                'nextcessor_code' => $plan->nextcessor_code,
                                 'expected_date' => $plan->expected_date ? Carbon::parse($plan->expected_date)->format('Y-m-d') : null,
 
                             ]);
@@ -1138,6 +1144,7 @@ class SchedualController extends Controller
                                 'actual_batch' => $plan->actual_batch,
                                 'code' => $plan->code,
                                 'predecessor_code' => $plan->predecessor_code,
+                                'nextcessor_code' => $plan->nextcessor_code,
                                 'expected_date' => $plan->expected_date ? Carbon::parse($plan->expected_date)->format('Y-m-d') : null,
 
                             ]);
@@ -1173,6 +1180,7 @@ class SchedualController extends Controller
                             'actual_batch' => $plan->actual_batch,
                             'code' => $plan->code,
                             'predecessor_code' => $plan->predecessor_code,
+                            'nextcessor_code' => $plan->nextcessor_code,
                             'expected_date' => $plan->expected_date ? Carbon::parse($plan->expected_date)->format('Y-m-d') : null,
                             'title_clearning' => $plan->title_clearning,
                         ]);
@@ -1200,6 +1208,7 @@ class SchedualController extends Controller
                                 'actual_batch' => $plan->actual_batch,
                                 'code' => $plan->code,
                                 'predecessor_code' => $plan->predecessor_code,
+                                'nextcessor_code' => $plan->nextcessor_code,
                                 'expected_date' => $plan->expected_date ? Carbon::parse($plan->expected_date)->format('Y-m-d') : null,
                                 'title_clearning' => $plan->title_clearning,
                             ]);
@@ -1236,6 +1245,7 @@ class SchedualController extends Controller
                                 'actual_batch' => $plan->actual_batch,
                                 'code' => $plan->code,
                                 'predecessor_code' => $plan->predecessor_code,
+                                'nextcessor_code' => $plan->nextcessor_code,
                                 'expected_date' => $plan->expected_date ? Carbon::parse($plan->expected_date)->format('Y-m-d') : null,
                                 'title_clearning' => $plan->title_clearning,
                             ]);
@@ -1264,6 +1274,7 @@ class SchedualController extends Controller
                                 'actual_batch' => $plan->actual_batch,
                                 'code' => $plan->code,
                                 'predecessor_code' => $plan->predecessor_code,
+                                'nextcessor_code' => $plan->nextcessor_code,
                                 'expected_date' => $plan->expected_date ? Carbon::parse($plan->expected_date)->format('Y-m-d') : null,
                                 'title_clearning' => $plan->title_clearning,
                             ]);
