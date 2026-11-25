@@ -1,10 +1,11 @@
 <?php
 
 use App\Http\Middleware\CheckLogin;
+use App\Http\Middleware\RestrictWeighingScheduler;
 use App\Plugins\WipControl\Http\WipControlController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['web', CheckLogin::class])
+Route::middleware(['web', CheckLogin::class, RestrictWeighingScheduler::class])
     ->prefix('/Schedual/wip-control')
     ->name('plugins.wip_control.')
     ->controller(WipControlController::class)

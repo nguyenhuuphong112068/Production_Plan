@@ -17,6 +17,21 @@
                     Chuyển sang phân xưởng khác (menu chọn phân xưởng PXV1, PXV2...) thì chỉ xem.</td>
             </tr>
             <tr>
+                <td>Nhóm quyền chính <b>Weighing Scheduler</b> (Người Lập Lịch Cân - sắp lịch trung tâm cân)</td>
+                <td>Chỉ sắp lịch <b>công đoạn cân</b>, cùng điều kiện phân xưởng như Schedualer:
+                    <ul style="margin: 4px 0 0 18px; padding: 0">
+                        <li>Thả lô cân từ danh sách KHSX, kéo thả / kéo dài, sửa nhanh <span class="ug-emoji">✏️</span>, xoá <span class="ug-emoji">🚫</span>,
+                            lưu <span class="ug-emoji">💾</span> và <a href="#sap-lich-can">gợi ý lịch cân</a> - chỉ với lịch cân, chỉ vào phòng cân.
+                            Lịch các công đoạn khác không kéo được; chọn lẫn lịch khác rồi kéo / xoá thì phần mềm báo và không làm.</li>
+                        <li>Bấm <span class="ug-emoji">📤</span> <b>Submit</b> chỉ submit <b>lịch cân</b>; lịch các công đoạn khác giữ nguyên chưa submit,
+                            chờ Schedualer submit. Phần kiểm tra trước khi Submit chỉ xét lịch cân, không xét chính sách sản lượng.</li>
+                        <li>Không có nút tịnh tiến <span class="ug-emoji">🔀</span> (dời cả công đoạn sau), sắp lịch tự động <span class="ug-emoji">🤖</span>,
+                            xoá hàng loạt <span class="ug-emoji">🗑️</span>, chấp nhận biệt trữ <span class="ug-emoji">✅</span>, thẩm định / cấp vệ sinh
+                            <span class="ug-emoji">🚿 🆚</span>. Các thao tác khác của danh sách KHSX (thứ tự, chiến dịch, không sắp...) bị từ chối.</li>
+                    </ul>
+                </td>
+            </tr>
+            <tr>
                 <td>Tài khoản thuộc phòng ban <b>BOD</b></td>
                 <td>Sửa lịch ở mọi phân xưởng.</td>
             </tr>

@@ -393,12 +393,14 @@ input:checked + .slider:before {
    Cam = chưa có lịch cân, xanh = đã có lịch cân (chưa cân xong).
    Dùng ::before vì outline đã dành cho "đang chọn" / "trùng giờ", ::after cho tick Lead. */
 .fc-event.fc-weigh-need,
-.fc-event.fc-weigh-planned {
+.fc-event.fc-weigh-planned,
+.fc-event.fc-weigh-drafted {
   overflow: visible;
 }
 
 .fc-event.fc-weigh-need::before,
-.fc-event.fc-weigh-planned::before {
+.fc-event.fc-weigh-planned::before,
+.fc-event.fc-weigh-drafted::before {
   content: "\2696\FE0E"; /* ⚖ dạng chữ (FE0E) để tô trắng được, không hiện emoji màu vàng */
   font-family: "Segoe UI Symbol", "DejaVu Sans", sans-serif;
   position: absolute;
@@ -421,12 +423,23 @@ input:checked + .slider:before {
   z-index: 30;
 }
 
+/* Khối cân NHÁP do "Gợi ý lịch cân" thêm lên Gantt, chưa lưu (viền trắng nét đứt bên trong) */
+.fc-event.fc-weigh-draft {
+  outline: 2px dashed #ffffff;
+  outline-offset: -4px;
+}
+
 .fc-event.fc-weigh-need::before {
   background: #ea580c;
 }
 
 .fc-event.fc-weigh-planned::before {
   background: #16a34a;
+}
+
+/* Lô đã có khối cân NHÁP (chưa lưu): cùng màu khối nháp (DRAFT_COLOR trong Plugins/WeighAssist) */
+.fc-event.fc-weigh-drafted::before {
+  background: #0ea5e9;
 }
 
 .group {

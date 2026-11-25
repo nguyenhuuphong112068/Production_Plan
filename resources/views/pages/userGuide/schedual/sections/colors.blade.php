@@ -58,6 +58,10 @@
     <span class="ug-swatch" style="background:#16a34a"></span> xanh = đã có lịch cân. Xem
     <a href="#sap-lich-can">Sắp lịch cân bán tự động</a>.
 </p>
+<p>
+    Khối cân <b>nháp</b> do nút Gợi ý lịch cân đặt lên lịch (chưa lưu): nền <span class="ug-swatch" style="background:#0ea5e9"></span>
+    xanh dương, tên có dấu ✎, viền trắng nét đứt; nền đen nếu cân xong sau giờ bắt đầu công đoạn sau.
+</p>
 
 <h3>Màu lịch Bảo trì, Hiệu chuẩn, Tiện ích</h3>
 <div class="table-responsive">

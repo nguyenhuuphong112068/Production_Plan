@@ -3,12 +3,16 @@
     kéo dãn thời lượng, sửa giờ chính xác, đổi cấp vệ sinh, xoá lịch... Kéo thả trên Gantt chỉ là <b>bản nháp</b> cho tới
     khi bấm lưu.
 </p>
+<p>
+    Tài khoản nhóm quyền chính <b>Weighing Scheduler</b> chỉ kéo / sửa / xoá được <b>lịch cân</b> và chỉ thả vào phòng cân;
+    chọn lẫn lịch công đoạn khác rồi kéo hoặc xoá thì phần mềm báo và giữ nguyên (xem <a href="#phan-quyen">Quyền Truy Cập</a>).
+</p>
 
 <h3>Chọn lô</h3>
 <ul>
     <li><b>Bấm</b> vào thanh lô để chọn (viền nổi bật); bấm lần nữa để bỏ chọn. Chọn được nhiều lô, kể cả ở nhiều phòng.</li>
     <li>Các nút 🚫, ✅, 🚿, 🆚 trên thanh công cụ và hộp thoại sửa giờ áp dụng cho <b>các lô đang chọn</b>; nút
-        <b>Gợi ý lịch cân</b> xếp công đoạn cân cho các lô PC / THT / ĐH / BP đang chọn (xem
+        <b>Gợi ý lịch cân</b> / <b>Ghép cân chung</b> xếp công đoạn cân cho các lô PC / THT / ĐH / BP đang chọn (xem
         <a href="#sap-lich-can">Sắp lịch cân bán tự động</a>).</li>
 </ul>
 
@@ -16,16 +20,19 @@
 <ol class="ug-steps">
     <li>Kéo thanh lô sang giờ khác hoặc phòng khác; kéo mép thanh để đổi thời lượng. Lô bám theo bước 15 phút. Đang chọn
         nhiều lô thì kéo một lô trong nhóm, <b>cả nhóm dời cùng một khoảng</b>. Thả vào phòng không có định mức cho sản
-        phẩm thì báo <b>Thiếu Định Mức</b> và lô không dời.</li>
+        phẩm thì báo <b>Thiếu Định Mức</b> (nêu lô và phòng thiếu định mức), lô được trả về đúng giờ / phòng cũ.</li>
     <li><b>Hút sát:</b> thả lô cách lô (hoặc lịch vệ sinh) đứng trước cùng phòng, cùng công đoạn <b>không quá 1 giờ</b> thì
         lô được kéo sát vào; thả đè lên lô trước thì lô được lùi ra ngay sau lô đó. Không áp cho Cân và Bảo trì.</li>
+    <li><b>Lịch cân:</b> kéo hoặc kéo dãn lịch cân (Cân NL, Cân NL khác) thì lịch vệ sinh của nó dời theo, luôn nằm ngay sau
+        khi cân xong, cùng phòng; kéo riêng vệ sinh đi chỗ khác thì nó quay về sát sau lịch cân.</li>
     <li><b>Lô phía sau bị đè:</b> khi tắt <span class="ug-emoji">🔀</span>, các lô phía sau trong cùng phòng bị chồng lấn
         được đẩy trễ ra vừa đủ, gặp khoảng trống thì dừng. Bật <span class="ug-emoji">🔀</span> trước khi kéo thì các lô
         phía sau và các công đoạn sau của lô dời theo cả chuỗi; lô thuộc chiến dịch có thể dời cả chiến dịch.</li>
     <li>Kéo nhầm: bấm nút <b>Nháp (n)</b> hoặc <span class="ug-key">Ctrl</span> + <span class="ug-key">Z</span> để hoàn tác
         từng thao tác kéo thả (n = số thao tác hoàn tác được).</li>
     <li>Bấm <span class="ug-emoji">💾</span> hoặc <span class="ug-key">Ctrl</span> + <span class="ug-key">S</span> để lưu.
-        Thanh lô chưa lưu có viền cam đứt nét. Đóng trang khi chưa lưu thì mất các thay đổi.</li>
+        Thanh lô chưa lưu có viền cam đứt nét. Đóng trang khi chưa lưu thì mất các thay đổi. Khối cân nháp của
+        <a href="#sap-lich-can">Gợi ý lịch cân</a> được lưu cùng lúc; bấm ✕ ở <b>Thay đổi chưa lưu</b> thì khối nháp bị bỏ.</li>
     <li>Xong việc, bấm <span class="ug-emoji">📤</span> <b>Submit lịch</b> để các bộ phận khác thấy lịch mới. Submit bị chặn
         nếu còn lô vi phạm nặng hoặc chưa đạt chính sách sản lượng (xem <a href="#chinh-sach-san-luong">Chính sách sản lượng</a>).</li>
 </ol>

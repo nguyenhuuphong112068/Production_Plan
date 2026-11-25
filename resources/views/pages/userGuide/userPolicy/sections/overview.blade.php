@@ -13,7 +13,7 @@
     <div>
         <ul class="mb-0">
             <li>Một số chức năng kiểm tra đúng <b>tên</b> nhóm quyền chính: <b>Admin</b>, <b>Schedualer</b> (sửa lịch sản xuất),
-                <b>Leader</b>, <b>Executor</b> (chỉ vào trang Ghi Nhận Sản Xuất)... <b>Không đổi tên</b> các nhóm này.</li>
+                <b>Weighing Scheduler</b> (chỉ sắp lịch công đoạn cân), <b>Leader</b>, <b>Executor</b> (chỉ vào trang Ghi Nhận Sản Xuất)... <b>Không đổi tên</b> các nhóm này.</li>
             <li><b>Nhóm quyền chính</b> = trong các nhóm gán cho tài khoản, nhóm đứng trên cùng ở danh sách Nhóm Phân Quyền
                 (không theo thứ tự bấm chọn). Gán Viewer + Schedualer thì nhóm chính là Viewer và không sửa được lịch.</li>
             <li>Vô hiệu một nhóm quyền thì mọi tài khoản thuộc nhóm đó mất các quyền của nhóm.</li>

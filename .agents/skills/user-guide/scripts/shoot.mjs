@@ -61,7 +61,7 @@ const once = method => new Promise(fn => waiters.push({ method, fn }));
 const on = (method, fn) => listeners.set(method, [...(listeners.get(method) || []), fn]);
 const evaluate = async expr => (await Promise.race([
     send('Runtime.evaluate', { expression: expr, returnByValue: true, awaitPromise: true }),
-    new Promise(r => setTimeout(() => r({}), 20000)),   // JS lỗi / Promise treo thì bỏ qua sau 20s
+    new Promise(r => setTimeout(() => r({}), Number(process.env.UG_EVAL_MS || 20000))),   // JS lỗi / Promise treo thì bỏ qua sau 20s
 ])).result?.result?.value;
 
 // Chặn request ghi

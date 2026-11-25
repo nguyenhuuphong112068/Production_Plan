@@ -21,6 +21,9 @@ use Illuminate\Support\Facades\DB;
  *               hoặc 'planned' (đã có lịch cân, chưa cân xong). Gantt dùng để ẩn lô không cần chuẩn bị cân.
  * 2. suggest(): với các lô công đoạn sau người dùng chọn, xếp từng dòng cân chưa có lịch vào phòng cân
  *               có giờ trống SỚM NHẤT (theo định mức cân của BTP), tránh ngày nghỉ, không ghi DB.
+ *               Không cân sớm hơn MAX_DAYS_BEFORE (3) ngày trước ngày bắt đầu công đoạn sau. $merge = người dùng
+ *               chọn ghép: mọi lô cùng BTP + loại cân đang chọn cân chung một khối; mốc 3 ngày tính theo lô cần
+ *               dùng SỚM NHẤT, lô cần dùng muộn được cân sớm hơn 3 ngày (cảnh báo).
  * 3. apply():   ghi các khối người dùng đã duyệt (kiểm tra lại phòng còn trống ngay lúc ghi).
  */
 class WeighingAssistService
@@ -32,6 +35,9 @@ class WeighingAssistService
 
     /** Không tìm quá số ngày này kể từ mốc sớm nhất */
     private const HORIZON_DAYS = 120;
+
+    /** Cân sớm nhất N ngày (theo lịch) trước NGÀY bắt đầu công đoạn sau (yêu cầu user 25/11/2026) */
+    public const MAX_DAYS_BEFORE = 3;
 
     private string $tz;
 
@@ -81,10 +87,28 @@ class WeighingAssistService
 
     /**
      * @param  int[]  $nextIds  id stage_plan của các lô công đoạn sau đang chọn trên Gantt
+     * @param  array  $reserved  khối cân NHÁP chưa lưu trên Gantt [{ids, room_id, start, end_clearning}]:
+     *                           lô trong đó không gợi ý lại, phòng bị giữ chỗ đúng khung đó
+     * @param  bool  $merge  true = người dùng chọn GHÉP: mọi lô cùng BTP + cùng loại cân cân chung một khối
+     *                       (không theo mã chiến dịch, không giới hạn số lô / ngày cần dùng — chỉ cảnh báo)
      * @return array{blocks: array, skipped: array, notes: array}
      */
-    public function suggest(string $production, array $nextIds): array
+    public function suggest(string $production, array $nextIds, array $reserved = [], bool $merge = false): array
     {
+        $draftIds = [];
+        foreach ($reserved as $r) {
+            foreach ((array) ($r['ids'] ?? []) as $id) {
+                $draftIds[(int) $id] = true;
+            }
+            try {
+                $this->addBusy((int) ($r['room_id'] ?? 0),
+                    Carbon::parse($r['start'], $this->tz)->getTimestamp(),
+                    Carbon::parse($r['end_clearning'], $this->tz)->getTimestamp());
+            } catch (\Throwable $e) {
+                // khối nháp lỗi giờ: bỏ qua giữ chỗ
+            }
+        }
+
         $nextIds = array_values(array_unique(array_filter(array_map('intval', $nextIds))));
 
         $nexts = DB::table('stage_plan')
@@ -125,6 +149,10 @@ class WeighingAssistService
             $w->next_stage = (int) $next->stage_code;
             $w->next_start = $next->start;
 
+            if (isset($draftIds[(int) $w->id])) {
+                $skipped[] = ['title' => $w->title, 'reason' => 'Đang có khối cân nháp chưa lưu trên lịch'];
+                continue;
+            }
             if ($w->start !== null) {
                 $skipped[] = [
                     'title' => $w->title,
@@ -155,16 +183,29 @@ class WeighingAssistService
             $this->loadOffRanges();
             $now = $this->ceilStep(Carbon::now()->getTimestamp());
 
-            // Lô cùng chiến dịch + cùng loại cân + cùng BTP cân chung một khối (tối đa "Số lô tối đa" của định mức)
+            // Mặc định: lô cùng chiến dịch + cùng loại cân + cùng BTP cân chung một khối (tối đa "Số lô tối đa"
+            // của định mức, chỉ gom lô có ngày cần dùng gần nhau). Ghép: mọi lô đang chọn cùng BTP + loại cân.
             $groups = $todo
-                ->groupBy(fn($w) => $w->campaign_code
-                    ? "c|{$w->stage_code}|{$w->campaign_code}|{$w->intermediate_code}"
-                    : "s|{$w->id}")
+                ->groupBy(fn($w) => $merge
+                    ? "m|{$w->stage_code}|{$w->intermediate_code}"
+                    : ($w->campaign_code
+                        ? "c|{$w->stage_code}|{$w->campaign_code}|{$w->intermediate_code}"
+                        : "s|{$w->id}"))
                 ->map(fn($g) => $g->sortBy(fn($w) => [$w->next_start, $w->batch])->values())
                 ->sortBy(fn($g) => $g->first()->next_start); // lô công đoạn sau chạy sớm nhất xếp trước
 
+            if ($merge) {
+                $multi = $groups->filter(fn($g) => $g->count() > 1)->count();
+                $single = $groups->count() - $multi;
+                if ($groups->count() > 1) {
+                    $notes[] = 'Chỉ ghép được lô cùng BTP và cùng loại cân: '
+                        . ($multi ? "{$multi} khối ghép" : '') . ($multi && $single ? ', ' : '')
+                        . ($single ? "{$single} lô cân riêng (khác BTP / loại cân với các lô khác)" : '') . '.';
+                }
+            }
+
             foreach ($groups as $key => $rows) {
-                $isCampaign = str_starts_with($key, 'c|');
+                $mode = $key[0]; // m = ghép, c = chiến dịch có sẵn, s = lô lẻ
 
                 while ($rows->isNotEmpty()) {
                     $first = $rows->first();
@@ -184,9 +225,12 @@ class WeighingAssistService
 
                     $best = null;
                     foreach ($quotas as $q) {
-                        $size = $isCampaign ? max(1, (int) $q->maxofbatch_campaign) : 1;
-                        $chunk = $rows->take($size);
-                        $plan = $this->planChunk($q, $chunk, $now);
+                        $chunk = match ($mode) {
+                            'm' => $rows,
+                            'c' => $this->campaignChunk($rows, max(1, (int) $q->maxofbatch_campaign)),
+                            default => $rows->take(1),
+                        };
+                        $plan = $this->planChunk($q, $chunk, $now, $mode === 'm');
 
                         if ($plan && ($best === null
                             || $plan['start'] < $best['start']
@@ -205,7 +249,12 @@ class WeighingAssistService
 
                     // Giữ chỗ để khối sau không chồng lên
                     $this->addBusy((int) $best['quota']->room_id, $best['start'], $best['end_clearning']);
-                    $blocks[] = $this->blockOut($best, count($blocks) + 1);
+                    $block = $this->blockOut($best, count($blocks) + 1);
+                    $max = (int) $best['quota']->maxofbatch_campaign;
+                    if ($mode === 'm' && $max > 0 && $best['chunk']->count() > $max) {
+                        $block['warnings'][] = "Ghép {$best['chunk']->count()} lô, vượt Số lô tối đa / chiến dịch của định mức ({$max} lô).";
+                    }
+                    $blocks[] = $block;
                     $rows = $rows->slice($best['chunk']->count())->values();
                 }
             }
@@ -215,12 +264,43 @@ class WeighingAssistService
     }
 
     /**
+     * Lô đầu của chiến dịch + các lô kế tiếp (tối đa $size) mà cân chung vẫn kịp lô đầu: ngày cần dùng của lô
+     * thêm vào trừ MAX_DAYS_BEFORE ngày không được muộn hơn giờ cần dùng của lô đầu.
+     */
+    private function campaignChunk(Collection $rows, int $size): Collection
+    {
+        $firstNeed = Carbon::parse($rows->first()->next_start, $this->tz)->getTimestamp();
+        $chunk = collect();
+        foreach ($rows as $w) {
+            if ($chunk->count() >= $size || ($chunk->isNotEmpty() && $this->earliestFor($w) > $firstNeed)) {
+                break;
+            }
+            $chunk->push($w);
+        }
+
+        return $chunk;
+    }
+
+    /**
+     * Mốc cân sớm nhất theo ngày cần dùng: 06:00 của (ngày sản xuất bắt đầu công đoạn sau − MAX_DAYS_BEFORE ngày).
+     * Ngày sản xuất tính từ 06:00 như ngày nghỉ (CĐ sau bắt đầu 03:00 ngày 04 thuộc ngày 03).
+     */
+    private function earliestFor(object $w): int
+    {
+        return Carbon::parse($w->next_start, $this->tz)->subHours(6)->startOfDay()->addHours(6)
+            ->subDays(self::MAX_DAYS_BEFORE)->getTimestamp();
+    }
+
+    /**
      * Giờ sớm nhất của một khối cân tại một phòng.
      *
      * @return array{start:int,end:int,end_clearning:int,clearning_type:string}|null
      */
-    private function planChunk(object $q, Collection $chunk, int $now): ?array
+    private function planChunk(object $q, Collection $chunk, int $now, bool $merge = false): ?array
     {
+        // Khối GHÉP: mốc 3 ngày theo lô cần dùng SỚM NHẤT (lô cần dùng muộn được cân sớm hơn 3 ngày, chỉ cảnh báo —
+        // yêu cầu user 25/11/2026). Khối chiến dịch: theo lô cần dùng muộn nhất (campaignChunk đã tách để vẫn kịp lô đầu).
+        $anchorId = $merge ? (int) $chunk->sortBy('next_start')->first()->id : null;
         $n = $chunk->count();
         // Lô đơn = p + m; mỗi lô cân chung thêm (Hệ số chiến dịch − 1) × m
         $factor = $n <= 1 ? 1 : 1 + (max(1.0, (float) $q->campaign_index) - 1) * ($n - 1);
@@ -230,6 +310,10 @@ class WeighingAssistService
 
         $earliest = $now;
         foreach ($chunk as $w) {
+            // Không cân sớm hơn MAX_DAYS_BEFORE ngày trước ngày cần dùng (khối ghép: chỉ theo lô cần dùng sớm nhất)
+            if ($anchorId === null || (int) $w->id === $anchorId) {
+                $earliest = max($earliest, $this->earliestFor($w));
+            }
             foreach (['after_weigth_date', 'allow_weight_before_date'] as $f) {
                 if (! empty($w->$f)) {
                     $earliest = max($earliest, Carbon::parse($w->$f, $this->tz)->startOfDay()->getTimestamp());
@@ -259,6 +343,10 @@ class WeighingAssistService
             $late = $best['end'] > $nextTs ? (int) ceil(($best['end'] - $nextTs) / 60) : 0;
             $lots[] = [
                 'id' => (int) $w->id,
+                'code' => $w->code,
+                'plan_master_id' => (int) $w->plan_master_id,
+                'product_name' => $w->product_name,
+                'batch' => $w->batch,
                 'title' => $w->title,
                 'next_id' => $w->next_id,
                 'next_stage' => $w->next_stage,
@@ -269,12 +357,17 @@ class WeighingAssistService
                 && Carbon::createFromTimestamp($best['start'], $this->tz)->toDateString() > $w->expired_material_date) {
                 $warnings[] = "{$w->title}: bắt đầu cân sau Ngày HH NL chính " . Carbon::parse($w->expired_material_date)->format('d/m/y');
             }
+            if ($best['start'] < $this->earliestFor($w)) {
+                $warnings[] = "{$w->title}: cân sớm hơn " . self::MAX_DAYS_BEFORE . ' ngày trước ngày cần dùng ('
+                    . Carbon::parse($w->next_start)->format('H:i d/m/y') . ')';
+            }
         }
 
         return [
             'key' => 'b' . $no,
             'stage_code' => (int) $best['chunk']->first()->stage_code,
             'campaign_code' => $best['chunk']->first()->campaign_code,
+            'intermediate_code' => $best['chunk']->first()->intermediate_code,
             'room_id' => (int) $q->room_id,
             'room' => trim($room->code . ' - ' . $room->name),
             'start' => $fmt($best['start']),
@@ -311,13 +404,14 @@ class WeighingAssistService
                 try {
                     $start = Carbon::parse($b['start']);
                     $end = Carbon::parse($b['end']);
+                    $startClean = Carbon::parse($b['start_clearning'] ?? $b['end']);
                     $endClean = Carbon::parse($b['end_clearning']);
                 } catch (\Throwable $e) {
                     $problems[] = 'Khối có giờ không hợp lệ, bỏ qua.';
                     continue;
                 }
 
-                if (! $room || ! $ids || $start->gte($end) || $end->gt($endClean)) {
+                if (! $room || ! $ids || $start->gte($end) || $startClean->lt($end) || $startClean->gt($endClean)) {
                     $problems[] = 'Khối ' . ($room->code ?? $roomId) . ' không hợp lệ, bỏ qua.';
                     continue;
                 }
@@ -364,7 +458,7 @@ class WeighingAssistService
                         'resourceId' => $roomId,
                         'start' => $start,
                         'end' => $end,
-                        'start_clearning' => $end,
+                        'start_clearning' => $startClean,
                         'end_clearning' => $endClean,
                         'title' => $w->title,
                         'title_clearning' => ($b['clearning_type'] ?? '') === 'VS-I' ? 'VS-I' : 'VS-II',
@@ -408,6 +502,8 @@ class WeighingAssistService
             ->where('w.deparment_code', $production)
             ->select(
                 'w.id',
+                'w.code',
+                'w.plan_master_id',
                 'w.stage_code',
                 'w.campaign_code',
                 'w.nextcessor_code',
@@ -421,6 +517,7 @@ class WeighingAssistService
                 'pm.expired_material_date',
                 'fpc.intermediate_code',
                 DB::raw('COALESCE(pm.actual_batch, pm.batch) as batch'),
+                DB::raw('COALESCE(pn.name, fpc.intermediate_code) as product_name'),
                 DB::raw("CONCAT(COALESCE(pn.name, fpc.intermediate_code), '-', COALESCE(pm.actual_batch, pm.batch)) as title"),
                 // Biệt trữ sau Cân NL của BTP (giờ); Cân NL khác không có khai báo riêng
                 DB::raw('CASE WHEN w.stage_code = 1 AND ic.quarantine_weight > 0

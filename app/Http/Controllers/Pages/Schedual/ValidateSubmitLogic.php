@@ -30,6 +30,10 @@ trait ValidateSubmitLogic
             ->where('sp.deparment_code', $production)
             ->when($submitType === 'production', function ($query) {
                 $query->where('sp.stage_code', '!=', 8);
+                // Weighing Scheduler chỉ submit lịch cân
+                if (\App\Support\WeighingScheduler::active()) {
+                    $query->whereBetween('sp.stage_code', [1, \App\Support\WeighingScheduler::MAX_STAGE]);
+                }
             })
             ->when(in_array($submitType, $maintenanceTypes), function ($query) use ($submitType) {
                 $query->where('sp.stage_code', 8)
@@ -184,6 +188,7 @@ trait ValidateSubmitLogic
                 if ($plan->submit != 0 || $plan->start < $now) continue;
 
                 if ($submitType === 'production' && $plan->stage_code == 8) continue;
+                if (\App\Support\WeighingScheduler::active() && !\App\Support\WeighingScheduler::isWeighingStage($plan->stage_code)) continue;
                 if (in_array($submitType, $maintenanceTypes)) {
                     if ($plan->stage_code != 8) continue;
 

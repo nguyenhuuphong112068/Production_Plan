@@ -32,13 +32,24 @@ import NoteModal from '../Components/NoteModal';
 import { wipControlSectionHtml, initWipControl, collectWipControl, hasWipLimits, runWipControl } from '../Plugins/WipControl';
 import { useLotLinks } from '../Plugins/LotLinks'; // LotLinks (thử nghiệm)
 import { useRoomWip, isRoomWipRow, RoomWipToggle } from '../Plugins/RoomWip'; // RoomWip (thử nghiệm)
-import { useWeighAssist, WeighAssistBar } from '../Plugins/WeighAssist'; // WeighAssist: sắp lịch cân bán tự động
+import { useWeighAssist, WeighAssistBar, followWeighCleaning, placeWeighCleaning } from '../Plugins/WeighAssist'; // WeighAssist: sắp lịch cân bán tự động
 
 //import History from '../Components/History';
 //import { CheckAuthorization } from '../Components/CheckAuthorization';
 
 // Timeline mặc định chỉ cho tối đa 1000 ô; khung 3 tháng slot 1h cần ~2200 ô (nếu vượt, FullCalendar bỏ qua slotDuration).
 fcConfig.MAX_TIMELINE_SLOTS = 3000;
+
+
+// Nhóm quyền sửa Gantt (so sánh cứng theo tên role chính userGroup)
+const SCHEDULER_ROLES = ['Admin', 'Schedualer'];
+// Sắp lịch trung tâm cân: chỉ sửa / Submit lịch công đoạn cân - khớp App\Support\WeighingScheduler
+const WEIGH_SCHEDULER_ROLE = 'Weighing Scheduler';
+const WEIGH_ONLY_MSG = 'Nhóm quyền Weighing Scheduler chỉ được sắp lịch công đoạn cân';
+const isWeighStage = (code) => [1, 2].includes(Number(code));
+// Mã định mức (quota.process_code) của lịch tại 1 phòng: "<BTP>_<TP>_<phòng>"; riêng Cân NL khác (stage 2) có thêm
+// hậu tố "_2" vì dùng chung phòng cân với Cân NL (dữ liệu cũ thiếu hậu tố thì vẫn nhận)
+const quotaCodesFor = (code, stageCode) => (Number(stageCode) === 2 ? [code + '_2', code] : [code]);
 
 const calendarPlugins = [dayGridPlugin, resourceTimelinePlugin, interactionPlugin];
 
@@ -184,6 +195,7 @@ const ScheduleTest = () => {
   const slotViewWeeks = ['resourceTimelineWeek1day', 'resourceTimelineWeek4h', 'resourceTimelineWeek1h', 'resourceTimelineWeek15'];
   const slotViewMonths = ['resourceTimelineMonth1d', 'resourceTimelineMonth4h', 'resourceTimelineMonth1h',];
   const slotViewQuarters = ['resourceTimelineQuarter1d', 'resourceTimelineQuarter4h', 'resourceTimelineQuarter1h'];
+  const slotViewCustoms = ['resourceTimelineCustom', 'resourceTimelineCustom4h', 'resourceTimelineCustom1h'];
   const [slotIndex, setSlotIndex] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false); // ẩn topNAV/leftNAV để xem chart rộng
   const [eventFontSize, setEventFontSize] = useState(22); // default 14px
@@ -336,6 +348,12 @@ const ScheduleTest = () => {
   });
   const [loading, setLoading] = useState(false);
   const [authorization, setAuthorization] = useState(false);
+  // Nhóm quyền chính "Weighing Scheduler" (sắp lịch trung tâm cân): chỉ sửa / xoá / Submit lịch công đoạn cân (1, 2).
+  // Server chặn lại lần nữa (RestrictWeighingScheduler + WeighingScheduler).
+  const [weighOnly, setWeighOnly] = useState(false);
+  // Nhãn cảnh báo trên thanh lọc (Sự Kiện Đen, Lịch chưa submit, Tồn BTP, Lịch trùng khuôn, Chỗ trùng giờ):
+  // chỉ hiện cho role chính Admin / Schedualer (yêu cầu user 25/11/2026)
+  const [showWarnBadges, setShowWarnBadges] = useState(false);
   const [heightResource, setHeightResource] = useState("1px");
   const [reasons, setReasons] = useState([]);
   const [bkcCode, setBkcCode] = useState([]);
@@ -435,10 +453,19 @@ const ScheduleTest = () => {
         }
 
 
-        setAuthorization(['Admin', 'Schedualer'].includes(data.authorization) && data.production == data.department)
+        setAuthorization([...SCHEDULER_ROLES, WEIGH_SCHEDULER_ROLE].includes(data.authorization) && data.production == data.department)
 
         if (data.department == 'BOD') {
           setAuthorization(true);
+        }
+
+        const isWeighScheduler = data.authorization === WEIGH_SCHEDULER_ROLE;
+        setWeighOnly(isWeighScheduler);
+        setShowWarnBadges(SCHEDULER_ROLES.includes(data.authorization));
+        // Tịnh tiến (cascade) sẽ dời cả công đoạn sau nên tắt hẳn với người sắp lịch cân
+        if (isWeighScheduler) {
+          setIsCascadeMode(false);
+          sessionStorage.setItem('cascadeMode', 'false');
         }
 
         setEvents(data.events);
@@ -876,7 +903,7 @@ const ScheduleTest = () => {
   }
 
   ///  Thay đôi khung thời gian
-  const handleViewChange = useCallback(async (viewType = null, action = null) => {
+  const handleViewChange = useCallback(async (viewType = null, action = null, gotoDate = null) => {
 
     const api = calendarRef.current?.getApi();
     if (!api) return;
@@ -912,14 +939,33 @@ const ScheduleTest = () => {
       });
 
       // 🔹 1. Thay đổi view nếu có yêu cầu
-      if (viewType && api.view.type !== viewType) {
+      if (action === "range" && gotoDate) {
+        // Khoảng tuỳ chọn: gotoDate = { start, end } (end không tính)
+        api.changeView(viewType || 'resourceTimelineCustom', gotoDate);
+      } else if (viewType && api.view.type !== viewType) {
         api.changeView(viewType);
       }
 
       // 🔹 2. Điều hướng ngày
-      if (action === "prev") api.prev();
+      if (api.view.type.startsWith('resourceTimelineCustom') && (['prev', 'next', 'today'].includes(action) || (action === 'goto' && gotoDate))) {
+        // View theo visibleRange không tự prev/next/gotoDate được: dịch cả khoảng, giữ nguyên độ dài
+        const { activeStart: s, activeEnd: e, type: t } = api.view;
+        const len = Math.round((e - s) / 86400000);
+        let ns;
+        if (action === 'today') { ns = new Date(); ns.setHours(0, 0, 0, 0); }
+        else if (action === 'goto') {
+          const g = new Date(gotoDate); g.setHours(0, 0, 0, 0);
+          if (g >= s && g < e) { ns = new Date(s); } // đã nằm trong khoảng đang xem
+          else { ns = g; ns.setDate(ns.getDate() - 1); }
+        }
+        else { ns = new Date(s); ns.setDate(ns.getDate() + (action === 'next' ? len : -len)); }
+        const ne = new Date(ns); ne.setDate(ne.getDate() + len);
+        api.changeView(t, { start: ns, end: ne });
+      }
+      else if (action === "prev") api.prev();
       else if (action === "next") api.next();
       else if (action === "today") api.today();
+      else if (action === "goto" && gotoDate) api.gotoDate(gotoDate); // WeighAssist: tới khối cân nháp
 
       // 🔹 3. Lấy khoảng thời gian hiện tại sau khi chuyển view
       const { activeStart, activeEnd, type: currentView } = api.view;
@@ -1211,6 +1257,10 @@ const ScheduleTest = () => {
         timer: 1000,
         showConfirmButton: false,
       });
+      return false
+    }
+    if (weighOnly && (selectedRows.some(row => !isWeighStage(row.stage_code)) || !isWeighStage(resources.find(r => String(r.id) === String(resourceId))?.stage_code))) {
+      Swal.fire({ icon: 'warning', title: WEIGH_ONLY_MSG, text: 'Chỉ chọn lô công đoạn cân và thả vào phòng cân.' });
       return false
     }
     // Lấy định mức phòng trực tiếp từ bảng quota (dữ liệu mới nhất, không dùng biến quota đã load sẵn)
@@ -3403,6 +3453,13 @@ const ScheduleTest = () => {
     const isUnselected = !selectedEvents.some(ev => String(ev.id) === String(draggedEvent.id));
     const eventsToMove = isUnselected ? [draggedEvent] : selectedEvents.map(s => calendarApi.getEventById(s.id)).filter(Boolean);
 
+    // Weighing Scheduler: kéo theo nhóm mà có lịch ngoài công đoạn cân thì trả về chỗ cũ
+    if (weighOnly && eventsToMove.some(ev => !isWeighStage(ev.extendedProps?.stage_code))) {
+      info.revert();
+      Swal.fire({ icon: 'warning', title: WEIGH_ONLY_MSG, text: 'Bỏ chọn các lịch không phải công đoạn cân rồi kéo lại.' });
+      return false;
+    }
+
     const batchUpdates = [];
 
     if (isCascadeMode) {
@@ -3415,6 +3472,7 @@ const ScheduleTest = () => {
 
     setTimeout(() => {
       let isQuotaMissing = false;
+      const missingQuota = []; // "lô → phòng" thiếu định mức, để báo người dùng
 
       // 1. Tính toán delta và kiểm tra định mức cho từng event
       const eventConfigs = eventsToMove.map(event => {
@@ -3432,12 +3490,14 @@ const ScheduleTest = () => {
             trueDurMs = event.end ? event.end.getTime() - event.start.getTime() : 0;
           } else {
             let quota_event = quota.find(q =>
-              q.process_code === lookupCode &&
+              quotaCodesFor(lookupCode, stage_code).includes(q.process_code) &&
               q.stage_code == stage_code
             );
 
             if (quota_event === undefined) {
               isQuotaMissing = true;
+              const room = calendarApi.getResourceById(event._def.resourceIds[0]);
+              missingQuota.push(`${event.title}${room ? ` → ${room.title}` : ''}`.replace(/</g, '&lt;'));
             } else {
               let m_time = timeToMilliseconds(quota_event.m_time);
               let p_time = event._def.extendedProps.first_in_campaign ? timeToMilliseconds(quota_event.p_time) : 0;
@@ -3459,6 +3519,12 @@ const ScheduleTest = () => {
           trueDurMs = event.end ? event.end.getTime() - event.start.getTime() : 0;
         }
 
+        // WeighAssist: khối cân nháp giữ thời lượng đã gợi ý / kéo dãn (định mức ở trên chỉ tính cho 1 lô,
+        // khối ghép nhiều lô sẽ bị co lại); vẫn chặn phòng thiếu định mức như trên
+        if (event._def.extendedProps.is_weigh_draft && event.end) {
+          trueDurMs = event.end.getTime() - event.start.getTime();
+        }
+
         const resId = String(event.id) === String(draggedEvent.id)
           ? (info.newResource?.id || event.getResources?.()[0]?.id || draggedEvent.getResources?.()[0]?.id)
           : event.getResources?.()[0]?.id;
@@ -3467,8 +3533,13 @@ const ScheduleTest = () => {
       }).filter(Boolean);
 
       if (isQuotaMissing) {
-        Swal.fire({ icon: 'warning', title: 'Thiếu Định Mức', timer: 1000, showConfirmButton: false });
-        if (isCascadeMode) Swal.close();
+        // Chưa áp thay đổi nào: trả lịch vừa kéo về đúng giờ / phòng cũ (FullCalendar đã dời nó lúc thả)
+        info.revert();
+        Swal.fire({
+          icon: 'warning',
+          title: 'Thiếu Định Mức',
+          html: `Phòng đích chưa có định mức cho:<br><b>${missingQuota.join('<br>')}</b><br>Lịch đã được trả về vị trí cũ.`,
+        });
         return;
       }
 
@@ -4028,6 +4099,13 @@ const ScheduleTest = () => {
       }
       */
 
+      // WeighAssist: vệ sinh của lịch cân luôn chạy ngay sau khi cân xong (cùng phòng, giữ thời lượng VS)
+      const weighFollow = followWeighCleaning(calendarApi, batchUpdates);
+      if (weighFollow.length) {
+        const followIds = new Set(weighFollow.map(f => String(f.id)));
+        batchUpdates = [...batchUpdates.filter(u => !followIds.has(String(u.id))), ...weighFollow];
+      }
+
       // 4. Áp dụng thay đổi nếu không có lỗi
       calendarApi.batchRendering(() => {
         batchUpdates.forEach(u => {
@@ -4035,6 +4113,7 @@ const ScheduleTest = () => {
           if (ev) ev.setDates(new Date(u.start), new Date(u.end), { maintainDuration: false });
         });
       });
+      placeWeighCleaning(calendarApi, weighFollow);
 
       setPendingChanges(prev => {
         const ids = new Set(batchUpdates.map(e => e.id));
@@ -4168,6 +4247,15 @@ const ScheduleTest = () => {
           title: changedEvRef.title,
           submit: changedEvRef.extendedProps.submit
         }];
+
+        // WeighAssist: kéo dãn / dời lịch cân (hoặc vệ sinh của nó) thì vệ sinh nằm lại ngay sau khi cân xong
+        const weighApi = calendarRef.current?.getApi();
+        const weighFollow = followWeighCleaning(weighApi, updates);
+        if (weighFollow.length) {
+          placeWeighCleaning(weighApi, weighFollow);
+          const followIds = new Set(weighFollow.map(f => String(f.id)));
+          updates = [...updates.filter(u => !followIds.has(String(u.id))), ...weighFollow];
+        }
 
         // 🔹 Cascade Logic for single move/resize
         if (isCascadeMode && hasCascadeOldEvent) {
@@ -4322,6 +4410,7 @@ const ScheduleTest = () => {
           });
         }
         setPendingChanges([]);
+        weighAssist.clearDrafts(); // WeighAssist: bỏ các khối cân nháp
       }
     });
   };
@@ -4366,9 +4455,30 @@ const ScheduleTest = () => {
     let endDate = toLocalISOString(activeEnd);
     const theoryHidden = JSON.parse(sessionStorage.getItem('theoryHidden'));
 
+    // WeighAssist: khối cân nháp (chưa có lịch trong CSDL) ghi qua /Schedual/weighing/apply, phần còn lại như cũ
+    const { draft: weighDraftChanges, other: realChanges } = weighAssist.splitChanges(pendingChanges);
+    let weighResult = null;
+    if (weighDraftChanges.length > 0) {
+      try {
+        Swal.update({ title: 'Đang lưu lịch cân nháp...' });
+        weighResult = await weighAssist.saveDrafts({
+          startDate: realChanges.length ? null : startDate,
+          endDate: realChanges.length ? null : endDate,
+          theory: theoryHidden,
+        });
+        // Nháp đã ghi: bỏ khỏi danh sách chờ lưu, lỗi ở bước sau không gửi lại
+        setPendingChanges(prev => weighAssist.splitChanges(prev).other);
+      } catch (err) {
+        console.error('Lỗi lưu lịch cân nháp:', err.response?.data || err.message);
+        setSaving(false);
+        Swal.fire({ icon: 'error', title: 'Không lưu được lịch cân nháp', text: err.response?.data?.message || err.message });
+        return;
+      }
+    }
+
     // ── Chia pendingChanges thành các batch nhỏ ──────────────────────────────
     const BATCH_SIZE = 50;
-    const allChanges = pendingChanges.map(change => ({
+    const allChanges = realChanges.map(change => ({
       id: change.id,
       start: dayjs(change.start).format('YYYY-MM-DD HH:mm:ss'),
       end: dayjs(change.end).format('YYYY-MM-DD HH:mm:ss'),
@@ -4410,6 +4520,9 @@ const ScheduleTest = () => {
         lastData = data;
       }
 
+      if (!lastData && weighResult) lastData = weighResult; // chỉ có khối cân nháp
+      if (weighResult?.plan) setPlan(weighResult.plan);
+
       // Sau tất cả batch thành công
       if (lastData) {
         setEvents(lastData.events);
@@ -4426,15 +4539,32 @@ const ScheduleTest = () => {
       setSaving(false);
 
 
-      Swal.fire({
-        icon: 'success',
-        title: 'Thành công!',
-        text: totalBatches > 1
-          ? `Đã lưu ${allChanges.length} thay đổi trong ${totalBatches} đợt.`
-          : 'Đã lưu tất cả thay đổi.',
-        timer: 1500,
-        showConfirmButton: false,
-      });
+      const weighProblems = weighResult?.problems || [];
+      if (weighResult) {
+        // WeighAssist: báo số lô cân đã ghi và khối không ghi được
+        Swal.fire({
+          icon: weighProblems.length ? 'warning' : 'success',
+          title: `Đã lưu lịch cân ${weighResult.saved_lots} lô (${weighResult.saved_blocks} khối)`
+            + (allChanges.length ? ` và ${allChanges.length} thay đổi khác` : ''),
+          html: 'Lịch cân mới ở trạng thái <b>chưa submit</b>.'
+            + (weighProblems.length
+              ? `<div style="text-align:left;margin-top:10px;color:#b45309"><b>Không ghi:</b><ul>${weighProblems.map(p => `<li>${String(p).replace(/</g, '&lt;')}</li>`).join('')}</ul></div>`
+              : ''),
+          width: weighProblems.length ? 760 : 520,
+          timer: weighProblems.length ? undefined : 2500,
+          showConfirmButton: weighProblems.length > 0,
+        });
+      } else {
+        Swal.fire({
+          icon: 'success',
+          title: 'Thành công!',
+          text: totalBatches > 1
+            ? `Đã lưu ${allChanges.length} thay đổi trong ${totalBatches} đợt.`
+            : 'Đã lưu tất cả thay đổi.',
+          timer: 1500,
+          showConfirmButton: false,
+        });
+      }
 
     } catch (err) {
       console.error('Lỗi khi lưu events:', err.response?.data || err.message);
@@ -4468,6 +4598,12 @@ const ScheduleTest = () => {
     if (!authorization) return;
 
     const props = event.extendedProps;
+
+    // WeighAssist: khối cân nháp chưa có trong CSDL, hộp thoại sửa giờ lưu ngay nên không dùng được
+    if (props.is_weigh_draft) {
+      Swal.fire({ icon: 'info', title: 'Khối cân nháp', html: 'Kéo thả / kéo dãn trên lịch để chỉnh, rồi bấm <b>💾</b> để lưu.' });
+      return;
+    }
     const startStr = moment(event.start).format('YYYY-MM-DDTHH:mm');
     const endStr = moment(event.end).format('YYYY-MM-DDTHH:mm');
     const currentResourceId = event.getResources()[0]?.id;
@@ -4505,7 +4641,8 @@ const ScheduleTest = () => {
 
     const baseProcessCode = props.process_code ? props.process_code.split('_').slice(0, 2).join('_') : '';
     const currentQuota = (quota && props.process_code)
-      ? quota.find(q => q.process_code == baseProcessCode + "_" + currentResourceId)
+      ? quota.find(q => quotaCodesFor(baseProcessCode + "_" + currentResourceId, props.stage_code).includes(q.process_code)
+        && q.stage_code == props.stage_code)
       : null;
 
     let p_time = currentQuota ? currentQuota.p_time : 0;
@@ -6096,6 +6233,10 @@ const ScheduleTest = () => {
       });
       return; // Dừng hàm ở đây
     }
+    if (weighOnly && selectedEvents.some(ev => !isWeighStage(ev.stage_code))) {
+      Swal.fire({ icon: 'warning', title: WEIGH_ONLY_MSG, text: 'Bỏ chọn các lịch không phải công đoạn cân rồi xoá lại.' });
+      return;
+    }
     e.stopPropagation();
     Swal.fire({
       title: 'Bạn có chắc muốn xóa lịch này?',
@@ -6141,6 +6282,53 @@ const ScheduleTest = () => {
     });
   }
 
+  /// Khung thời gian tuỳ chọn: Từ ngày – Đến ngày (tính cả ngày cuối), tối đa 3 tháng
+  const handleCustomRange = async () => {
+    const api = calendarRef.current?.getApi();
+    if (!api) return;
+    const fmt = (d) => moment(d).format('YYYY-MM-DD');
+    const { activeStart, activeEnd } = api.view;
+    const defStart = fmt(activeStart);
+    const defEnd = fmt(moment(activeEnd).subtract(1, 'day'));
+
+    const { value } = await Swal.fire({
+      title: 'Chọn khung thời gian',
+      html: `
+        <div style="display:flex; gap:12px; justify-content:center; align-items:end; flex-wrap:wrap;">
+          <label style="text-align:left; font-size:14px;">Từ ngày<br/>
+            <input type="date" id="cr-start" name="cr-start" class="swal2-input" style="margin:4px 0 0; width:180px;" value="${defStart}">
+          </label>
+          <label style="text-align:left; font-size:14px;">Đến ngày<br/>
+            <input type="date" id="cr-end" name="cr-end" class="swal2-input" style="margin:4px 0 0; width:180px;" value="${defEnd}">
+          </label>
+        </div>
+        <div style="margin-top:8px; font-size:12px; color:#666;">Tối đa 3 tháng</div>
+      `,
+      showCancelButton: true,
+      confirmButtonText: 'Xem',
+      cancelButtonText: 'Hủy',
+      focusConfirm: false,
+      preConfirm: () => {
+        const s = document.getElementById('cr-start').value;
+        const e = document.getElementById('cr-end').value;
+        if (!s || !e) { Swal.showValidationMessage('Chọn đủ Từ ngày và Đến ngày'); return false; }
+        const ms = moment(s, 'YYYY-MM-DD');
+        const me = moment(e, 'YYYY-MM-DD');
+        if (me.isBefore(ms)) { Swal.showValidationMessage('Đến ngày phải sau hoặc bằng Từ ngày'); return false; }
+        if (me.isAfter(ms.clone().add(3, 'months').subtract(1, 'day'))) {
+          Swal.showValidationMessage('Khoảng thời gian không được quá 3 tháng'); return false;
+        }
+        return { start: ms.toDate(), end: me.clone().add(1, 'day').toDate() };
+      },
+    });
+    if (!value) return;
+
+    const cur = api.view.type;
+    const viewType = cur.startsWith('resourceTimelineCustom') ? cur : 'resourceTimelineCustom';
+    if (viewType === 'resourceTimelineCustom' && !cur.startsWith('resourceTimelineCustom')) setSlotIndex(0);
+    await handleViewChange(viewType, 'range', value);
+  };
+
   /// Xử lý độ chia thời gian nhỏ nhất
   const toggleSlotDuration = () => {
     const calendarApi = calendarRef.current?.getApi();
@@ -6161,7 +6349,14 @@ const ScheduleTest = () => {
         const nextIndex = (prevIndex + 1) % slotViewQuarters.length;
         calendarApi.changeView(slotViewQuarters[nextIndex]);
         return nextIndex;
+      } else if (currentView.includes("Custom")) {
+        // Khoảng tuỳ chọn: đổi độ chia nhưng giữ nguyên khoảng ngày đang xem
+        const { activeStart, activeEnd } = calendarApi.view;
+        const nextIndex = (prevIndex + 1) % slotViewCustoms.length;
+        calendarApi.changeView(slotViewCustoms[nextIndex], { start: activeStart, end: activeEnd });
+        return nextIndex;
       }
+      return prevIndex;
     });
   };
 
@@ -6177,6 +6372,13 @@ const ScheduleTest = () => {
 
     if (draggedEvent._def.ui.backgroundColor == "#002af9ff" || draggedEvent._def.extendedProps.stage_code == 8) {
       return false;
+    }
+
+    // Weighing Scheduler: chỉ kéo lịch cân, chỉ thả vào phòng cân
+    if (weighOnly) {
+      if (!isWeighStage(draggedEvent.extendedProps?.stage_code)) return false;
+      const roomStage = dropInfo.resource?.extendedProps?.stage_code;
+      if (roomStage != null && !isWeighStage(roomStage)) return false;
     }
 
     if (userID == 1 || userID == 5) {
@@ -6215,7 +6417,8 @@ const ScheduleTest = () => {
     // allSettled chứ không phải Promise.all: gộp chung thì 1 API lỗi là nuốt luôn
     // kết quả của API kia, và submit lọt qua mà không ai biết.
     const [resYield, resValidate] = await Promise.allSettled([
-      axios.post('/Schedual/yield_policy/check', { year: calYear, month: calMonth }),
+      // Weighing Scheduler chỉ submit lịch cân: không xét chính sách sản lượng của phân xưởng
+      weighOnly ? Promise.resolve({ data: null }) : axios.post('/Schedual/yield_policy/check', { year: calYear, month: calMonth }),
       axios.post('/Schedual/validate_submit', { submit_type: 'production' })
     ]);
 
@@ -6237,7 +6440,8 @@ const ScheduleTest = () => {
 
     // 🔹 1. BẮT ĐẦU CHẶN LỖI LỊCH NGHIÊM TRỌNG (Gộp Frontend & Backend)
     const errorEvents = [...(validateResult.errors || [])];
-    const allEvents = (api?.getEvents() || []).filter(evt => !evt.extendedProps?.is_running);
+    const allEvents = (api?.getEvents() || []).filter(evt => !evt.extendedProps?.is_running
+      && (!weighOnly || isWeighStage(evt.extendedProps?.stage_code))); // Weighing Scheduler: chỉ xét lịch cân
 
     allEvents.forEach(evt => {
       if (moment(evt.start).isBefore(moment())) return; // Bỏ qua các sự kiện trong quá khứ
@@ -6392,7 +6596,7 @@ const ScheduleTest = () => {
     }
 
     Swal.fire({
-      title: 'Bạn muốn submit toàn bộ lịch đã sắp?',
+      title: weighOnly ? 'Bạn muốn submit lịch cân đã sắp?' : 'Bạn muốn submit toàn bộ lịch đã sắp?',
       html: checkFailures.length
         ? `<div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;padding:10px 12px;color:#92400e;font-size:.9rem;text-align:left;">
              <b>⚠️ Không chạy được: ${checkFailures.join(', ')}.</b><br/>
@@ -6739,7 +6943,7 @@ const ScheduleTest = () => {
             `;
     }
 
-    if (authorization && props.finished == 0 && props.tank == 0 && props.stage_code != 8) {
+    if (authorization && props.finished == 0 && props.tank == 0 && props.stage_code != 8 && (!weighOnly || isWeighStage(props.stage_code))) {
       html += `
           <button 
             class="edit-single-event-btn"
@@ -6777,22 +6981,16 @@ const ScheduleTest = () => {
     selectedEventsRef.current = list;
     list.forEach(sel => markEventSelected(document.querySelector(`.fc-event[data-event-id="${sel.id}"]`)));
   }, []);
-  const applyWeighResult = useCallback((data) => {
-    if (data.events) setEvents(data.events);
-    if (data.plan) setPlan(data.plan);
-    if (data.sumBatchByStage) setSumBatchByStage(data.sumBatchByStage);
-    clearAllEventSelection();
-    setSelectedEvents([]);
-    selectedEventsRef.current = [];
-  }, []);
   const weighAssist = useWeighAssist({
     calendarRef, events, resources, authorization, selectedEvents,
-    onSelect: selectWeighEvents, onApplied: applyWeighResult,
+    onSelect: selectWeighEvents, pendingChanges, setPendingChanges,
+    onGoto: (date) => handleViewChange(null, 'goto', date),
   });
 
   const calendarEvents = useMemo(() => {
     const base = [
       ...events,                     // event sản xuất
+      ...weighAssist.draftEvents,    // WeighAssist: khối cân nháp chưa lưu
       ...buildOffDayEvents(offDays), // background ngày nghỉ
       ...runningEvents,              // phòng đang bận (Nhận phòng → hiện tại)
     ];
@@ -6800,7 +6998,7 @@ const ScheduleTest = () => {
       return [...base, ...personnelEvents];
     }
     return base;
-  }, [events, offDays, personnelEvents, runningEvents, showPersonnel]);
+  }, [events, weighAssist.draftEvents, offDays, personnelEvents, runningEvents, showPersonnel]);
 
   const displayResources = useMemo(() => {
     let baseRes = resources || [];
@@ -7070,6 +7268,7 @@ const ScheduleTest = () => {
     handleEditEventClick,
     handleUndoFrontend,
     handleViewChange,
+    handleCustomRange,
     handleSilentRefresh,
     handleShowList,
     toggleNoteModal,
@@ -7100,6 +7299,7 @@ const ScheduleTest = () => {
     stageMap,
     heightResource,
     authorization,
+    weighOnly, // Weighing Scheduler: nút công cụ + nút sửa nhanh
     showRenderBadge,
     showPersonnel,
     isCleaningHidden,
@@ -7154,7 +7354,7 @@ const ScheduleTest = () => {
           />
         </div>
         <div className="flex gap-4 align-items-center justify-content-end">
-          {blackViolationCount > 0 && (
+          {showWarnBadges && blackViolationCount > 0 && (
             <div
               className="flex align-items-center gap-2 bg-purple-100 text-purple-800 px-3 py-1 border-round-2xl shadow-1 border-1 border-purple-200 cursor-pointer"
               onClick={scrollToFirstBlackViolation}
@@ -7165,7 +7365,8 @@ const ScheduleTest = () => {
               <span className="font-bold text-sm">{blackViolationCount} Sự Kiện Đen</span>
             </div>
           )}
-          {blackViolationCount > 0 && (
+          {/* Nút "Sửa lỗi Cân" tạm ẩn (25/11/2026): dùng cụm Sắp lịch cân bán tự động. Bật lại: bỏ "false &&" */}
+          {false && blackViolationCount > 0 && (
             <div
               className="flex align-items-center gap-2 bg-blue-100 text-blue-800 px-3 py-1 border-round-2xl shadow-1 border-1 border-blue-200 cursor-pointer hover:bg-blue-200 transition-colors"
               onClick={() => handleFixAllWeighingViolations(null)}
@@ -7187,7 +7388,7 @@ const ScheduleTest = () => {
               <span className="font-bold text-sm">{selectedEvents.length} Lô đang chọn</span>
             </div>
           )}
-          {unsubmittedCount > 0 && (
+          {showWarnBadges && unsubmittedCount > 0 && (
             <div className="flex align-items-center gap-2 bg-red-100 text-red-800 px-3 py-1 border-round-2xl shadow-1 border-1 border-red-200">
               <i className="pi pi-exclamation-circle"></i>
               <span className="font-bold text-sm">{unsubmittedCount} Lịch chưa submit</span>
@@ -7204,9 +7405,8 @@ const ScheduleTest = () => {
               ></i>
             </div>
           )}
-          <RoomWipToggle roomWip={roomWip} />{/* RoomWip (thử nghiệm) */}
-          <WeighAssistBar wa={weighAssist} />{/* WeighAssist: lọc lô cần cân + gợi ý lịch cân */}
-          {moldWarningEvents.length > 0 && (
+          {showWarnBadges && <RoomWipToggle roomWip={roomWip} />}{/* RoomWip (thử nghiệm) */}
+          {showWarnBadges && moldWarningEvents.length > 0 && (
             <div
               className="flex align-items-center gap-2 bg-yellow-100 text-yellow-800 px-3 py-1 border-round-2xl shadow-1 border-1 border-yellow-300 cursor-pointer hover:bg-yellow-200 transition-colors"
               onClick={handleNextMoldWarning}
@@ -7216,7 +7416,7 @@ const ScheduleTest = () => {
               <span className="font-bold text-sm">{moldWarningEvents.length} Lịch trùng khuôn</span>
             </div>
           )}
-          {overlapInfo.spots.length > 0 && (
+          {showWarnBadges && overlapInfo.spots.length > 0 && (
             <div
               className="flex align-items-center gap-2 bg-red-100 text-red-800 px-3 py-1 border-round-2xl shadow-1 border-1 border-red-300 cursor-pointer hover:bg-red-200 transition-colors"
               onClick={handleNextOverlap}
@@ -7251,6 +7451,8 @@ const ScheduleTest = () => {
               <span className="font-bold text-sm">{sourceWarningEvents.length} Lịch sai thiết bị nguồn NL</span>
             </div>
           )}
+          {/* WeighAssist: cụm Sắp lịch cân bán tự động - để cuối hàng (sát mép phải) để không bị xô khi các nhãn cảnh báo hiện / ẩn */}
+          <WeighAssistBar wa={weighAssist} />
         </div>
       </div>
 
@@ -7616,6 +7818,15 @@ const ScheduleTest = () => {
             resourceTimelineQuarter4h: { type: 'resourceTimelineQuarter', slotDuration: '04:00:00', snapDuration: '00:15:00' },
             resourceTimelineQuarter1h: { type: 'resourceTimelineQuarter', slotDuration: '01:00:00', snapDuration: '00:15:00' },
             resourceTimelineQuarter1d: { type: 'resourceTimelineQuarter', slotDuration: { days: 1 } },
+
+            // Khoảng tuỳ chọn (Từ ngày – Đến ngày, tối đa 3 tháng): khoảng truyền qua changeView(view, {start, end})
+            resourceTimelineCustom: {
+              type: 'resourceTimeline',
+              slotDuration: { days: 1 },
+              titleFormat: { year: 'numeric', month: 'short', day: 'numeric' },
+            },
+            resourceTimelineCustom4h: { type: 'resourceTimelineCustom', slotDuration: '04:00:00', snapDuration: '00:15:00' },
+            resourceTimelineCustom1h: { type: 'resourceTimelineCustom', slotDuration: '01:00:00', snapDuration: '00:15:00' },
           }}
 
           customButtons={{
@@ -7682,6 +7893,11 @@ const ScheduleTest = () => {
               text: '3 Tháng',
               click: () => fcLatest.current.handleViewChange('resourceTimelineQuarter'),
               hint: 'Thay đổi hiển thị lịch theo khung thời gian 3 tháng'
+            },
+            customRange: {
+              text: 'Khoảng',
+              click: () => fcLatest.current.handleCustomRange(),
+              hint: 'Chọn khung thời gian tuỳ ý: Từ ngày – Đến ngày (tối đa 3 tháng)'
             },
 
 
@@ -7801,9 +8017,12 @@ const ScheduleTest = () => {
           }}
 
           headerToolbar={{
-            left: 'customPre,myToday,customNext refreshData noteModal hiddenClearning hiddenTheory cascadeToggle historyToggle detailToggle autoSchedualer deleteAllScheduale changeSchedualer unSelect ShowBadge AcceptQuarantine clearningValidation Cleaninglevelchange togglePersonnel',
+            left: weighOnly
+              // Weighing Scheduler: bỏ tịnh tiến, sắp lịch tự động, xoá hàng loạt, chấp nhận biệt trữ, thẩm định / cấp vệ sinh
+              ? 'customPre,myToday,customNext refreshData noteModal hiddenClearning hiddenTheory historyToggle detailToggle changeSchedualer unSelect ShowBadge togglePersonnel'
+              : 'customPre,myToday,customNext refreshData noteModal hiddenClearning hiddenTheory cascadeToggle historyToggle detailToggle autoSchedualer deleteAllScheduale changeSchedualer unSelect ShowBadge AcceptQuarantine clearningValidation Cleaninglevelchange togglePersonnel',
             center: 'title',
-            right: 'Submit fontSizeBox searchBox slotDuration customDay,customWeek,customMonth,customQuarter customList toggleFullscreen' //customYear
+            right: 'Submit fontSizeBox searchBox slotDuration customDay,customWeek,customMonth,customQuarter,customRange customList toggleFullscreen' //customYear
           }}
 
 

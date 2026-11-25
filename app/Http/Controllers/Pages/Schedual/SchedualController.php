@@ -8,6 +8,7 @@ use App\Services\ScheduleRerouteService;
 use App\Services\SchedulingLock;
 use App\Support\LeadConfirmation;
 use App\Support\StagePlanHistory;
+use App\Support\WeighingScheduler;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -1932,13 +1933,14 @@ class SchedualController extends Controller
             ->where('quota.active', 1)
             ->where('quota.deparment_code', $production)
             // Chỉ lấy cột FullCalender.jsx dùng: SELECT * (~9k dòng × 48 cột) làm /Schedual/view vượt memory_limit 128MB.
-            // stage_code lấy của room như SELECT * cũ (cột room đè cột quota cùng tên)
+            // stage_code lấy của quota: định mức Cân NL khác (stage 2, process_code "<BTP>_NA_<phòng>_2") nằm ở phòng cân
+            // stage_code 1; lấy theo room (như SELECT * cũ) thì Gantt không tìm được định mức khi kéo lịch cân 2.
             ->select(
                 'quota.process_code',
                 'quota.intermediate_code',
                 'quota.finished_product_code',
                 'quota.room_id',
-                'room.stage_code',
+                'quota.stage_code',
                 'quota.p_time',
                 'quota.m_time',
                 'quota.C1_time',
@@ -2542,6 +2544,16 @@ class SchedualController extends Controller
         // Tạo  $this->offdate
 
         $multi_stage = $request->multiStage ?? false;
+
+        // Weighing Scheduler: chỉ xếp lô cân vào phòng cân, không đổ tiếp sang công đoạn sau
+        if (WeighingScheduler::active()) {
+            $roomStage = DB::table('room')->where('id', $request->room_id)->value('stage_code');
+            if (! WeighingScheduler::isWeighingStage($roomStage)
+                || WeighingScheduler::blocks(collect($request->products)->pluck('id'))) {
+                return WeighingScheduler::deny();
+            }
+            $multi_stage = false;
+        }
 
         $start_date = null;
 
@@ -3432,6 +3444,18 @@ class SchedualController extends Controller
                 $allManualIds = array_merge($allManualIds, $ids);
             }
 
+            // Weighing Scheduler: mọi lịch thay đổi phải là công đoạn cân và đặt vào phòng cân
+            if (WeighingScheduler::active()) {
+                $targetRooms = collect($changes)->pluck('resourceId')->filter()->unique();
+                $badRoom = $targetRooms->isNotEmpty() && DB::table('room')->whereIn('id', $targetRooms)
+                    ->where(fn($q) => $q->whereNull('stage_code')->orWhereNotBetween('stage_code', [1, WeighingScheduler::MAX_STAGE]))
+                    ->exists();
+                if ($badRoom || WeighingScheduler::blocks($allManualIds)) {
+                    DB::rollBack();
+                    return WeighingScheduler::deny();
+                }
+            }
+
             $sharedStart = null;
             $sharedResource = null;
             $isMoveSelectedBatches = $request->input('move_selected_batches', false);
@@ -3850,6 +3874,10 @@ class SchedualController extends Controller
 
         $changes = $request->input('changes', []);
 
+        if (WeighingScheduler::blocks(collect($changes)->pluck('id'))) {
+            return WeighingScheduler::deny();
+        }
+
         try {
 
             foreach ($changes as $change) {
@@ -3932,6 +3960,10 @@ class SchedualController extends Controller
 
         $items = collect($request->input('ids'));
         $targetIds = collect();
+
+        if (WeighingScheduler::blocks($items->pluck('id'))) {
+            return WeighingScheduler::deny();
+        }
 
         try {
 
@@ -5145,6 +5177,11 @@ class SchedualController extends Controller
             ], 422);
         }
 
+        $weighingOnly = WeighingScheduler::active();
+        if ($weighingOnly && $submitType !== 'production') {
+            return response()->json(['message' => WeighingScheduler::DENIED, 'type' => 'error'], 403);
+        }
+
         $updatedRows = DB::table('stage_plan as sp')
             ->select(
                 'sp.*',
@@ -5157,8 +5194,12 @@ class SchedualController extends Controller
             ->where('sp.active', 1)
             ->where('sp.submit', 0)
             ->where('sp.deparment_code', session('user.production_code'))
-            ->when($submitType === 'production', function ($query) {
+            ->when($submitType === 'production', function ($query) use ($weighingOnly) {
                 $query->where('sp.stage_code', '!=', 8);
+                // Weighing Scheduler chỉ submit lịch cân, lịch các công đoạn khác giữ nguyên chưa submit
+                if ($weighingOnly) {
+                    $query->whereBetween('sp.stage_code', [1, WeighingScheduler::MAX_STAGE]);
+                }
             })
             ->when(in_array($submitType, $maintenanceTypes), function ($query) use ($submitType) {
                 $query->where('sp.stage_code', 8)
@@ -5281,7 +5322,7 @@ class SchedualController extends Controller
             'TB' => 'Lịch Bảo Trì Thiết Bị',
             'TI' => 'Lịch Bảo Trì Tiện Ích',
         ];
-        $typeLabel = $typeLabels[$submitType] ?? 'Lịch Sản Xuất';
+        $typeLabel = $weighingOnly ? 'Lịch Cân' : ($typeLabels[$submitType] ?? 'Lịch Sản Xuất');
 
         $message = "{$senderName} đã Submit {$typeLabel} ngày {$sendDate} PX {$productionName}";
         if ($newSchedules > 0 || $modifiedSchedules > 0) {

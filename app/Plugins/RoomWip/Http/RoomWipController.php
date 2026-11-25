@@ -115,6 +115,8 @@ class RoomWipController extends Controller
 
     private function allowed(): bool
     {
-        return user_has_permission(session('user')['userId'], self::PERMISSION, 'boolean');
+        // Chỉ role chính Admin / Schedualer (yêu cầu user 25/11/2026), và phải có quyền schedual_wip_rows
+        return in_array(session('user')['userGroup'] ?? null, ['Admin', 'Schedualer'], true)
+            && user_has_permission(session('user')['userId'], self::PERMISSION, 'boolean');
     }
 }

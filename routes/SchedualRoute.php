@@ -21,13 +21,15 @@ use App\Http\Controllers\Pages\Schedual\WipCoverageController;
 use App\Http\Controllers\Pages\Schedual\WeighingAssistController;
 use App\Http\Middleware\AutoLockExecution;
 use App\Http\Middleware\CheckLogin;
+use App\Http\Middleware\RestrictWeighingScheduler;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Pages\Schedual\AutoSchedualController;
 
 Route::prefix('/Schedual')
         ->controller(SchedualController::class)
         ->name('pages.Schedual.')
-        ->middleware(CheckLogin::class)
+        // Weighing Scheduler chỉ được sắp lịch công đoạn cân
+        ->middleware([CheckLogin::class, RestrictWeighingScheduler::class])
         ->group(function () {
 
                 Route::get('', 'index')->name('index');
@@ -100,7 +102,7 @@ Route::prefix('/Schedual')
 Route::prefix('/Schedual/weighing')
         ->controller(WeighingAssistController::class)
         ->name('pages.Schedual.weighing.')
-        ->middleware(CheckLogin::class)
+        ->middleware([CheckLogin::class, RestrictWeighingScheduler::class])
         ->group(function () {
                 Route::post('status', 'status')->name('status');
                 Route::post('suggest', 'suggest')->name('suggest');
@@ -110,7 +112,7 @@ Route::prefix('/Schedual/weighing')
 Route::prefix('/Schedual')
         ->controller(AutoSchedualController::class)
         ->name('pages.Schedual.Auto.')
-        ->middleware(CheckLogin::class)
+        ->middleware([CheckLogin::class, RestrictWeighingScheduler::class])
         ->group(function () {
                 Route::post('simulateScheduleAll', 'simulateScheduleAll')->name('simulateScheduleAll');
                 Route::post('commitSimulatedSchedule', 'commitSimulatedSchedule')->name('commitSimulatedSchedule');

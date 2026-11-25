@@ -30,7 +30,7 @@ return [
         ['id' => 'tong-quan', 'file' => 'overview', 'title' => 'Tổng Quan & Thuật Ngữ', 'icon' => 'fas fa-compass',
             'keywords' => 'cong doan pha che tron hoan tat dinh hinh bao phim dong goi btp chien dich viet tat quy trinh'],
         ['id' => 'phan-quyen', 'sources' => array_merge($gantt, ['app/Support/GuidePermissions.php']), 'file' => 'permissions', 'title' => 'Quyền Truy Cập', 'icon' => 'fas fa-user-shield',
-            'keywords' => 'admin schedualer bod phan xuong khoa ttsx'],
+            'keywords' => 'admin schedualer bod phan xuong khoa ttsx weighing scheduler nguoi lap lich can trung tam can'],
     ],
     'Lịch Sản Xuất Chart' => [
         ['id' => 'man-hinh-gantt', 'sources' => $gantt, 'file' => 'gantt', 'title' => 'Màn Hình Lịch Sản Xuất Chart', 'icon' => 'fas fa-stream',

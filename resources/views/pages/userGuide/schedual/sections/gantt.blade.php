@@ -41,8 +41,10 @@
         <tbody>
             <tr><td>📤</td><td><b>Submit lịch</b>: sắp lịch xong bấm để các bộ phận khác thấy lịch mới.</td></tr>
             <tr><td>Cỡ chữ, ô tìm</td><td>Đổi cỡ chữ trên thanh lô; tìm nhanh lô.</td></tr>
-            <tr><td>Slot</td><td>Đổi độ chia thời gian của khung Tuần / Tháng (1 giờ hoặc 4 giờ).</td></tr>
+            <tr><td>Slot</td><td>Đổi độ chia thời gian của khung Tuần / Tháng / Khoảng (1 giờ hoặc 4 giờ).</td></tr>
             <tr><td>Ngày / Tuần / Tháng / 3 Tháng</td><td>Đổi khung thời gian hiển thị. Khung 3 tháng tải nhiều dữ liệu, mở chậm hơn.</td></tr>
+            <tr><td>Khoảng</td><td>Chọn khung thời gian tuỳ ý: nhập <b>Từ ngày</b> – <b>Đến ngày</b> (tính cả ngày cuối, tối đa 3 tháng)
+                rồi bấm <b>Xem</b>. Nút ⏴ / ⏵ dịch cả khoảng đi đúng bằng độ dài của nó; <b>Hiện Tại</b> đưa khoảng về bắt đầu từ hôm nay.</td></tr>
             <tr><td>KHSX</td><td>Mở <a href="#danh-sach-khsx">danh sách kế hoạch đang chờ sắp lịch</a> (kéo lô từ đây thả vào phòng để
                 <a href="#sap-lich-thu-cong">sắp lịch thủ công</a>).</td></tr>
             <tr><td>⛶</td><td>Toàn màn hình.</td></tr>
@@ -52,7 +54,9 @@
 
 <p>
     Thanh trên cùng (phía trên thanh công cụ) có các nút trạng thái như <b>Lô đang chọn</b>, <b>Lịch chưa submit</b>,
-    <b>Tồn BTP</b>, <b>Chỗ trùng giờ</b>... Nút <b>⚖ Lô cần cân</b> và <b>Gợi ý lịch cân</b> dùng để
+    <b>Tồn BTP</b>, <b>Chỗ trùng giờ</b>... Các nhãn <b>Sự Kiện Đen</b>, <b>Lịch chưa submit</b>, <b>Tồn BTP</b>,
+    <b>Lịch trùng khuôn</b>, <b>Chỗ trùng giờ</b> chỉ hiện với người dùng có nhóm quyền chính <b>Admin</b> hoặc
+    <b>Schedualer</b>. Nút <b>⚖ Lô cần cân</b> và <b>Gợi ý lịch cân</b> dùng để
     <a href="#sap-lich-can">sắp lịch cân bán tự động</a>.
 </p>
 

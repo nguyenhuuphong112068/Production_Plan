@@ -37,7 +37,7 @@ Tài liệu hiện có - **mỗi mục lớn của leftNAV là một tài liệu
 | `baoCao` | Báo Cáo | |
 | `tonBtp` | Tồn BTP | |
 | `lichSu` | Lịch Sử | |
-| `userPolicy` | User Policy | Nhắc không đổi tên nhóm quyền Admin / Schedualer / Leader / Executor |
+| `userPolicy` | User Policy | Nhắc không đổi tên nhóm quyền Admin / Schedualer / Weighing Scheduler / Leader / Executor |
 | `phanQuyen` | (tài liệu chung) Bảo Mật & Phân Quyền | Theo khuôn tài liệu Phân Quyền của WMS: cách tính quyền, nhóm quyền chính, nhóm quyền / phòng ban đặc biệt, cấp quyền, ma trận theo từng tài liệu (mục `bang-<khoá>` sinh từ GUIDES), 21 CFR Part 11, quyền không dùng |
 | `dangNhap` | Lịch Sử Đăng Nhập | Mục "Lịch Sử Đăng Nhập" thứ hai thực chất mở Audit Trail |
 
