@@ -131,7 +131,7 @@ class GuidePermissions
             ['Lịch Sản Xuất Chart', 'Xem biểu đồ', ['rule' => self::ALL]],
             ['Lịch Sản Xuất Chart', 'Tải danh sách KHSX (lô chờ sắp lịch)', ['perm' => 'loading_plan_waiting']],
             ['Lịch Sản Xuất Chart', 'Sửa lịch, sắp lịch tự động, gợi ý lịch cân, Submit, Khóa TTSX', ['rule' => 'Nhóm quyền chính Admin hoặc Schedualer, và phân xưởng đang chọn trùng phòng ban của tài khoản. Phòng ban BOD sửa được mọi phân xưởng.', 'roles' => ['Admin', 'Schedualer']]],
-            ['Lịch Sản Xuất Chart', 'Chỉ sắp lịch, gợi ý lịch cân và Submit công đoạn cân', ['rule' => 'Nhóm quyền chính Weighing Scheduler, phân xưởng đang chọn trùng phòng ban của tài khoản. Không sửa / Submit lịch các công đoạn khác, không sắp lịch tự động.', 'roles' => ['Weighing Scheduler']]],
+            ['Lịch Sản Xuất Chart', 'Chỉ sắp lịch, gợi ý lịch cân và Submit công đoạn cân; Khóa TTSX chỉ các phòng cân', ['rule' => 'Nhóm quyền chính Weighing Scheduler, phân xưởng đang chọn trùng phòng ban của tài khoản. Không sửa / Submit lịch các công đoạn khác, không sắp lịch tự động. Khóa TTSX (bấm nút hoặc tự khóa khi sửa lịch) chỉ chặn Nhận / Trả phòng các phòng cân (stage 1, 2).', 'roles' => ['Weighing Scheduler']]],
             ['Lịch Sản Xuất Chart', 'Nhãn Sự Kiện Đen, Lịch chưa submit, Tồn BTP, Lịch trùng khuôn, Chỗ trùng giờ', ['rule' => 'Nhóm quyền chính Admin hoặc Schedualer (nút Tồn BTP cần thêm quyền ở dòng dưới).', 'roles' => ['Admin', 'Schedualer']]],
             ['Lịch Sản Xuất Chart', 'Nút Tồn BTP (dòng tồn BTP chờ vào phòng)', ['perm' => 'schedual_wip_rows']],
             ['Lịch Sản Xuất Chart', 'Lịch sử tịnh tuyến (chuột phải)', ['rule' => 'Chỉ các tài khoản được chỉ định trong mã (ScheduleRerouteService).']],

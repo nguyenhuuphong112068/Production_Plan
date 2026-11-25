@@ -26,7 +26,8 @@ class RestrictWeighingScheduler
         'pages.Schedual.validate_submit',
         'pages.Schedual.weighing.status',
         'pages.Schedual.weighing.suggest',
-        'pages.Schedual.executionLockAuto', // Gantt gọi khi có kéo thả chưa lưu; chỉ khóa với Admin / Schedualer
+        'pages.Schedual.executionLockAuto', // Gantt gọi khi có kéo thả chưa lưu; Weighing Scheduler chỉ khóa phòng cân
+        'pages.Schedual.executionLockToggle', // nút Khóa TTSX: Weighing Scheduler chỉ khóa phòng cân (SchedulingLock::weighKey)
         // Ghi - hàm tự chặn id ngoài công đoạn cân
         'pages.Schedual.store',
         'pages.Schedual.update',

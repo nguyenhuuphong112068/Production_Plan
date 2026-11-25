@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Http\Controllers\Pages\AuditTrail\AuditTrialController;
 use App\Services\SchedulingLock;
+use App\Support\WeighingScheduler;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -14,7 +15,8 @@ use Symfony\Component\HttpFoundation\Response;
  * thao tác sửa lịch thành công đầu tiên sẽ tự bật khóa thủ công (SchedulingLock::setManual) để Nhận / Trả phòng ở trang
  * Thực Thi không tịnh tuyến chồng lên lịch đang sắp. Gantt còn gọi PUT /Schedual/executionLock/auto ngay khi có thay đổi
  * kéo thả chưa lưu (lockIfNeeded). Trả header X-Exec-Auto-Locked để Gantt nhắc người dùng và cập nhật nút.
- * Chỉ áp cho phân xưởng trong DEPARTMENTS, chỉ với Admin / Schedualer của chính phân xưởng (như quyền bật nút khóa).
+ * Chỉ áp cho phân xưởng trong DEPARTMENTS, chỉ với Admin / Schedualer của chính phân xưởng (như quyền bật nút khóa);
+ * Weighing Scheduler của chính phân xưởng thì chỉ khóa các phòng cân (25/11/2026).
  */
 class AutoLockExecution
 {
@@ -43,19 +45,22 @@ class AutoLockExecution
         $production = $user['production_code'] ?? null;
 
         if (!in_array($production, self::DEPARTMENTS, true)
-            || !in_array($user['userGroup'] ?? null, ['Admin', 'Schedualer'], true)
+            || !in_array($user['userGroup'] ?? null, ['Admin', 'Schedualer', WeighingScheduler::ROLE], true)
             || DB::table('user_management')->where('userName', $user['userName'] ?? null)->value('deparment') !== $production) {
             return false;
         }
 
-        if (SchedulingLock::manual($production)) {
-            SchedulingLock::touchManual($production);
+        // Weighing Scheduler: khóa riêng chỉ chặn các phòng cân (SchedulingLock::weighKey)
+        $key = SchedulingLock::manualKeyForUser($production);
+
+        if (SchedulingLock::manual($key)) {
+            SchedulingLock::touchManual($key);
             return false;
         }
 
-        SchedulingLock::setManual($production, true, $user['fullName'] ?? null);
+        SchedulingLock::setManual($key, true, $user['fullName'] ?? null);
         AuditTrialController::log('Tự khóa thực thi sản xuất', 'scheduling_locks', 0, 'NA',
-            'Phân xưởng ' . $production . ' · sắp lịch thủ công (' . $source . ')');
+            'Phân xưởng ' . $production . ($key !== $production ? ' · chỉ phòng cân' : '') . ' · sắp lịch thủ công (' . $source . ')');
 
         return true;
     }

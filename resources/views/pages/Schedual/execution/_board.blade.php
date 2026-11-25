@@ -3,8 +3,9 @@
     $ROS = \App\Services\RoomOccupancyService::class;
 @endphp
 
-{{-- Phân xưởng đang sắp lịch tự động / khóa thủ công: Nhận / Trả phòng bị chặn (server trả 423) --}}
-@if ($lockMessage = \App\Services\SchedulingLock::executionBlock($production))
+{{-- Phân xưởng đang sắp lịch tự động / khóa thủ công: Nhận / Trả phòng bị chặn (server trả 423).
+     Không có khóa cả phân xưởng thì xét khóa riêng các phòng cân của người sắp lịch cân (stage_code 1). --}}
+@if ($lockMessage = \App\Services\SchedulingLock::executionBlock($production) ?? \App\Services\SchedulingLock::executionBlock($production, 1))
     <div class="alert alert-warning font-weight-bold mb-3"><i class="fas fa-lock"></i> {{ $lockMessage }}</div>
 @endif
 

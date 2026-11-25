@@ -61,11 +61,13 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
   const handleToggleExecLock = () => {
     if (!execLock || execLockSaving) return;
     const lock = !execLock.locked;
+    // Weighing Scheduler: khóa chỉ áp cho các phòng cân (room.stage_code 1, 2) của phân xưởng
+    const scope = execLock.scope === 'weigh' ? 'các <b>phòng cân</b> của phân xưởng' : 'của phân xưởng';
     Swal.fire({
       icon: 'question',
       title: lock ? 'Khóa thực thi sản xuất?' : 'Mở khóa thực thi sản xuất?',
       html: lock
-        ? 'Tạm dừng <b>Nhận phòng / Trả phòng</b> ở trang Thực Thi Sản Xuất và Nhận – Trả Phòng của phân xưởng trong lúc bạn sắp lịch thủ công, để tịnh tuyến lịch không xung đột.<br><small>Nếu quên tắt: tự mở khi không còn thao tác sắp lịch thủ công trong 10 phút.</small>'
+        ? `Tạm dừng <b>Nhận phòng / Trả phòng</b> ở trang Thực Thi Sản Xuất và Nhận – Trả Phòng ${scope} trong lúc bạn sắp lịch thủ công, để tịnh tuyến lịch không xung đột.<br><small>Nếu quên tắt: tự mở khi không còn thao tác sắp lịch thủ công trong 10 phút.</small>`
         : 'Cho phép Nhận phòng / Trả phòng trở lại.',
       showCancelButton: true,
       confirmButtonText: lock ? 'Khóa' : 'Mở khóa',
@@ -1767,14 +1769,14 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
                     ? 'bg-red-100 border-red-500 text-red-700'
                     : 'bg-gray-100 border-gray-400 text-gray-700'}`}
                   title={execLock.locked
-                    ? `Đang khóa Nhận / Trả phòng (bởi ${execLock.locked_by || '?'} lúc ${execLock.locked_at}, tự mở lúc ${execLock.expires_at} nếu không sắp lịch thêm). Bấm để mở khóa`
-                    : 'Khóa Nhận / Trả phòng ở trang Thực Thi Sản Xuất trong lúc sắp lịch thủ công'}
+                    ? `Đang khóa Nhận / Trả phòng${execLock.scope === 'weigh' ? ' các phòng cân' : ''} (bởi ${execLock.locked_by || '?'} lúc ${execLock.locked_at}, tự mở lúc ${execLock.expires_at} nếu không sắp lịch thêm). Bấm để mở khóa`
+                    : `Khóa Nhận / Trả phòng${execLock.scope === 'weigh' ? ' các phòng cân' : ''} ở trang Thực Thi Sản Xuất trong lúc sắp lịch thủ công`}
                   onClick={handleToggleExecLock}
                   style={{ whiteSpace: 'nowrap' }}
                 >
                   {execLockSaving
                     ? <i className="fas fa-spinner fa-spin fa-lg"></i>
-                    : (execLock.locked ? <><i className="fas fa-lock"></i> Đang khóa TTSX</> : <><i className="fas fa-lock-open"></i> Khóa TTSX</>)}
+                    : (execLock.locked ? <><i className="fas fa-lock"></i> Đang khóa TTSX{execLock.scope === 'weigh' ? ' cân' : ''}</> : <><i className="fas fa-lock-open"></i> Khóa TTSX{execLock.scope === 'weigh' ? ' cân' : ''}</>)}
                 </div>
               )}
 

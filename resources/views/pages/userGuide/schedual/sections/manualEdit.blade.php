@@ -77,6 +77,7 @@
     <div>
         <b>Khóa TTSX:</b> khi bạn sửa lịch thủ công mà chưa bật khoá, phần mềm tự khoá Nhận / Trả phòng của phân xưởng
         (hiện áp dụng cho PXV1) để trang Thực Thi Sản Xuất không đổi lịch cùng lúc với bạn. Khoá tự mở sau 10 phút không
-        thao tác; sắp lịch xong nhớ bấm <b>Đang khóa TTSX</b> ở thanh trên của danh sách KHSX để mở khoá.
+        thao tác; sắp lịch xong nhớ bấm <b>Đang khóa TTSX</b> ở thanh trên của danh sách KHSX để mở khoá. Nhóm quyền
+        <b>Weighing Scheduler</b> chỉ khoá <b>các phòng cân</b> của phân xưởng (nút hiện <b>Khóa TTSX cân</b>).
     </div>
 </div>

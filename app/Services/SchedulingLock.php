@@ -149,9 +149,28 @@ class SchedulingLock
     }
 
     /**
-     * Thông báo chặn thao tác Nhận / Trả phòng nếu phân xưởng đang sắp lịch tự động hoặc đang khóa thủ công, ngược lại null.
+     * Khóa thủ công của người sắp lịch CÂN (nhóm quyền chính Weighing Scheduler, yêu cầu user 25/11/2026) chỉ chặn các
+     * phòng cân (room.stage_code 1, 2) của phân xưởng. Lưu ở dòng riêng của scheduling_locks với deparment_code
+     * "<phân xưởng>:W", độc lập với khóa cả phân xưởng của Admin / Schedualer.
      */
-    public static function executionBlock(?string $deparmentCode): ?string
+    const WEIGH_ROOM_STAGES = [1, 2];
+
+    public static function weighKey(string $deparmentCode): string
+    {
+        return $deparmentCode . ':W';
+    }
+
+    /** Khóa thủ công mà người đăng nhập bật / tắt: Weighing Scheduler → chỉ phòng cân, còn lại → cả phân xưởng */
+    public static function manualKeyForUser(string $deparmentCode): string
+    {
+        return \App\Support\WeighingScheduler::active() ? self::weighKey($deparmentCode) : $deparmentCode;
+    }
+
+    /**
+     * Thông báo chặn thao tác Nhận / Trả phòng nếu phân xưởng đang sắp lịch tự động hoặc đang khóa thủ công, ngược lại null.
+     * $roomStageCode: room.stage_code của phòng thao tác - phòng cân còn bị chặn bởi khóa của người sắp lịch cân.
+     */
+    public static function executionBlock(?string $deparmentCode, $roomStageCode = null): ?string
     {
         if ($lock = self::active($deparmentCode)) {
             return self::message($lock);
@@ -160,6 +179,12 @@ class SchedulingLock
             return '🔒 Người sắp lịch' . ($lock->manual_by ? ' ' . $lock->manual_by : '')
                 . ' đang sắp lịch thủ công (khóa từ ' . Carbon::parse($lock->manual_at)->format('H:i d/m')
                 . '), tạm dừng Nhận / Trả phòng để tránh xung đột dời lịch. Vui lòng thử lại sau.';
+        }
+        if ($deparmentCode && in_array((int) $roomStageCode, self::WEIGH_ROOM_STAGES, true)
+            && ($lock = self::manual(self::weighKey($deparmentCode)))) {
+            return '🔒 Người sắp lịch cân' . ($lock->manual_by ? ' ' . $lock->manual_by : '')
+                . ' đang sắp lịch cân thủ công (khóa từ ' . Carbon::parse($lock->manual_at)->format('H:i d/m')
+                . '), tạm dừng Nhận / Trả phòng các phòng cân để tránh xung đột dời lịch. Vui lòng thử lại sau.';
         }
 
         return null;

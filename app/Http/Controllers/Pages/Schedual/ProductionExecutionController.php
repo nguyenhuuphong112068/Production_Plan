@@ -11,6 +11,7 @@ use App\Services\RealtimeRerouteSwitch;
 use App\Services\RoomOccupancyService;
 use App\Services\ScheduleRerouteService;
 use App\Services\SchedulingLock;
+use App\Support\WeighingScheduler;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -148,7 +149,7 @@ class ProductionExecutionController extends Controller
                 if (!$this->canOperate($room->deparment_code)) {
                         return response()->json(['message' => $this->operateDeniedMessage($room->deparment_code)], 403);
                 }
-                if ($block = SchedulingLock::executionBlock($room->deparment_code)) {
+                if ($block = SchedulingLock::executionBlock($room->deparment_code, $room->stage_code)) {
                         return response()->json(['message' => $block], 423);
                 }
 
@@ -290,7 +291,7 @@ class ProductionExecutionController extends Controller
                 }
 
                 // Phân xưởng đang sắp lịch tự động, hoặc người sắp lịch đang khóa thủ công (nút ở sidebar lịch chờ sắp trên Gantt)
-                if ($block = SchedulingLock::executionBlock($room->deparment_code)) {
+                if ($block = SchedulingLock::executionBlock($room->deparment_code, $room->stage_code)) {
                         return response()->json(['message' => $block], 423);
                 }
 
@@ -320,24 +321,26 @@ class ProductionExecutionController extends Controller
         /**
          * Người sắp lịch bật/tắt khóa thủ công: chặn Nhận / Trả phòng (trang Thực Thi / Ghi Nhận) của phân xưởng trong lúc
          * sắp lịch thủ công, tránh tịnh tuyến lịch lúc Trả phòng xung đột. Quyền như trên Gantt: Admin / Schedualer của
-         * chính phân xưởng đang xem.
+         * chính phân xưởng đang xem (khóa cả phân xưởng); Weighing Scheduler chỉ khóa các phòng cân (room.stage_code 1, 2).
          */
         public function executionLockToggle(Request $request)
         {
                 $production = session('user')['production_code'];
                 $department = DB::table('user_management')->where('userName', session('user')['userName'])->value('deparment');
-                if (!in_array(session('user')['userGroup'] ?? null, ['Admin', 'Schedualer'], true) || $department !== $production) {
+                if (!in_array(session('user')['userGroup'] ?? null, ['Admin', 'Schedualer', WeighingScheduler::ROLE], true) || $department !== $production) {
                         return response()->json(['message' => '❌ Chỉ người sắp lịch của phân xưởng ' . $production . ' được khóa thực thi sản xuất'], 403);
                 }
 
-                SchedulingLock::setManual($production, $request->boolean('locked'), session('user')['fullName']);
+                $weigh = WeighingScheduler::active();
+                $scope = $weigh ? 'các phòng cân của ' . $production : $production;
+                SchedulingLock::setManual(SchedulingLock::manualKeyForUser($production), $request->boolean('locked'), session('user')['fullName']);
                 AuditTrialController::log($request->boolean('locked') ? 'Khóa thực thi sản xuất' : 'Mở khóa thực thi sản xuất',
-                        'scheduling_locks', 0, 'NA', 'Phân xưởng ' . $production);
+                        'scheduling_locks', 0, 'NA', 'Phân xưởng ' . $production . ($weigh ? ' · chỉ phòng cân' : ''));
 
                 return response()->json($this->executionLockPayload($production) + [
                         'message' => $request->boolean('locked')
-                                ? '🔒 Đã khóa Nhận / Trả phòng của ' . $production . ' (tự mở khi không sắp lịch thêm ' . SchedulingLock::MANUAL_IDLE_MINUTES . ' phút)'
-                                : '🔓 Đã mở khóa Nhận / Trả phòng của ' . $production,
+                                ? '🔒 Đã khóa Nhận / Trả phòng ' . $scope . ' (tự mở khi không sắp lịch thêm ' . SchedulingLock::MANUAL_IDLE_MINUTES . ' phút)'
+                                : '🔓 Đã mở khóa Nhận / Trả phòng ' . $scope,
                 ]);
         }
 
@@ -353,10 +356,12 @@ class ProductionExecutionController extends Controller
 
         private function executionLockPayload(string $production): array
         {
-                $manual = SchedulingLock::manual($production);
+                // Weighing Scheduler thấy / bật khóa riêng của các phòng cân
+                $manual = SchedulingLock::manual(SchedulingLock::manualKeyForUser($production));
                 $auto = SchedulingLock::active($production);
 
                 return [
+                        'scope'       => WeighingScheduler::active() ? 'weigh' : 'all',
                         'locked'      => (bool) $manual,
                         'locked_by'   => $manual->manual_by ?? null,
                         'locked_at'   => $manual ? Carbon::parse($manual->manual_at)->format('H:i d/m') : null,

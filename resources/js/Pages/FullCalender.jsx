@@ -290,7 +290,8 @@ const ScheduleTest = () => {
       icon: 'info',
       title: 'Đã tự khóa Thực Thi Sản Xuất',
       html: 'Bạn đang sắp lịch thủ công nhưng chưa bật <b>Khóa TTSX</b>. Phần mềm đã tự khóa '
-        + '<b>Nhận / Trả phòng</b> của phân xưởng để tịnh tuyến lịch không xung đột với lịch bạn đang sắp.'
+        + '<b>Nhận / Trả phòng</b> ' + (data.scope === 'weigh' ? 'các <b>phòng cân</b>' : 'của phân xưởng')
+        + ' để tịnh tuyến lịch không xung đột với lịch bạn đang sắp.'
         + `<br><small>Khóa tự mở khi bạn không sắp lịch thêm 10 phút (hiện tại: ${data.expires_at}). Sắp lịch xong nhớ bấm <b>"Đang khóa TTSX"</b> ở sidebar lịch chờ sắp để mở khóa.</small>`,
       confirmButtonText: 'Đã hiểu',
     });
