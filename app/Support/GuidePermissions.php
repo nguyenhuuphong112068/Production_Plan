@@ -118,6 +118,7 @@ class GuidePermissions
             ['Theo Dõi Thẩm Định', 'Cập nhật danh sách theo dõi', ['perm' => 'validation_tracking_update']],
             ['Theo Dõi Thẩm Định', 'Phê duyệt', ['perm' => 'validation_tracking_approve']],
             ['Theo Dõi Hồ Sơ KCS', 'Cập nhật', ['perm' => 'kcs_tracking_update']],
+            ['Theo Dõi Xuất Kho EU', 'Nhập Ngày Lập Phiếu COC', ['perm' => 'coc_tracking_update']],
             ['Thông Báo Đóng Gói', 'Cập nhật thông báo', ['perm' => 'packaging_notification_update_po']],
             ['Thông Báo Đóng Gói', 'Nhập thông tin lấy mẫu', ['perm' => 'packaging_notification_update_sampling']],
             ['Thông Báo Đóng Gói', 'Khoá / mở khoá', ['perm' => 'packaging_notification_lock']],

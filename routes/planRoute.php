@@ -83,6 +83,16 @@ Route::prefix('/plan')
                 Route::get('export', 'export')->name('export');
             });
 
+        Route::prefix('/coc_tracking')
+            ->name('coc_tracking.')
+            ->controller(App\Http\Controllers\Pages\Plan\CocTrackingController::class)
+            ->group(function () {
+                Route::get('', 'index')->name('list');
+                Route::get('materials', 'materials')->name('materials');
+                Route::post('save', 'save')->name('save');
+                Route::get('history', 'history')->name('history');
+            });
+
         Route::prefix('/packaging_notification')
             ->name('packaging_notification.')
             ->controller(App\Http\Controllers\Pages\Plan\PackagingNotificationController::class)

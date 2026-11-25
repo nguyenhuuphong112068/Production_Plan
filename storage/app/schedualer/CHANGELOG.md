@@ -2,6 +2,13 @@
 
 Mục mới nhất ở trên cùng.
 
+## Ghi chú 25/11/2026 (không ra bản mới)
+
+Thời gian của **một khối cân chung nhiều lô** khi sắp lịch tự động công đoạn Cân được tính lại cho khớp nút Gợi ý lịch cân trên Gantt:
+thời gian chuẩn bị + thời gian sản xuất × (1 + (Hệ số chiến dịch − 1) × (số lô − 1)). Lô đầu mất trọn thời gian sản xuất, mỗi lô
+cân chung thêm (Hệ số − 1) × thời gian sản xuất. Trước đây nhân với số lô, nên khối 1 lô dài hơn lô cân riêng. Tài liệu v1.4 không
+mô tả công thức thời gian cân nên không đổi.
+
 ## v1.4 – 07/11/2026
 
 Thư mục: `nguyen-ly/v1.4_2026-11-07/` (`.md`, `.docx`, `.pdf`)

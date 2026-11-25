@@ -490,6 +490,13 @@
                         </li>
 
                         <li class="nav-item">
+                            <a href="{{ route('pages.plan.coc_tracking.list') }}" class="nav-link">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Theo Dõi Xuất Kho EU</p>
+                            </a>
+                        </li>
+
+                        <li class="nav-item">
                             <a href="{{ route('pages.plan.packaging_notification.list') }}" class="nav-link">
                                 <i class="far fa-circle nav-icon"></i>
                                 <p>Thông Báo Đóng Gói</p>

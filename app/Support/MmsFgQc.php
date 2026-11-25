@@ -216,7 +216,11 @@ class MmsFgQc
      * Ngày nhập kho = FGGRN.CRON (lúc kho tạo phiếu, có đủ 100% phiếu). Không dùng GRNAP:
      * phần giờ lệch 12 tiếng (CRON 16:07 -> GRNAP 04:07), và thiếu ở vài phiếu.
      *
-     * @return array<string, list<array{grn: string, date: string, qty: float}>>
+     * Kèm ngày sản xuất / hạn dùng (FGGRN.mfgdate / Expirydate) và đơn vị (UOM) của phiếu,
+     * dùng cho trang Theo Dõi Xuất Kho EU.
+     *
+     * @return array<string, list<array{grn: string, date: string, qty: float, mfg_date: string,
+     *                                   exp_date: string, uom: string}>>
      *         khoá "mã TP|số lô", mỗi lô xếp theo ngày nhập, phiếu đầu tiên trước
      */
     public static function stockInsSince(DateTimeInterface $since): array
@@ -228,7 +232,7 @@ class MmsFgQc
         }
 
         $sql = "
-            SELECT GRNNO, MatID, Mfgbatchno, totalqty, CRON
+            SELECT GRNNO, MatID, Mfgbatchno, totalqty, CRON, mfgdate, Expirydate, UOM
             FROM FGGRN
             WHERE CRON >= ?
         ";
@@ -247,6 +251,9 @@ class MmsFgQc
                 'grn' => trim((string) $row->GRNNO),
                 'date' => substr((string) $row->CRON, 0, 10),
                 'qty' => (float) $row->totalqty,
+                'mfg_date' => substr((string) $row->mfgdate, 0, 10),
+                'exp_date' => substr((string) $row->Expirydate, 0, 10),
+                'uom' => trim((string) $row->UOM),
             ];
         }
 
@@ -294,6 +301,58 @@ class MmsFgQc
             'qty' => $receipt['qty'],
             'count' => count($receipts),
         ];
+    }
+
+    /**
+     * Các phiếu xuất kho thành phẩm đã duyệt (fgisureg.apsts = 1) của những phiếu nhập kho
+     * cho trước, khoá theo số phiếu nhập kho (GRN).
+     *
+     * Xuất kho nối về lô qua fgisuregitem.FGGRNNO -> FGGRN.GRNNO (cùng cách
+     * AnnualPlanController tính tồn kho). Cố ý tra theo danh sách GRN thay vì theo khoảng
+     * ngày xuất: quét fgisuregitem theo issuedate chạy hơn 2 phút, còn lọc theo
+     * FGGRNNO cho 300 phiếu nhập chỉ mất ~0,4 giây.
+     *
+     * Một phiếu xuất có thể có nhiều dòng (mỗi vị trí kệ một dòng) cho cùng một GRN nên số
+     * lượng được cộng dồn theo phiếu xuất.
+     *
+     * @param  list<string>  $grns
+     * @return array<string, array<string, array{issue: string, date: string, qty: float, rem: string}>>
+     *         [GRN => [số phiếu xuất => phiếu]]
+     */
+    public static function stockOutsForGrns(array $grns): array
+    {
+        $grns = array_values(array_unique(array_filter(array_map('trim', $grns))));
+        $result = [];
+
+        // SQL Server giới hạn 2.100 tham số mỗi câu lệnh
+        foreach (array_chunk($grns, 1000) as $chunk) {
+            $placeholders = implode(',', array_fill(0, count($chunk), '?'));
+
+            $sql = "
+                SELECT i.FGGRNNO, r.Issueno, r.issuedate, r.rem, i.ttlqty
+                FROM fgisuregitem i
+                INNER JOIN fgisureg r ON i.issueno = r.Issueno AND i.isuideno = r.isuideno
+                WHERE r.apsts = 1 AND i.FGGRNNO IN ($placeholders)
+            ";
+
+            foreach (DB::connection('mms')->select($sql, $chunk) as $row) {
+                $grn = trim((string) $row->FGGRNNO);
+                $issue = trim((string) $row->Issueno);
+
+                if (!isset($result[$grn][$issue])) {
+                    $result[$grn][$issue] = [
+                        'issue' => $issue,
+                        'date' => substr((string) $row->issuedate, 0, 10),
+                        'qty' => 0.0,
+                        'rem' => trim((string) $row->rem),
+                    ];
+                }
+
+                $result[$grn][$issue]['qty'] += (float) $row->ttlqty;
+            }
+        }
+
+        return $result;
     }
 
     /** Gộp một dòng duyệt vào danh sách phiếu nhập kho, mỗi phiếu giữ lần duyệt sớm nhất */

@@ -51,8 +51,8 @@ class UserGuideController extends Controller
         'keHoach' => [
             'title' => 'Kế Hoạch',
             'icon' => 'fas fa-file-import',
-            'summary' => 'Kế hoạch năm dự kiến, kế hoạch sản xuất tháng (thêm lô, ngày NL/BB, ưu tiên, gửi, chia lô đóng gói, dự trù), phản hồi KHSX, theo dõi thẩm định, hồ sơ KCS, thông báo đóng gói và kế hoạch HC-BT.',
-            'updated_at' => '2026-11-06',
+            'summary' => 'Kế hoạch năm dự kiến, kế hoạch sản xuất tháng (thêm lô, ngày NL/BB, ưu tiên, gửi, chia lô đóng gói, dự trù), phản hồi KHSX, theo dõi thẩm định, hồ sơ KCS, xuất kho EU, thông báo đóng gói và kế hoạch HC-BT.',
+            'updated_at' => '2026-11-25',
         ],
         'schedual' => [
             'title' => 'Lịch Sản Xuất',

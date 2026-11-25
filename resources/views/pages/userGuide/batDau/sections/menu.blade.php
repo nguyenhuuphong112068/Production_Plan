@@ -13,7 +13,7 @@
                 <td><a href="{{ route('pages.userGuide.show', 'danhMuc') }}">Danh Mục</a></td></tr>
             <tr><td>Định Mức</td><td>Định mức phòng - thời gian sản xuất, định mức khuôn ép vỉ và khuôn Định hình, danh sách nhân viên.</td>
                 <td><a href="{{ route('pages.userGuide.show', 'dinhMuc') }}">Định Mức</a></td></tr>
-            <tr><td>Kế Hoạch</td><td>Kế hoạch năm, kế hoạch sản xuất, theo dõi thẩm định / hồ sơ KCS, thông báo đóng gói, kế hoạch HC-BT.</td>
+            <tr><td>Kế Hoạch</td><td>Kế hoạch năm, kế hoạch sản xuất, theo dõi thẩm định / hồ sơ KCS / xuất kho EU, thông báo đóng gói, kế hoạch HC-BT.</td>
                 <td><a href="{{ route('pages.userGuide.show', 'keHoach') }}">Kế Hoạch</a></td></tr>
             <tr><td>Lịch Sản Xuất</td><td>Sắp lịch (Gantt, tự động), thực thi sản xuất, danh sách lịch, sản lượng, xác nhận hoàn thành.</td>
                 <td><a href="{{ route('pages.userGuide.show', 'schedual') }}">Lịch Sản Xuất</a></td></tr>

@@ -9875,8 +9875,9 @@ class SchedualController extends Controller
         foreach ($rooms as $room) {
 
             if ($mode) {
-
-                $campaign_index = 1 + ($room->campaign_index - 1) * $tasks->count();
+                // Khối n lô = P + M × (1 + (hệ số − 1) × (n − 1)): lô đầu trọn M, mỗi lô thêm (hệ số − 1) × M.
+                // Khớp WeighingAssistService::planChunk (user 25/11/2026; trước đây × n nên chiến dịch 1 lô dài hơn lô lẻ).
+                $campaign_index = 1 + (max(1.0, (float) $room->campaign_index) - 1) * max(0, $tasks->count() - 1);
             } else {
 
                 $campaign_index = 1;

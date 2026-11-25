@@ -25,7 +25,7 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 class KcsTrackingController extends Controller
 {
     /** Các phân xưởng có theo dõi hồ sơ KCS, theo thứ tự hiển thị */
-    private const DEPARTMENTS = [
+    public const DEPARTMENTS = [
         'PXV1' => 'PX Viên 1',
         'PXV2' => 'PX Viên 2',
         'PXTN' => 'PX Nước',
@@ -481,9 +481,9 @@ class KcsTrackingController extends Controller
     /**
      * Đổi chuỗi ngày dd/mm/yyyy (hoặc đã là Y-m-d) về 'Y-m-d'; sai định dạng / ngày không
      * tồn tại (31/02...) thì trả null. Không dùng Carbon::parse vì nó hiểu 05/11/2026 là
-     * ngày 11 tháng 5 (kiểu Mỹ).
+     * ngày 11 tháng 5 (kiểu Mỹ). Public để trang Theo Dõi Xuất Kho EU dùng chung.
      */
-    private static function toIsoDate($value): ?string
+    public static function toIsoDate($value): ?string
     {
         $value = trim((string) $value);
 
@@ -1000,9 +1000,11 @@ class KcsTrackingController extends Controller
      * viên) mà MMS chỉ có một phiếu nhập kho - ghép theo số lượng sẽ làm một dòng mất ngày
      * KCS, nên những nhóm đó vẫn dùng chung lần duyệt sớm nhất như trước.
      *
+     * Public static để trang Theo Dõi Xuất Kho EU dùng chung đúng quy tắc lô chia.
+     *
      * @return array<int, array<int, float>>
      */
-    private function splitFamilies($datas): array
+    public static function splitFamilies($datas): array
     {
         $key = fn($row) => trim((string) $row->finished_product_code) . '|'
             . trim((string) ($row->actual_batch ?: $row->batch));
