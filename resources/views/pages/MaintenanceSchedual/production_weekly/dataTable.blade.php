@@ -31,6 +31,12 @@
                     <div class="font-weight-bold">
                         {{ $displayWeek }}
                     </div>
+                    <div class="weekly-legend mt-1">
+                        <span><i class="legend-box" style="background:#fbfcfd;border-left-color:#ced4da"></i>Lý thuyết</span>
+                        <span><i class="legend-box" style="background:#fff7e0;border-left-color:#d97706"></i>Đang SX (đã Nhận phòng)</span>
+                        <span><i class="legend-box" style="background:#f3efff;border-left-color:#7c3aed"></i>Đã trả phòng · Chờ XN</span>
+                        <span><i class="legend-box" style="background:#f4f8f5;border-left-color:#a9c7b2"></i>Đã xác nhận</span>
+                    </div>
                 </div>
                 <div class="col-md-5 text-right">
                     <button type="button" class="btn btn-info mr-2" onclick="$('.theory-time').toggle()">
@@ -123,7 +129,7 @@
                                                 <td class="align-top p-2"
                                                     style="min-height: 80px; background-color: {{ Carbon::now()->format('Y-m-d') == $day['date'] ? '#e3f2fd' : 'transparent' }};">
                                                     @php
-                                                        $dayEvents = $validEventsFlat->where('day_key', $day['date']);
+                                                        $dayEvents = $validEventsFlat->where('day_key', $day['date'])->sortBy('slot_start');
                                                     @endphp
 
                                                     @if ($dayEvents->count())
@@ -144,10 +150,18 @@
                                                                 $batchDisplay = $e->actual_batch ?? $e->batch;
 
                                                                 // Thẻ của từng lịch: đổi nền theo trạng thái
+                                                                // Nhận / Trả phòng (trang Thực Thi Sản Xuất)
+                                                                $occ = $e->occupancy ?? null;
                                                                 $cardClass = 'event-card';
-                                                                if (isset($e->is_actual) && $e->is_actual) {
+                                                                if ($occ === 'running') {
+                                                                    $cardClass .= ' event-card-running';
+                                                                } elseif ($occ === 'released') {
+                                                                    $cardClass .= ' event-card-released';
+                                                                } elseif (isset($e->is_actual) && $e->is_actual) {
                                                                     $cardClass .= ' event-card-actual';
                                                                 }
+                                                                // Lô đang chạy: phần sau thời điểm hiện tại là dự kiến
+                                                                $isProjected = $occ === 'running' && $end->gt(\Carbon\Carbon::now());
                                                             @endphp
                                                             <div class="{{ $cardClass }}">
                                                                 <div style="font-size: 13px; color: #333;">
@@ -155,7 +169,15 @@
                                                                     <span
                                                                         class="{{ isset($e->is_cleaning) && $e->is_cleaning ? 'text-success' : 'text-dark' }} font-weight-bold">
                                                                         {{ $e->display_title }}
-                                                                        @if (!(isset($e->is_actual) && $e->is_actual))
+                                                                        @if (!empty($e->weigh_kind) && empty($e->is_cleaning))
+                                                                            {{-- Loại nguyên liệu đang cân, cùng nhãn trên Gantt --}}
+                                                                            <span class="badge ml-1 weigh-kind weigh-kind-{{ $e->weigh_kind['key'] }}">{{ $e->weigh_kind['label'] }}</span>
+                                                                        @endif
+                                                                        @if ($occ === 'running')
+                                                                            <span class="badge ml-1 badge-occ-running">▶ Đang SX</span>
+                                                                        @elseif ($occ === 'released')
+                                                                            <span class="badge ml-1 badge-occ-released">⏳ Đã trả phòng · Chờ XN</span>
+                                                                        @elseif (!(isset($e->is_actual) && $e->is_actual))
                                                                             <span class="badge badge-success ml-1"
                                                                                 style="font-weight: normal">Lý
                                                                                 Thuyết</span>
@@ -164,6 +186,10 @@
                                                                     -
                                                                     <span
                                                                         class="text-danger font-weight-bold">{{ $batchDisplay }}</span>
+                                                                    @if (($e->lot_count ?? 1) > 1)
+                                                                        {{-- Lô cân chung gộp 1 thẻ --}}
+                                                                        <span class="badge badge-light border ml-1">{{ $e->lot_count }} lô cân chung</span>
+                                                                    @endif
 
                                                                     @if (isset($e->is_actual) && $e->is_actual && empty($e->is_cleaning))
                                                                         @if ($e->finished)
@@ -179,14 +205,47 @@
                                                                         @endif
                                                                     @endif
                                                                 </div>
-                                                                <div class="{{ isset($e->is_actual) && $e->is_actual ? 'text-success' : 'text-primary' }} font-weight-bold mt-1"
+                                                                <div class="{{ $occ === 'running' ? 'text-occ-running' : ($occ === 'released' ? 'text-occ-released' : (isset($e->is_actual) && $e->is_actual ? 'text-success' : 'text-primary')) }} font-weight-bold mt-1"
                                                                     style="font-size: 12px;">
                                                                     {{ $start->format('H:i') }} ->
                                                                     {{ $end->format('H:i') }}
+                                                                    @if ($isProjected)
+                                                                        <i class="font-weight-normal">(dự kiến)</i>
+                                                                    @endif
                                                                     <span class="text-dark"> =
                                                                         {{ $hours }}h{{ $mins }}p</span>
                                                                 </div>
-                                                                @if (isset($e->is_actual) && $e->is_actual && empty($e->is_cleaning) && $e->finished)
+                                                                @if ($occ)
+                                                                    {{-- Mốc Nhận / Trả phòng thật (khối có thể vắt qua nhiều ngày) --}}
+                                                                    <div class="mt-1" style="font-size: 11px; color: #555;">
+                                                                        <i class="fas fa-sign-in-alt"></i> Nhận phòng
+                                                                        {{ \Carbon\Carbon::parse($e->received_at)->format('d/m H:i') }}
+                                                                        @if ($occ === 'released')
+                                                                            · <i class="fas fa-sign-out-alt"></i> Trả phòng
+                                                                            {{ \Carbon\Carbon::parse($e->released_at)->format('d/m H:i') }}
+                                                                        @elseif ($e->expected_release)
+                                                                            · dự kiến trả
+                                                                            {{ \Carbon\Carbon::parse($e->expected_release)->format('d/m H:i') }}
+                                                                            @if (\Carbon\Carbon::parse($e->expected_release)->lt(\Carbon\Carbon::now()))
+                                                                                <span class="text-danger font-weight-bold">(quá giờ)</span>
+                                                                            @endif
+                                                                        @endif
+                                                                    </div>
+                                                                @endif
+                                                                @if ($occ && $e->planned_start_val && $e->planned_end_val)
+                                                                    @php
+                                                                        $thStart = \Carbon\Carbon::parse($e->planned_start_val);
+                                                                        $thEnd = \Carbon\Carbon::parse($e->planned_end_val);
+                                                                        $thTotalMins = $thStart->diffInMinutes($thEnd);
+                                                                    @endphp
+                                                                    <div class="theory-time mt-1 text-secondary"
+                                                                        style="display: none; font-size: 11px; font-style: italic;">
+                                                                        LT (gồm VS): {{ $thStart->format('d/m H:i') }} ->
+                                                                        {{ $thEnd->format('d/m H:i') }} =
+                                                                        {{ (int) ($thTotalMins / 60) }}h{{ $thTotalMins % 60 }}p
+                                                                    </div>
+                                                                @endif
+                                                                @if (!$occ && isset($e->is_actual) && $e->is_actual && empty($e->is_cleaning) && $e->finished)
                                                                     @php
                                                                         $thStart = \Carbon\Carbon::parse(
                                                                             $e->planned_start_val,
@@ -263,7 +322,7 @@
                         $dayEventsMap = [];
                         $maxEvents = 1;
                         foreach ($weekDays as $day) {
-                            $dayEvents = $validEventsFlat->where('day_key', $day['date'])->values();
+                            $dayEvents = $validEventsFlat->where('day_key', $day['date'])->sortBy('slot_start')->values();
                             $dayEventsMap[$day['date']] = $dayEvents;
                             if ($dayEvents->count() > $maxEvents) {
                                 $maxEvents = $dayEvents->count();
@@ -290,7 +349,14 @@
                                         $batchDisplay = $e->actual_batch ?? $e->batch;
                                         
                                         $bgColor = '';
-                                        if (!(isset($e->is_actual) && $e->is_actual)) {
+                                        $occ = $e->occupancy ?? null;
+                                        if ($occ === 'running') {
+                                            $status = 'Đang sản xuất (Nhận phòng ' . \Carbon\Carbon::parse($e->received_at)->format('d/m H:i') . ')';
+                                            $bgColor = '#fef3c7'; // Cam nhạt
+                                        } elseif ($occ === 'released') {
+                                            $status = 'Đã trả phòng ' . \Carbon\Carbon::parse($e->released_at)->format('d/m H:i') . ' - Chờ XN';
+                                            $bgColor = '#ede9fe'; // Tím nhạt
+                                        } elseif (!(isset($e->is_actual) && $e->is_actual)) {
                                             $status = 'Lý Thuyết';
                                             $bgColor = '#d4edda'; // Xanh lá nhạt
                                         } elseif (isset($e->is_cleaning) && $e->is_cleaning) {
@@ -302,7 +368,7 @@
                                         }
 
                                     @endphp
-                                    <td style="background-color: {{ $bgColor }};">{{ $e->display_title }}</td>
+                                    <td style="background-color: {{ $bgColor }};">{{ $e->display_title }}{{ !empty($e->weigh_kind) && empty($e->is_cleaning) ? ' [' . trim(preg_replace('/^\S+\s/u', '', $e->weigh_kind['label'])) . ']' : '' }}</td>
                                     <td style="background-color: {{ $bgColor }}; mso-number-format:'\@';">{{ $batchDisplay }}</td>
                                     <td style="background-color: {{ $bgColor }};">{{ $status }}</td>
                                     <td style="background-color: {{ $bgColor }};">{{ $timeStr }}</td>
@@ -364,6 +430,84 @@
     .event-card-actual {
         background-color: #f4f8f5;
         border-left-color: #a9c7b2;
+    }
+
+    /* Đã Nhận phòng, chưa Trả phòng (trang Thực Thi Sản Xuất) — cùng màu thanh "▶" của Gantt */
+    .event-card-running {
+        background-color: #fff7e0;
+        border-left-color: #d97706;
+    }
+
+    /* Đã Trả phòng, chờ xác nhận hoàn thành — cùng màu thanh "⏳ Chờ XN" của Gantt */
+    .event-card-released {
+        background-color: #f3efff;
+        border-left-color: #7c3aed;
+    }
+
+    .badge-occ-running {
+        background-color: #fde68a;
+        color: #78350f;
+        font-weight: normal;
+    }
+
+    .badge-occ-released {
+        background-color: #ddd6fe;
+        color: #4c1d95;
+        font-weight: normal;
+    }
+
+    /* Loại nguyên liệu đang cân — cùng màu nhãn trên Gantt (calendar.css .fc-weigh-kind-*) */
+    .weigh-kind {
+        color: #ffffff;
+        font-weight: 600;
+    }
+
+    .weigh-kind-pc,
+    .weigh-kind-tht {
+        background-color: #1d4ed8;
+    }
+
+    .weigh-kind-nang {
+        background-color: #7e22ce;
+    }
+
+    .weigh-kind-bp {
+        background-color: #be185d;
+    }
+
+    .weigh-kind-dg {
+        background-color: #475569;
+    }
+
+    .text-occ-running {
+        color: #b45309;
+    }
+
+    .text-occ-released {
+        color: #6d28d9;
+    }
+
+    .weekly-legend {
+        font-size: 12px;
+        font-weight: normal;
+        color: #003a4f;
+    }
+
+    .weekly-legend span {
+        margin: 0 6px;
+        white-space: nowrap;
+    }
+
+    .weekly-legend .legend-box {
+        display: inline-block;
+        width: 14px;
+        height: 12px;
+        margin-right: 4px;
+        vertical-align: middle;
+        border: 1px solid #e3e6e8;
+        border-left-width: 3px;
+        border-left-style: solid;
+        border-radius: 3px;
     }
 
     #production_weekly_table th,
