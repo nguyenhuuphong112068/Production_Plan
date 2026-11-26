@@ -64,7 +64,8 @@
     Người sắp lịch bật <b>Khóa TTSX</b> trên Gantt (hoặc phần mềm tự khóa khi họ sửa lịch thủ công mà quên khóa). Đầu trang
     Thực Thi hiện dải vàng, và bấm Nhận / Trả phòng sẽ báo lỗi. Khóa tự mở khi người sắp lịch mở khóa hoặc không sắp lịch thêm
     10 phút. Người sắp lịch cân (nhóm quyền <b>Weighing Scheduler</b>) khóa thì <b>chỉ các phòng cân</b> (Cân NL, Cân NL khác)
-    bị chặn; các phòng khác vẫn Nhận / Trả phòng bình thường.
+    bị chặn; các phòng khác vẫn Nhận / Trả phòng bình thường. Khóa này <b>không hiện dải vàng</b> đầu trang, chỉ báo khi bấm
+    Nhận / Trả phòng ở phòng cân.
 </p>
 @include('pages.userGuide.shared.shot', ['src' => 'img/userGuide/schedual/canh-bao-banner-khoa.png', 'caption' => 'Dải cảnh báo đầu trang khi phân xưởng đang bị khóa'])
 <div class="ug-shot-row">
