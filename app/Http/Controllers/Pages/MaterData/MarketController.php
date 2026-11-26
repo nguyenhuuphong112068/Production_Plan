@@ -20,13 +20,13 @@ class MarketController extends Controller
         public function store (Request $request) {
                
                 $validator = Validator::make($request->all(), [
-                        'code' => 'required|unique:Unit,code',
-                        'name' => 'required|unique:Unit,name',
+                        'code' => 'required|unique:market,code',
+                        'name' => 'required|unique:market,name',
                 ],[
-                        'name.required' => 'Vui Lòng Nhập Thị Trường', 
+                        'name.required' => 'Vui Lòng Nhập Thị Trường',
                         'name.unique' => 'Thị Trường Đã Tồn Tại.',
-                        'code.required' => 'Vui Lòng Nhập Thị Trường Tắt', 
-                        'code.unique' => 'Thị Trường Đã Tồn Tại.',        
+                        'code.required' => 'Vui Lòng Nhập Thị Trường Tắt',
+                        'code.unique' => 'Thị Trường Đã Tồn Tại.',
                 ]);
 
                 if ($validator->fails()) {
@@ -48,13 +48,15 @@ class MarketController extends Controller
         public function update(Request $request){
                 
                 $validator = Validator::make($request->all(), [
-                        'code' => 'required|unique:Unit,code',
-                        'name' => 'required|unique:Unit,name',
+                        'id'   => 'required|exists:market,id',
+                        // Bỏ qua chính dòng đang sửa, nếu không giữ nguyên mã/tên sẽ luôn báo trùng
+                        'code' => 'required|unique:market,code,' . (int) $request->id,
+                        'name' => 'required|unique:market,name,' . (int) $request->id,
                 ],[
-                        'name.required' => 'Vui Lòng Nhập Thị Trường', 
+                        'name.required' => 'Vui Lòng Nhập Thị Trường',
                         'name.unique' => 'Thị Trường Đã Tồn Tại.',
-                        'code.required' => 'Vui Lòng Nhập Thị Trường Tắt', 
-                        'code.unique' => 'Thị Trường Đã Tồn Tại.',        
+                        'code.required' => 'Vui Lòng Nhập Thị Trường Tắt',
+                        'code.unique' => 'Thị Trường Đã Tồn Tại.',
                 ]);
 
                 if ($validator->fails()) {
