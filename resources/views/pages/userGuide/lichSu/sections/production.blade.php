@@ -7,8 +7,8 @@
 <h3>Trả về (Return)</h3>
 <ol class="ug-steps">
     <li>Bấm nút <b>Trả về</b> trên lô xác nhận hoàn thành nhầm.</li>
-    <li>Lô quay lại trạng thái <b>chưa hoàn thành</b>: xoá giờ thực tế (nhận phòng, kết thúc, vệ sinh) để xác nhận lại ở Xác Nhận
-        Hoàn Thành / Thực Thi Sản Xuất.</li>
+    <li>Lô quay lại trạng thái <b>chưa hoàn thành</b>: xoá sản lượng, giờ kết thúc sản xuất và giờ bắt đầu vệ sinh để xác nhận lại ở
+        Xác Nhận Hoàn Thành / Thực Thi Sản Xuất. <b>Giờ nhận phòng</b> và <b>giờ trả phòng</b> được giữ nguyên.</li>
     <li>Giá trị cũ (sản lượng, thời gian) được lưu ở <b>Lịch Sử Trả Về</b> (người trả về, thời gian).</li>
 </ol>
 <p>Nút <i class="fas fa-history"></i> xem lịch sử thay đổi của lô.</p>

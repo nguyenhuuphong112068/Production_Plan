@@ -191,14 +191,14 @@ class ProductionHistoryController extends Controller
             }
 
             // ✅ Reset trạng thái stage
+            // Giữ actual_start (Nhận phòng) và actual_end_clearning (Trả phòng): đây là mốc chiếm phòng
+            // do Thực Thi Sản Xuất ghi (RoomOccupancyService), trả về chỉ để xác nhận hoàn thành lại.
             DB::table('stage_plan')
                 ->where('id', $request->stage_plan_id)
                 ->update([
                     'finished' => 0,
-                    'actual_start' => null,
                     'actual_end' => null,
                     'actual_start_clearning' => null,
-                    'actual_end_clearning' => null,
                     'yields' => null,
                     'finished_by' => session('user')['fullName'],
                     'finished_date' => now(),
