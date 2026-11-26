@@ -25,7 +25,8 @@
 
 <h3>Nhãn loại cân trên lịch cân</h3>
 <p>
-    Mỗi thanh lịch cân (kể cả khối cân nháp) có một nhãn nhỏ ở mép trên bên trái, cho biết nguyên liệu cân cấp cho công đoạn nào:
+    Mỗi thanh lịch cân (kể cả khối cân nháp, thanh <b>đang nhận phòng</b> ▶ và thanh <b>⏳ Chờ XN</b> đã trả phòng) có một nhãn
+    nhỏ ở mép trên bên trái, cho biết nguyên liệu cân cấp cho công đoạn nào:
 </p>
 <div class="table-responsive">
     <table class="table table-bordered ug-table">

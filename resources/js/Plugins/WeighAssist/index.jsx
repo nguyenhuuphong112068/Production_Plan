@@ -59,14 +59,15 @@ const nextStageIds = (selected) => [...new Set((selected || [])
   .filter(Boolean))];
 
 /**
- * Loại lịch cân để gắn nhãn phía trên thanh lịch (yêu cầu user 25/11/2026): NL PC / NL THT (Cân NL, stage 1),
+ * Loại lịch cân để gắn nhãn phía trên thanh lịch (yêu cầu user 25/11/2026; 26/11 thêm thanh Nhận / Trả phòng): NL PC / NL THT (Cân NL, stage 1),
  * Nang rỗng (Cân NL khác → ĐH), NL BP (Cân NL khác → BP), NL ĐG (Cân NL khác → ĐG, hiếm). Theo công đoạn nhận
  * (hậu tố nextcessor_code; khối nháp mang next_stage), thiếu thì theo hậu tố tên lịch "-Nang Rỗng" / "-Tá dược BP".
  * Trả class CSS fc-weigh-kind-* (calendar.css) hoặc null với lịch không phải cân / vệ sinh.
  */
 export function weighKindClass(event) {
   const p = event?.extendedProps || {};
-  const stage = Number(p.stage_code);
+  // Thanh Nhận / Trả phòng (is_running) mang run_stage_code để không lọt vào các kiểm tra theo stage_code của lịch
+  const stage = Number(p.is_running ? p.run_stage_code : p.stage_code);
   if (!WEIGH_STAGES.includes(stage) || p.is_clearning) return null;
   const next = Number(p.next_stage ?? String(p.nextcessor_code ?? '').split('_').pop()) || null;
   if (stage === 1) return next === 4 ? 'fc-weigh-kind-tht' : 'fc-weigh-kind-pc';

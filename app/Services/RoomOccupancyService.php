@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\Log;
  *   nhất của phòng (lô cũ chưa từng xác nhận ✓✓ không giữ phòng mãi), chỉ tính lô nhận phòng từ TRACK_FROM.
  * - Lịch stage_code 8 không có vệ sinh (title_clearning NULL, lịch HC): mốc trả phòng là actual_end.
  * - Lịch stage_code 8 chọn theo phòng ban: EN nhận lịch BT/TI, QA nhận lịch HC, phòng ban khác chỉ nhận lô sản xuất.
- * - Không dùng room_execution_log / room_execution_batch (bảng của bản cũ, Báo cáo ngày vẫn đọc dữ liệu cũ ở đó).
+ * - Bảng room_execution_log / room_execution_batch của bản cũ đã bỏ (26/11/2026).
  * - Sản lượng, KT sản xuất, vệ sinh vẫn xác nhận ở trang Xác nhận hoàn thành.
  */
 class RoomOccupancyService
@@ -570,6 +570,7 @@ class RoomOccupancyService
             ->select(
                 'sp.id',
                 'sp.stage_code',
+                'sp.nextcessor_code', // nhãn loại cân trên thanh Nhận / Trả phòng của Gantt
                 'sp.title',
                 'sp.start',
                 'sp.end',

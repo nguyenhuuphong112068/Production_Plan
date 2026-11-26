@@ -47,6 +47,11 @@
     <li><b>Di chuyển cả chiến dịch</b>: các lô cùng chiến dịch dời theo.</li>
     <li><b>Di chuyển các lô được chọn</b>: chỉ dời các lô đang chọn; các lô này phải <b>cùng một chiến dịch</b>.</li>
 </ul>
+<p>
+    Lịch cân ghép chung (nhiều lô cùng giờ bắt đầu, cùng phòng cân, hiện thành một khối) luôn dời <b>nguyên khối</b> ở cả
+    hai chế độ, kể cả lô trong khối thuộc chiến dịch khác. Với <b>Di chuyển cả chiến dịch</b>, các khối cân được xếp nối
+    tiếp nhau; Định mức SX trong hộp thoại chỉ áp cho khối đang sửa, các khối khác giữ nguyên thời lượng.
+</p>
 <p>Bấm <b>Lưu</b> là lưu ngay, không qua nút 💾.</p>
 
 <h3>Thao tác chuột nhanh</h3>

@@ -2389,6 +2389,9 @@ class SchedualController extends Controller
                     'durationEditable' => false,
                     'resourceEditable' => false,
                     'is_running' => true,
+                    // Nhãn loại cân (weighKindClass) cho thanh phòng cân: NL PC / Nang rỗng / NL BP
+                    'run_stage_code' => $first->stage_code,
+                    'nextcessor_code' => $first->nextcessor_code,
                     'received_at' => $received->format('H:i d/m'),
                     'display' => 'block',
                 ];
@@ -2419,6 +2422,8 @@ class SchedualController extends Controller
                     'resourceEditable' => false,
                     'is_running' => true,
                     'is_released' => true,
+                    'run_stage_code' => $first->stage_code,
+                    'nextcessor_code' => $first->nextcessor_code,
                     'received_at' => Carbon::parse($first->actual_start)->format('H:i d/m'),
                     'released_at' => Carbon::parse($first->released_at)->format('H:i d/m'),
                     'display' => 'block',
@@ -2987,6 +2992,42 @@ class SchedualController extends Controller
      *
      * @return array<int, Carbon>
      */
+    /**
+     * Thêm các lô cùng khối cân (công đoạn 1, 2) với các dòng đã cho.
+     *
+     * Gantt gộp lịch cân cùng giờ bắt đầu + phòng + công đoạn thành một khối ("Ghép cân chung"),
+     * nên khi dời một lô của khối thì các lô còn lại (chưa hoàn thành) phải dời theo.
+     */
+    private function withWeighBlockSiblings($rows)
+    {
+        $rows = collect($rows)->unique('id')->values();
+
+        $keys = $rows
+            ->filter(fn($r) => in_array((int) $r->stage_code, [1, 2], true) && $r->start && $r->resourceId)
+            ->map(fn($r) => ['start' => $r->start, 'resourceId' => $r->resourceId, 'stage_code' => $r->stage_code])
+            ->unique(fn($k) => implode('_', $k))
+            ->values();
+
+        if ($keys->isEmpty()) {
+            return $rows;
+        }
+
+        $siblings = DB::table('stage_plan')
+            ->where('finished', 0)
+            ->where('active', 1)
+            ->whereNotIn('id', $rows->pluck('id'))
+            ->where(function ($q) use ($keys) {
+                foreach ($keys as $k) {
+                    $q->orWhere(fn($w) => $w->where('start', $k['start'])
+                        ->where('resourceId', $k['resourceId'])
+                        ->where('stage_code', $k['stage_code']));
+                }
+            })
+            ->get();
+
+        return $rows->concat($siblings)->values();
+    }
+
     private function predecessorReadyTimes($products): array
     {
         // Nhận cả mảng (payload từ frontend) lẫn object (dòng lấy từ DB)
@@ -3560,10 +3601,91 @@ class SchedualController extends Controller
 
                         $campaignEvents = $campaignEvents->values();
 
+                        // Công đoạn cân (1, 2): lô ghép cân chung (cùng giờ bắt đầu + phòng) phải đi cùng nhau.
+                        // Gom cả các lô của khối đang bấm (có thể khác chiến dịch - "Ghép cân chung")
+                        // và các lô cùng khối với lô trong chiến dịch, rồi xếp theo KHỐI thay vì từng lô.
+                        $isWeighStage = in_array((int) $original_event->stage_code, [1, 2], true);
+                        if ($isWeighStage) {
+                            $clickedRows = DB::table('stage_plan')->whereIn('id', $idsArray)->where('finished', 0)->get();
+                            $campaignEvents = $this->withWeighBlockSiblings($campaignEvents->concat($clickedRows));
+                            $clickedIds = array_map('intval', $idsArray);
+                            $campaignUnits = $campaignEvents
+                                ->groupBy(fn($ev) => $ev->start ? ($ev->start . '_' . $ev->resourceId) : ('id_' . $ev->id))
+                                ->sortBy(fn($g) => $g->min('start') ?? '9999-12-31')
+                                ->values();
+                        } else {
+                            $clickedIds = [];
+                            $campaignUnits = $campaignEvents->map(fn($ev) => collect([$ev]));
+                        }
+
                         $currentStart = Carbon::parse($change['start']);
                         $idsArray = []; // Cập nhật danh sách ID để ghi log history ở phía dưới
                         $newMTime = $request->input('newMTime');
                         $pTime = $request->input('pTime', 0);
+
+                        if ($isWeighStage) {
+                            // Mốc kết thúc công đoạn trước theo id lô; khối lấy mốc muộn nhất
+                            $flat = $campaignUnits->flatten(1)->values();
+                            $predByIndex = $this->predecessorReadyTimes($flat);
+                            $predById = [];
+                            foreach ($flat as $i => $ev) {
+                                if (isset($predByIndex[$i])) {
+                                    $predById[$ev->id] = $predByIndex[$i];
+                                }
+                            }
+
+                            foreach ($campaignUnits as $unit) {
+                                $isClickedUnit = $unit->contains(fn($ev) => in_array((int) $ev->id, $clickedIds, true));
+
+                                // Định mức trong hộp thoại là của khối đang bấm: chỉ áp cho khối đó,
+                                // khối khác giữ nguyên thời lượng (khối 3 lô ≠ khối 1 lô).
+                                if ($newMTime > 0 && $isClickedUnit) {
+                                    $first = $unit->contains(fn($ev) => $ev->first_in_campaign == 1 || $ev->title_clearning == "VS-II");
+                                    $duration = (int) round((($first ? ($newMTime + $pTime) : $newMTime)) * 3600);
+                                } else {
+                                    $minStart = $unit->min('start');
+                                    $maxEnd = $unit->max('end');
+                                    $duration = ($minStart && $maxEnd) ? Carbon::parse($minStart)->diffInSeconds(Carbon::parse($maxEnd)) : 0;
+                                }
+
+                                $clean = $unit
+                                    ->filter(fn($ev) => $ev->start_clearning && $ev->end_clearning)
+                                    ->map(fn($ev) => Carbon::parse($ev->start_clearning)->diffInSeconds(Carbon::parse($ev->end_clearning)))
+                                    ->max();
+
+                                $ready = $unit->map(fn($ev) => $predById[$ev->id] ?? null)->filter()->sortDesc()->first();
+                                if ($ready && $currentStart->lt($ready)) {
+                                    $campaignShiftMinutes = max(
+                                        $campaignShiftMinutes,
+                                        (int) ceil(($ready->getTimestamp() - $currentStart->getTimestamp()) / 60)
+                                    );
+                                    $campaignShiftBatches += $unit->count();
+                                    $currentStart = $ready->copy();
+                                }
+
+                                $newStart = $currentStart->copy();
+                                $newEnd = $newStart->copy()->addSeconds($duration);
+                                $newEndClean = $clean !== null ? $newEnd->copy()->addSeconds($clean) : null;
+
+                                foreach ($unit as $ev) {
+                                    $evUpdateData = $updateData;
+                                    $evUpdateData['start'] = $newStart;
+                                    $evUpdateData['end'] = $newEnd;
+                                    $evUpdateData['resourceId'] = $change['resourceId'];
+                                    if ($newEndClean && $ev->start_clearning && $ev->end_clearning) {
+                                        $evUpdateData['start_clearning'] = $newEnd;
+                                        $evUpdateData['end_clearning'] = $newEndClean;
+                                    }
+                                    DB::table('stage_plan')->where('id', $ev->id)->update($evUpdateData);
+                                    $idsArray[] = $ev->id;
+                                }
+
+                                $currentStart = ($newEndClean ?? $newEnd)->copy();
+                            }
+
+                            // Bỏ qua vòng xếp từng lô bên dưới
+                            $campaignEvents = collect();
+                        }
 
                         // Tính trước thời lượng từng lô (giữ nguyên logic cũ) để có thể kiểm tra
                         // ràng buộc công đoạn trước rồi mới ghi DB.
@@ -3649,6 +3771,13 @@ class SchedualController extends Controller
                             $idsArray[] = $ev->id;
                         }
                     } else {
+                        // Hộp thoại sửa nhanh: lô ghép cân chung luôn đi cùng khối
+                        if ($request->boolean('keep_weigh_blocks') && $original_event && in_array((int) $original_event->stage_code, [1, 2], true)) {
+                            $idsArray = $this->withWeighBlockSiblings(
+                                DB::table('stage_plan')->whereIn('id', $idsArray)->get()
+                            )->pluck('id')->all();
+                        }
+
                         if ($isMoveSelectedBatches && $sharedStart) {
                             $updateData['start'] = $sharedStart->copy();
                         } else {

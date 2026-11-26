@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\DB;
 /**
  * Trang "Thực Thi Sản Xuất" (bản tinh gọn): phòng Sẵn Sàng / Phòng Bận, 2 thao tác Nhận phòng (stage_plan.actual_start)
  * và Trả phòng (stage_plan.actual_end_clearning). Mốc thời gian = giờ hệ thống lúc bấm nút, không nhận giờ từ trình duyệt.
- * Bản cũ (room_execution_log, sản lượng, vệ sinh, kiểm tra...) xem lịch sử git trước 10/2026.
+ * Bản cũ (room_execution_log / room_execution_batch, sản lượng, vệ sinh, kiểm tra...) đã bỏ 26/11/2026, xem lịch sử git.
  */
 class ProductionExecutionController extends Controller
 {

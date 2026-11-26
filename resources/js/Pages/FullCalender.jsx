@@ -4944,6 +4944,7 @@ const ScheduleTest = () => {
           cascade: isCascadeMode,
           update_campaign: updateCampaign,
           move_selected_batches: moveSelectedBatches || false,
+          keep_weigh_blocks: true, // lô ghép cân chung (công đoạn 1, 2) luôn đi cùng khối
           changes: changes,
           startDate: toLocalISOString(activeStart),
           endDate: toLocalISOString(activeEnd),
