@@ -429,6 +429,7 @@
 
         /* Modal: chọn nhiều lô (Cân NL), nhập sản lượng từng lô */
         .exec-plan.disabled { opacity: .45; cursor: not-allowed; }
+        .exec-plan-kind { display: inline-block; font-size: .72rem; font-weight: 700; color: #fff; border-radius: 999px; padding: 1px 8px; margin-left: 6px; vertical-align: middle; white-space: nowrap; }
         .exec-plan-same { font-size: .68rem; font-weight: 700; color: #0e7490; background: #ecfeff; border: 1px solid #bae6f0; border-radius: 999px; padding: 0 6px; margin-left: 4px; }
         .exec-group-yield { width: 100%; font-size: .84rem; }
         .exec-group-yield th { font-size: .74rem; color: #6b7280; font-weight: 700; padding: 4px 6px; border-bottom: 1px solid #e5e7eb; white-space: nowrap; }

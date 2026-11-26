@@ -12,6 +12,7 @@ use App\Services\RoomOccupancyService;
 use App\Services\ScheduleRerouteService;
 use App\Services\SchedulingLock;
 use App\Support\WeighingScheduler;
+use App\Support\WeighKind;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -175,6 +176,8 @@ class ProductionExecutionController extends Controller
                         'theory'      => round((float) $p->Theoretical_yields, 2),
                         'unit'        => $p->unit,
                         'is_val'      => (bool) $p->is_val,
+                        // Phòng cân: loại NL (NL PC / Nang rỗng / NL BP...) hiện sau tên sản phẩm
+                        'weigh_kind'  => WeighKind::of($p->stage_code, $p->nextcessor_code),
                 ])->values());
         }
 

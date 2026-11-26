@@ -226,12 +226,15 @@
                     // Cỡ lô (sản lượng lý thuyết) bên phải, số lô nổi bật ngay dưới tên sản phẩm
                     const side = p.maintenance ? `<span class="badge badge-info">${esc(p.type_label)}</span>` :
                         `<div class="exec-plan-size-label">Cỡ lô</div><div class="exec-plan-size">${num(p.theory)} <small>${esc(p.unit)}</small></div>`;
+                    // Phòng cân: loại NL ngay sau tên sản phẩm (cùng nhãn / màu với Gantt, App\Support\WeighKind)
+                    const kind = p.weigh_kind ? `<span class="exec-plan-kind" style="background:${p.weigh_kind.color}"
+                        title="Loại nguyên liệu cân">${p.weigh_kind.icon} ${esc(p.weigh_kind.label)}</span>` : '';
                     const meta = p.maintenance ? `<div class="exec-plan-meta">${esc(p.group)}</div>` :
                         `<div class="exec-plan-batch">Lô <b>${esc(p.batch)}</b></div><div class="exec-plan-meta">${esc(p.codes)}</div>`;
                     return `<label class="exec-plan ${on ? 'selected' : ''} ${off ? 'disabled' : ''}">
                         <input type="${multi() ? 'checkbox' : 'radio'}" name="execPlan" value="${p.id}" ${on ? 'checked' : ''} ${off ? 'disabled' : ''}>
                         <div class="exec-plan-main">
-                            <div class="exec-plan-name">${p.maintenance ? '<i class="fas fa-tools"></i> ' : ''}${esc(p.product)}${p.market ? ' - ' + esc(p.market) : ''}
+                            <div class="exec-plan-name">${p.maintenance ? '<i class="fas fa-tools"></i> ' : ''}${esc(p.product)}${p.market ? ' - ' + esc(p.market) : ''}${kind}
                                 ${p.is_val ? '<i class="fas fa-check-circle text-primary" title="Lô thẩm định"></i>' : ''}${same}</div>
                             ${meta}
                             <div class="exec-plan-meta"><i class="far fa-calendar-alt"></i> Lịch: ${esc(p.start)} → ${esc(p.end)}</div>
