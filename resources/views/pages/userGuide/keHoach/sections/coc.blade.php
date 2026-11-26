@@ -16,6 +16,11 @@
     Gõ sai định dạng hoặc ngày không có thật thì ô bị tô đỏ và không lọc.</p>
 <p><b>Sắp xếp</b>: bấm tiêu đề cột để sắp tăng dần, bấm lần nữa để giảm dần; ô trống luôn nằm cuối. Giữ <b>Shift</b> + bấm tiêu đề
     cột khác để sắp theo nhiều cột. Bấm cột <b>STT</b> để về lại thứ tự ban đầu.</p>
+<p><b>Xuất Excel</b> (nút xanh lá cạnh Đặt lại): tải file <i>.xlsx</i> đúng danh sách lô theo bộ lọc <b>đã bấm Lọc</b> (đổi ô lọc mà
+    chưa bấm Lọc thì file vẫn theo bộ lọc cũ), dòng 2 của file ghi lại bộ lọc đã dùng. File có đủ các cột của lưới, thêm cột
+    <b>ĐVT</b>, <b>Phiếu Xuất Kho</b> (từng phiếu: số phiếu - ngày - số lượng), <b>Người Khai Báo</b> và <b>Thời Điểm Khai Báo</b>
+    Ngày Lập Phiếu COC. Số lượng nhập / xuất kho là số để cộng / lọc được trong Excel. Thứ tự dòng là thứ tự gốc của trang (không
+    theo sắp xếp tạm khi bấm tiêu đề cột).</p>
 
 <h3>Các cột</h3>
 <ul>
@@ -45,7 +50,9 @@
         </ul>
         Rê chuột vào ô bị khoá để xem lý do. Dòng chữ nhỏ dưới ô là <b>người khai báo</b> và <b>thời điểm khai báo</b> lần cuối.
         Biểu tượng <i class="fas fa-history"></i> cạnh ô mở <b>Lịch Sử Khai Báo</b>: mỗi lần đổi ngày là một dòng gồm thời điểm
-        khai báo, người khai báo, ngày cũ và ngày mới (xoá ngày ghi là <i>(xoá)</i>).</li>
+        khai báo, người khai báo, ngày cũ và ngày mới (xoá ngày ghi là <i>(xoá)</i>).
+        Lô <b>đã có Ngày Lập Phiếu COC</b> được <b>tô nền xanh nhạt cả dòng</b> (đổi màu ngay khi lưu, xoá ngày thì hết tô); file
+        Excel tô cùng màu.</li>
 </ul>
 <p>Ô trống nghĩa là lô chưa nhập kho hoặc chưa có phiếu xuất kho được duyệt trên MMS. Không kết nối được MMS thì trang báo
     <i>Chưa kết nối được MMS</i> và các cột nền xanh để trống (riêng Ngày KCS / Số CoA đã lưu ở trang KCS vẫn hiện).</p>

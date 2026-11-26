@@ -91,6 +91,7 @@ Route::prefix('/plan')
                 Route::get('materials', 'materials')->name('materials');
                 Route::post('save', 'save')->name('save');
                 Route::get('history', 'history')->name('history');
+                Route::get('export', 'export')->name('export');
             });
 
         Route::prefix('/packaging_notification')

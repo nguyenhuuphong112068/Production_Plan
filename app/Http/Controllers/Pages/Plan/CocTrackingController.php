@@ -7,6 +7,12 @@ use App\Support\MmsFgQc;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 /**
  * Theo dõi xuất kho EU: các lô sản xuất có thị trường Châu Âu (market.is_eu = 1), cùng cột
@@ -15,7 +21,51 @@ use Illuminate\Support\Facades\DB;
  */
 class CocTrackingController extends Controller
 {
+    /** Nền xanh nhạt của dòng đã có Ngày Lập Phiếu COC (lưới dùng cùng màu, xem list.blade.php) */
+    private const COC_DONE_RGB = 'E2F4E7';
+
     public function index(Request $request)
+    {
+        $filtered = $this->filteredData($request);
+
+        session()->put(['title' => 'THEO DÕI XUẤT KHO EU']);
+
+        return view('pages.plan.coc_tracking.list', $filtered + [
+            'canUpdate' => user_has_permission(session('user')['userId'], 'coc_tracking_update', 'boolean'),
+            'departments' => KcsTrackingController::DEPARTMENTS,
+        ]);
+    }
+
+    /**
+     * Xuất Excel đúng danh sách lô đang lọc trên lưới (cùng filteredData() với index()).
+     * Thứ tự dòng là thứ tự gốc của trang, không theo sắp xếp tạm trên trình duyệt.
+     */
+    public function export(Request $request)
+    {
+        $filtered = $this->filteredData($request);
+        $spreadsheet = $this->buildExportSpreadsheet($filtered);
+
+        $fileName = 'Theo_Doi_Xuat_Kho_EU_'
+            . ($filtered['department'] ?: 'TatCa') . '_'
+            . now()->format('d-m-Y_His') . '.xlsx';
+
+        return response()->streamDownload(function () use ($spreadsheet) {
+            // Dọn mọi output buffer trước khi ghi: một ký tự thừa ở đầu luồng là Excel báo file hỏng
+            while (ob_get_level()) {
+                ob_end_clean();
+            }
+
+            (new Xlsx($spreadsheet))->save('php://output');
+        }, $fileName, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
+    }
+
+    /**
+     * Đọc bộ lọc và lấy toàn bộ dữ liệu của lưới (lô EU + dữ liệu MMS + Ngày Lập Phiếu COC).
+     * Dùng chung cho index() và export() để file Excel luôn khớp với lưới đang xem.
+     */
+    private function filteredData(Request $request): array
     {
         $department = $request->query('department', session('user')['production_code'] ?? '');
         $fromMonth = $request->query('from_month') ?: Carbon::now()->format('Y-m');
@@ -72,9 +122,7 @@ class CocTrackingController extends Controller
             ->get()
             ->keyBy('plan_master_id');
 
-        session()->put(['title' => 'THEO DÕI XUẤT KHO EU']);
-
-        return view('pages.plan.coc_tracking.list', [
+        return [
             'datas' => $datas,
             'bomVersions' => $bomVersions,
             'stockOuts' => $stockOuts,
@@ -84,16 +132,189 @@ class CocTrackingController extends Controller
                 ->whereIn('plan_master_id', $datas->pluck('id'))
                 ->get()
                 ->keyBy('plan_master_id'),
-            'canUpdate' => user_has_permission(session('user')['userId'], 'coc_tracking_update', 'boolean'),
             'mmsAvailable' => $mms['available'],
-            'departments' => KcsTrackingController::DEPARTMENTS,
             'department' => $department,
             'fromMonth' => $fromMonth,
             'toMonth' => $toMonth,
             'outFrom' => $outFrom,
             'outTo' => $outTo,
             'keyword' => $keyword,
+        ];
+    }
+
+    /**
+     * Dựng file Excel cho export(): mỗi dòng lấy đúng giá trị hiển thị trên lưới. Dòng đã có
+     * Ngày Lập Phiếu COC tô xanh nhạt như trên lưới. Số lượng ghi dạng số để cộng / lọc được.
+     */
+    private function buildExportSpreadsheet(array $filtered): Spreadsheet
+    {
+        [
+            'datas' => $datas,
+            'bomVersions' => $bomVersions,
+            'stockOuts' => $stockOuts,
+            'stockIns' => $stockIns,
+            'kcs' => $kcs,
+            'cocRecords' => $cocRecords,
+        ] = $filtered;
+
+        $headers = [
+            'STT', 'Số Lệnh', 'Số Lô', 'Tên Sản Phẩm', 'Mã BTP', 'Mã TP', 'Thị Trường', 'Quy Cách', 'Cỡ Lô',
+            'Ngày Sản Xuất', 'Hạn Dùng', 'Ngày KCS', 'Số CoA',
+            'Ngày Nhập Kho', 'Số Lượng Nhập Kho', 'Ngày Xuất Kho', 'Số Lượng Xuất Kho', 'ĐVT', 'Phiếu Xuất Kho',
+            'Ngày Lập Phiếu COC', 'Người Khai Báo', 'Thời Điểm Khai Báo',
+        ];
+        $lastColumn = Coordinate::stringFromColumnIndex(count($headers));
+        $col = fn(string $header) => Coordinate::stringFromColumnIndex(array_search($header, $headers, true) + 1);
+
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Theo Doi Xuat Kho EU');
+
+        $sheet->setCellValue('A1', 'THEO DÕI XUẤT KHO EU');
+        $sheet->mergeCells("A1:{$lastColumn}1");
+        $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
+        $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+
+        $sheet->setCellValue('A2', $this->exportFilterSummary($filtered));
+        $sheet->mergeCells("A2:{$lastColumn}2");
+
+        $headerRow = 4;
+        $sheet->fromArray($headers, null, 'A' . $headerRow);
+        $sheet->getStyle("A{$headerRow}:{$lastColumn}{$headerRow}")->applyFromArray([
+            'font' => ['bold' => true],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'D9E1F2']],
+            'alignment' => [
+                'horizontal' => Alignment::HORIZONTAL_CENTER,
+                'vertical' => Alignment::VERTICAL_CENTER,
+                'wrapText' => true,
+            ],
         ]);
+        // Cùng màu nhóm cột với lưới: MMS nền xanh, ô người dùng nhập nền vàng
+        $sheet->getStyle($col('Ngày Sản Xuất') . $headerRow . ':' . $col('Phiếu Xuất Kho') . $headerRow)
+            ->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('D4EDDA');
+        $sheet->getStyle($col('Ngày Lập Phiếu COC') . $headerRow . ':' . $lastColumn . $headerRow)
+            ->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('FFC107');
+
+        // Ngày ghi dạng chuỗi d/m/Y (cột trộn ngày và ô trống, tránh Excel tự đoán sai định dạng)
+        $dmy = fn($value) => $value ? Carbon::parse($value)->format('d/m/Y') : '';
+
+        $row = $headerRow + 1;
+        $cocRows = [];
+
+        foreach ($datas as $index => $data) {
+            $bom = $bomVersions->get($data->id);
+            $out = $stockOuts->get($data->id);
+            $in = $stockIns->get($data->id);
+            $kcsRow = $kcs->get($data->id);
+            $coc = $cocRecords->get($data->id);
+
+            $orderNumber = trim((string) $data->order_number_R1);
+            if ($data->order_number_R2) {
+                $orderNumber .= ($orderNumber !== '' ? "\n" : '') . $data->order_number_R2;
+            }
+
+            $issues = $out
+                ? collect($out['issues'])->map(fn($i) => $i['issue'] . ' - ' . $dmy($i['date'])
+                    . ' - SL ' . number_format((float) $i['qty'], 0, ',', '.'))->implode("\n")
+                : '';
+
+            $sheet->fromArray([
+                $index + 1,
+                $orderNumber,
+                $data->actual_batch ?: $data->batch,
+                $data->product_name,
+                trim($data->intermediate_code . ($bom?->btp_version ? ' (v' . $bom->btp_version . ')' : '')),
+                trim($data->finished_product_code . ($bom?->tp_version ? ' (v' . $bom->tp_version . ')' : '')),
+                $data->market,
+                $data->specification,
+                trim(number_format((float) $data->batch_qty, 0, ',', '.') . ' ' . $data->unit_batch_qty),
+                $dmy(($in['mfg_date'] ?? '') ?: null),
+                $dmy(($in['exp_date'] ?? '') ?: null),
+                $dmy($kcsRow['kcs_date'] ?? null),
+                $kcsRow['coatp_number'] ?? '',
+                $dmy($in['date'] ?? null),
+                $in ? (float) $in['qty'] : null,
+                $dmy($out['first_date'] ?? null),
+                $out ? (float) $out['qty'] : null,
+                $in['uom'] ?? '',
+                $issues,
+                $dmy($coc?->coc_date),
+                $coc?->coc_date ? (string) $coc->updated_by : '',
+                $coc?->coc_date && $coc->updated_at ? Carbon::parse($coc->updated_at)->format('d/m/Y H:i') : '',
+            ], null, 'A' . $row, true);
+
+            if ($coc?->coc_date) {
+                $cocRows[] = $row;
+            }
+
+            $row++;
+        }
+
+        $lastRow = max($row - 1, $headerRow);
+
+        $sheet->getStyle("A{$headerRow}:{$lastColumn}{$lastRow}")->applyFromArray([
+            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
+        ]);
+        $sheet->getStyle('A' . ($headerRow + 1) . ":{$lastColumn}{$lastRow}")
+            ->getAlignment()->setVertical(Alignment::VERTICAL_TOP)->setWrapText(true);
+
+        foreach (['Số Lượng Nhập Kho', 'Số Lượng Xuất Kho'] as $header) {
+            $sheet->getStyle($col($header) . ($headerRow + 1) . ':' . $col($header) . $lastRow)
+                ->getNumberFormat()->setFormatCode('#,##0');
+        }
+
+        // Lô đã có Ngày Lập Phiếu COC: tô xanh nhạt cả dòng, giống lưới
+        foreach ($cocRows as $cocRow) {
+            $sheet->getStyle("A{$cocRow}:{$lastColumn}{$cocRow}")
+                ->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB(self::COC_DONE_RGB);
+        }
+
+        for ($i = 1; $i <= count($headers); $i++) {
+            $sheet->getColumnDimension(Coordinate::stringFromColumnIndex($i))->setAutoSize(true);
+        }
+
+        // Cột chữ dài để auto size sẽ tràn màn hình
+        $sheet->getColumnDimension($col('Tên Sản Phẩm'))->setAutoSize(false)->setWidth(35);
+        $sheet->getColumnDimension($col('Quy Cách'))->setAutoSize(false)->setWidth(25);
+        $sheet->getColumnDimension($col('Phiếu Xuất Kho'))->setAutoSize(false)->setWidth(32);
+
+        // Ghim tiêu đề + 3 cột định danh đầu (STT, Số Lệnh, Số Lô)
+        $sheet->freezePane('D' . ($headerRow + 1));
+        $sheet->setAutoFilter("A{$headerRow}:{$lastColumn}{$lastRow}");
+
+        return $spreadsheet;
+    }
+
+    /** Dòng mô tả bộ lọc đang áp dụng, hiển thị ngay dưới tiêu đề file Excel */
+    private function exportFilterSummary(array $filtered): string
+    {
+        $fmt = fn($d) => $d !== '' ? Carbon::parse($d)->format('d/m/Y') : '...';
+        $parts = [];
+
+        $parts[] = 'Phân xưởng: ' . ($filtered['department']
+            ? (KcsTrackingController::DEPARTMENTS[$filtered['department']] ?? $filtered['department'])
+            : 'Tất cả');
+
+        if ($filtered['outFrom'] !== '' || $filtered['outTo'] !== '') {
+            $parts[] = 'Ngày xuất kho: ' . $fmt($filtered['outFrom']) . ' - ' . $fmt($filtered['outTo']);
+        } else {
+            $parts[] = 'Tháng kế hoạch: ' . Carbon::parse($filtered['fromMonth'] . '-01')->format('m/Y')
+                . ' - ' . Carbon::parse($filtered['toMonth'] . '-01')->format('m/Y');
+        }
+
+        if ($filtered['keyword'] !== '') {
+            $parts[] = 'Tìm kiếm: ' . $filtered['keyword'];
+        }
+
+        $parts[] = 'Số lô: ' . $filtered['datas']->count();
+
+        if (!$filtered['mmsAvailable']) {
+            $parts[] = 'CHƯA KẾT NỐI ĐƯỢC MMS (thiếu dữ liệu nhập / xuất kho)';
+        }
+
+        $parts[] = 'Ngày xuất: ' . now()->format('d/m/Y H:i');
+
+        return implode('   |   ', $parts);
     }
 
     /**

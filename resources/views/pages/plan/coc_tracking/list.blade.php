@@ -101,6 +101,17 @@
                                         title="Bỏ mọi bộ lọc, về tháng kế hoạch hiện tại">
                                         <i class="fas fa-undo"></i> Đặt lại
                                     </a>
+                                    <a href="{{ route('pages.plan.coc_tracking.export', [
+                                        'department' => $department,
+                                        'from_month' => $fromMonth,
+                                        'to_month' => $toMonth,
+                                        'out_from' => $dmy($outFrom),
+                                        'out_to' => $dmy($outTo),
+                                        'keyword' => $keyword,
+                                    ]) }}" class="btn btn-sm btn-outline-success"
+                                        title="Xuất Excel đúng danh sách lô đang lọc (theo bộ lọc đã bấm Lọc)">
+                                        <i class="fas fa-file-excel"></i> Xuất Excel
+                                    </a>
                                 </div>
                             </div>
                         </form>
@@ -186,7 +197,7 @@
                                                     . ' - SL ' . $qty($i['qty']) . ($i['rem'] !== '' ? ' (' . $i['rem'] . ')' : ''))->implode("\n")
                                                 : 'Chưa có phiếu xuất kho trên MMS';
                                         @endphp
-                                        <tr data-row data-id="{{ $data->id }}">
+                                        <tr data-row data-id="{{ $data->id }}" class="{{ $coc?->coc_date ? 'coc-done' : '' }}">
                                             <td class="text-center align-middle coc-sticky coc-sticky-1">{{ $index + 1 }}</td>
                                             <td class="text-center align-middle coc-sticky coc-sticky-2">
                                                 {{ $data->order_number_R1 ?: '' }}
@@ -435,6 +446,17 @@
             background-color: #f2f2f2;
         }
 
+        /* Lô đã có Ngày Lập Phiếu COC: tô xanh nhạt cả dòng (kể cả cột ghim), cùng màu file Excel */
+        #coc_tracking_table tbody tr.coc-done td,
+        #coc_tracking_table tbody tr.coc-done .coc-sticky {
+            background-color: #e2f4e7;
+        }
+
+        #coc_tracking_table tbody tr.coc-done:hover td,
+        #coc_tracking_table tbody tr.coc-done:hover .coc-sticky {
+            background-color: #cdebd6;
+        }
+
         #coc_tracking_table thead th.coc-user {
             background-color: #ffc107;
         }
@@ -678,6 +700,7 @@
                         // data-sort theo Y-m-d để sắp xếp cột đúng thứ tự thời gian
                         const iso = m ? m[3] + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0') : '';
                         $cell[0].dataset.sort = iso;
+                        $(input).closest('tr').toggleClass('coc-done', iso !== '');
                         $cell.find('.coc-declared').text(res.declared_by + ' - ' + res.declared_at);
                         toastr.success('Đã lưu lô ' + $(input).closest('tr').find('.coc-sticky-3').text().trim());
                     },
