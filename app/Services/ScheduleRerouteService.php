@@ -23,6 +23,8 @@ use Illuminate\Support\Str;
  *   - lô kế tiếp trên CÙNG PHÒNG (cùng hoặc khác sản phẩm),
  *   - công đoạn kế tiếp theo liên kết predecessor_code -> code,
  * rồi lan truyền tiếp cho tới khi khoảng trống trên lịch hấp thụ hết độ lệch.
+ * Lô gốc là Cân / Cấp phát (stage_code 1, 2; từ 26/11/2026): CHỈ dịch các lịch trên chính phòng cân đó, không lan sang
+ * công đoạn sau; lô gốc công đoạn khác vẫn không dịch lịch cân (SKIP_STAGES).
  *
  * Quy tắc cho từng lô bị ảnh hưởng:
  *   earliest = max(kết thúc mới của các lô đứng trước trên phòng, kết thúc mới của công đoạn trước)
@@ -52,7 +54,10 @@ class ScheduleRerouteService
     /** Lệch dưới ngưỡng này thì bỏ qua. */
     public const MIN_SHIFT_SECONDS = 60;
 
-    /** Công đoạn Cân / Cấp phát không tạo ràng buộc (giống predecessorReadyTimes). */
+    /**
+     * Công đoạn Cân / Cấp phát không tạo ràng buộc (giống predecessorReadyTimes): lô gốc khác công đoạn không bao giờ dịch
+     * lịch cân. Từ 26/11/2026 Nhận / Trả phòng ở chính phòng cân thì tịnh tuyến RIÊNG các lịch của phòng đó ($roomOnly).
+     */
     public const SKIP_STAGES = [1, 2];
 
     /** Lịch bảo trì - hiệu chuẩn: cố định, không dịch. */
@@ -100,6 +105,12 @@ class ScheduleRerouteService
      * (delta < 0) vẫn giữ nguyên lượng chồng lấn gốc.
      */
     private bool $spreadOverlaps = false;
+
+    /**
+     * Lô gốc là Cân / Cấp phát (SKIP_STAGES): chỉ nạp và dịch các lịch của phòng này (user chọn, 26/11/2026), không lan
+     * sang công đoạn kế tiếp; null = tịnh tuyến thường (bỏ qua mọi lịch cân).
+     */
+    private ?int $roomOnly = null;
 
     /** @var array<int, array<int, int>> resourceId => danh sách id theo thứ tự trên phòng */
     private array $roomOrder = [];
@@ -259,6 +270,11 @@ class ScheduleRerouteService
         ))->subDay();
         $windowEnd = $this->at(max($theoryFinish, $actualTs))->addDays(self::WINDOW_DAYS);
 
+        $this->roomOnly = in_array((int) $source->stage_code, self::SKIP_STAGES, true) ? (int) $source->resourceId : null;
+        if ($this->roomOnly === 0) {
+            return $this->emptyResult();
+        }
+
         $this->loadGraph($windowStart, $windowEnd);
         $this->loadOffRanges($windowStart, $windowEnd->copy()->addDays(self::WINDOW_DAYS));
         $this->spreadOverlaps = false;
@@ -333,8 +349,8 @@ class ScheduleRerouteService
             return null;
         }
 
-        $sourceStage = (int) $source->stage_code;
-        if (in_array($sourceStage, self::SKIP_STAGES, true) || $sourceStage === self::MAINTENANCE_STAGE) {
+        // Lô cân (SKIP_STAGES) vẫn là lô gốc được: runUnlocked chỉ tịnh tuyến trong phòng của nó
+        if ((int) $source->stage_code === self::MAINTENANCE_STAGE) {
             return null;
         }
 
@@ -491,7 +507,10 @@ class ScheduleRerouteService
         $rows = DB::table('stage_plan as sp')
             ->leftJoin('plan_master as pm', 'pm.id', '=', 'sp.plan_master_id')
             ->where('sp.active', 1)
-            ->whereNotIn('sp.stage_code', self::SKIP_STAGES)
+            // Phòng cân: mọi lịch của phòng (lô cân, BT-HC-TI cố định); tịnh tuyến thường: bỏ qua lịch cân
+            ->when($this->roomOnly !== null,
+                fn($q) => $q->where('sp.resourceId', $this->roomOnly),
+                fn($q) => $q->whereNotIn('sp.stage_code', self::SKIP_STAGES))
             ->where(function ($q) use ($windowStart, $windowEnd) {
                 $q->whereBetween('sp.start', [$windowStart, $windowEnd])
                     ->orWhereBetween('sp.actual_start', [$windowStart, $windowEnd]);
@@ -593,6 +612,10 @@ class ScheduleRerouteService
                 'cleanWork' => null,
             ];
 
+            // Phòng cân: chỉ ràng buộc cùng phòng, không nối công đoạn trước / sau
+            if ($this->roomOnly !== null) {
+                continue;
+            }
             if ($r->code) {
                 $this->idByCode[(string) $r->code] = (int) $r->id;
             }

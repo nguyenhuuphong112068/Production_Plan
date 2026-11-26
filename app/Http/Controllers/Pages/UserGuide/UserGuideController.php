@@ -58,7 +58,7 @@ class UserGuideController extends Controller
             'title' => 'Lịch Sản Xuất',
             'icon' => 'fas fa-industry',
             'summary' => 'Lịch Sản Xuất Chart (Gantt, màu cảnh báo), Sắp lịch thủ công (danh sách KHSX, thả lô vào phòng, chỉnh lịch kéo thả, sắp lịch cân bán tự động, ghép lô cân chung), Sắp lịch tự động và nguyên lý hoạt động, Kiểm soát tồn BTP; Thực thi sản xuất (Nhận / Trả phòng, tịnh tuyến lịch), xác nhận hoàn thành, phòng biệt trữ, lịch tuần, danh sách lịch, tiến trình, đề nghị thay đổi KH, lịch sử thay đổi, thẩm định vệ sinh, nhận bao bì, sản lượng.',
-            'updated_at' => '2026-11-25',
+            'updated_at' => '2026-11-26',
         ],
         'lichHcBt' => [
             'title' => 'Lịch HC-BT',
