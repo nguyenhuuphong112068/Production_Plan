@@ -30,6 +30,7 @@
         "bs-stepper": "^1.7.0",
         "classnames": "^2.5.1",
         "dayjs": "^1.11.13",
+        "flag-icons": "^7.6.0",
         "jquery": "^3.7.1",
         "moment": "^2.30.1",
         "primeicons": "^7.0.0",

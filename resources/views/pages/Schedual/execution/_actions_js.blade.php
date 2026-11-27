@@ -234,7 +234,7 @@
                     return `<label class="exec-plan ${on ? 'selected' : ''} ${off ? 'disabled' : ''}">
                         <input type="${multi() ? 'checkbox' : 'radio'}" name="execPlan" value="${p.id}" ${on ? 'checked' : ''} ${off ? 'disabled' : ''}>
                         <div class="exec-plan-main">
-                            <div class="exec-plan-name">${p.maintenance ? '<i class="fas fa-tools"></i> ' : ''}${esc(p.product)}${p.market ? ' - ' + esc(p.market) : ''}${kind}
+                            <div class="exec-plan-name">${p.maintenance ? '<i class="fas fa-tools"></i> ' : ''}${esc(p.product)}${p.market ? ' - ' + esc(p.market) + (p.market_flags || []).map(u => `<img src="${esc(u)}" alt="" class="exec-plan-flag" title="Thị trường ${esc(p.market)}">`).join('') : ''}${kind}
                                 ${p.is_val ? '<i class="fas fa-check-circle text-primary" title="Lô thẩm định"></i>' : ''}${same}</div>
                             ${meta}
                             <div class="exec-plan-meta"><i class="far fa-calendar-alt"></i> Lịch: ${esc(p.start)} → ${esc(p.end)}</div>

@@ -21,4 +21,4 @@
         đen. Hộp thoại liệt kê từng lô và lỗi.</li>
     <li>Đã cài chính sách cho tháng đang xem, và: có ngày làm việc (bỏ qua ngày nghỉ, ngày không có target) có sản lượng lý thuyết dưới ngưỡng % target ngày, hoặc tổng tháng chưa đạt 100% target tháng. Tháng chưa cài chính sách thì không kiểm tra sản lượng.</li>
 </ul>
-<p>Các màu chỉ cảnh báo (khuôn, sai thiết bị nguồn NL, quá hạn biệt trữ, thẩm định vệ sinh, quá giờ chưa xác nhận) không chặn Submit.</p>
+<p>Các màu chỉ cảnh báo (khuôn, sai thiết bị nguồn NL, quá hạn biệt trữ, thẩm định vệ sinh) không chặn Submit.</p>

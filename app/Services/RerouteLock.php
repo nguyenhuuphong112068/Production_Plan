@@ -21,9 +21,11 @@ class RerouteLock
 
     /**
      * Chạy $fn khi đang giữ khóa tịnh tuyến của phân xưởng. Chờ quá WAIT_SECONDS thì ném RerouteBusyException, $fn không chạy.
+     * $waitSeconds = 0: không chờ, khóa đang bị giữ (vd. đang Nhận / Trả phòng) thì ném ngay (lệnh quét lô quá giờ).
      */
-    public static function run(?string $deparmentCode, callable $fn)
+    public static function run(?string $deparmentCode, callable $fn, ?int $waitSeconds = null)
     {
+        $wait = $waitSeconds ?? self::WAIT_SECONDS;
         $key = $deparmentCode ?: '_';
 
         if (!empty(self::$held[$key])) {
@@ -37,11 +39,11 @@ class RerouteLock
 
         $name = 'pms_reroute:' . $key;
         // Windows tính giờ chờ vào max_execution_time: chừa đủ cho lúc chờ khóa + thời gian chạy
-        @set_time_limit(self::WAIT_SECONDS + 300);
+        @set_time_limit($wait + 300);
 
-        if ((int) DB::selectOne('SELECT GET_LOCK(?, ?) AS l', [$name, self::WAIT_SECONDS])->l !== 1) {
-            throw new RerouteBusyException('⏳ Phân xưởng ' . $key . ' đang có thao tác khác tịnh tuyến lịch quá '
-                . self::WAIT_SECONDS . ' giây. Thao tác của bạn CHƯA được lưu, vui lòng thực hiện lại.');
+        if ((int) DB::selectOne('SELECT GET_LOCK(?, ?) AS l', [$name, $wait])->l !== 1) {
+            throw new RerouteBusyException('⏳ Phân xưởng ' . $key . ' đang có thao tác khác tịnh tuyến lịch'
+                . ($wait > 0 ? ' quá ' . $wait . ' giây' : '') . '. Thao tác của bạn CHƯA được lưu, vui lòng thực hiện lại.');
         }
 
         self::$held[$key] = 1;

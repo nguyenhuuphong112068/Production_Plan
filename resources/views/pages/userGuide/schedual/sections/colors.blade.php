@@ -44,6 +44,12 @@
     Lô có khuôn hiện mã khuôn ở cuối tên lô. Lô vi phạm về khuôn có nền <span class="ug-swatch" style="background:#ffd500"></span>
     vàng và dòng cảnh báo trên thanh lô; nút <b>Lịch trùng khuôn</b> trên thanh công cụ nhảy lần lượt tới từng lô bị cảnh báo.
 </p>
+<p>
+    Lô Đóng gói còn có nhãn <span class="ug-swatch" style="background:#059669"></span> xanh lá gồm <b>cờ quốc gia + mã thị trường</b> (thị trường không phải quốc gia như Tender, ALDE... hiện 🌐)
+    phía trên bên trái thanh lịch (cùng vị trí nhãn loại NL của lịch cân), ghi thị trường của
+    thành phẩm (VN, MY, HK, BE...; rê chuột để xem tên thị trường), cả trên thanh đang chạy / chờ xác nhận. Thị trường lấy từ
+    danh mục thành phẩm; thành phẩm chưa khai báo thị trường thì không có nhãn.
+</p>
 <ul>
     <li><b>⚠️ Trùng Khuôn</b>: số phòng dùng cùng khuôn trong cùng thời gian vượt số lượng khuôn đang có.</li>
     <li><b>❌ Thiếu Khuôn!</b>: lô đã lên phòng cần khuôn nhưng chưa được gán khuôn (sản phẩm chưa khai báo khuôn, hoặc

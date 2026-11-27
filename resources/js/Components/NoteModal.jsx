@@ -25,7 +25,6 @@ const LEGEND_GROUPS = [
       { color: "#e54a4aff", label: "Không Đáp Ứng Ngày Cần Hàng Theo Kế Hoạch", tag: "block" },
       { color: "#920000ff", label: "Cảnh Báo Ngày Đáp Ứng NL/BB", tag: "block" },
       { color: "#4d4b4bff", label: "Bắt Đầu Công Đoạn Sau < Kết Thúc Công Đoạn Trước", tag: "block" },
-      { color: "#ffcc80", label: "Đã Qua Giờ Kết Thúc Kế Hoạch Nhưng Chưa Xác Nhận Hoàn Thành (sản xuất hoặc vệ sinh, không áp dụng BT-HC)" },
     ],
   },
   {

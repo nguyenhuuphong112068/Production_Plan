@@ -477,6 +477,49 @@ input:checked + .slider:before {
 .fc-event.fc-weigh-kind-bp::before { content: "🖌️ NL BP"; background: #be185d; }
 .fc-event.fc-weigh-kind-dg::before { content: "📦 NL ĐG"; background: #475569; }
 
+/* Nhãn thị trường của khối Đóng gói (CĐ 7): cùng vị trí / kiểu với nhãn loại NL của lịch cân ở trên.
+   Phần tử .fc-market-badge gắn vào khung sự kiện ở eventDidMount (FullCalender.jsx). */
+.fc-event.fc-market-kind {
+  overflow: visible;
+}
+
+.fc-event .fc-market-badge {
+  position: absolute;
+  top: -11px;
+  left: 2px;
+  height: 14px;
+  padding: 0 4px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  box-sizing: border-box;
+  border-radius: 7px;
+  border: 1px solid #ffffff;
+  background: #059669;
+  color: #ffffff;
+  font-size: 9.5px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  box-shadow: 0 0 2px rgba(0, 0, 0, .5);
+  z-index: 29;
+}
+
+/* Cờ quốc gia trong nhãn thị trường (gói flag-icons, tỉ lệ 4:3) */
+.fc-market-badge .fc-market-flag {
+  height: 9px;
+  width: 12px;
+  border-radius: 1px;
+  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, .35);
+}
+
+/* Bật "⚖ Lô cần cân": huy hiệu ⚖ vắt góc trên trái, đẩy nhãn thị trường sang phải cho khỏi đè */
+.fc-event.fc-weigh-need .fc-market-badge,
+.fc-event.fc-weigh-planned .fc-market-badge,
+.fc-event.fc-weigh-drafted .fc-market-badge {
+  left: 8px;
+}
+
 .group {
   position: relative;
 }

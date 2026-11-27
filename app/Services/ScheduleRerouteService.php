@@ -17,6 +17,8 @@ use Illuminate\Support\Str;
  * dự kiến = giờ kết thúc lý thuyết + độ trễ bắt đầu. Lúc Trả phòng, lô đã tịnh tuyến khi Nhận phòng được so với giờ dự kiến
  * đó (không phải giờ lý thuyết gốc), nên chỉ bù phần chênh còn lại theo 2 chiều. Nút ✓✓ ở trang Xác nhận hoàn thành KHÔNG còn dịch lịch
  * (reroute() giữ lại, hiện không nơi nào gọi); ✓ cũng không dịch (rerouteAfterProduction() không nơi nào gọi).
+ * Và lệnh quét reroute:overdue mỗi giờ (rerouteOverdue, từ 26/11/2026; trùng khóa thì thử lại sau 15 phút): lô quá giờ bắt
+ * đầu lý thuyết mà chưa Nhận phòng (trong 2 ngày gần nhất), ở phòng đang không mở, được dời tới giờ quét, các lô sau CHỈ đẩy lui.
  *
  * Khi một lô được xác nhận hoàn thành, giờ kết thúc thực tế thường lệch so với lý thuyết.
  * Service này dịch chuyển (2 chiều) các lô chịu ảnh hưởng, giữ nguyên thứ tự lô:
@@ -83,6 +85,25 @@ class ScheduleRerouteService
     /** Đầu câu lý do (ghi vào lịch sử đổi lịch của các lô bị dịch) của lần tịnh tuyến khi Nhận phòng. */
     public const RECEIVE_REASON_PREFIX = 'Tịnh tuyến theo Nhận phòng';
 
+    /**
+     * Lệnh quét định kỳ reroute:overdue (mỗi giờ, trùng khóa thì thử lại sau 15 phút; từ 26/11/2026): lô quá giờ bắt đầu lý
+     * thuyết mà chưa Nhận phòng, ở phòng đang không mở, thì dời chính lô đó tới giờ quét và đẩy các lô sau theo (chỉ đẩy lui).
+     */
+    public const TRIGGER_OVERDUE = 'overdue';
+
+    /**
+     * Quét lô quá giờ: chỉ xét lô có giờ bắt đầu lý thuyết trong khoảng này trước giờ quét (user chọn 26/11/2026: 2 ngày).
+     * Lô cũ hơn chưa từng Nhận phòng coi như dữ liệu bỏ dở, không đẩy.
+     */
+    public const OVERDUE_LOOKBACK_SECONDS = 2 * 86400;
+
+    /** Công đoạn có Nhận / Trả phòng (Cân → Đóng gói), lô quá giờ thuộc các công đoạn này mới bị dời. */
+    public const OVERDUE_STAGES = [1, 2, 3, 4, 5, 6, 7];
+
+    public const OVERDUE_REASON_PREFIX = 'Tịnh tuyến tự động: quá giờ chưa Nhận phòng';
+
+    public const OVERDUE_SOURCE_REASON = 'Quá giờ bắt đầu lý thuyết mà chưa Nhận phòng, dời tới giờ quét';
+
     public const SOURCE_CLEANING_REASON = 'Dời vệ sinh của chính lô ra sau giờ kết thúc sản xuất thực tế';
 
     /**
@@ -105,6 +126,12 @@ class ScheduleRerouteService
      * (delta < 0) vẫn giữ nguyên lượng chồng lấn gốc.
      */
     private bool $spreadOverlaps = false;
+
+    /**
+     * Lệnh quét lô quá giờ (runOverdueUnlocked): CHỈ đẩy lui, không lô nào được bắt đầu / kết thúc sớm hơn lịch hiện tại
+     * (user quy định 26/11/2026). Các lần tịnh tuyến khác (Trả phòng) vẫn dịch 2 chiều.
+     */
+    private bool $pushOnly = false;
 
     /**
      * Lô gốc là Cân / Cấp phát (SKIP_STAGES): chỉ nạp và dịch các lịch của phòng này (user chọn, 26/11/2026), không lan
@@ -208,6 +235,61 @@ class ScheduleRerouteService
     }
 
     /**
+     * Quét lô quá giờ (lệnh reroute:overdue): lô chưa Nhận phòng mà giờ bắt đầu lý thuyết đã qua từ RECEIVE_MIN_LATE_SECONDS
+     * (và không quá OVERDUE_LOOKBACK_SECONDS), ở phòng đang KHÔNG mở (openRoomIds), thì dời CHÍNH lô đó tới giờ quét (làm tròn
+     * lên lưới 15 phút, tránh khối cố định trên phòng) rồi đẩy các lô sau như tịnh tuyến thường. Chỉ đẩy trễ. Lô vẫn chưa nhận
+     * phòng tới lần quét sau thì bị dời tiếp. Lô cân (SKIP_STAGES) chỉ dịch các lịch trên chính phòng cân đó.
+     *
+     * @return array{run_code: ?string, delta_minutes: int, changes: array, source_cleaning_moved: bool}
+     */
+    public function rerouteOverdue(int $stagePlanId): array
+    {
+        $source = $this->loadSource($stagePlanId, false);
+        if (! $source || ! self::isOverdue($source, now()->getTimestamp())) {
+            return $this->emptyResult();
+        }
+
+        // Không chờ khóa: đang có Nhận / Trả phòng (hay tịnh tuyến khác) thì ném RerouteBusyException ngay, lệnh quét bỏ qua
+        // lượt này và thử lại sau 15 phút (user quy định 26/11/2026)
+        return RerouteLock::run($source->deparment_code, function () use ($source) {
+            // Đọc lại sau khi có khóa: lần quét / Nhận phòng vừa xong có thể đã dời hoặc nhận lô này, hoặc mở phòng bằng lô khác
+            $fresh = DB::table('stage_plan')->where('id', $source->id)->first();
+            $now = now()->getTimestamp();
+            if (! $fresh || ! self::isOverdue($fresh, $now) || self::openRoomIds([(int) $fresh->resourceId])) {
+                return $this->emptyResult();
+            }
+
+            return $this->runOverdueUnlocked($fresh, (int) ceil($now / 900) * 900);
+        }, 0);
+    }
+
+    /**
+     * Phòng đang mở (user quy định 26/11/2026: quét lô quá giờ chỉ dời phòng KHÔNG mở): có lô / lịch bảo trì đã Nhận phòng mà
+     * chưa Trả phòng (Phòng Bận, Chờ / Đang VS sau BT) — cùng quy tắc trạng thái phòng ở trang Thực Thi Sản Xuất. Lô quá giờ của
+     * phòng đang mở chờ lô đang chạy; lúc Trả phòng, tịnh tuyến theo Trả phòng xếp lại, lần quét sau đó xét tiếp.
+     *
+     * @param  int[]  $roomIds
+     * @return int[]
+     */
+    public static function openRoomIds(array $roomIds): array
+    {
+        return array_keys(app(RoomOccupancyService::class)->heldUntil(array_values(array_unique($roomIds))));
+    }
+
+    /** Lô chưa Nhận phòng, giờ bắt đầu lý thuyết đã qua từ RECEIVE_MIN_LATE_SECONDS, trong OVERDUE_LOOKBACK_SECONDS gần nhất. */
+    public static function isOverdue(object $row, int $now): bool
+    {
+        if ((int) $row->active !== 1 || (int) $row->finished !== 0 || $row->actual_start || ! $row->start || ! $row->end
+            || ! $row->resourceId || ! in_array((int) $row->stage_code, self::OVERDUE_STAGES, true)) {
+            return false;
+        }
+
+        $start = Carbon::parse($row->start)->getTimestamp();
+
+        return $start <= $now - self::RECEIVE_MIN_LATE_SECONDS && $start >= $now - self::OVERDUE_LOOKBACK_SECONDS;
+    }
+
+    /**
      * Giờ kết thúc dự kiến đã dùng khi tịnh tuyến lúc Nhận phòng ($runCode: mã lần chạy, RoomOccupancyService lưu ở
      * audittriallog). null nếu lần chạy đó đã hoàn tác hết.
      */
@@ -278,6 +360,7 @@ class ScheduleRerouteService
         $this->loadGraph($windowStart, $windowEnd);
         $this->loadOffRanges($windowStart, $windowEnd->copy()->addDays(self::WINDOW_DAYS));
         $this->spreadOverlaps = false;
+        $this->pushOnly = false;
 
         if (! isset($this->nodes[$source->id])) {
             return $this->emptyResult();
@@ -338,6 +421,71 @@ class ScheduleRerouteService
         $this->apply($runCode, $source, intdiv($reportDelta, 60), $changes, $sourceChange, $this->runReason($source, $trigger, $reportDelta));
 
         return ['run_code' => $runCode, 'changes' => array_values($changes), 'source_cleaning_moved' => (bool) $sourceChange] + $result;
+    }
+
+    /**
+     * Lô quá giờ chưa Nhận phòng ($source, đã kiểm isOverdue): đặt lô bắt đầu từ $newStart (giữ thời lượng làm việc, tránh
+     * khối cố định trên phòng như lô đang giữ phòng / bảo trì), rồi lan truyền như tịnh tuyến đẩy trễ (giãn lô trùng giờ).
+     * Khác run(): lô gốc là lô dịch được nên chính nó cũng có trong $changes (dòng nhật ký của nó đổi cả giờ sản xuất).
+     */
+    private function runOverdueUnlocked(object $source, int $newStart): array
+    {
+        $id = (int) $source->id;
+        $origStart = Carbon::parse($source->start)->getTimestamp();
+        $theoryFinish = Carbon::parse($source->end_clearning ?? $source->end)->getTimestamp();
+
+        $windowStart = $this->at($origStart)->subDay();
+        $windowEnd = $this->at(max($theoryFinish, $newStart + ($theoryFinish - $origStart)))->addDays(self::WINDOW_DAYS);
+
+        $this->roomOnly = in_array((int) $source->stage_code, self::SKIP_STAGES, true) ? (int) $source->resourceId : null;
+        $this->loadGraph($windowStart, $windowEnd);
+        $this->loadOffRanges($windowStart, $windowEnd->copy()->addDays(self::WINDOW_DAYS));
+
+        if (! isset($this->nodes[$id]) || ! $this->nodes[$id]['movable']) {
+            return $this->emptyResult();
+        }
+
+        // Chỉ đẩy trễ: giãn luôn các lô trùng giờ bị lan tới (giống Nhận phòng trễ), không lô nào bị kéo sớm
+        $this->spreadOverlaps = true;
+        $this->pushOnly = true;
+
+        $placed = $this->avoidFixedBlocks($id, $this->place($id, $newStart));
+        $delta = $placed['start'] - $origStart;
+        if ($delta < self::MIN_SHIFT_SECONDS) {
+            return $this->emptyResult();
+        }
+
+        $this->nodes[$id]['curStart'] = $placed['start'];
+        $this->nodes[$id]['curEnd'] = $placed['end'];
+        $this->nodes[$id]['curCleanStart'] = $placed['cleanStart'];
+        $this->nodes[$id]['curCleanEnd'] = $placed['cleanEnd'];
+        $this->nodes[$id]['curFinish'] = $placed['finish'];
+
+        $changes = $this->propagate($id);
+        if (isset($changes[$id])) {
+            $changes[$id]['reason'] = self::OVERDUE_SOURCE_REASON;
+        }
+        if (empty($changes)) {
+            return $this->emptyResult();
+        }
+
+        // Chốt chặn cuối của "chỉ đẩy lui": lô nào có giờ mới sớm hơn giờ cũ thì không ghi gì cả
+        foreach ($changes as $c) {
+            foreach (['start', 'end', 'end_clearning'] as $f) {
+                if ($c['old'][$f] && $c['new'][$f] && strtotime($c['new'][$f]) < strtotime($c['old'][$f])) {
+                    \Illuminate\Support\Facades\Log::error('[Reroute] Quét lô quá giờ: lô bị kéo sớm, hủy lần dời', [
+                        'source' => $id, 'stage_plan' => $c['id'], 'field' => $f, 'old' => $c['old'][$f], 'new' => $c['new'][$f],
+                    ]);
+
+                    return $this->emptyResult();
+                }
+            }
+        }
+
+        $runCode = (string) Str::uuid();
+        $this->apply($runCode, $source, intdiv($delta, 60), $changes, null, $this->runReason($source, self::TRIGGER_OVERDUE, $delta));
+
+        return ['run_code' => $runCode, 'delta_minutes' => intdiv($delta, 60), 'changes' => array_values($changes), 'source_cleaning_moved' => false];
     }
 
     /** $requireFinished = false: Trả phòng, lô có thể chưa xác nhận ✓ */
@@ -442,8 +590,9 @@ class ScheduleRerouteService
             foreach ($logs as $log) {
                 $row = DB::table('stage_plan')->where('id', $log->stage_plan_id)->first();
 
-                // Dòng của chính lô gốc (nút ✓): chỉ khôi phục vệ sinh, khi vệ sinh chưa làm và chưa bị dời lần nữa
-                if ((int) $log->stage_plan_id === (int) $log->source_stage_plan_id) {
+                // Dòng của chính lô gốc (nút ✓): chỉ khôi phục vệ sinh, khi vệ sinh chưa làm và chưa bị dời lần nữa.
+                // Lô gốc quá giờ chưa Nhận phòng (TRIGGER_OVERDUE) đổi cả giờ sản xuất → khôi phục như lô bị dịch bên dưới.
+                if ((int) $log->stage_plan_id === (int) $log->source_stage_plan_id && $this->sameTime($log->old_start, $log->new_start)) {
                     $unchanged = $row
                         && ! $row->actual_start_clearning
                         && $this->sameTime($row->start_clearning, $log->new_start_clearning)
@@ -889,6 +1038,11 @@ class ScheduleRerouteService
             }
         }
 
+        // Quét lô quá giờ: chỉ đẩy lui
+        if ($this->pushOnly && $newStart < $origStart) {
+            $newStart = $origStart;
+        }
+
         return [$newStart, $reasonId, $reasonType];
     }
 
@@ -1287,6 +1441,14 @@ class ScheduleRerouteService
             $received = Carbon::parse($source->actual_start)->format('H:i d/m/Y');
             $text = self::RECEIVE_REASON_PREFIX . ": {$batch}" . ($where !== '' ? " ({$where})" : '')
                 . ", nhận phòng lúc {$received}, bắt đầu {$lag}, dự kiến theo thời lượng lý thuyết";
+
+            return Str::limit($text, 250, '...');
+        }
+
+        if ($trigger === self::TRIGGER_OVERDUE) {
+            $planned = Carbon::parse($source->start)->format('H:i d/m/Y');
+            $text = self::OVERDUE_REASON_PREFIX . ": {$batch}" . ($where !== '' ? " ({$where})" : '')
+                . ", bắt đầu lý thuyết {$planned}, quét lúc " . now()->format('H:i d/m/Y') . ", dời {$lag}";
 
             return Str::limit($text, 250, '...');
         }

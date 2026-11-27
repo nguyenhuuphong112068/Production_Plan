@@ -7,6 +7,7 @@ use App\Services\RoomOccupancyService;
 use App\Services\ScheduleRerouteService;
 use App\Services\SchedulingLock;
 use App\Support\LeadConfirmation;
+use App\Support\MarketFlag;
 use App\Support\StagePlanHistory;
 use App\Support\WeighingScheduler;
 use Carbon\Carbon;
@@ -378,11 +379,6 @@ class SchedualController extends Controller
     // nên hạn biệt trữ sau PC được tính theo quarantine_blending thay vì quarantine_preparing.
     protected $mergedPcThtPlanMasters = [];
 
-    // Cam nhạt: sự kiện đã trôi vào quá khứ (end < now) nhưng chưa xác nhận hoàn thành (actual_end null).
-    // Giữ đồng bộ với OVERDUE_COLOR ở FullCalender.jsx và bảng chú thích ở NoteModal.
-    const OVERDUE_COLOR = '#ffcc80';
-    const OVERDUE_TEXT_COLOR = '#5d3200';
-
     // Màu vi phạm theo thứ tự ưu tiên (nặng → nhẹ) kèm textColor, dùng ở colorEvent()
     const SEVERITY_TEXT_COLORS = [
         '#920000ff' => '#ffffff',   // Cảnh Báo Ngày Đáp Ứng NL/BB      (chặn submit)
@@ -393,23 +389,6 @@ class SchedualController extends Controller
         '#bda124ff' => '#ffffff',   // Quá Hạn Biệt Trữ                 (cảnh báo)
         '#e4e405e2' => '#fb0101e2', // Lô Thẩm Định Vệ Sinh             (thông tin)
     ];
-
-    /**
-     * Sự kiện quá giờ kế hoạch mà chưa có giờ kết thúc thực tế → nền cam nhạt (trừ Bảo Trì/Hiệu Chuẩn, stage_code = 8).
-     * Màu vi phạm cũ (nếu có) không mất mà rơi xuống đầu dãy sọc violation_colors.
-     */
-    protected function applyOverdueColor($stageCode, $plannedEnd, $actualEnd, $color, $textColor, array $violationColors, $now)
-    {
-        if ($stageCode == 8 || ! $plannedEnd || $actualEnd || Carbon::parse($plannedEnd)->gte($now)) {
-            return [$color, $textColor, $violationColors, false];
-        }
-
-        if (isset(self::SEVERITY_TEXT_COLORS[$color]) && ! in_array($color, $violationColors, true)) {
-            array_unshift($violationColors, $color);
-        }
-
-        return [self::OVERDUE_COLOR, self::OVERDUE_TEXT_COLOR, $violationColors, true];
-    }
 
     public function test()
     {
@@ -640,6 +619,8 @@ class SchedualController extends Controller
                     ->on('sp_last.stage_code', '=', 'sp_max.max_finished_stage');
             })
             ->leftJoin('blister_mold', 'sp.blister_mold_id', '=', 'blister_mold.id')
+            // Thị trường của thành phẩm: badge trên khối Đóng gói (CĐ 7)
+            ->leftJoin('market', 'finished_product_category.market_id', '=', 'market.id')
 
             ->where('sp.active', 1)
             ->whereNotNull('sp.resourceId')
@@ -749,6 +730,8 @@ class SchedualController extends Controller
                 'sp.schedualed_by',
                 'sp.blister_mold_id',
                 'blister_mold.code as blister_mold_code',
+                'market.code as market_code',
+                'market.name as market_name',
                 //'quota_maintenance.Inst_sch_type',
 
                 'finished_product_category.intermediate_code',
@@ -836,7 +819,6 @@ class SchedualController extends Controller
         $groupedPlans = $event_plans->groupBy('plan_master_id');
 
         $events = collect();
-        $now = now();
 
         // 5️⃣ duyệt từng nhóm (theo batch sản xuất)
         foreach ($groupedPlans as $plans) {
@@ -862,17 +844,6 @@ class SchedualController extends Controller
                 // 🎯 lịch chưa hoàn thành (lô đang giữ phòng / chờ xác nhận đã bỏ qua ở trên)
                 if ($plan->start && $plan->finished == 0) {
 
-                    // biến riêng: $textColor còn được sự kiện vệ sinh bên dưới dùng lại
-                    [$main_color, $main_text_color, $main_violation_colors, $is_overdue] = $this->applyOverdueColor(
-                        $plan->stage_code,
-                        $plan->end,
-                        $plan->actual_end,
-                        $color_event,
-                        $textColor,
-                        $violation_colors,
-                        $now
-                    );
-
                     $events->push([
                         'plan_id' => $plan->id,
                         'id' => "{$plan->id}-main",
@@ -880,12 +851,11 @@ class SchedualController extends Controller
                         'start' => $plan->start,
                         'end' => $plan->end,
                         'resourceId' => $plan->resourceId,
-                        'color' => $plan->finished == 1 ? '#002af9ff' : $main_color,
-                        'textColor' => $main_text_color,
+                        'color' => $plan->finished == 1 ? '#002af9ff' : $color_event,
+                        'textColor' => $textColor,
                         'plan_master_id' => $plan->plan_master_id,
                         'stage_code' => $plan->stage_code,
                         'is_clearning' => false,
-                        'is_overdue' => $is_overdue,
                         // Lead đã xác nhận sẽ chạy đúng lịch này → hiện tick xanh trên Gantt
                         'comfirm_of_lead' => $plan->comfirm_of_lead,
                         'comfirm_of_lead_by' => $plan->comfirm_of_lead_by,
@@ -899,7 +869,7 @@ class SchedualController extends Controller
                         'submit' => $plan->submit,
                         'storage_capacity' => $storage_capacity,
                         'subtitle' => $subtitle,
-                        'violation_colors' => $main_violation_colors,
+                        'violation_colors' => $violation_colors,
                         'violation_predecessor_id' => $v_pre_id,
                         'violation_predecessor_end' => $v_pre_end,
                         'violation_successor_id' => $v_suc_id,
@@ -919,6 +889,9 @@ class SchedualController extends Controller
                         'source_warning' => $source_warning,
                         'source_reminder' => $source_reminder,
                         'blister_mold_code' => $plan->blister_mold_code ?? $mold_code,
+                        'market_code' => $plan->stage_code == 7 ? $plan->market_code : null,
+                        'market_name' => $plan->stage_code == 7 ? $plan->market_name : null,
+                        'market_flags' => $plan->stage_code == 7 ? MarketFlag::urls($plan->market_code) : [],
                     ]);
                 }
 
@@ -927,16 +900,6 @@ class SchedualController extends Controller
                     ($clearning && $plan->actual_start_clearning && ! $plan->actual_start_clearning && $plan->yields >= 0 && $plan->finished == 0)
                 ) {
 
-                    [$clean_color, $clean_text_color,, $clean_overdue] = $this->applyOverdueColor(
-                        $plan->stage_code,
-                        $plan->end_clearning,
-                        $plan->actual_end_clearning,
-                        '#a1a2a2ff',
-                        $textColor,
-                        [],
-                        $now
-                    );
-
                     $events->push([
                         'plan_id' => $plan->id,
                         'id' => "{$plan->id}-cleaning",
@@ -944,12 +907,11 @@ class SchedualController extends Controller
                         'start' => $plan->actual_start_clearning ?? $plan->start_clearning,
                         'end' => $plan->actual_end_clearning ?? $plan->end_clearning,
                         'resourceId' => $plan->resourceId,
-                        'color' => $clean_color,
-                        'textColor' => $clean_text_color,
+                        'color' => '#a1a2a2ff',
+                        'textColor' => $textColor,
                         'plan_master_id' => $plan->plan_master_id,
                         'stage_code' => $plan->stage_code,
                         'is_clearning' => true,
-                        'is_overdue' => $clean_overdue,
                         'finished' => $plan->finished,
                         'process_code' => $plan->process_code,
                         'campaign_code' => $plan->campaign_code,
@@ -1042,6 +1004,9 @@ class SchedualController extends Controller
                             'expected_date' => $plan->expected_date ? Carbon::parse($plan->expected_date)->format('Y-m-d') : null,
                             'mold_warning' => $mold_warning,
                             'blister_mold_code' => $plan->blister_mold_code ?? $mold_code,
+                            'market_code' => $plan->stage_code == 7 ? $plan->market_code : null,
+                            'market_name' => $plan->stage_code == 7 ? $plan->market_name : null,
+                            'market_flags' => $plan->stage_code == 7 ? MarketFlag::urls($plan->market_code) : [],
                         ]);
 
                         // Đã xác nhận sản xuất (✓) nhưng chưa xác nhận vệ sinh: hiện vệ sinh theo kế hoạch
@@ -1052,9 +1017,9 @@ class SchedualController extends Controller
                         // event lich vs thực tế
                         if ($clearning && $plan->yields >= 0) {
 
-                            [$clean_color, $clean_text_color,, $clean_overdue] = $pendingCleaning
-                                ? $this->applyOverdueColor($plan->stage_code, $plan->end_clearning, $plan->actual_end_clearning, '#a1a2a2ff', $textColor, [], $now)
-                                : ($maintReleased ? ['#aed9f1', '#003A4F', [], false] : ['#002af9ff', $textColor, [], false]);
+                            [$clean_color, $clean_text_color] = $pendingCleaning
+                                ? ['#a1a2a2ff', $textColor]
+                                : ($maintReleased ? ['#aed9f1', '#003A4F'] : ['#002af9ff', $textColor]);
 
                             $events->push([
                                 'plan_id' => $plan->id,
@@ -1068,7 +1033,6 @@ class SchedualController extends Controller
                                 'plan_master_id' => $plan->plan_master_id,
                                 'stage_code' => $plan->stage_code,
                                 'is_clearning' => true,
-                                'is_overdue' => $clean_overdue,
                                 'finished' => $plan->finished,
                                 'process_code' => $plan->process_code,
                                 'campaign_code' => $plan->campaign_code,
@@ -2392,6 +2356,9 @@ class SchedualController extends Controller
                     // Nhãn loại cân (weighKindClass) cho thanh phòng cân: NL PC / Nang rỗng / NL BP
                     'run_stage_code' => $first->stage_code,
                     'nextcessor_code' => $first->nextcessor_code,
+                    // Badge thị trường trên thanh Đóng gói (CĐ 7)
+                    'market_code' => $first->stage_code == 7 ? ($runPlans->pluck('market')->filter()->unique()->implode(', ') ?: null) : null,
+                    'market_flags' => $first->stage_code == 7 ? MarketFlag::urls($runPlans->pluck('market')->filter()->unique()->implode(', ')) : [],
                     'received_at' => $received->format('H:i d/m'),
                     'display' => 'block',
                 ];
@@ -2424,6 +2391,8 @@ class SchedualController extends Controller
                     'is_released' => true,
                     'run_stage_code' => $first->stage_code,
                     'nextcessor_code' => $first->nextcessor_code,
+                    'market_code' => $first->stage_code == 7 ? ($group->pluck('market')->filter()->unique()->implode(', ') ?: null) : null,
+                    'market_flags' => $first->stage_code == 7 ? MarketFlag::urls($group->pluck('market')->filter()->unique()->implode(', ')) : [],
                     'received_at' => Carbon::parse($first->actual_start)->format('H:i d/m'),
                     'released_at' => Carbon::parse($first->released_at)->format('H:i d/m'),
                     'display' => 'block',

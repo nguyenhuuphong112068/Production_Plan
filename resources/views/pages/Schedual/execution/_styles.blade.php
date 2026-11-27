@@ -429,6 +429,8 @@
 
         /* Modal: chọn nhiều lô (Cân NL), nhập sản lượng từng lô */
         .exec-plan.disabled { opacity: .45; cursor: not-allowed; }
+        /* Cờ quốc gia sau mã thị trường (lô Đóng gói, App\Support\MarketFlag) */
+        .exec-plan-flag { height: .95em; width: auto; margin-left: 5px; vertical-align: -1px; border-radius: 2px; box-shadow: 0 0 0 1px rgba(0,0,0,.15); }
         .exec-plan-kind { display: inline-block; font-size: .72rem; font-weight: 700; color: #fff; border-radius: 999px; padding: 1px 8px; margin-left: 6px; vertical-align: middle; white-space: nowrap; }
         .exec-plan-same { font-size: .68rem; font-weight: 700; color: #0e7490; background: #ecfeff; border: 1px solid #bae6f0; border-radius: 999px; padding: 0 6px; margin-left: 4px; }
         .exec-group-yield { width: 100%; font-size: .84rem; }

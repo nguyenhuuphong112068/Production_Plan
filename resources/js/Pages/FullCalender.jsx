@@ -115,13 +115,7 @@ const WARNING_REASONS = {
   '#e67e22': 'Sai Thiết Bị Nguồn NL',
   '#bda124ff': 'Quá Hạn Biệt Trữ',
   '#e4e405e2': 'Lô Thẩm Định Vệ Sinh',
-  '#ffcc80': 'Quá Giờ Kế Hoạch Nhưng Chưa Xác Nhận Hoàn Thành',
 };
-
-// Cam nhạt: sự kiện đã trôi vào quá khứ (end < now) mà chưa có giờ kết thúc thực tế.
-// Giữ đồng bộ với OVERDUE_COLOR trong SchedualController.php và bảng chú thích ở NoteModal.
-const OVERDUE_COLOR = '#ffcc80';
-const OVERDUE_TEXT_COLOR = '#5d3200';
 
 // Hằng số ngoài component: tránh tạo mảng/đối tượng mới mỗi lần render
 const SELECTO_TARGETS = ['.fc-event:not(.fc-bg-event):not(.fc-ngay-nghi)'];
@@ -2165,7 +2159,6 @@ const ScheduleTest = () => {
               ev.setExtendedProp('violation_colors', newColors.violation_colors);
               ev.setProp('backgroundColor', newColors.backgroundColor);
               ev.setProp('textColor', newColors.textColor);
-              ev.setExtendedProp('is_overdue', newColors.is_overdue);
             }
           }
           if (u.start && u.end && ev) {
@@ -2239,12 +2232,15 @@ const ScheduleTest = () => {
       byRun[l.run_code].rows.push(l);
     });
 
-    // Dòng của chính lô gốc = vệ sinh của lô bị dời (chỉ có ở lần tịnh tuyến theo nút ✓ Xác nhận sản xuất)
-    const isSourceRow = (r) => String(r.stage_plan_id) === String(r.source_stage_plan_id);
+    // Dòng của chính lô gốc: giờ bắt đầu không đổi = chỉ dời vệ sinh (nút ✓ Xác nhận sản xuất);
+    // đổi giờ bắt đầu = lô quá giờ chưa Nhận phòng bị lệnh quét tự động dời tới giờ quét
+    const isSourceRow = (r) => String(r.stage_plan_id) === String(r.source_stage_plan_id) && r.old_start === r.new_start;
+    const isOverdueRow = (r) => String(r.stage_plan_id) === String(r.source_stage_plan_id) && r.old_start !== r.new_start;
 
     const html = runs.map(run => {
       const delta = Number(run.source_delta_minutes) || 0;
-      const action = run.rows.some(isSourceRow) ? 'xác nhận sản xuất' : 'hoàn thành';
+      const action = run.rows.some(isOverdueRow) ? 'quá giờ chưa Nhận phòng, tự động dời'
+        : run.rows.some(isSourceRow) ? 'xác nhận sản xuất' : 'hoàn thành';
       const header = `
         <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding:6px 8px;background:#f1f5f9;border-radius:4px">
           <div>
@@ -2628,14 +2624,7 @@ const ScheduleTest = () => {
 
     violation_colors = [...new Set(violation_colors)].filter(c => c !== color_event);
 
-    // Quá giờ kế hoạch mà chưa xác nhận hoàn thành → nền cam nhạt, vi phạm cũ lùi xuống dãy sọc.
-    // Không áp dụng cho Bảo Trì/Hiệu Chuẩn (stage_code = 8).
-    if (plan.stage_code != 8 && !plan.is_clearning && !plan.actual_end && plan.end && dayjs(plan.end).isBefore(dayjs())) {
-      if (ERROR_REASONS[color_event] || WARNING_REASONS[color_event]) violation_colors.unshift(color_event);
-      return { backgroundColor: OVERDUE_COLOR, textColor: OVERDUE_TEXT_COLOR, violation_colors: violation_colors, is_overdue: true };
-    }
-
-    return { backgroundColor: color_event, textColor: textColor, violation_colors: violation_colors, is_overdue: false };
+    return { backgroundColor: color_event, textColor: textColor, violation_colors: violation_colors };
   };
 
   const handleOptimizeSchedule = async () => {
@@ -3128,7 +3117,6 @@ const ScheduleTest = () => {
               ev.setExtendedProp('violation_colors', newColors.violation_colors);
               ev.setProp('backgroundColor', newColors.backgroundColor);
               ev.setProp('textColor', newColors.textColor);
-              ev.setExtendedProp('is_overdue', newColors.is_overdue);
             }
           }
           if (u.start && u.end && ev) {
@@ -3300,7 +3288,6 @@ const ScheduleTest = () => {
               ev.setExtendedProp('violation_colors', newColors.violation_colors);
               ev.setProp('backgroundColor', newColors.backgroundColor);
               ev.setProp('textColor', newColors.textColor);
-              ev.setExtendedProp('is_overdue', newColors.is_overdue);
             }
           }
           if (u.start && u.end && ev) {
@@ -8032,6 +8019,22 @@ const ScheduleTest = () => {
 
 
           eventDidMount={(info) => {
+            // Nhãn thị trường phía trên bên trái khối Đóng gói (CĐ 7), cùng vị trí nhãn loại NL của lịch cân.
+            // Là phần tử thật gắn vào khung sự kiện (::before / ::after đã dành cho huy hiệu ⚖ và tick Lead).
+            const mk = info.event.extendedProps.market_code;
+            if (mk && !info.event.extendedProps.is_clearning) {
+              const tag = document.createElement('span');
+              tag.className = 'fc-market-badge';
+              // Cờ quốc gia (App\Support\MarketFlag, public/img/flags): DK-FI... ra nhiều cờ; mã không phải quốc gia (Tender, ALDE...) giữ 🌐
+              const flags = info.event.extendedProps.market_flags || [];
+              tag.innerHTML = (flags.length
+                ? flags.map(u => `<img src="${u}" alt="" class="fc-market-flag">`).join('')
+                : '🌐') + `<span>${String(mk).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))}</span>`;
+              tag.title = 'Thị trường: ' + (info.event.extendedProps.market_name || mk);
+              info.el.classList.add('fc-market-kind');
+              info.el.appendChild(tag);
+            }
+
             // Thanh phòng đang bận: chỉ xem, không chọn / sửa / menu chuột phải
             if (info.event.extendedProps.is_running) return;
 

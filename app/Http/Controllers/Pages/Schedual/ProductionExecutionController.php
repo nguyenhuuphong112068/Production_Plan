@@ -12,6 +12,7 @@ use App\Services\RoomOccupancyService;
 use App\Services\ScheduleRerouteService;
 use App\Services\SchedulingLock;
 use App\Support\WeighingScheduler;
+use App\Support\MarketFlag;
 use App\Support\WeighKind;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -164,6 +165,8 @@ class ProductionExecutionController extends Controller
                         'type_label'  => $p->maintenance ? (RoomOccupancyService::MAINTENANCE_TYPE_LABELS[$p->maintenance_type] ?? $p->maintenance_type) : null,
                         'group'       => $p->maintenance ? $p->title . ($p->due ? ' · Tới hạn ' . $p->due : '') : null,
                         'market'      => $p->stage_code == 7 ? $p->market : null,
+                        // Cờ quốc gia sau mã thị trường (public/img/flags)
+                        'market_flags' => $p->stage_code == 7 ? MarketFlag::urls($p->market) : [],
                         'batch'       => $p->batch,
                         'codes'       => trim(($p->intermediate_code ?? '') . ' / ' . ($p->finished_product_code ?? ''), ' /'),
                         'btp'         => $p->intermediate_code,

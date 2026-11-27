@@ -58,7 +58,7 @@
             <tr><td>Vui Lòng Chọn Sản Phẩm Muốn Sắp Lịch</td><td>Chưa tick lô nào. Tick lô trước rồi mới kéo.</td></tr>
             <tr><td>Biểu tượng kéo màu xám, không kéo được</td><td>Lô <b>chưa xác định Ngày có NL</b> (Đóng gói: <b>Ngày có BB</b>). Cập nhật ngày ở Kế hoạch sản xuất tháng.</td></tr>
             <tr><td>Sản Phẩm Chưa Được Định Mức</td><td>Lô chưa có định mức phòng. Khai ở Định Mức › Định Mức Sản Xuất hoặc bấm ô <b>Thiếu Định Mức</b> trên danh sách KHSX.</td></tr>
-            <tr><td>Sản Phẩm Sắp Lịch Không Đúng Phòng Đã Định Mức</td><td>Thả vào phòng không có định mức cho sản phẩm. Xem cột Phòng SX ở chế độ toàn màn hình.</td></tr>
+            <tr><td>Sản Phẩm Sắp Lịch Không Đúng Phòng Đã Định Mức</td><td>Thả vào phòng không có định mức cho sản phẩm. Rê chuột vào dòng lô trong danh sách chờ sắp để xem nhanh các phòng đã định mức (phòng chỉ định có dấu ✔), hoặc xem cột Phòng SX ở chế độ toàn màn hình.</td></tr>
             <tr><td>Thời gian bắt đầu nhỏ hơn thời gian hiện tại!</td><td>Thả vào giờ đã qua. Chỉ xếp được từ bây giờ trở đi.</td></tr>
             <tr><td>Không tạo được lịch - Chưa có định mức cho ... tại phòng ...</td><td>Định mức của sản phẩm tại phòng này chưa khai hoặc đã bị vô hiệu.</td></tr>
         </tbody>

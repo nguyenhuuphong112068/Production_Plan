@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
@@ -26,6 +27,8 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
   const sizes = ["close", "100%", "30%"];
   const [currentIndex, setCurrentIndex] = useState(1);
   const [tableData, setTableData] = useState([]);
+  // Tooltip phòng đã định mức khi rê chuột vào 1 dòng lịch chờ sắp
+  const [roomHover, setRoomHover] = useState(null);
   const [showModalCreate, setShowModalCreate] = useState(false);
   const [showModalQuota, setShowModalQuota] = useState(false);
   const [orderPlan, setOrderPlan] = useState({ checkedClearning: false, title: null, batch: "NA", level: 1 });
@@ -1970,7 +1973,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
         </div>
 
         {/* Khu vực bảng */}
-        <div style={{ flex: 1, overflow: 'auto' }}>
+        <div style={{ flex: 1, overflow: 'auto' }} onDragStartCapture={() => setRoomHover(null)} onScrollCapture={() => setRoomHover(null)}>
           <DataTable
             className="p-datatable-gridlines prime-gridlines"
             key={percentShow + stageFilter}
@@ -1980,6 +1983,12 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
             selectionMode="multiple"
             dataKey="id"
             rowClassName={(rowData) => (rowData.not_schedule === 1 ? 'not-scheduled-row' : '')}
+            onRowMouseEnter={(e) => {
+              const rect = e.originalEvent.currentTarget.getBoundingClientRect();
+              setRoomHover({ row: e.data, x: e.originalEvent.clientX, top: rect.top, bottom: rect.bottom });
+            }}
+            onRowMouseLeave={() => setRoomHover(null)}
+            onPage={() => setRoomHover(null)}
 
 
             size="medium"
@@ -2063,6 +2072,61 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
               />
             ))}
           </DataTable>
+
+          {roomHover && createPortal((() => {
+            const r = roomHover.row;
+            const rooms = Object.values(r.permisson_room || {});
+            const showBelow = roomHover.top < 140;
+            return (
+              <div
+                style={{
+                  position: 'fixed',
+                  left: Math.max(8, Math.min(roomHover.x - 20, window.innerWidth - 330)),
+                  top: showBelow ? roomHover.bottom + 4 : roomHover.top - 4,
+                  transform: showBelow ? 'none' : 'translateY(-100%)',
+                  zIndex: 3000,
+                  pointerEvents: 'none',
+                  maxWidth: 320,
+                  background: '#fff',
+                  border: '1px solid #cdc717',
+                  borderRadius: 8,
+                  boxShadow: '0 4px 12px rgba(0,0,0,.18)',
+                  padding: '6px 10px',
+                  fontSize: 13,
+                }}
+              >
+                <div style={{ fontWeight: 600, marginBottom: 4 }}>
+                  Phòng đã định mức{r.batch ? ` – lô ${r.batch}` : ''}
+                </div>
+                {rooms.length === 0 ? (
+                  <span style={{ color: '#b00000' }}>
+                    {Number(r.stage_code) === 9 ? 'Không định mức' : 'Thiếu định mức'}
+                  </span>
+                ) : (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                    {rooms.map((room) => {
+                      const required = r.required_room_code == room;
+                      return (
+                        <span
+                          key={room}
+                          title={required ? 'Phòng bắt buộc' : ''}
+                          style={{
+                            padding: '1px 8px',
+                            borderRadius: 6,
+                            background: required ? '#d1fae5' : '#eef2ff',
+                            border: `1px solid ${required ? '#10b981' : '#a5b4fc'}`,
+                            fontWeight: required ? 700 : 500,
+                          }}
+                        >
+                          {room}{required ? ' ✔' : ''}
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })(), document.body)}
 
         </div>
 

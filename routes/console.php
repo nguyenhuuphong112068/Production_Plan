@@ -67,3 +67,14 @@ Schedule::command('shifts:warm-cache')->dailyAt('16:00')->withoutOverlapping();
 // Nửa đêm nạp thêm tháng kế tiếp. Lượt này nặng gấp đôi (14 lượt con thay vì 7)
 // nên đặt vào lúc không ai dùng và eO2 rảnh nhất.
 Schedule::command('shifts:warm-cache --months=2')->dailyAt('00:00')->withoutOverlapping();
+
+// Tịnh tuyến lô quá giờ chưa Nhận phòng (user yêu cầu 26/11/2026): phân xưởng đang bật công tắc tịnh tuyến, lô có giờ bắt
+// đầu lý thuyết đã qua từ 30 phút (trong 2 ngày gần nhất) mà chưa Nhận phòng, ở phòng đang KHÔNG mở (không có lô / lịch BT
+// đã Nhận phòng chưa Trả phòng), được dời tới giờ quét, lô sau CHỈ đẩy lui.
+// Mỗi giờ quét 1 lần (đầu giờ); gọi mỗi 15 phút để lượt nào trùng khóa (sắp lịch thủ công / Khóa TTSX, sắp lịch tự động,
+// Nhận / Trả phòng chưa xong) thì thử lại sau 15 phút — lệnh tự bỏ qua khi giờ này đã quét xong. Nhật ký riêng để kiểm tra
+// cron còn chạy.
+Schedule::command('reroute:overdue')
+    ->everyFifteenMinutes()
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/reroute-overdue.log'));
