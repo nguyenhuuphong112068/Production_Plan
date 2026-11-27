@@ -7,11 +7,11 @@
 <h3>Trên mỗi dòng lô</h3>
 @include('pages.userGuide.shared.fields', ['fields' => [
     ['Phòng Sản Xuất', true, 'Phòng thực tế đã chạy (đổi được nếu chạy khác phòng lịch).'],
-    ['Thời gian sản xuất (bắt đầu - kết thúc)', true, 'Mặc định lấy giờ Nhận phòng; sửa nếu cần.'],
+    ['Thời gian sản xuất', true, 'Ba ô có nhãn màu ở đầu: <b>Nhận phòng</b> (xanh dương, mặc định lấy giờ Nhận phòng), <b>BĐCM</b> (xanh lá, lúc bắt đầu tạo ra sản lượng), <b>Kết thúc ca/lô</b> (cam, hết ca / hết ngày làm việc / kết lô). Rê chuột vào nhãn để xem giải thích. Ô nền xám có <i class="fas fa-lock"></i> là đã khoá (giờ đã ghi ở trang Thực Thi Sản Xuất hoặc lô chưa sắp lịch).'],
     ['Sản Lượng Thực Tế', true, 'Sản lượng của lô ở công đoạn này.'],
     ['Số Thùng', false, ''],
     ['Ghi Chú', false, ''],
-    ['Thời gian vệ sinh', false, 'Kết thúc vệ sinh = lúc Trả phòng ở trang Thực Thi Sản Xuất (chỉ hiển thị, không sửa).'],
+    ['Thời gian vệ sinh', false, '<b>BĐVS</b> (xanh ngọc, lúc bắt đầu vệ sinh) và <b>Trả phòng</b> (tím). Trả phòng = lúc Trả phòng ở trang Thực Thi Sản Xuất (chỉ hiển thị, không sửa).'],
 ]])
 
 <h3>Hai nút xác nhận</h3>

@@ -105,16 +105,104 @@
         box-shadow: 0 0 0 2px #80bdff;
     }
 
-    /* Cột "Thời Gian Sản Xuất": nhãn BĐSX/BĐCM/KT */
-    .col-time-label {
-        min-width: 80px;
-        max-width: 110px;
+    /* Cột "Thời Gian Sản Xuất" / "Thời Gian Vệ Sinh": mỗi mốc là 1 ô nhãn + input trên cùng 1 dòng */
+    .col-time {
+        min-width: 395px;
     }
 
-    /* Cột "Thời Gian Sản Xuất": input datetime-local (BĐSX/BĐCM/KT) */
-    .col-time-value {
-        min-width: 220px;
-        max-width: 260px;
+    /* Ô thời gian: nhãn màu bên trái, input bên phải; mỗi mốc 1 màu riêng (--tf-color / --tf-bg) */
+    .tf {
+        display: flex;
+        align-items: stretch;
+        border: 1px solid #dee2e6;
+        border-left: 4px solid var(--tf-color);
+        border-radius: 4px;
+        background: #fff;
+        overflow: hidden;
+    }
+
+    .tf+.tf {
+        margin-top: 5px;
+    }
+
+    .tf:focus-within {
+        border-color: var(--tf-color);
+        box-shadow: 0 0 0 2px var(--tf-bg);
+    }
+
+    .tf-label {
+        flex: 0 0 155px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 0 8px;
+        font-size: 14px;
+        font-weight: 600;
+        line-height: 1.2;
+        color: var(--tf-color);
+        background: var(--tf-bg);
+        white-space: nowrap;
+        cursor: help;
+    }
+
+    .tf-label i {
+        width: 16px;
+        text-align: center;
+    }
+
+    td .tf input.time {
+        flex: 1 1 auto;
+        min-width: 0;
+        margin: 0;
+        padding: 3px 6px;
+        font-size: 18px;
+        border: none;
+        border-radius: 0;
+    }
+
+    td .tf input.time:focus {
+        border: none;
+    }
+
+    td .tf input.time:disabled {
+        background: #f4f5f7;
+        color: #6c757d;
+    }
+
+    /* Ô đã khoá (ghi ở trang Thực Thi Sản Xuất / dòng chưa sắp lịch): thêm biểu tượng ổ khoá sau nhãn.
+       Trình duyệt chưa hỗ trợ :has thì chỉ thiếu ổ khoá, ô vẫn xám. */
+    .tf:has(input:disabled) .tf-label::after {
+        content: "\f023";
+        font-family: "Font Awesome 5 Free";
+        font-weight: 900;
+        font-size: 11px;
+        margin-left: auto;
+        opacity: .55;
+    }
+
+    .tf-receive {
+        --tf-color: #0062cc;
+        --tf-bg: #e7f1ff;
+    }
+
+    .tf-yield {
+        --tf-color: #1e7e34;
+        --tf-bg: #e6f4ea;
+    }
+
+    .tf-end {
+        --tf-color: #c94f0a;
+        --tf-bg: #fdefe3;
+    }
+
+    .tf-clean {
+        --tf-color: #117a8b;
+        --tf-bg: #e3f4f7;
+    }
+
+    .tf-release {
+        --tf-color: #5a32a3;
+        --tf-bg: #efe9f9;
     }
 
     /* Cột "Sản Lượng Thực Tế": input số lượng + lịch sử xác nhận + tổng */
@@ -180,7 +268,8 @@
                     <select class="form-control" name="stage_code" style="text-align-last: center;"
                         onchange="document.getElementById('filterForm').submit();">
                         <option {{ $stageCode == 1 ? 'selected' : '' }} value=1>Cân NL</option>
-                        <option {{ $stageCode == 2 ? 'selected' : '' }} value=2>{{ session('user')['production_code'] == 'PXTN' ? 'Xử lý Bao Bì' : 'Cân NL Khác' }}</option>
+                        <option {{ $stageCode == 2 ? 'selected' : '' }} value=2>
+                            {{ session('user')['production_code'] == 'PXTN' ? 'Xử lý Bao Bì' : 'Cân NL Khác' }}</option>
                         <option {{ $stageCode == 3 ? 'selected' : '' }} value=3>Pha Chế</option>
                         <option {{ $stageCode == 4 ? 'selected' : '' }} value=4>Trộn Hoàn Tất</option>
                         <option {{ $stageCode == 5 ? 'selected' : '' }} value=5>Định Hình</option>
@@ -199,7 +288,7 @@
                         <th>Sản Phẩm</th>
                         <th>Số lô</th>
                         <th>Phòng Sản Xuất</th>
-                        <th colspan="2">
+                        <th class="col-time" data-orderable="false">
                             Thời Gian Nhận Phòng Sản Xuất <br>
                             {{--  <span style="color: red; font-style:italic;">
                                 BĐ: là thời gian bắt đầu nhận phòng sản xuất
@@ -230,7 +319,7 @@
                         <th>Ghi Chú</th>
                         <th style = "width: 3%">Ghi Nhận Sản Xuất</th>
 
-                        <th colspan="2">Thời Gian nhận phòng Vệ Sinh</th>
+                        <th class="col-time" data-orderable="false">Thời Gian nhận phòng Vệ Sinh</th>
                         <th style = "width: 3%">Ghi Nhận Toàn Bộ </th>
 
                     </tr>
@@ -341,42 +430,44 @@
                             </td>
 
 
-                            <td class="col-time-label">
-                                <div>BĐSX: </div>
-                                <div>BĐCM: </div>
-                                <div>KT: </div>
-                            </td>
-                            {{-- {{ $semi_finished }} --}}
-                            <td class="col-time-value">
-                                @if (!empty($data->actual_start) || !empty($data->start))
+                            {{-- Mỗi mốc thời gian: nhãn màu + input cùng 1 dòng (.tf), JS tìm input theo name/class nên không phụ thuộc cấu trúc ô --}}
+                            <td class="col-time">
+                                @php $hasStart = !empty($data->actual_start) || !empty($data->start); @endphp
+                                <div class="tf tf-receive">
+                                    <span class="tf-label" title="Thời điểm nhận phòng sản xuất">
+                                        <i class="fas fa-door-open"></i>Nhận phòng
+                                    </span>
                                     <input type="datetime-local" class="time start" id = "start" name="start"
                                         {{ $semi_finished ?: $locked }}
-                                        value = "{{ \Carbon\Carbon::parse($data->actual_start ?? $data->start)->format('Y-m-d\TH:i') }}">
+                                        @if ($hasStart) value = "{{ \Carbon\Carbon::parse($data->actual_start ?? $data->start)->format('Y-m-d\TH:i') }}" @endif>
+                                </div>
 
+                                <div class="tf tf-yield">
+                                    <span class="tf-label" title="BĐCM: thời điểm bắt đầu tạo ra sản lượng">
+                                        <i class="fas fa-play-circle"></i>BĐCM
+                                    </span>
                                     <input type="datetime-local" class="time start_yield" id="start_yield"
                                         name="start_yield" {{ $locked }}
                                         value="{{ $data->max_yield_end ? \Carbon\Carbon::parse($data->max_yield_end)->format('Y-m-d\TH:i') : \Carbon\Carbon::parse($data->actual_start ?? $data->start)->format('Y-m-d\TH:i') }}">
-                                    <input type="hidden" class="max_yield_end"
-                                        value="{{ $data->max_yield_end ? \Carbon\Carbon::parse($data->max_yield_end)->format('Y-m-d\TH:i') : '' }}">
+                                </div>
+                                <input type="hidden" class="max_yield_end"
+                                    value="{{ $data->max_yield_end ? \Carbon\Carbon::parse($data->max_yield_end)->format('Y-m-d\TH:i') : '' }}">
 
-                                    <input type="datetime-local" class="time" id = "end" name="end"
-                                        {{ $releasedMaint ? 'disabled' : $locked }}
-                                        @if ($releasedMaint) title="Đã ghi lúc Trả phòng ở trang Thực Thi Sản Xuất" @endif
-                                        value = "{{ \Carbon\Carbon::parse($data->actual_end ?? $data->end)->format('Y-m-d\TH:i') }}">
-                                @else
-                                    <input type="datetime-local" class="time start" id = "start" name="start"
-                                        {{ $semi_finished ?: $locked }}>
-
-                                    <input type="datetime-local" class="time start_yield" id="start_yield"
-                                        name="start_yield" {{ $locked }}
-                                        value="{{ $data->max_yield_end ? \Carbon\Carbon::parse($data->max_yield_end)->format('Y-m-d\TH:i') : \Carbon\Carbon::parse($data->actual_start ?? $data->start)->format('Y-m-d\TH:i') }}">
-                                    <input type="hidden" class="max_yield_end"
-                                        value="{{ $data->max_yield_end ? \Carbon\Carbon::parse($data->max_yield_end)->format('Y-m-d\TH:i') : '' }}">
-
-                                    <input type="datetime-local" class="time" id = "end" name="end"
-                                        {{ $locked }}>
-                                @endif
-
+                                <div class="tf tf-end">
+                                    <span class="tf-label"
+                                        title="Kết thúc ca/lô: hết ca / hết ngày làm việc / kết lô">
+                                        <i class="fas fa-flag-checkered"></i>Kết thúc ca/lô
+                                    </span>
+                                    @if ($hasStart)
+                                        <input type="datetime-local" class="time" id = "end" name="end"
+                                            {{ $releasedMaint ? 'disabled' : $locked }}
+                                            @if ($releasedMaint) title="Đã ghi lúc Trả phòng ở trang Thực Thi Sản Xuất" @endif
+                                            value = "{{ \Carbon\Carbon::parse($data->actual_end ?? $data->end)->format('Y-m-d\TH:i') }}">
+                                    @else
+                                        <input type="datetime-local" class="time" id = "end" name="end"
+                                            {{ $locked }}>
+                                    @endif
+                                </div>
                             </td>
                             <td class="col-yield">
 
@@ -433,20 +524,25 @@
                                 {{-- @endif --}}
                             </td>
 
-                            <td>
-                                <div>BĐ: </div>
-                                <div>KT: </div>
-                            </td>
-                            <td>
-                                <input type="datetime-local" class="time" id = "start_clearning"
-                                    name="start_clearning" {{ $locked }}
-                                    value="{{ $fmtInput($data->actual_start_clearning ?? $data->start_clearning) }}">
+                            <td class="col-time">
+                                <div class="tf tf-clean">
+                                    <span class="tf-label" title="BĐVS: thời điểm bắt đầu vệ sinh phòng">
+                                        <i class="fas fa-broom"></i>BĐVS
+                                    </span>
+                                    <input type="datetime-local" class="time" id = "start_clearning"
+                                        name="start_clearning" {{ $locked }}
+                                        value="{{ $fmtInput($data->actual_start_clearning ?? $data->start_clearning) }}">
+                                </div>
                                 {{-- KT vệ sinh = lúc Trả phòng (trang Thực Thi Sản Xuất): chỉ hiển thị --}}
-                                <input type="datetime-local" class="time" id = "end_clearning"
-                                    name="end_clearning" {{ $releasedClean ? 'disabled' : $locked }}
-                                    @if ($releasedClean) title="Đã ghi lúc Trả phòng ở trang Thực Thi Sản Xuất" @endif
-                                    value = "{{ $fmtInput($data->actual_end_clearning ?? $data->end_clearning) }}">
-
+                                <div class="tf tf-release">
+                                    <span class="tf-label" title="Thời điểm trả phòng (kết thúc vệ sinh)">
+                                        <i class="fas fa-sign-out-alt"></i>Trả phòng
+                                    </span>
+                                    <input type="datetime-local" class="time" id = "end_clearning"
+                                        name="end_clearning" {{ $releasedClean ? 'disabled' : $locked }}
+                                        @if ($releasedClean) title="Đã ghi lúc Trả phòng ở trang Thực Thi Sản Xuất" @endif
+                                        value = "{{ $fmtInput($data->actual_end_clearning ?? $data->end_clearning) }}">
+                                </div>
                             </td>
 
 
