@@ -13,7 +13,7 @@
             <tr><td>Bấm <b>Trả phòng</b> (công tắc đang bật)</td><td>Dịch <b>2 chiều</b> theo giờ trả phòng, chỉ bù phần chênh còn lại so với giờ dự kiến.</td></tr>
             <tr><td><b>Tự động mỗi giờ</b> (đầu giờ): lô đã quá giờ bắt đầu lý thuyết từ <b>30 phút</b> mà <b>chưa Nhận phòng</b>,
                     giờ bắt đầu nằm trong <b>2 ngày</b> gần nhất, ở phòng <b>đang không mở</b> (Sẵn Sàng)</td>
-                <td><b>Chỉ đẩy lui, không kéo sớm</b>: dời chính lô đó tới giờ quét (làm tròn lên 15 phút; vướng lịch bảo trì thì dời ra
+                <td><b>Chỉ đẩy lui, không kéo sớm</b>: dời chính lô đó tới giờ quét (mốc 15 phút của giờ quét, vd. quét 08:00 thì dời về 08:00; vướng lịch bảo trì thì dời ra
                     sau), các lô sau dịch theo. Lô vẫn chưa Nhận phòng thì giờ sau bị dời tiếp. Lô quá giờ hơn 2 ngày không bị dời.
                     Phòng đang mở (Phòng Bận, Chờ / Đang VS sau BT) không bị dời: lịch được xếp lại lúc Trả phòng.<br>
                     Lần quét trùng lúc người sắp lịch đang sắp lịch thủ công (<b>Khóa TTSX</b>, kể cả khóa phòng cân), phân xưởng đang

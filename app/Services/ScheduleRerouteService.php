@@ -104,6 +104,12 @@ class ScheduleRerouteService
 
     public const OVERDUE_SOURCE_REASON = 'Quá giờ bắt đầu lý thuyết mà chưa Nhận phòng, dời tới giờ quét';
 
+    /**
+     * Giờ mới của lô quá giờ = giờ quét làm tròn lên mốc 15 phút, sau khi lùi khoảng này (user yêu cầu 27/11/2026): lượt quét
+     * 08:00 trên server chạy lúc 08:00:01 từng bị làm tròn lên 08:15. Quét 08:00–08:05 → 08:00; chạy tay 08:07 → 08:15.
+     */
+    public const OVERDUE_ROUND_GRACE_SECONDS = 300;
+
     public const SOURCE_CLEANING_REASON = 'Dời vệ sinh của chính lô ra sau giờ kết thúc sản xuất thực tế';
 
     /**
@@ -236,8 +242,8 @@ class ScheduleRerouteService
 
     /**
      * Quét lô quá giờ (lệnh reroute:overdue): lô chưa Nhận phòng mà giờ bắt đầu lý thuyết đã qua từ RECEIVE_MIN_LATE_SECONDS
-     * (và không quá OVERDUE_LOOKBACK_SECONDS), ở phòng đang KHÔNG mở (openRoomIds), thì dời CHÍNH lô đó tới giờ quét (làm tròn
-     * lên lưới 15 phút, tránh khối cố định trên phòng) rồi đẩy các lô sau như tịnh tuyến thường. Chỉ đẩy trễ. Lô vẫn chưa nhận
+     * (và không quá OVERDUE_LOOKBACK_SECONDS), ở phòng đang KHÔNG mở (openRoomIds), thì dời CHÍNH lô đó tới giờ quét (mốc 15
+     * phút của giờ quét, OVERDUE_ROUND_GRACE_SECONDS; tránh khối cố định trên phòng) rồi đẩy các lô sau như tịnh tuyến thường. Chỉ đẩy trễ. Lô vẫn chưa nhận
      * phòng tới lần quét sau thì bị dời tiếp. Lô cân (SKIP_STAGES) chỉ dịch các lịch trên chính phòng cân đó.
      *
      * @return array{run_code: ?string, delta_minutes: int, changes: array, source_cleaning_moved: bool}
@@ -259,7 +265,8 @@ class ScheduleRerouteService
                 return $this->emptyResult();
             }
 
-            return $this->runOverdueUnlocked($fresh, (int) ceil($now / 900) * 900);
+            // Mốc 15 phút của giờ quét: cron gọi trễ vài giây sau 08:00 thì vẫn dời về 08:00, không nhảy lên 08:15
+            return $this->runOverdueUnlocked($fresh, (int) ceil(($now - self::OVERDUE_ROUND_GRACE_SECONDS) / 900) * 900);
         }, 0);
     }
 
