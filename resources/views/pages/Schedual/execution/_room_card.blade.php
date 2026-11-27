@@ -12,6 +12,9 @@
     $maint = $plan && $plan->maintenance;
     // Phòng đôi gói đầu đang giữ nhiều lô sản xuất (room.max_parallel), khác phòng cân nhận chung nhiều lô
     $multiLot = $busy && !$maint && $plans->count() > 1 && !in_array((int) $room->stage_code, $ROS::GROUP_STAGES, true);
+    // Đóng Gói giữ nhiều lô chia thị trường (cùng plan_master.main_parkaging_id): Trả phòng chung 1 lần cho mọi lô
+    $splitLots = $multiLot && (int) $room->stage_code === $ROS::SPLIT_STAGE
+        && $plans->pluck('pack_group')->filter()->unique()->count() === 1 && $plans->every(fn($p) => $p->pack_group);
     [$stateClass, $stateIcon] = $ROS::STATE_META[$st->state];
 
     $fmt = fn($t) => $t ? \Carbon\Carbon::parse($t)->format('H:i d/m') : '—';
@@ -35,7 +38,8 @@
     $sinceSec = $st->since ? max(0, (int) $st->since->diffInSeconds(now(), false)) : 0;
 
     if ($plan) {
-        $title = $maint ? $plan->title : ($plan->product_name ?? $plan->title) . ((int) $plan->stage_code === 7 && $plan->market ? ' - ' . $plan->market : '');
+        $markets = (int) $plan->stage_code === 7 ? $plans->pluck('market')->filter()->unique()->implode(', ') : '';
+        $title = $maint ? $plan->title : ($plan->product_name ?? $plan->title) . ($markets !== '' ? ' - ' . $markets : '');
     }
     if ($busy || $cleaning) {
         // Thời lượng theo lịch: lô sản xuất BĐ → hết vệ sinh (không có vệ sinh thì tới KT); bảo trì BĐ → KT bảo trì;
@@ -52,7 +56,8 @@
         'room'     => $room->code . ' - ' . $room->name,
         'state'    => $st->state,
         'weighing' => in_array((int) $room->stage_code, $ROS::GROUP_STAGES, true),
-        'plans'    => $plans->pluck('label')->values(),
+        // Đóng Gói: thêm thị trường để phân biệt các lô chia thị trường (thường cùng số lô)
+        'plans'    => $plans->map(fn($p) => $p->label . ((int) $p->stage_code === 7 && $p->market && !$p->maintenance ? ' - ' . $p->market : ''))->values(),
         'since'    => $st->since ? $fmt($st->since) : null,
         // Trạng thái sau khi Trả phòng (hộp xác nhận): bảo trì có vệ sinh → Chờ VS Sau BT
         'after'    => $ROS::STATE_LABELS[$busy && $maint && $plans->every(fn($p) => $p->title_clearning) ? $ROS::CLEAN_WAIT : $ROS::READY],
@@ -61,7 +66,10 @@
         // Phòng đôi gói đầu: còn chỗ nhận thêm lô cùng BTP; đang giữ nhiều lô thì Trả phòng chọn từng lô
         'overlap'  => (bool) ($st->overlap ?? false),
         'btp'      => $plan->intermediate_code ?? null,
-        'lots'     => $multiLot ? $plans->map(fn($p) => ['id' => $p->id, 'label' => $p->label, 'since' => $fmt($p->actual_start)])->values() : [],
+        // Đóng Gói: số lô chia thị trường còn nhận thêm được; đang giữ nhiều lô chia thì Trả phòng ghi chung cho mọi lô
+        'split'    => (int) ($st->split ?? 0),
+        'split_lots' => $splitLots,
+        'lots'     => $multiLot && !$splitLots ? $plans->map(fn($p) => ['id' => $p->id, 'label' => $p->label, 'since' => $fmt($p->actual_start)])->values() : [],
     ];
 
     // Nhân sự đang được phân công (Lịch Công Tác): nhãn A, B, C... theo đúng thứ tự hiển thị bên Lịch Công Tác → Sản Xuất
@@ -124,12 +132,12 @@
                             @endforeach
                         </div>
                     @elseif ($plans->count() > 1)
-                        <div class="exec-live-batch"><b>{{ $plans->count() }} lô</b> {{ $multiLot ? 'gói đầu' : 'cân chung' }} · {{ $plan->intermediate_code }}</div>
+                        <div class="exec-live-batch"><b>{{ $plans->count() }} lô</b> {{ $splitLots ? 'chia thị trường' : ($multiLot ? 'gói đầu' : 'cân chung') }} · {{ $plan->intermediate_code }}</div>
                         <div class="exec-group">
                             @foreach ($plans as $b)
                                 <div class="exec-group-row">
-                                    <span class="exec-group-batch"><i class="fas fa-circle-notch"></i> {{ $b->batch }}</span>
-                                    <span class="exec-group-qty">LT {{ $num($b->Theoretical_yields) }} {{ $b->unit }}</span>
+                                    <span class="exec-group-batch"><i class="fas fa-circle-notch"></i> {{ $b->batch }}{{ $splitLots && $b->market ? ' · ' . $b->market : '' }}</span>
+                                    <span class="exec-group-qty">LT {{ $num($b->theory) }} {{ $b->unit }}</span>
                                     <span class="exec-group-state">từ {{ $fmt($b->actual_start) }}</span>
                                 </div>
                             @endforeach
@@ -212,7 +220,7 @@
                 // Đổi sản phẩm: phòng Bận với lô sản xuất (không phải bảo trì), chỉ Leader trở lên
                 $canChange = $busy && !$maint && !$multiLot && $plans->every(fn($p) => !$p->actual_end) && \App\Http\Controllers\Pages\Schedual\ProductionExecutionController::canChangeProduct();
             @endphp
-            @if ($canChange || (($st->overlap ?? false) && $canReceive) || (($busy || $cleaning) && $canRelease) || ($cleanWait && $canReceiveCleaning) || (!$busy && !$cleaning && !$cleanWait && $canReceive) || $canUndo)
+            @if ($canChange || ((($st->overlap ?? false) || ($st->split ?? 0)) && $canReceive) || (($busy || $cleaning) && $canRelease) || ($cleanWait && $canReceiveCleaning) || (!$busy && !$cleaning && !$cleanWait && $canReceive) || $canUndo)
                 <div class="exec-room-actions">
                     @if ($busy || $cleaning)
                         @if ($canRelease)
@@ -241,6 +249,12 @@
                         <button type="button" class="btn btn-exec btn-exec-go js-act" data-act="overlap"
                             title="Phòng đôi: nhận thêm 1 lô cùng mã BTP {{ $plan->intermediate_code }} khi lô đang chạy chưa trả phòng">
                             <i class="fas fa-layer-group"></i> Nhận lô gói đầu
+                        </button>
+                    @endif
+                    @if (($st->split ?? 0) && $canReceive)
+                        <button type="button" class="btn btn-exec btn-exec-split js-act" data-act="split"
+                            title="Lô chia thị trường: nhận thêm {{ $st->split }} lô cùng nhóm chia khi chưa trả phòng; Trả phòng ghi chung cho mọi lô">
+                            <i class="fas fa-globe-asia"></i> Nhận lô chia TT ({{ $st->split }})
                         </button>
                     @endif
                     @if ($canUndo)

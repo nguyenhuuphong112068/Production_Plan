@@ -197,6 +197,9 @@ class RoomOccupancyService
                 'plans'   => $plans,
                 // Phòng đôi gói đầu: đang Bận với lô sản xuất, còn chỗ cho lô cùng mã BTP
                 'overlap' => self::canOverlap($room, $state, $plans),
+                // Đóng gói lô chia thị trường: số lô cùng nhóm chia (main_parkaging_id) còn nhận thêm được
+                'split'   => ($group = self::splitGroup($room, $state, $plans))
+                    ? $this->splitCandidateQuery($room, $group)->count() : 0,
             ];
             $room->stage_group = in_array((int) $room->stage_code, self::GROUP_STAGES, true) ? 1 : (int) $room->stage_code;
             $room->staff = $staff->get($room->id, collect());
@@ -565,6 +568,46 @@ class RoomOccupancyService
             && $plans->count() < (int) $room->max_parallel;
     }
 
+    // Công đoạn được nhận thêm lô chia thị trường (cùng plan_master.main_parkaging_id) khi phòng đang Bận
+    const SPLIT_STAGE = 7;
+
+    /**
+     * Đóng gói lô chia thị trường (27/11/2026): phòng Đóng Gói đang Bận chỉ với lô sản xuất cùng 1 nhóm chia
+     * (plan_master.main_parkaging_id) → trả main_parkaging_id để nhận thêm lô cùng nhóm mà không phải Trả phòng; null nếu không.
+     */
+    private static function splitGroup(object $room, int $state, Collection $plans): ?int
+    {
+        if ($state !== self::BUSY || (int) $room->stage_code !== self::SPLIT_STAGE || $plans->isEmpty()
+            || $plans->contains(fn($p) => $p->maintenance || !$p->pack_group)) {
+            return null;
+        }
+        $groups = $plans->pluck('pack_group')->unique();
+
+        return $groups->count() === 1 ? (int) $groups->first() : null;
+    }
+
+    /** Lô cùng nhóm chia thị trường chưa nhận phòng, đã sắp lịch vào phòng này */
+    private function splitCandidateQuery(object $room, int $group)
+    {
+        return $this->candidateQuery($room, self::RECEIVE_PRODUCTION)
+            ->join('plan_master as spm', 'spm.id', '=', 'sp.plan_master_id')
+            ->where('spm.main_parkaging_id', $group);
+    }
+
+    /** Danh sách lô cho modal "Nhận lô chia thị trường" (rỗng nếu phòng không ở trạng thái nhận thêm được) */
+    public function splitCandidatePlans(int $roomId): Collection
+    {
+        $room = $this->room($roomId);
+        $group = $room ? self::splitGroup($room, $room->st->state, $room->st->plans) : null;
+        if (!$group) {
+            return collect();
+        }
+        $ids = $this->splitCandidateQuery($room, $group)->orderBy('sp.start')->orderBy('sp.id')->pluck('sp.id')->all();
+        $details = $this->planDetails($ids);
+
+        return collect($ids)->map(fn($id) => $details->get($id))->filter()->values();
+    }
+
     public function planDetails(array $ids): Collection
     {
         $ids = array_values(array_unique(array_filter($ids)));
@@ -600,6 +643,9 @@ class RoomOccupancyService
                 'pn.name as product_name',
                 DB::raw('COALESCE(pm.actual_batch, pm.batch) AS batch'),
                 'pm.is_val',
+                'pm.main_parkaging_id as pack_group', // nhóm chia thị trường (Đóng Gói nhận thêm lô cùng nhóm)
+                'pm.percent_parkaging',
+                'pm.number_parkaging',
                 'fpc.intermediate_code',
                 'fpc.finished_product_code',
                 'mk.code as market',
@@ -622,6 +668,16 @@ class RoomOccupancyService
                     . ($row->inst_id ? ' (' . $row->inst_id . ')' : '');
             }
             $row->unit = $row->stage_code <= 4 ? 'Kg' : 'ĐV';
+            // Cỡ lô hiển thị: Đóng Gói chia thị trường (percent_parkaging < 1) mỗi dòng chỉ là 1 phần lô,
+            // stage_plan.Theoretical_yields vẫn là cỡ lô gốc → lấy số chia number_parkaging (đúng số, không làm tròn %),
+            // thiếu thì cỡ lô gốc × percent_parkaging như các báo cáo.
+            $row->theory = (float) $row->Theoretical_yields;
+            $percent = (float) ($row->percent_parkaging ?? 1);
+            if ((int) $row->stage_code === self::SPLIT_STAGE && $percent > 0 && $percent < 1) {
+                $row->theory = (float) $row->number_parkaging > 0
+                    ? (float) $row->number_parkaging
+                    : $row->theory * $percent;
+            }
             $row->label = $row->maintenance
                 ? $row->equipment_label
                 : ($row->batch ? ($row->product_name ?? $row->title) . ' - ' . $row->batch : $row->title);
@@ -760,8 +816,18 @@ class RoomOccupancyService
 
         [$message, $deparmentCode, $productionIds] = DB::transaction(function () use ($roomId, $stagePlanIds, $mode) {
             [$room, $state, $held] = $this->lockState($roomId, [self::READY, self::BUSY]);
+            // Phòng Đóng Gói Bận với lô chia thị trường: nhận thêm (1 hay nhiều) lô cùng nhóm main_parkaging_id
+            $split = false;
+            if ($state === self::BUSY && ($group = self::splitGroup($room, $state, $held))
+                && self::receiveMode($mode) === self::RECEIVE_PRODUCTION) {
+                $split = $this->splitCandidateQuery($room, $group)->whereIn('sp.id', $stagePlanIds)->count() === count($stagePlanIds);
+                if (!$split && !self::canOverlap($room, $state, $held)) {
+                    throw new ProductionExecutionException('❌ Chia thị trường: chỉ nhận thêm lô cùng nhóm chia lô với lô đang giữ phòng ('
+                        . $held->pluck('batch')->filter()->unique()->implode(', ') . '), đã sắp lịch vào phòng này và chưa nhận phòng', 409);
+                }
+            }
             // Phòng Bận chỉ nhận thêm được lô gói đầu ở phòng đôi (room.max_parallel): 1 lô, cùng mã BTP với lô đang giữ
-            $overlap = $state === self::BUSY;
+            $overlap = $state === self::BUSY && !$split;
             if ($overlap) {
                 if (!self::canOverlap($room, $state, $held)) {
                     throw new ProductionExecutionException('⚠️ Phòng đang ' . self::STATE_LABELS[$state]
@@ -792,7 +858,7 @@ class RoomOccupancyService
             if ($maintenance && $maintenance !== $plans->count()) {
                 throw new ProductionExecutionException('❌ Không nhận chung lịch bảo trì với lô sản xuất');
             }
-            if (count($stagePlanIds) > 1 && !$maintenance) {
+            if (count($stagePlanIds) > 1 && !$maintenance && !$split) {
                 if (!in_array((int) $room->stage_code, self::GROUP_STAGES, true)) {
                     throw new ProductionExecutionException('❌ Chỉ phòng cân nguyên liệu được nhận phòng cho nhiều lô');
                 }
@@ -818,12 +884,12 @@ class RoomOccupancyService
             $assigned = $plans->whereNull('resourceId')->pluck('id')->all();
             foreach ($labels as $id => $label) {
                 AuditTrialController::log('Nhận phòng', 'stage_plan', $id, 'NA',
-                    'Phòng ' . $room->code . ' · actual_start ' . $now->format('Y-m-d H:i:s') . ($overlap ? ' · gói đầu' : '') . ' · ' . $label
+                    'Phòng ' . $room->code . ' · actual_start ' . $now->format('Y-m-d H:i:s') . ($overlap ? ' · gói đầu' : '') . ($split ? ' · chia thị trường' : '') . ' · ' . $label
                     . (in_array($id, $assigned) ? self::ASSIGNED_MARK : ''));
             }
 
             return [
-                '✅ Đã nhận phòng ' . $room->code . ($overlap ? ' (gói đầu)' : '') . ' lúc ' . $now->format('H:i') . ' cho ' . $labels->implode(', '),
+                '✅ Đã nhận phòng ' . $room->code . ($overlap ? ' (gói đầu)' : '') . ($split ? ' (thêm lô chia thị trường)' : '') . ' lúc ' . $now->format('H:i') . ' cho ' . $labels->implode(', '),
                 $room->deparment_code,
                 $maintenance ? [] : $plans->pluck('id')->all(),
             ];
@@ -854,7 +920,7 @@ class RoomOccupancyService
                 throw new ProductionExecutionException('❌ Phòng đang giữ lịch bảo trì, không đổi sản phẩm được');
             }
             if ($old->count() > 1 && !in_array((int) $room->stage_code, self::GROUP_STAGES, true)) {
-                throw new ProductionExecutionException('❌ Phòng đang giữ 2 lô gói đầu, không đổi sản phẩm được: Hoàn tác hoặc Trả phòng lô nhận nhầm rồi nhận lại');
+                throw new ProductionExecutionException('❌ Phòng đang giữ ' . $old->count() . ' lô (gói đầu / chia thị trường), không đổi sản phẩm được: Hoàn tác hoặc Trả phòng rồi nhận lại');
             }
             $oldRows = DB::table('stage_plan')->whereIn('id', $old->pluck('id'))->lockForUpdate()
                 ->get(['id', 'actual_start', 'actual_end', 'finished']);
@@ -940,8 +1006,10 @@ class RoomOccupancyService
         [$message, $deparmentCode, $reroutePlan] = DB::transaction(function () use ($roomId, $cleanAfterHc, $stagePlanId) {
             [$room, $state, $plans] = $this->lockState($roomId, [self::BUSY, self::CLEANING]);
             $cleanAfterHc = $cleanAfterHc && self::hcOnly($state, $plans);
-            // Phòng đôi gói đầu giữ nhiều lô sản xuất: trả phòng từng lô ($stagePlanId)
-            if ($state === self::BUSY && (int) ($room->max_parallel ?? 1) > 1
+            // Phòng đôi gói đầu giữ nhiều lô sản xuất: trả phòng từng lô ($stagePlanId).
+            // Lô chia thị trường (Đóng Gói, cùng main_parkaging_id) luôn trả phòng chung 1 lần: cùng actual_end_clearning.
+            $splitLots = $plans->count() > 1 && self::splitGroup($room, $state, $plans);
+            if ($state === self::BUSY && !$splitLots && (int) ($room->max_parallel ?? 1) > 1
                 && !in_array((int) $room->stage_code, self::GROUP_STAGES, true) && $plans->count() > 1) {
                 if (!$stagePlanId || !$plans->contains('id', $stagePlanId)) {
                     throw new ProductionExecutionException('⚠️ Phòng đang giữ ' . $plans->count() . ' lô gói đầu: chọn lô cần trả phòng. Đã tải lại thông tin phòng.', 409);
@@ -978,6 +1046,7 @@ class RoomOccupancyService
             return [
                 '✅ Đã trả phòng ' . $room->code . ' lúc ' . $now->format('H:i')
                     . ($plans->count() === 1 && !$plans->first()->maintenance ? ' cho ' . $plans->first()->label : '')
+                    . ($splitLots ? ' cho ' . $plans->count() . ' lô chia thị trường' : '')
                     . ($after === self::CLEAN_WAIT ? ' · phòng chuyển sang ' . self::STATE_LABELS[self::CLEAN_WAIT] : '')
                     . ($after === self::BUSY ? ' · phòng vẫn Bận với lô gói đầu' : ''),
                 $room->deparment_code,

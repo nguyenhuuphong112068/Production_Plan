@@ -372,6 +372,8 @@
         .btn-exec-undo:hover { background: #fef2f2; filter: none; }
         .btn-exec-change { background: #fff; color: #1d4ed8 !important; border: 1px solid #93c5fd; margin-top: 6px; font-size: .85rem; }
         .btn-exec-change:hover { background: #eff6ff; filter: none; }
+        /* Đóng Gói: Nhận lô chia thị trường, dòng riêng dưới Trả phòng / Đổi sản phẩm */
+        .btn-exec-split { flex: 1 1 100%; background: linear-gradient(135deg, #0891b2, #0e7490); }
 
         .exec-room-foot { display: flex; border-top: 1px solid #eef1f5; }
         .exec-room-foot button {

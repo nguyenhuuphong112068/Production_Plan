@@ -157,7 +157,12 @@ class ProductionExecutionController extends Controller
 
                 $fmt = fn($t) => $t ? Carbon::parse($t)->format('H:i d/m/Y') : null;
 
-                return response()->json($this->service->candidatePlans($room, $request->input('mode'))->map(fn($p) => [
+                // ?split=1: Đóng Gói nhận thêm lô chia thị trường (cùng main_parkaging_id với lô đang giữ phòng)
+                $list = $request->boolean('split')
+                        ? $this->service->splitCandidatePlans((int) $room->id)
+                        : $this->service->candidatePlans($room, $request->input('mode'));
+
+                return response()->json($list->map(fn($p) => [
                         'id'          => $p->id,
                         // Lịch bảo trì: mỗi dòng 1 thiết bị → tên thiết bị; tiêu đề nhóm + ngày tới hạn ở dòng phụ
                         'product'     => $p->maintenance ? $p->equipment_label : ($p->product_name ?? $p->title),
@@ -176,7 +181,7 @@ class ProductionExecutionController extends Controller
                                 : $p->start . '|' . $p->end . '|' . $p->intermediate_code),
                         'start'       => $fmt($p->start),
                         'end'         => $fmt($p->end),
-                        'theory'      => round((float) $p->Theoretical_yields, 2),
+                        'theory'      => round($p->theory, 2), // Đóng Gói chia thị trường: số của phần chia
                         'unit'        => $p->unit,
                         'is_val'      => (bool) $p->is_val,
                         // Phòng cân: loại NL (NL PC / Nang rỗng / NL BP...) hiện sau tên sản phẩm

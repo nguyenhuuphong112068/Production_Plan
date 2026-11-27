@@ -41,6 +41,11 @@
         phòng đang Bận với 1 lô có thêm nút <b>Nhận lô gói đầu</b>, chỉ chọn được <b>1 lô cùng mã BTP</b>, tối đa <b>2 lô</b> cùng lúc.
         Khi giữ 2 lô, <b>Trả phòng</b> hỏi trả lô nào (mặc định lô nhận trước), phòng vẫn Bận với lô còn lại; trả lô cuối thì về
         Sẵn Sàng. Phòng giữ 2 lô thì không Đổi sản phẩm được — dùng Hoàn tác hoặc Trả phòng lô nhầm.</li>
+    <li>Đóng Gói lô chia thị trường (1 lô chia nhiều thị trường ở Kế Hoạch Sản Xuất): sau khi Nhận phòng 1 lô, nếu còn lô cùng
+        nhóm chia đã sắp lịch vào phòng đó thì thẻ có nút <b>Nhận lô chia TT (n)</b> — nhận thêm 1 hay nhiều lô mà <b>không cần
+        Trả phòng</b>. Cỡ lô của mỗi dòng là số lượng phần chia cho thị trường đó (không phải cỡ lô gốc).
+        Thẻ hiện số lô và các thị trường đang giữ. Bấm <b>Trả phòng</b> một lần là ghi chung giờ trả phòng cho
+        <b>tất cả</b> các lô. Phòng giữ nhiều lô thì không Đổi sản phẩm được.</li>
 </ul>
 
 <div class="ug-callout is-warn">

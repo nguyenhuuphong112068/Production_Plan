@@ -122,21 +122,28 @@
                 selected = [],
                 receiveMode = 'production', // 'production' = lô sản xuất, 'maintenance' = lịch BT / TI / HC
                 changing = false, // modal đang dùng cho Đổi sản phẩm (Leader trở lên)
-                overlapping = false; // Nhận lô gói đầu (phòng đôi): 1 lô sản xuất cùng BTP với lô đang giữ phòng
+                overlapping = false, // Nhận lô gói đầu (phòng đôi): 1 lô sản xuất cùng BTP với lô đang giữ phòng
+                splitting = false; // Đóng Gói: nhận thêm lô chia thị trường (cùng nhóm chia lô), chọn được nhiều lô
 
             const RECEIVE_TITLE = $('#execReceiveModal .modal-title').html();
 
-            function openReceive(change = false, overlap = false) {
+            function openReceive(change = false, overlap = false, split = false) {
                 changing = change;
                 overlapping = overlap;
+                splitting = split;
                 const $m = $('#execReceiveModal');
                 $m.find('.modal-title').html(change ?
                     '<i class="fas fa-exchange-alt"></i> Đổi sản phẩm <span class="js-room"></span>' : overlap ?
-                    '<i class="fas fa-layer-group"></i> Nhận lô gói đầu <span class="js-room"></span>' : RECEIVE_TITLE);
+                    '<i class="fas fa-layer-group"></i> Nhận lô gói đầu <span class="js-room"></span>' : split ?
+                    '<i class="fas fa-globe-asia"></i> Nhận lô chia thị trường <span class="js-room"></span>' : RECEIVE_TITLE);
                 $m.find('.js-room').text(ctx.room);
-                $('#execReceiveMode').toggle(!change && !overlap);
+                $('#execReceiveMode').toggle(!change && !overlap && !split);
                 $m.find('.exec-now').html(change ?
                     '<i class="far fa-clock"></i> Lô mới giữ nguyên giờ nhận phòng cũ <b>' + esc(ctx.since || '') + '</b> · đang giữ: <b>' + ctx.plans.map(esc).join(', ') + '</b>' :
+                    split ?
+                    '<i class="fas fa-globe-asia"></i> Đang giữ: <b>' + ctx.plans.map(esc).join(', ') + '</b> · chỉ nhận lô cùng nhóm chia thị trường, không cần Trả phòng' +
+                    '<br><i class="far fa-clock"></i> Giờ nhận phòng ghi theo giờ hệ thống lúc bấm nút · bây giờ <b class="js-now"></b>' +
+                    '<br><i class="fas fa-sign-out-alt"></i> Trả phòng sẽ ghi chung giờ trả phòng cho mọi lô đang giữ' :
                     overlap ?
                     '<i class="fas fa-layer-group"></i> Đang giữ: <b>' + ctx.plans.map(esc).join(', ') + '</b> · chỉ nhận lô cùng mã BTP <b>' + esc(ctx.btp || '') + '</b>' +
                     '<br><i class="far fa-clock"></i> Giờ nhận phòng ghi theo giờ hệ thống lúc bấm nút · bây giờ <b class="js-now"></b>' :
@@ -152,7 +159,7 @@
                     $(this).toggleClass('active', on).attr('aria-pressed', on);
                 });
                 $('#execReceiveSubmit').html(changing ? '<i class="fas fa-exchange-alt"></i> Đổi sản phẩm' :
-                    overlapping ? '<i class="fas fa-layer-group"></i> Nhận lô gói đầu' : mode === 'maintenance' ?
+                    splitting ? '<i class="fas fa-globe-asia"></i> Nhận lô chia thị trường' : overlapping ? '<i class="fas fa-layer-group"></i> Nhận lô gói đầu' : mode === 'maintenance' ?
                     '<i class="fas fa-tools"></i> Nhận phòng BT' : '<i class="fas fa-door-open"></i> Nhận phòng sản xuất');
                 $('#execPlanSearch').val('');
                 $('#execPlanHint').text('');
@@ -173,7 +180,8 @@
                 $.get(R.plans, {
                     room_id: ctx.room_id,
                     mode: mode,
-                    change: changing ? 1 : 0
+                    change: changing ? 1 : 0,
+                    split: splitting ? 1 : 0
                 }).done(list => {
                     if (mode !== receiveMode) return; // đã đổi chế độ trong lúc tải
                     plans = list;
@@ -192,7 +200,7 @@
             };
             // Chọn nhiều: phòng cân (lô cùng BTP) hoặc danh sách lịch bảo trì / hiệu chuẩn (Nhận phòng BT: mỗi dòng 1 thiết bị)
             const maintList = () => plans.length > 0 && plans.every(p => p.maintenance);
-            const multi = () => ctx.weighing || maintList();
+            const multi = () => ctx.weighing || splitting || maintList();
             const selectedMaint = () => plans.some(p => selected.includes(p.id) && p.maintenance);
 
             function renderPlans() {
@@ -208,7 +216,9 @@
                 const btp = selectedBtp();
                 // Số lô cùng lịch lý thuyết + cùng BTP (được chọn theo nhau)
                 const sameCount = key => key ? plans.filter(x => x.plan_key === key).length : 0;
-                $('#execPlanHint').html(overlapping ?
+                $('#execPlanHint').html(splitting ?
+                    (selected.length > 1 ? `Đã chọn <b>${selected.length}</b> lô chia thị trường` :
+                        'Chia thị trường: chọn được 1 hay nhiều lô cùng nhóm chia lô với lô đang giữ phòng.') : overlapping ?
                     `Gói đầu: chỉ chọn được <b>1</b> lô cùng mã BTP <b>${esc(ctx.btp || '')}</b> với lô đang giữ phòng.` : maintList() ?
                     (selected.length > 1 ? `Đã chọn <b>${selected.length}</b> thiết bị` :
                         'Chọn được nhiều thiết bị; thiết bị cùng nhóm lịch được chọn theo nhau (bỏ chọn được).') :
@@ -253,7 +263,7 @@
                     selected = [id];
                 } else if (this.checked) {
                     // Dòng đầu tiên: các lô cùng lịch + cùng BTP / thiết bị cùng nhóm lịch bảo trì được chọn theo (bỏ chọn được)
-                    const auto = !selected.length && p.plan_key ?
+                    const auto = !splitting && !selected.length && p.plan_key ?
                         plans.filter(x => x.plan_key === p.plan_key && x.maintenance === p.maintenance).map(x => x.id) : [];
                     selected = [...new Set([...selected, id, ...auto])];
                 } else {
@@ -288,7 +298,8 @@
                             `<input type="radio" name="execReleaseLot" value="${l.id}" ${i === 0 ? 'checked' : ''}> <b>${esc(l.label)}</b>` +
                             ` <small class="text-muted">· nhận phòng ${esc(l.since)}</small></label>`).join('') +
                         '</div><small>Thời gian trả phòng ghi theo giờ hệ thống lúc bấm nút. Phòng vẫn <b>Phòng Bận</b> với lô còn lại.</small>' :
-                        (ctx.plans.length ? 'Đang giữ phòng: <b>' + ctx.plans.map(esc).join(', ') + '</b><br>' : '') +
+                        (ctx.plans.length ? (ctx.split_lots ? `Trả phòng chung cho <b>${ctx.plans.length}</b> lô chia thị trường:<br><b>` + ctx.plans.map(esc).join('<br>') + '</b><br>' :
+                            'Đang giữ phòng: <b>' + ctx.plans.map(esc).join(', ') + '</b><br>') : '') +
                         (ctx.since ? 'Nhận phòng lúc <b>' + esc(ctx.since) + '</b><br>' : '') +
                         (ctx.hc_only ?
                             '<small>Thời gian trả phòng ghi theo giờ hệ thống lúc bấm nút.</small>' +
@@ -393,6 +404,8 @@
                         return openReceive(true);
                     case 'overlap':
                         return openReceive(false, true);
+                    case 'split':
+                        return openReceive(false, false, true);
                     case 'receive_cleaning':
                         return confirmReceiveCleaning();
                     case 'undo':
