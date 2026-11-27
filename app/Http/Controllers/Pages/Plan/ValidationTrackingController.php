@@ -38,6 +38,7 @@ class ValidationTrackingController extends Controller
             })
             ->select(
                 'plan_master.id',
+                'plan_master.plan_list_id',
                 'plan_master.batch',
                 'plan_master.actual_batch',
                 'finished_product_category.finished_product_code',
@@ -54,6 +55,19 @@ class ValidationTrackingController extends Controller
             )
             ->orderBy('plan_master.expected_date', 'asc')
             ->get();
+
+        // Mục đích theo dõi của từng lô (1 lô có thể thuộc nhiều đợt theo dõi)
+        $trackingsByPlan = DB::table('validation_tracking_plan_master as vtpm')
+            ->join('validation_tracking as vt', 'vt.id', '=', 'vtpm.validation_tracking_id')
+            ->whereIn('vtpm.plan_master_id', $inProgressPlans->pluck('id'))
+            ->where('vtpm.active', 1)
+            ->select('vtpm.plan_master_id', 'vt.MaterialName', 'vt.purpose', 'vt.CC_num')
+            ->get()
+            ->groupBy('plan_master_id');
+        foreach ($inProgressPlans as $plan) {
+            $plan->trackings = $trackingsByPlan->get($plan->id, collect());
+        }
+
         session()->put(['title' => 'THEO DÕI THẨM ĐỊNH']);
 
         return view('pages.plan.validation_tracking.list', compact('trackings', 'products', 'inProgressPlans'));

@@ -9,6 +9,7 @@
                 <th>Cỡ lô</th>
                 <th>Số lô</th>
                 <th>Phân xưởng</th>
+                <th style="min-width: 260px;">Mục đích</th>
                 <th>Thời gian đóng gói dự kiến</th>
                 <th>Trạng thái</th>
                 <th>Thao tác</th>
@@ -28,6 +29,20 @@
                         {{ $plan->actual_batch ? $plan->actual_batch : $plan->batch }}
                     </td>
                     <td>{{ $plan->deparment_code }}</td>
+                    <td class="text-left">
+                        @forelse ($plan->trackings as $vt)
+                            <div @if (!$loop->last) class="border-bottom pb-1 mb-1" @endif>
+                                <div class="font-weight-bold">{{ $vt->MaterialName }}
+                                    @if ($vt->CC_num)
+                                        <span class="text-muted font-weight-normal">({{ $vt->CC_num }})</span>
+                                    @endif
+                                </div>
+                                <div>{{ $vt->purpose }}</div>
+                            </div>
+                        @empty
+                            <span class="text-muted">Chưa gắn đợt theo dõi</span>
+                        @endforelse
+                    </td>
                     <td>
                         @if ($plan->packaging_start && $plan->packaging_end)
                             {{ \Carbon\Carbon::parse($plan->packaging_start)->format('d/m/Y') }} -
@@ -48,7 +63,7 @@
                         @endif
                     </td>
                     <td>
-                        <a href="{{ route('pages.plan.production.open') }}?plan_list_id={{ \App\Models\PlanMaster::find($plan->id)->plan_list_id }}&name={{ \App\Models\PlanMaster::find($plan->id)->batch }}"
+                        <a href="{{ route('pages.plan.production.open') }}?plan_list_id={{ $plan->plan_list_id }}&name={{ $plan->batch }}"
                             target="_blank" class="btn btn-sm btn-outline-primary" title="Mở kế hoạch">
                             <i class="fas fa-external-link-alt"></i>
                         </a>

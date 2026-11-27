@@ -22,5 +22,8 @@
         <i>Đang theo dõi</i>.</li>
     <li>Mở một dòng để xem <b>Các lô sản xuất đã gắn</b> (số lô, phân xưởng, thời gian đóng gói dự kiến, tiến độ) và <b>Thống Kê
         Theo Bán Thành Phẩm</b>; bấm <i class="fas fa-external-link-alt"></i> để mở kế hoạch chứa lô.</li>
+    <li>Tab <b>Kế Hoạch Đang Sản Xuất</b>: các lô đã gắn đợt theo dõi mà chưa xong Đóng gói - Mã / Tên sản phẩm, Cỡ lô, Số lô,
+        Phân xưởng, <b>Mục đích</b> (tên nguyên liệu, số CC và mục đích theo dõi; lô thuộc nhiều đợt hiện đủ từng đợt), Thời
+        gian đóng gói dự kiến, Trạng thái. Khi tạo nhiều lô một lần, chỉ các lô còn suất theo dõi mới được gắn và hiện ở đây.</li>
     <li><b>Sửa</b> để đổi thông tin; <b>Duyệt</b> khi đã thẩm định xong.</li>
 </ul>

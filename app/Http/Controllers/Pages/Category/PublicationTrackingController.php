@@ -568,7 +568,10 @@ class PublicationTrackingController extends Controller
                         return '';
                 }
 
-                return trim(number_format((float) $qty, 0, ',', '.') . ' ' . ($unit ?? ''));
+                // Giữ phần lẻ (vd 869,73 Kg), bỏ số 0 thừa ở cuối: 200,00 → 200
+                $number = rtrim(rtrim(number_format((float) $qty, 3, ',', '.'), '0'), ',');
+
+                return trim($number . ' ' . ($unit ?? ''));
         }
 
         /**
