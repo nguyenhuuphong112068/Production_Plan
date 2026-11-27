@@ -168,3 +168,26 @@ Cron không cần cài lại, nhưng phải xoá cache config nếu server có
 php artisan config:clear && php artisan config:cache
 php artisan schedule:list   # xác nhận lịch mới đã có hiệu lực
 ```
+
+## 7. File log theo ngày
+
+Từ 27/11/2026 log ứng dụng ghi **mỗi ngày một file** `storage/logs/laravel-YYYY-MM-DD.log`,
+Laravel tự xoá file cũ hơn `LOG_DAILY_DAYS` ngày (trước đó ghi nối mãi vào một file
+`laravel.log`, lên tới ~830 MB). `.env` trên server phải có:
+
+```ini
+LOG_CHANNEL=stack
+LOG_STACK=daily
+LOG_DAILY_DAYS=14
+```
+
+Sau khi sửa `.env`:
+
+```bash
+sudo -u www-data php artisan config:clear && sudo -u www-data php artisan config:cache
+```
+
+File `laravel.log` cũ không còn được ghi và Laravel **không** tự xoá nó (chỉ xoá file
+`laravel-*.log`) — nén lại hoặc xoá tay. Luôn chạy artisan bằng `sudo -u www-data`: file
+log của ngày mới do user nào tạo trước thì thuộc user đó, tạo bằng user khác thì web và cron
+không ghi được.

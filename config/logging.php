@@ -54,7 +54,8 @@ return [
 
         'stack' => [
             'driver' => 'stack',
-            'channels' => explode(',', env('LOG_STACK', 'single')),
+            // Mỗi ngày một file laravel-YYYY-MM-DD.log, tự xoá file cũ hơn LOG_DAILY_DAYS ngày (26/11/2026: laravel.log trên server ~830 MB)
+            'channels' => explode(',', env('LOG_STACK', 'daily')),
             'ignore_exceptions' => false,
         ],
 
