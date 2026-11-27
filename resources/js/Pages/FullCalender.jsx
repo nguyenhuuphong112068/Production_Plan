@@ -2239,7 +2239,11 @@ const ScheduleTest = () => {
 
     const html = runs.map(run => {
       const delta = Number(run.source_delta_minutes) || 0;
+      // Lệnh quét tự động (người sửa 'Tự động (quét lô quá giờ)' = RerouteOverdueBatches::ACTOR) mà lô gốc không bị dời
+      // = phòng chưa Trả phòng quá giờ dự kiến, chỉ đẩy các lô sau
+      const auto = String(run.created_by || '').startsWith('Tự động (quét');
       const action = run.rows.some(isOverdueRow) ? 'quá giờ chưa Nhận phòng, tự động dời'
+        : auto ? 'chưa Trả phòng quá giờ dự kiến, tự động đẩy lô sau'
         : run.rows.some(isSourceRow) ? 'xác nhận sản xuất' : 'hoàn thành';
       const header = `
         <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding:6px 8px;background:#f1f5f9;border-radius:4px">

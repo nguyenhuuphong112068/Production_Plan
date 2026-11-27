@@ -15,10 +15,16 @@
                     giờ bắt đầu nằm trong <b>2 ngày</b> gần nhất, ở phòng <b>đang không mở</b> (Sẵn Sàng)</td>
                 <td><b>Chỉ đẩy lui, không kéo sớm</b>: dời chính lô đó tới giờ quét (mốc 15 phút của giờ quét, vd. quét 08:00 thì dời về 08:00; vướng lịch bảo trì thì dời ra
                     sau), các lô sau dịch theo. Lô vẫn chưa Nhận phòng thì giờ sau bị dời tiếp. Lô quá giờ hơn 2 ngày không bị dời.
-                    Phòng đang mở (Phòng Bận, Chờ / Đang VS sau BT) không bị dời: lịch được xếp lại lúc Trả phòng.<br>
+                    Lô quá giờ của phòng đang mở (Phòng Bận, Chờ / Đang VS sau BT) không bị dời theo dòng này (xem dòng dưới).<br>
                     Lần quét trùng lúc người sắp lịch đang sắp lịch thủ công (<b>Khóa TTSX</b>, kể cả khóa phòng cân), phân xưởng đang
                     <b>sắp lịch tự động</b>, hoặc đang có <b>Nhận / Trả phòng</b> chưa xong thì bỏ qua và <b>thử lại sau 15 phút</b>
                     (lô đã dời trước khi gặp khóa giữ nguyên).</td></tr>
+            <tr><td><b>Tự động mỗi giờ</b> (cùng lần quét trên): phòng <b>đang mở</b> bởi lô sản xuất đã quá <b>giờ dự kiến trả
+                    phòng</b> (Nhận phòng + thời lượng theo lịch) từ <b>30 phút</b> mà chưa Trả phòng</td>
+                <td><b>Chỉ đẩy lui</b>: coi lô đang chạy xong lúc giờ quét, đẩy các lô sau trên phòng và công đoạn sau của chúng tới giờ
+                    quét (khoảng trống trên lịch hấp thụ trước). Lô đang chạy giữ nguyên. Giờ sau vẫn chưa Trả phòng thì đẩy tiếp, không
+                    giới hạn thời gian. Phòng đang mở bởi lịch BT / HC / TI thì không áp dụng. Trả phòng sớm hơn mốc đã đẩy thì lô sau
+                    vẫn giữ mốc đó (chênh dưới 1 giờ).</td></tr>
             <tr><td>Bấm ✓ / ✓✓ ở Xác Nhận Hoàn Thành</td><td>Không dịch lịch.</td></tr>
         </tbody>
     </table>

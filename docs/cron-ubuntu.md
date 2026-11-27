@@ -42,7 +42,7 @@ bộ** tác vụ trong `routes/console.php`, không riêng đồng bộ nhân s�
 | 05:55 / 12:00 / 16:00 | `shifts:warm-cache` | Giữ cache lịch trực luôn nóng |
 | 06:00 | `wip:snapshot-coverage` | Chốt tồn bán thành phẩm đầu ngày công |
 | 08:00 | `notify:unscheduled-batches`, `notify:validation-sampling` | Cảnh báo |
-| Mỗi giờ (gọi mỗi 15 phút) | `reroute:overdue` | Dời lô quá giờ chưa Nhận phòng (phòng không mở) tới giờ quét, chỉ đẩy lui; trùng khóa thì thử lại sau 15 phút. Log `storage/logs/reroute-overdue.log` |
+| Mỗi giờ (gọi mỗi 15 phút) | `reroute:overdue` | (1) Phòng đang mở quá giờ dự kiến trả phòng: đẩy lui lô sau; (2) dời lô quá giờ chưa Nhận phòng (phòng không mở) tới giờ quét. Chỉ đẩy lui; trùng khóa thì thử lại sau 15 phút. Log `storage/logs/reroute-overdue.log` |
 
 ## 2. Lệnh đồng bộ nhân sự
 

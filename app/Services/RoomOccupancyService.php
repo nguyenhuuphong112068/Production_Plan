@@ -376,6 +376,20 @@ class RoomOccupancyService
     }
 
     /**
+     * Các lô / lịch BT đang giữ phòng (đã Nhận phòng, chưa Trả phòng) của các phòng, cùng quy tắc trạng thái phòng của trang
+     * này (kể cả phòng đôi gói đầu). Dùng cho lệnh quét tịnh tuyến (ScheduleRerouteService::overrunHolds).
+     *
+     * @param  int[]  $roomIds
+     * @return Collection room id => Collection các dòng {id, resourceId, actual_start}
+     */
+    public function openPlansOf(array $roomIds): Collection
+    {
+        $roomIds = array_values(array_unique(array_filter($roomIds)));
+
+        return $roomIds ? $this->openPlans($roomIds, $this->releasedAt($roomIds)) : collect();
+    }
+
+    /**
      * Khoảng phòng đang bị lô giữ phòng chiếm, cho sắp lịch tự động: từ Nhận phòng tới dự kiến trả phòng, cùng quy tắc
      * với thanh "đang diễn ra" trên Gantt (Nhận phòng + thời lượng giữ phòng theo lịch = KT vệ sinh − BĐ; quá lịch thì
      * tới hiện tại). null = mọi phòng đang có lô giữ.

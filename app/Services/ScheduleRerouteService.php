@@ -19,6 +19,8 @@ use Illuminate\Support\Str;
  * (reroute() giữ lại, hiện không nơi nào gọi); ✓ cũng không dịch (rerouteAfterProduction() không nơi nào gọi).
  * Và lệnh quét reroute:overdue mỗi giờ (rerouteOverdue, từ 26/11/2026; trùng khóa thì thử lại sau 15 phút): lô quá giờ bắt
  * đầu lý thuyết mà chưa Nhận phòng (trong 2 ngày gần nhất), ở phòng đang không mở, được dời tới giờ quét, các lô sau CHỈ đẩy lui.
+ * Cùng lệnh đó (rerouteOverrun, từ 27/11/2026): phòng đang mở bởi lô sản xuất đã quá giờ dự kiến trả phòng thì coi lô xong lúc
+ * giờ quét, CHỈ đẩy lui các lô sau trên phòng và công đoạn sau.
  *
  * Khi một lô được xác nhận hoàn thành, giờ kết thúc thực tế thường lệch so với lý thuyết.
  * Service này dịch chuyển (2 chiều) các lô chịu ảnh hưởng, giữ nguyên thứ tự lô:
@@ -109,6 +111,16 @@ class ScheduleRerouteService
      * 08:00 trên server chạy lúc 08:00:01 từng bị làm tròn lên 08:15. Quét 08:00–08:05 → 08:00; chạy tay 08:07 → 08:15.
      */
     public const OVERDUE_ROUND_GRACE_SECONDS = 300;
+
+    /**
+     * Lệnh quét reroute:overdue, phòng ĐANG MỞ bởi lô sản xuất đã quá giờ dự kiến trả phòng (Nhận phòng + thời lượng theo
+     * lịch) từ RECEIVE_MIN_LATE_SECONDS (user duyệt 27/11/2026): coi lô đang chạy xong lúc giờ quét, CHỈ đẩy lui các lô sau
+     * trên phòng và công đoạn sau. Lô đang chạy giữ nguyên; giờ sau vẫn chưa Trả phòng thì đẩy tiếp. Không giới hạn thời gian
+     * giữ phòng (user bỏ mốc "quá 2 ngày coi như quên Trả phòng"). Lịch BT/HC giữ phòng thì không áp dụng.
+     */
+    public const TRIGGER_OVERRUN = 'overrun';
+
+    public const OVERRUN_REASON_PREFIX = 'Tịnh tuyến tự động: chưa Trả phòng quá giờ dự kiến';
 
     public const SOURCE_CLEANING_REASON = 'Dời vệ sinh của chính lô ra sau giờ kết thúc sản xuất thực tế';
 
@@ -265,9 +277,110 @@ class ScheduleRerouteService
                 return $this->emptyResult();
             }
 
-            // Mốc 15 phút của giờ quét: cron gọi trễ vài giây sau 08:00 thì vẫn dời về 08:00, không nhảy lên 08:15
-            return $this->runOverdueUnlocked($fresh, (int) ceil(($now - self::OVERDUE_ROUND_GRACE_SECONDS) / 900) * 900);
+            return $this->runOverdueUnlocked($fresh, self::scanSlot($now));
         }, 0);
+    }
+
+    /** Mốc 15 phút của giờ quét: cron gọi trễ vài giây sau 08:00 thì vẫn là 08:00, không nhảy lên 08:15 */
+    private static function scanSlot(int $now): int
+    {
+        return (int) ceil(($now - self::OVERDUE_ROUND_GRACE_SECONDS) / 900) * 900;
+    }
+
+    /**
+     * Quét phòng đang mở quá giờ (lệnh reroute:overdue): lô $stagePlanId đang giữ phòng, quá giờ dự kiến trả phòng
+     * (overrunHolds) → coi lô xong lúc giờ quét, CHỈ đẩy lui các lô sau trên phòng và công đoạn sau (TRIGGER_OVERRUN).
+     * Mốc so sánh là giờ dự kiến trả phòng, nên giờ sau đẩy tiếp đúng phần trễ thêm, không cộng dồn.
+     *
+     * @return array{run_code: ?string, delta_minutes: int, changes: array, source_cleaning_moved: bool}
+     */
+    public function rerouteOverrun(int $stagePlanId): array
+    {
+        $source = $this->loadSource($stagePlanId, false);
+        if (! $source || ! $source->resourceId) {
+            return $this->emptyResult();
+        }
+
+        // Không chờ khóa, như rerouteOverdue
+        return RerouteLock::run($source->deparment_code, function () use ($source) {
+            // Đọc lại sau khi có khóa: phòng có thể vừa được Trả phòng
+            $fresh = DB::table('stage_plan')->where('id', $source->id)->first();
+            $now = now()->getTimestamp();
+            $hold = $fresh ? (self::overrunHolds([(int) $fresh->resourceId], $now)[(int) $fresh->resourceId] ?? null) : null;
+            if (! $hold || $hold['id'] !== (int) $fresh->id) {
+                return $this->emptyResult();
+            }
+
+            return $this->runUnlocked($fresh, self::TRIGGER_OVERRUN, self::scanSlot($now), $hold['projected']);
+        }, 0);
+    }
+
+    /**
+     * Phòng đang mở bởi lô sản xuất (Cân → Đóng gói) đã quá giờ dự kiến trả phòng từ RECEIVE_MIN_LATE_SECONDS. Giờ dự kiến trả
+     * phòng = Nhận phòng + thời lượng theo lịch (KT vệ sinh − BĐ), cùng cách tính với thanh "đang diễn ra" trên Gantt
+     * (RoomOccupancyService::heldUntil) và tịnh tuyến khi Nhận phòng. Phòng đôi / phòng cân giữ nhiều lô: lấy lô trả phòng muộn
+     * nhất. Phòng đang mở bởi lịch BT/HC/TI: bỏ qua.
+     *
+     * @param  int[]  $roomIds
+     * @return array<int, array{id: int, projected: int}> room id => lô đang giữ phòng, giờ dự kiến trả phòng
+     */
+    public static function overrunHolds(array $roomIds, int $now): array
+    {
+        $open = app(RoomOccupancyService::class)->openPlansOf($roomIds);
+        if ($open->isEmpty()) {
+            return [];
+        }
+
+        $plans = DB::table('stage_plan')
+            ->whereIn('id', $open->flatten()->pluck('id')->all())
+            ->get(['id', 'stage_code', 'start', 'end', 'end_clearning', 'actual_start'])
+            ->keyBy('id');
+
+        $result = [];
+        foreach ($open as $roomId => $rows) {
+            $hold = null;
+            foreach ($rows as $r) {
+                $p = $plans->get($r->id);
+                if (! $p || ! in_array((int) $p->stage_code, self::OVERDUE_STAGES, true)) {
+                    $hold = null; // có lịch BT/HC/TI đang giữ phòng
+
+                    break;
+                }
+                if (! $p->start || ! ($p->end_clearning ?? $p->end)) {
+                    continue;
+                }
+                $duration = max(0, Carbon::parse($p->end_clearning ?? $p->end)->getTimestamp() - Carbon::parse($p->start)->getTimestamp());
+                $projected = Carbon::parse($p->actual_start)->getTimestamp() + $duration;
+                if ($hold === null || $projected > $hold['projected']) {
+                    $hold = ['id' => (int) $p->id, 'projected' => $projected];
+                }
+            }
+            if ($hold && $hold['projected'] <= $now - self::RECEIVE_MIN_LATE_SECONDS) {
+                $result[(int) $roomId] = $hold;
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * Chốt chặn cuối của "chỉ đẩy lui" (lệnh quét): có lô nào giờ mới sớm hơn giờ cũ thì ghi log lỗi, trả true để hủy lần dời.
+     */
+    private function movesEarlier(array $changes, int $sourceId): bool
+    {
+        foreach ($changes as $c) {
+            foreach (['start', 'end', 'end_clearning'] as $f) {
+                if ($c['old'][$f] && $c['new'][$f] && strtotime($c['new'][$f]) < strtotime($c['old'][$f])) {
+                    \Illuminate\Support\Facades\Log::error('[Reroute] Quét tự động: lô bị kéo sớm, hủy lần dời', [
+                        'source' => $sourceId, 'stage_plan' => $c['id'], 'field' => $f, 'old' => $c['old'][$f], 'new' => $c['new'][$f],
+                    ]);
+
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -367,7 +480,8 @@ class ScheduleRerouteService
         $this->loadGraph($windowStart, $windowEnd);
         $this->loadOffRanges($windowStart, $windowEnd->copy()->addDays(self::WINDOW_DAYS));
         $this->spreadOverlaps = false;
-        $this->pushOnly = false;
+        // Quét phòng mở quá giờ: chỉ đẩy lui (các lần tịnh tuyến khác giữ nguyên quy tắc của chúng)
+        $this->pushOnly = $trigger === self::TRIGGER_OVERRUN;
 
         if (! isset($this->nodes[$source->id])) {
             return $this->emptyResult();
@@ -396,8 +510,8 @@ class ScheduleRerouteService
             default                  => $delta,
         };
 
-        // ✓ và Nhận phòng chỉ dịch khi lô trễ; ✓✓ và Trả phòng dịch cả 2 chiều
-        $propagate = in_array($trigger, [self::TRIGGER_PRODUCTION, self::TRIGGER_RECEIVE], true)
+        // ✓, Nhận phòng và quét phòng mở quá giờ chỉ dịch khi lô trễ; ✓✓ và Trả phòng dịch cả 2 chiều
+        $propagate = in_array($trigger, [self::TRIGGER_PRODUCTION, self::TRIGGER_RECEIVE, self::TRIGGER_OVERRUN], true)
             ? $delta >= self::MIN_SHIFT_SECONDS
             : abs($delta) >= self::MIN_SHIFT_SECONDS;
 
@@ -422,6 +536,10 @@ class ScheduleRerouteService
 
         if (empty($changes) && ! $sourceChange) {
             return $result;
+        }
+
+        if ($this->pushOnly && $this->movesEarlier($changes, (int) $source->id)) {
+            return $this->emptyResult();
         }
 
         $runCode = (string) Str::uuid();
@@ -477,16 +595,8 @@ class ScheduleRerouteService
         }
 
         // Chốt chặn cuối của "chỉ đẩy lui": lô nào có giờ mới sớm hơn giờ cũ thì không ghi gì cả
-        foreach ($changes as $c) {
-            foreach (['start', 'end', 'end_clearning'] as $f) {
-                if ($c['old'][$f] && $c['new'][$f] && strtotime($c['new'][$f]) < strtotime($c['old'][$f])) {
-                    \Illuminate\Support\Facades\Log::error('[Reroute] Quét lô quá giờ: lô bị kéo sớm, hủy lần dời', [
-                        'source' => $id, 'stage_plan' => $c['id'], 'field' => $f, 'old' => $c['old'][$f], 'new' => $c['new'][$f],
-                    ]);
-
-                    return $this->emptyResult();
-                }
-            }
+        if ($this->movesEarlier($changes, $id)) {
+            return $this->emptyResult();
         }
 
         $runCode = (string) Str::uuid();
@@ -1448,6 +1558,17 @@ class ScheduleRerouteService
             $received = Carbon::parse($source->actual_start)->format('H:i d/m/Y');
             $text = self::RECEIVE_REASON_PREFIX . ": {$batch}" . ($where !== '' ? " ({$where})" : '')
                 . ", nhận phòng lúc {$received}, bắt đầu {$lag}, dự kiến theo thời lượng lý thuyết";
+
+            return Str::limit($text, 250, '...');
+        }
+
+        if ($trigger === self::TRIGGER_OVERRUN) {
+            $received = Carbon::parse($source->actual_start);
+            $duration = max(0, Carbon::parse($source->end_clearning ?? $source->end)->getTimestamp() - Carbon::parse($source->start)->getTimestamp());
+            $text = self::OVERRUN_REASON_PREFIX . ": {$batch}" . ($where !== '' ? " ({$where})" : '')
+                . ', nhận phòng lúc ' . $received->format('H:i d/m/Y')
+                . ', dự kiến trả phòng ' . $received->copy()->addSeconds($duration)->format('H:i d/m/Y')
+                . ', quét lúc ' . now()->format('H:i d/m/Y') . ", đẩy lô sau {$lag}";
 
             return Str::limit($text, 250, '...');
         }

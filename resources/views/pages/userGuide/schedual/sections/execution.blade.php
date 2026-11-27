@@ -27,7 +27,8 @@
 
 <h3>Trả phòng</h3>
 <ul>
-    <li>Lô sản xuất: bấm <b>Trả phòng</b> khi xong sản xuất và vệ sinh; phòng về Sẵn Sàng.</li>
+    <li>Lô sản xuất: bấm <b>Trả phòng</b> khi xong sản xuất và vệ sinh; phòng về Sẵn Sàng. Quên Trả phòng thì sau giờ dự kiến
+        trả phòng, mỗi giờ phần mềm tự đẩy lịch các lô sau của phòng (xem <a href="#tinh-tuyen-lich">Tịnh tuyến lịch</a>).</li>
     <li>Lịch BT / TI có vệ sinh: Trả phòng kết thúc bảo trì → phòng ở trạng thái chờ vệ sinh → bấm <b>Nhận phòng vệ sinh sau BT</b>
         → vệ sinh xong bấm Trả phòng. Phòng chỉ giữ lịch hiệu chuẩn (HC): hộp Trả phòng hỏi
         <b>Có vệ sinh phòng sau Hiệu chuẩn không?</b> — chọn <b>Không</b> thì xong, phòng về Sẵn Sàng; chọn <b>Có</b> thì phòng

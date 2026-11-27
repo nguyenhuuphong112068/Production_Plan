@@ -1039,6 +1039,15 @@ class ProductionPlanController extends Controller
                                         }
                                 }
 
+                                // Cờ is_validation_tracking chỉ = 1 khi lô thật sự được gắn vào một đợt theo dõi
+                                // (tạo nhiều lô cùng lúc: hết suất theo dõi thì các lô sau không phải lô thẩm định NL).
+                                $hasActive = \App\Models\ValidationTrackingPlanMaster::where('plan_master_id', $planMasterId)->where('active', 1)->exists();
+                                if (!$hasActive && $request->has('is_validation_tracking')) {
+                                        DB::table('plan_master')->where('id', $planMasterId)->update(['is_validation_tracking' => 0]);
+                                        DB::table('plan_master_history')->where('plan_master_id', $planMasterId)->where('version', 1)
+                                                ->update(['is_validation_tracking' => 0]);
+                                }
+
                                 $i++;
                         }
                 } catch (\Throwable $e) {
