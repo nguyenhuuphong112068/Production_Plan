@@ -502,6 +502,7 @@
                             disabled>
                         <br>
                         ${isValText}
+                        ${data.excess_pro_return_lot ? '<div><span class="badge badge-danger" title="Lô thu hồi dư phẩm">Thu hồi dư phẩm</span></div>' : ''}
                         `,
                             `
                         <div style="display:flex; align-items:center; gap:6px;">

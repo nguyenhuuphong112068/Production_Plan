@@ -50,6 +50,12 @@
     thành phẩm (VN, MY, HK, BE...; rê chuột để xem tên thị trường), cả trên thanh đang chạy / chờ xác nhận. Thị trường lấy từ
     danh mục thành phẩm; thành phẩm chưa khai báo thị trường thì không có nhãn.
 </p>
+<p>
+    Lô thu hồi dư phẩm (tích <b>Thu hồi</b> ở cột Phân loại lô của Kế Hoạch Sản Xuất tháng) có nhãn
+    <span class="ug-swatch" style="background:#dc2626"></span> đỏ <b>Thu hồi dư phẩm</b> treo phía trên bên trái thanh lịch ở
+    <b>mọi công đoạn</b> (cân, pha chế, ... đóng gói; cả thanh đang chạy / chờ xác nhận; không gắn cho thanh vệ sinh).
+    Các nhãn treo xếp nối nhau theo thứ tự: loại NL của lịch cân · thị trường · Thu hồi dư phẩm.
+</p>
 <ul>
     <li><b>⚠️ Trùng Khuôn</b>: số phòng dùng cùng khuôn trong cùng thời gian vượt số lượng khuôn đang có.</li>
     <li><b>❌ Thiếu Khuôn!</b>: lô đã lên phòng cần khuôn nhưng chưa được gán khuôn (sản phẩm chưa khai báo khuôn, hoặc

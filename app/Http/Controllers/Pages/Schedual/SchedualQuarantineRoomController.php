@@ -43,6 +43,7 @@ class SchedualQuarantineRoomController extends Controller
                                 DB::raw("COALESCE(plan_master.actual_batch, plan_master.batch) AS batch"),
                                 'plan_master.expected_date',
                                 'plan_master.is_val',
+                                'plan_master.excess_pro_return_lot',
                                 'finished_product_category.intermediate_code',
                                 'finished_product_category.finished_product_code',
                                 'finished_product_category.batch_qty',

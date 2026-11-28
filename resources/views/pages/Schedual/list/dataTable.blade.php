@@ -104,9 +104,7 @@
                                             </td>
                                             <td>{{ $data->product_name }}</td>
                                             <td>{{ $data->batch }}
-                                                @if ($data->is_val)
-                                                    <i class="fas fa-check-circle text-primary fs-4"></i>
-                                                @endif
+                                                <x-lot-flags :val="$data->is_val" :ret="$data->excess_pro_return_lot" />
                                             </td>
                                             <td>{{ $data->batch_qty . ' ' . $data->unit_batch_qty }}</td>
                                             <td>

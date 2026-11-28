@@ -81,36 +81,46 @@
         /* vàng nhạt */
     }
 
-    /* Cột "Lô Thẩm định": badge TĐNL nội dung dài làm cột tự giãn rất rộng.
-       Đặt độ rộng theo % để cân đối với các cột còn lại; min-width giữ cho cột
-       không bị bóp lại thành chữ dọc khi bảng chật.
+    /* Cột "Phân loại lô" gộp 3 ô tích: Thẩm định / Phát sinh / Thu hồi, xếp dọc
+       để không chiếm diện tích ngang. min-width giữ cho cột không bị bóp lại
+       thành chữ dọc khi bảng chật.
        KHÔNG dùng word-break: break-word - nó cho phép cột co xuống bằng 1 ký tự. */
-    #data_table_plan_master th.col-val-batch,
-    #data_table_plan_master td.col-val-batch {
-        width: 8%;
+    #data_table_plan_master th.col-lot-type,
+    #data_table_plan_master td.col-lot-type {
+        width: 7%;
         min-width: 110px;
         white-space: normal;
         overflow-wrap: break-word;
     }
 
+    #data_table_plan_master td.col-lot-type .lot-flag {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin: 0 0 4px 0;
+        font-size: 13px;
+        white-space: nowrap;
+        cursor: pointer;
+    }
+
+    /* form-check-input của bootstrap dùng position:absolute + margin âm - bỏ đi
+       để ô tích nằm cạnh nhãn */
+    #data_table_plan_master td.col-lot-type .lot-flag .form-check-input {
+        position: static;
+        margin: 0;
+        flex: 0 0 auto;
+    }
+
     /* Badge TĐNL: nội dung dài thì cuộn trong ô, không kéo dòng cao lên */
-    #data_table_plan_master td.col-val-batch .validation-badge {
+    #data_table_plan_master td.col-lot-type .validation-badge {
         display: block;
         max-height: 100px;
         overflow-y: auto;
         font-size: 12px;
     }
 
-    /* Cột "Lô phát sinh so với kế hoạch dự kiến": tiêu đề dài, giữ tối thiểu
-       đủ rộng để không bẻ dọc từng ký tự */
-    #data_table_plan_master th.col-additional,
-    #data_table_plan_master td.col-additional {
-        width: 5%;
-        min-width: 90px;
-        white-space: normal;
-    }
-
-    .additional-checkbox {
+    .additional-checkbox,
+    .return-lot-checkbox {
         width: 20px;
         height: 20px;
         cursor: pointer;
@@ -242,8 +252,9 @@
 
                         <th style="width:4%">Ngày dự kiến KCS</th>
                         <th>Ưu Tiên/KH</th>
-                        <th class="col-val-batch">Lô Thẩm định</th>
-                        <th class="col-additional">Lô phát sinh so với kế hoạch dự kiến</th>
+                        <th class="col-lot-type"
+                            title="Thẩm định: lô thẩm định · Phát sinh: lô phát sinh so với kế hoạch dự kiến · Thu hồi: lô thu hồi">
+                            Phân loại lô</th>
 
                         <th>
                             <div> {{ '(1) Ngày có đủ NL' }} </div>
@@ -441,15 +452,26 @@
                                 @endif
                             </td>
 
-                            <td class="text-center col-val-batch">
-                                <input class="form-check-input step-checkbox2" type="checkbox" role="switch"
-                                    data-id="{{ $data->id }}" id="{{ $data->id }}"
-                                    {{ $auth_update != '' ? 'readOnly' : '' }} {{ $data->is_val ? 'checked' : '' }}
-                                    readonly>
-                                <br>
-                                @if ($data->is_val)
-                                    Lô thứ {{ $data->code_val ? explode('_', $data->code_val)[1] ?? '' : '' }}
-                                @endif
+                            <td class="text-left col-lot-type">
+                                {{-- Thẩm định chỉ hiển thị (sửa trong hộp thoại Cập nhật lô): chặn bấm đổi trạng thái --}}
+                                <label class="lot-flag" title="Lô thẩm định (sửa trong hộp thoại Cập nhật)">
+                                    <input class="form-check-input step-checkbox2" type="checkbox"
+                                        data-id="{{ $data->id }}" id="{{ $data->id }}"
+                                        {{ $data->is_val ? 'checked' : '' }} readonly onclick="return false;">
+                                    <span>Thẩm định{{ $data->is_val && $data->code_val ? ' (lô ' . (explode('_', $data->code_val)[1] ?? '') . ')' : '' }}</span>
+                                </label>
+                                <label class="lot-flag" title="Lô phát sinh so với kế hoạch dự kiến">
+                                    <input class="form-check-input additional-checkbox" type="checkbox"
+                                        name="additional" data-id="{{ $data->id }}" {{ $auth_update }}
+                                        {{ $data->additional ? 'checked' : '' }}>
+                                    <span>Phát sinh</span>
+                                </label>
+                                <label class="lot-flag" title="Lô thu hồi dư phẩm">
+                                    <input class="form-check-input return-lot-checkbox" type="checkbox"
+                                        name="excess_pro_return_lot" data-id="{{ $data->id }}" {{ $auth_update }}
+                                        {{ $data->excess_pro_return_lot ? 'checked' : '' }}>
+                                    <span>Thu hồi</span>
+                                </label>
 
                                 @if (isset($data->is_validation_tracking) && $data->is_validation_tracking)
                                     @php
@@ -479,12 +501,6 @@
                                         </div>
                                     @endforeach
                                 @endif
-                            </td>
-
-                            <td class="text-center align-middle col-additional">
-                                <input class="form-check-input additional-checkbox" type="checkbox" name="additional"
-                                    data-id="{{ $data->id }}" {{ $auth_update }}
-                                    {{ $data->additional ? 'checked' : '' }}>
                             </td>
 
                             <td>
@@ -961,6 +977,7 @@
                 <th>Ưu Tiên/KH</th>
                 <th>Lô Thẩm định</th>
                 <th>Lô phát sinh so với kế hoạch dự kiến</th>
+                <th>Lô Thu Hồi</th>
                 <th>Ngày có đủ NL</th>
                 <th>Ngày có đủ BB</th>
                 <th>Ngày được phép cân</th>
@@ -1005,6 +1022,7 @@
                     <td>{{ $data->level }}</td>
                     <td>{{ $data->is_val ? '1' : '0' }}</td>
                     <td>{{ $data->additional ? 'Phát sinh' : '' }}</td>
+                    <td>{{ $data->excess_pro_return_lot ? 'Thu hồi' : '' }}</td>
                     <td>{{ $data->after_weigth_date ? \Carbon\Carbon::parse($data->after_weigth_date)->format('d/m/Y') : '' }}
                     </td>
                     <td>{{ $data->after_parkaging_date ? \Carbon\Carbon::parse($data->after_parkaging_date)->format('d/m/Y') : '' }}
@@ -1530,7 +1548,10 @@
 
             // Lô phát sinh so với kế hoạch dự kiến: dùng class riêng, không dùng
             // .step-checkbox vì class đó đang phục vụ chọn dòng cho Sửa Hàng Loạt
-            $(document).on('change', '#data_table_plan_master .additional-checkbox', function() {
+            // Lô Thu Hồi (excess_pro_return_lot): cùng cách cập nhật nhanh như Lô phát sinh
+            $(document).on('change',
+                '#data_table_plan_master .additional-checkbox, #data_table_plan_master .return-lot-checkbox',
+                function() {
                 let checkbox = $(this);
                 let id = checkbox.data('id');
                 let checked = checkbox.is(':checked');
@@ -1544,7 +1565,7 @@
                     data: {
                         _token: '{{ csrf_token() }}',
                         id: id,
-                        name: 'additional',
+                        name: checkbox.attr('name'),
                         updateValue: checked ? 1 : 0,
                         oldValue: checked ? 0 : 1
                     },
@@ -1713,7 +1734,7 @@
             $(document).on('click', '#data_table_plan_master tbody tr', function(e) {
                 // Bỏ qua nếu click vào các thẻ input, button, a, select, textarea
                 if ($(e.target).is('input, button, a, select, textarea') || $(e.target).closest(
-                        'button, a, select').length > 0) {
+                        'button, a, select, label.lot-flag').length > 0) {
                     return;
                 }
 

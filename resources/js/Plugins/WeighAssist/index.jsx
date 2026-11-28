@@ -64,6 +64,15 @@ const nextStageIds = (selected) => [...new Set((selected || [])
  * (hậu tố nextcessor_code; khối nháp mang next_stage), thiếu thì theo hậu tố tên lịch "-Nang Rỗng" / "-Tá dược BP".
  * Trả class CSS fc-weigh-kind-* (calendar.css) hoặc null với lịch không phải cân / vệ sinh.
  */
+/** Chữ trên nhãn loại cân (fc-weigh-kind-* → nhãn treo .fc-hang-badge, FullCalender eventDidMount; màu trong calendar.css) */
+export const WEIGH_KIND_LABELS = {
+  'fc-weigh-kind-pc': '🧪 NL PC',
+  'fc-weigh-kind-tht': '🧪 NL THT',
+  'fc-weigh-kind-nang': '💊 Nang rỗng',
+  'fc-weigh-kind-bp': '🖌️ NL BP',
+  'fc-weigh-kind-dg': '📦 NL ĐG',
+};
+
 export function weighKindClass(event) {
   const p = event?.extendedProps || {};
   // Thanh Nhận / Trả phòng (is_running) mang run_stage_code để không lọt vào các kiểm tra theo stage_code của lịch

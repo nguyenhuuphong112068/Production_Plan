@@ -172,6 +172,8 @@ class ProductionExecutionController extends Controller
                         'market'      => $p->stage_code == 7 ? $p->market : null,
                         // Cờ quốc gia sau mã thị trường (public/img/flags)
                         'market_flags' => $p->stage_code == 7 ? MarketFlag::urls($p->market) : [],
+                        // Qui cách đóng gói của mã TP (specification), hiện sau thị trường
+                        'specification' => $p->stage_code == 7 ? $p->specification : null,
                         'batch'       => $p->batch,
                         'codes'       => trim(($p->intermediate_code ?? '') . ' / ' . ($p->finished_product_code ?? ''), ' /'),
                         'btp'         => $p->intermediate_code,
@@ -184,6 +186,7 @@ class ProductionExecutionController extends Controller
                         'theory'      => round($p->theory, 2), // Đóng Gói chia thị trường: số của phần chia
                         'unit'        => $p->unit,
                         'is_val'      => (bool) $p->is_val,
+                        'is_return'   => (bool) ($p->excess_pro_return_lot ?? false), // Lô thu hồi dư phẩm
                         // Phòng cân: loại NL (NL PC / Nang rỗng / NL BP...) hiện sau tên sản phẩm
                         'weigh_kind'  => WeighKind::of($p->stage_code, $p->nextcessor_code),
                 ])->values());

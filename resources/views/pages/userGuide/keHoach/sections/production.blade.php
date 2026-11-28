@@ -39,6 +39,10 @@
 <p>
     Cột <b>Tình Trạng</b> lọc được theo Hủy / Chưa làm / Đã Cân / Đã Pha chế / Đã THT / Đã định hình / Đã Bao phim / Hoàn Tất ĐG.
     Ô <b>Ưu Tiên/KH</b> sửa trực tiếp (số nguyên dương) - đây là thứ tự ưu tiên khi sắp lịch nhóm thương mại.
+    Cột <b>Phân loại lô</b> gộp 3 ô tích: <b>Thẩm định</b> (chỉ xem, kèm số thứ tự lô thẩm định - sửa trong hộp thoại Cập nhật),
+    <b>Phát sinh</b> (lô phát sinh so với kế hoạch dự kiến) và <b>Thu hồi</b> (lô thu hồi dư phẩm; hiện badge <b>Thu hồi dư phẩm</b> ở Lịch Sản Xuất (nhãn treo trên Gantt), Thực Thi Sản Xuất, Theo dõi hồ sơ KCS, Lịch sử...). Hai ô Phát sinh / Thu hồi lưu ngay khi bấm
+    (ghi vào lịch sử lô) và chỉ cập nhật trên bảng sau khi đã tạo lô, không có trong hộp thoại Thêm mới / Cập nhật.
+    Badge <b>TĐNL</b> (thẩm định nguyên liệu) hiện bên dưới các ô tích.
     Nút <span class="btn btn-sm btn-info ug-ui"><i class="fas fa-eye"></i></span> ở cột <b>Cập Nhật/Vô Hiệu</b> mở hộp thoại
     thông tin lô (ngày ràng buộc, mức ưu tiên, lô thẩm định, công thức NL/BB đã chọn) ở chế độ <b>chỉ xem</b> - không sửa
     và không có nút Lưu, dùng được cả khi không có quyền sửa hay KH đã gửi.

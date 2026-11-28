@@ -106,7 +106,7 @@
                         <th>Cỡ lô</th>
                         <th>Số Lô</th>
                         <th>Ngày Dự Kiến KCS</th>
-                        <th>Lô Thẩm Định</th>
+                        <th>Lô Thẩm Định / Thu Hồi</th>
                         <th>Phòng Sản Xuất</th>
                         <th>Thời Gian Sản Xuất</th>
                         <th>Thời Gian Vệ Sinh</th>
@@ -138,9 +138,7 @@
                                 <div>{{ \Carbon\Carbon::parse($data->expected_date)->format('d/m/Y') }} </div>
                             </td>
                             <td class="text-center align-middle">
-                                @if ($data->is_val)
-                                    <i class="fas fa-check-circle text-primary fs-4"></i>
-                                @endif
+                                <x-lot-flags :val="$data->is_val" :ret="$data->excess_pro_return_lot" />
                             </td>
                             <td> {{ $data->room_name . ' - ' . $data->room_code }} </td>
                             <td> {{ \Carbon\Carbon::parse($data->start)->format('d/m/Y H:i') . ' - ' . \Carbon\Carbon::parse($data->end)->format('d/m/Y H:i') }}

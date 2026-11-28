@@ -32,7 +32,7 @@ import NoteModal from '../Components/NoteModal';
 import { wipControlSectionHtml, initWipControl, collectWipControl, hasWipLimits, runWipControl } from '../Plugins/WipControl';
 import { useLotLinks } from '../Plugins/LotLinks'; // LotLinks (thử nghiệm)
 import { useRoomWip, isRoomWipRow, RoomWipToggle } from '../Plugins/RoomWip'; // RoomWip (thử nghiệm)
-import { useWeighAssist, WeighAssistBar, followWeighCleaning, placeWeighCleaning, weighKindClass } from '../Plugins/WeighAssist'; // WeighAssist: sắp lịch cân bán tự động
+import { useWeighAssist, WeighAssistBar, followWeighCleaning, placeWeighCleaning, weighKindClass, WEIGH_KIND_LABELS } from '../Plugins/WeighAssist'; // WeighAssist: sắp lịch cân bán tự động
 
 //import History from '../Components/History';
 //import { CheckAuthorization } from '../Components/CheckAuthorization';
@@ -8023,20 +8023,46 @@ const ScheduleTest = () => {
 
 
           eventDidMount={(info) => {
-            // Nhãn thị trường phía trên bên trái khối Đóng gói (CĐ 7), cùng vị trí nhãn loại NL của lịch cân.
+            // Hàng nhãn treo phía trên bên trái khối, xếp nối nhau để không đè:
+            //   loại NL của lịch cân (NL PC / Nang rỗng...) · thị trường của khối Đóng gói (CĐ 7) · "Thu hồi dư phẩm" (mọi công đoạn).
             // Là phần tử thật gắn vào khung sự kiện (::before / ::after đã dành cho huy hiệu ⚖ và tick Lead).
-            const mk = info.event.extendedProps.market_code;
-            if (mk && !info.event.extendedProps.is_clearning) {
-              const tag = document.createElement('span');
-              tag.className = 'fc-market-badge';
-              // Cờ quốc gia (App\Support\MarketFlag, public/img/flags): DK-FI... ra nhiều cờ; mã không phải quốc gia (Tender, ALDE...) giữ 🌐
-              const flags = info.event.extendedProps.market_flags || [];
-              tag.innerHTML = (flags.length
-                ? flags.map(u => `<img src="${u}" alt="" class="fc-market-flag">`).join('')
-                : '🌐') + `<span>${String(mk).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))}</span>`;
-              tag.title = 'Thị trường: ' + (info.event.extendedProps.market_name || mk);
-              info.el.classList.add('fc-market-kind');
-              info.el.appendChild(tag);
+            {
+              const xp = info.event.extendedProps;
+              const hang = [];
+              const wk = weighKindClass(info.event);
+              if (wk && WEIGH_KIND_LABELS[wk]) {
+                const tag = document.createElement('span');
+                tag.className = 'fc-hang-badge ' + wk;
+                tag.textContent = WEIGH_KIND_LABELS[wk];
+                hang.push(tag);
+              }
+              const mk = xp.market_code;
+              if (mk && !xp.is_clearning) {
+                const tag = document.createElement('span');
+                tag.className = 'fc-hang-badge fc-market-badge';
+                // Cờ quốc gia (App\Support\MarketFlag, public/img/flags): DK-FI... ra nhiều cờ; mã không phải quốc gia (Tender, ALDE...) giữ 🌐
+                const flags = xp.market_flags || [];
+                tag.innerHTML = (flags.length
+                  ? flags.map(u => `<img src="${u}" alt="" class="fc-market-flag">`).join('')
+                  : '🌐') + `<span>${String(mk).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))}</span>`;
+                tag.title = 'Thị trường: ' + (xp.market_name || mk);
+                hang.push(tag);
+              }
+              // Lô thu hồi dư phẩm (plan_master.excess_pro_return_lot, SchedualController getEvents / thanh phòng đang chạy)
+              if (xp.is_return_lot && !xp.is_clearning) {
+                const tag = document.createElement('span');
+                tag.className = 'fc-hang-badge fc-return-badge';
+                tag.textContent = 'Thu hồi dư phẩm';
+                tag.title = 'Lô thu hồi dư phẩm';
+                hang.push(tag);
+              }
+              if (hang.length) {
+                const row = document.createElement('div');
+                row.className = 'fc-hang-badges';
+                hang.forEach(t => row.appendChild(t));
+                info.el.classList.add('fc-hang-kind');
+                info.el.appendChild(row);
+              }
             }
 
             // Thanh phòng đang bận: chỉ xem, không chọn / sửa / menu chuột phải

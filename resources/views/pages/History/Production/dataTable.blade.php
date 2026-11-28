@@ -1,3 +1,106 @@
+<style>
+    /* Nhãn mốc thời gian: cùng màu / biểu tượng với trang Xác Nhận Hoàn Thành, ở đây chỉ hiển thị */
+    .col-time {
+        min-width: 330px;
+    }
+
+    .tf {
+        display: flex;
+        align-items: stretch;
+        border: 1px solid #dee2e6;
+        border-left: 4px solid var(--tf-color);
+        border-radius: 4px;
+        background: #fff;
+        overflow: hidden;
+    }
+
+    .tf+.tf {
+        margin-top: 5px;
+    }
+
+    .tf-label {
+        flex: 0 0 140px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 0 8px;
+        font-size: 14px;
+        font-weight: 600;
+        line-height: 1.2;
+        color: var(--tf-color);
+        background: var(--tf-bg);
+        white-space: nowrap;
+        cursor: help;
+    }
+
+    .tf-label i {
+        width: 16px;
+        text-align: center;
+    }
+
+    .tf-value {
+        flex: 1 1 auto;
+        padding: 3px 8px;
+        font-size: 17px;
+        white-space: nowrap;
+    }
+
+    .tf-value.empty {
+        color: #adb5bd;
+        font-style: italic;
+        font-size: 14px;
+        align-self: center;
+    }
+
+    .tf-receive {
+        --tf-color: #0062cc;
+        --tf-bg: #e7f1ff;
+    }
+
+    .tf-yield {
+        --tf-color: #1e7e34;
+        --tf-bg: #e6f4ea;
+    }
+
+    .tf-end {
+        --tf-color: #c94f0a;
+        --tf-bg: #fdefe3;
+    }
+
+    .tf-clean {
+        --tf-color: #117a8b;
+        --tf-bg: #e3f4f7;
+    }
+
+    .tf-release {
+        --tf-color: #5a32a3;
+        --tf-bg: #efe9f9;
+    }
+
+    .col-yield {
+        min-width: 210px;
+    }
+
+    /* Tên sản phẩm đủ rộng để không bị bẻ thành nhiều dòng ngắn */
+    .col-product {
+        min-width: 280px;
+    }
+
+    .yield-rows {
+        font-size: 14px;
+        line-height: 1.5;
+        color: #495057;
+        white-space: nowrap;
+    }
+
+    .yield-total {
+        margin-top: 4px;
+        padding-top: 3px;
+        border-top: 1px dashed #ced4da;
+        font-weight: 600;
+    }
+</style>
+
 <div class="content-wrapper">
     <div class="card">
         <div class="card-body">
@@ -60,14 +163,14 @@
                     <tr>
                         <th>STT</th>
                         <th>Mã Sản Phẩm</th>
-                        <th>Sản Phẩm</th>
+                        <th class="col-product">Sản Phẩm</th>
+                        <th>Số Lô</th>
                         <th>Cỡ lô</th>
-                        <th>Ngày Dự Kiến KCS</th>
-                        <th>Lô Thẩm Định</th>
+                        <th>Lô Thẩm Định / Thu Hồi</th>
                         <th>Phòng Sản Xuất</th>
-                        <th>Thới Gian Sản Xuất</th>
-                        <th>Thời Gian Vệ Sinh</th>
-                        <th>Sản Lượng TT</th>
+                        <th class="col-time">Thời Gian Sản Xuất</th>
+                        <th class="col-time">Thời Gian Vệ Sinh</th>
+                        <th class="col-yield">Sản Lượng TT {{ $stageCode <= 4 ? '(Kg)' : '(ĐV)' }}</th>
                         <th>Phòng BT</th>
                         <th>Ghi Chú</th>
                         <th>Người Tạo/ Ngày Tạo</th>
@@ -77,6 +180,15 @@
                     </tr>
                 </thead>
                 <tbody>
+                    @php
+                        $fmtTime = fn($t) => $t ? \Carbon\Carbon::parse($t)->format('d/m/Y H:i') : null;
+                        $fmtShort = fn($t) => \Carbon\Carbon::parse($t)->format('H:i d/m');
+                        $fmtQty = fn($v) => rtrim(rtrim(number_format((float) $v, 3, '.', ','), '0'), '.');
+                        $timeBox = fn($cls, $icon, $label, $tip, $t) =>
+                            '<div class="tf ' . $cls . '"><span class="tf-label" title="' . e($tip) . '"><i class="fas ' . $icon . '"></i>' . e($label) . '</span>' .
+                            ($fmtTime($t) ? '<span class="tf-value">' . $fmtTime($t) . '</span>' : '<span class="tf-value empty">Chưa ghi nhận</span>') .
+                            '</div>';
+                    @endphp
                     @foreach ($datas as $data)
                         <tr>
                             <td>{{ $loop->iteration }}
@@ -88,32 +200,37 @@
                                 <div> {{ $data->intermediate_code }} </div>
                                 <div> {{ $data->finished_product_code }} </div>
                             </td>
-                            <td>{{ $data->name . ' - ' . $data->batch . ' - ' . $data->market }}</td>
+                            <td class="col-product">{{ $data->name }}{{ $data->market ? ' - ' . $data->market : '' }}</td>
+                            {{-- Số lô: ưu tiên số lô thực tế (actual_batch, tô xanh như trang Xác Nhận Hoàn Thành) --}}
+                            <td class="text-center" style="white-space: nowrap; {{ $data->actual_batch ? 'color: blue;' : '' }}">{{ $data->batch }}</td>
                             <td>{{ $data->batch_qty . ' ' . $data->unit_batch_qty }}</td>
-                            <td>
-                                <div>{{ \Carbon\Carbon::parse($data->expected_date)->format('d/m/Y') }} </div>
-                            </td>
                             <td class="text-center align-middle">
-                                @if ($data->is_val)
-                                    <i class="fas fa-check-circle text-primary fs-4"></i>
-                                @endif
+                                <x-lot-flags :val="$data->is_val" :ret="$data->excess_pro_return_lot" />
                             </td>
                             <td> {{ $data->room_name . ' - ' . $data->room_code }} </td>
-                            @if ($data->actual_start)
-                                <td> {{ \Carbon\Carbon::parse($data->actual_start)->format('d/m/Y H:i') . ' - ' . \Carbon\Carbon::parse($data->actual_end)->format('d/m/Y H:i') }}
-                                </td>
-                            @else
-                                <td> {{ 'Chưa Xác nhận Hoàn Thành' }} </td>
-                            @endif
+                            <td class="col-time" data-order="{{ $data->actual_start }}">
+                                {!! $timeBox('tf-receive', 'fa-door-open', 'Nhận phòng', 'Thời điểm nhận phòng sản xuất', $data->actual_start) !!}
+                                {!! $timeBox('tf-yield', 'fa-play-circle', 'BĐCM', 'BĐCM: thời điểm bắt đầu tạo ra sản lượng (lần xác nhận sản lượng đầu tiên)', $data->yield_start) !!}
+                                {!! $timeBox('tf-end', 'fa-flag-checkered', 'Kết thúc lô', 'Kết thúc sản xuất (kết lô)', $data->actual_end) !!}
+                            </td>
 
-                            @if ($data->actual_start_clearning)
-                                <td> {{ \Carbon\Carbon::parse($data->actual_start_clearning)->format('d/m/Y H:i') . ' - ' . \Carbon\Carbon::parse($data->actual_end_clearning)->format('d/m/Y H:i') }}
-                                </td>
-                            @else
-                                <td> {{ 'Chưa Xác nhận Hoàn Thành' }} </td>
-                            @endif
+                            <td class="col-time" data-order="{{ $data->actual_start_clearning }}">
+                                {!! $timeBox('tf-clean', 'fa-broom', 'BĐVS', 'BĐVS: thời điểm bắt đầu vệ sinh phòng', $data->actual_start_clearning) !!}
+                                {!! $timeBox('tf-release', 'fa-sign-out-alt', 'Trả phòng', 'Thời điểm trả phòng (kết thúc vệ sinh)', $data->actual_end_clearning) !!}
+                            </td>
 
-                            <td> {{ $data->sum_actual_yeild }} {{ $stageCode <= 4 ? 'Kg' : 'ĐV' }}</td>
+                            <td class="col-yield" data-order="{{ (float) str_replace(',', '', $data->sum_actual_yeild) }}">
+                                @if ($data->yield_rows->count() > 0)
+                                    <div class="yield-rows">
+                                        @foreach ($data->yield_rows as $yr)
+                                            <div>({{ $loop->iteration }}) {{ $fmtShort($yr->start) }} - {{ $fmtShort($yr->end) }} = <b>{{ $fmtQty($yr->yield) }}</b></div>
+                                        @endforeach
+                                    </div>
+                                    <div class="yield-total">Tổng: {{ $data->sum_actual_yeild }} {{ $stageCode <= 4 ? 'Kg' : 'ĐV' }}</div>
+                                @else
+                                    {{ $data->sum_actual_yeild }} {{ $stageCode <= 4 ? 'Kg' : 'ĐV' }}
+                                @endif
+                            </td>
                             <td> {{ $data->quarantine_room_code }} </td>
                             <td> {{ $data->note }} </td>
 

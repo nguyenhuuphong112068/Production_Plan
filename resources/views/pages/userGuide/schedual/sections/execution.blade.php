@@ -7,7 +7,7 @@
 <h3>Thẻ phòng</h3>
 <ul>
     <li>Ô tìm phòng / sản phẩm / số lô ở đầu trang; nút <i class="fas fa-sync-alt"></i> tải lại trạng thái các phòng.</li>
-    <li>Phòng bận hiện lô đang chạy, thời gian <i>tính từ lúc nhận phòng</i>, nhãn <i>Lô thẩm định</i> nếu có.</li>
+    <li>Phòng bận hiện lô đang chạy, thời gian <i>tính từ lúc nhận phòng</i>, nhãn <i>Thẩm định</i> và <i>Thu hồi dư phẩm</i> nếu có.</li>
     <li>Thẻ hiện người được phân công tại phòng lúc này theo <b>Lịch Công Tác › Sản Xuất</b>.</li>
     <li>Nút <i class="fas fa-history"></i> <b>Lịch sử nhận trả phòng</b>: các lần Nhận phòng, Kết thúc BT / Nhận VS, Trả phòng, thời gian giữ phòng.</li>
 </ul>
@@ -20,7 +20,8 @@
         Lô mà công đoạn kế tiếp đã xác nhận hoàn thành không hiện trong danh sách. Ở phòng cân, sau tên sản phẩm có nhãn loại
         nguyên liệu: <b>🧪 NL PC</b> / <b>🧪 NL THT</b>, <b>💊 Nang rỗng</b>, <b>🖌️ NL BP</b>, <b>📦 NL ĐG</b> (cùng nhãn trên
         Gantt, xem <a href="#sap-lich-can">Sắp lịch cân bán tự động</a>). Ở phòng Đóng gói, sau mã thị trường có cờ quốc gia
-        (thị trường không phải quốc gia như Tender, ALDE... không có cờ).</li>
+        (thị trường không phải quốc gia như Tender, ALDE... không có cờ), tiếp theo là qui cách đóng gói của mã TP
+        (vd. <i>240 hộp x 3 vỉ x 10 viên</i>).</li>
     <li>Chọn lô / lịch rồi bấm <b>Nhận phòng</b>. Phòng chuyển sang Bận. Nhận phòng trễ so với lịch thì các lô sau được đẩy trễ
         theo; Nhận phòng BT thì lô sản xuất đang đè lên khoảng bảo trì dự kiến được đẩy ra sau (xem
         <a href="#tinh-tuyen-lich">Tịnh tuyến lịch</a>).</li>

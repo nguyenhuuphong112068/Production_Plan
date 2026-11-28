@@ -22,7 +22,7 @@
             <tr><td>Phòng SX</td><td>Phòng đã có định mức cho lô. Lô có nhiều phòng: tick một phòng để <b>chỉ định phòng</b>, sắp lịch tự động sẽ chỉ xếp lô vào phòng đó; bỏ tick để trả về tự chọn. Ô đỏ <b>Thiếu Định Mức</b>: bấm để khai định mức ngay tại đây (một hoặc nhiều phòng, thời gian chuẩn bị, sản xuất, vệ sinh cấp I / II, số lô tối đa của chiến dịch).</td></tr>
             <tr><td>Ngày DK KCS, Ngày đáp ứng</td><td>Hạn cần hàng của lô, dùng để sắp thứ tự và tô màu trễ hạn.</td></tr>
             <tr><td>Ưu tiên</td><td>Mức ưu tiên 1 (đỏ, gấp nhất) đến 4 (xanh lá), lấy từ kế hoạch tháng.</td></tr>
-            <tr><td>Thẩm Định</td><td>Lô thẩm định.</td></tr>
+            <tr><td>Thẩm Định / Thu Hồi</td><td>Badge <b>Thẩm định</b> (lô thẩm định) và <b>Thu hồi dư phẩm</b> (lô thu hồi dư phẩm).</td></tr>
             <tr><td>Ngày có NL / Ngày có BB</td><td>Ngày có đủ nguyên liệu (công đoạn 1-6) hoặc bao bì (Đóng gói). <span class="text-danger"><b>Chưa xác định</b></span> thì lô <b>không thả vào lịch được</b>.</td></tr>
             <tr><td>Ngày Được Cân, Ngày HH NL, PC / THT / BP trước</td><td>Các mốc ràng buộc: không cân trước ngày được cân, phải xong trước ngày hết hạn NL hoặc hạn từng công đoạn.</td></tr>
             <tr><td>Nguồn nguyên liệu</td><td>Nguồn NL của lô.</td></tr>

@@ -210,7 +210,7 @@
 
             function renderPlans() {
                 const q = $('#execPlanSearch').val().toLowerCase().trim();
-                const rows = plans.filter(p => !q || `${p.product} ${p.batch || ''} ${p.codes} ${p.group || ''}`.toLowerCase().includes(q));
+                const rows = plans.filter(p => !q || `${p.product} ${p.batch || ''} ${p.codes} ${p.group || ''} ${p.market || ''} ${p.specification || ''}`.toLowerCase().includes(q));
                 if (!rows.length) {
                     $('#execPlanHint').text(plans.length ? '' : (receiveMode === 'maintenance' ?
                         'Phòng chưa có lịch BT / TI / HC nào được sắp lịch.' : 'Phòng chưa có lô nào được sắp lịch.'));
@@ -249,8 +249,8 @@
                     return `<label class="exec-plan ${on ? 'selected' : ''} ${off ? 'disabled' : ''}">
                         <input type="${multi() ? 'checkbox' : 'radio'}" name="execPlan" value="${p.id}" ${on ? 'checked' : ''} ${off ? 'disabled' : ''}>
                         <div class="exec-plan-main">
-                            <div class="exec-plan-name">${p.maintenance ? '<i class="fas fa-tools"></i> ' : ''}${esc(p.product)}${p.market ? ' - ' + esc(p.market) + (p.market_flags || []).map(u => `<img src="${esc(u)}" alt="" class="exec-plan-flag" title="Thị trường ${esc(p.market)}">`).join('') : ''}${kind}
-                                ${p.is_val ? '<i class="fas fa-check-circle text-primary" title="Lô thẩm định"></i>' : ''}${same}</div>
+                            <div class="exec-plan-name">${p.maintenance ? '<i class="fas fa-tools"></i> ' : ''}${esc(p.product)}${p.market ? ' - ' + esc(p.market) + (p.market_flags || []).map(u => `<img src="${esc(u)}" alt="" class="exec-plan-flag" title="Thị trường ${esc(p.market)}">`).join('') : ''}${p.specification ? `<span class="exec-plan-spec" title="Qui cách đóng gói">${esc(p.specification)}</span>` : ''}${kind}
+                                ${p.is_val ? ' <span class="badge badge-primary" title="Lô thẩm định">Thẩm định</span>' : ''}${p.is_return ? ' <span class="badge badge-danger" title="Lô thu hồi dư phẩm">Thu hồi dư phẩm</span>' : ''}${same}</div>
                             ${meta}
                             <div class="exec-plan-meta"><i class="far fa-calendar-alt"></i> Lịch: ${esc(p.start)} → ${esc(p.end)}</div>
                         </div>

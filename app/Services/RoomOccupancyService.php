@@ -621,6 +621,7 @@ class RoomOccupancyService
             ->leftJoin('intermediate_category as ic', 'fpc.intermediate_code', '=', 'ic.intermediate_code')
             ->leftJoin('product_name as pn', 'ic.product_name_id', '=', 'pn.id')
             ->leftJoin('market as mk', 'fpc.market_id', '=', 'mk.id')
+            ->leftJoin('specification as spec', 'fpc.specification_id', '=', 'spec.id') // qui cách đóng gói (modal Nhận phòng ĐG)
             // Lịch stage_code 8: product_caterogy_id là quota_maintenance.id (thiết bị), không phải thành phẩm
             ->leftJoin('quota_maintenance as qm', fn($j) => $j->on('sp.product_caterogy_id', '=', 'qm.id')->where('sp.stage_code', self::MAINTENANCE_STAGE))
             ->whereIn('sp.id', $ids)
@@ -643,12 +644,14 @@ class RoomOccupancyService
                 'pn.name as product_name',
                 DB::raw('COALESCE(pm.actual_batch, pm.batch) AS batch'),
                 'pm.is_val',
+                'pm.excess_pro_return_lot',
                 'pm.main_parkaging_id as pack_group', // nhóm chia thị trường (Đóng Gói nhận thêm lô cùng nhóm)
                 'pm.percent_parkaging',
                 'pm.number_parkaging',
                 'fpc.intermediate_code',
                 'fpc.finished_product_code',
                 'mk.code as market',
+                'spec.name as specification',
                 'qm.inst_id',
                 DB::raw('COALESCE(qm.Eqp_name, qm.inst_name) AS equipment'),
                 DB::raw(self::MAINTENANCE_TYPE_SQL . ' AS maintenance_type')

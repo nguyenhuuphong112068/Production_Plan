@@ -261,8 +261,16 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
     return <span style={style}><b>{rowData.level}</b></span>;
   };
 
+  // Badge phân loại lô (giống <x-lot-flags> bên Blade): Thẩm định (xanh) / Thu hồi dư phẩm (đỏ)
+  const lotFlagStyle = (bg) => ({
+    display: 'inline-block', background: bg, color: '#fff', borderRadius: 4, padding: '1px 5px',
+    fontSize: 11, fontWeight: 700, lineHeight: 1.3, textAlign: 'center', whiteSpace: 'normal'
+  });
   const ValidationBodyTemplate = (rowData) => (
-    <Checkbox checked={rowData.is_val ? true : false} />
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+      {rowData.is_val ? <span title="Lô thẩm định" style={lotFlagStyle('#007bff')}>Thẩm định</span> : null}
+      {rowData.excess_pro_return_lot ? <span title="Lô thu hồi dư phẩm" style={lotFlagStyle('#dc3545')}>Thu hồi dư phẩm</span> : null}
+    </div>
   );
 
   const clearningValidationBodyTemplate = (rowData) => (
@@ -1738,7 +1746,7 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
     { field: "expected_date", header: "Ngày DK KCS", body: naBody("expected_date"), filter: false, filterField: "expected_date", style: { width: '5%', maxWidth: '7.5%', ...longTextStyle } },
     { field: "responsed_date", header: "Ngày đáp ứng", body: naBody("responsed_date"), filter: false, filterField: "responsed_date", style: { width: '5%', maxWidth: '7.5%', ...longTextStyle } },
     { field: "level", header: "Ưu tiên", sortable: true, body: statusOrderBodyTemplate, style: { width: '5%', maxWidth: '5%', ...longTextStyle } },
-    { field: "is_val", header: "Thẩm Định", body: ValidationBodyTemplate, style: { width: '5rem', maxWidth: '5rem', ...longTextStyle } },
+    { field: "is_val", header: "Thẩm Định / Thu Hồi", body: ValidationBodyTemplate, style: { width: '6rem', maxWidth: '6rem', ...longTextStyle } },
 
     { field: "weight_dates", header: "Ngày có NL", sortable: true, body: weightPBodyTemplate },
     { field: "allow_weight_before_date", header: "Ngày Được Cân", sortable: true, body: allowWeightBeforeDateTemplate },

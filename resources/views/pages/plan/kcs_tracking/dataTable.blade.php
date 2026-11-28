@@ -209,7 +209,7 @@
                 <th class="bg-light" style="min-width: 110px;">Thị Trường</th>
                 <th class="bg-light" style="min-width: 150px;">Quy Cách</th>
                 <th class="bg-light" style="min-width: 100px;">Cỡ Lô</th>
-                <th class="bg-light" style="min-width: 70px;">Lô TĐ</th>
+                <th class="bg-light" style="min-width: 110px;">Lô Thẩm Định / Thu Hồi</th>
                 <th class="bg-light" style="min-width: 100px;"
                     title="Ngày dự kiến KCS trên Kế Hoạch Sản Xuất (plan_master.expected_date), chỉ xem.">
                     Ngày Dự Kiến KCS</th>
@@ -346,9 +346,7 @@
                         {{ number_format((float) $data->batch_qty, 0, ',', '.') }} {{ $data->unit_batch_qty }}
                     </td>
                     <td class="text-center align-middle">
-                        @if ($data->is_val)
-                            <span class="badge badge-info">TĐ</span>
-                        @endif
+                        <x-lot-flags :val="$data->is_val" :ret="$data->excess_pro_return_lot" />
                     </td>
                     <td class="text-center align-middle">
                         {{ $data->expected_date ? \Carbon\Carbon::parse($data->expected_date)->format('d/m/Y') : '' }}

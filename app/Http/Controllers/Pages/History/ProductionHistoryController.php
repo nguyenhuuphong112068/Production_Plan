@@ -54,13 +54,15 @@ class ProductionHistoryController extends Controller
                 'room.code as room_code',
                 'room.stage as stage',
                 DB::raw("COALESCE(plan_master.actual_batch, plan_master.batch) AS batch"),
+                'plan_master.actual_batch',
                 'plan_master.expected_date',
                 'plan_master.is_val',
+                'plan_master.excess_pro_return_lot',
                 'finished_product_category.intermediate_code',
                 'finished_product_category.finished_product_code',
                 'finished_product_category.batch_qty',
                 'finished_product_category.unit_batch_qty',
-                'market.name as market',
+                'market.code as market',
                 'product_name.name as name',
                 'quota_maintenance.inst_id as instrument_code',
                 DB::raw("
@@ -91,6 +93,25 @@ class ProductionHistoryController extends Controller
         }
 
         $datas = $query->get();
+
+        // Sản lượng theo từng khoảng thời gian (mỗi lần xác nhận ở trang Xác Nhận Hoàn Thành là 1 dòng yields).
+        // BĐCM = start sớm nhất của các lần xác nhận (thời điểm bắt đầu tạo ra sản lượng).
+        $yieldDetails = collect();
+        foreach ($datas->pluck('id')->chunk(1000) as $ids) {
+            $yieldDetails = $yieldDetails->merge(
+                DB::table('yields')
+                    ->whereIn('stage_plan_id', $ids->all())
+                    ->select('stage_plan_id', 'start', 'end', 'yield')
+                    ->orderBy('start')
+                    ->get()
+            );
+        }
+        $yieldDetails = $yieldDetails->groupBy('stage_plan_id');
+        foreach ($datas as $item) {
+            $rows = $yieldDetails->get($item->id, collect());
+            $item->yield_rows = $rows->filter(fn($r) => $r->start && $r->end)->values();
+            $item->yield_start = $item->yield_rows->min('start');
+        }
 
         // Fetch instrument names for stage 8
         if ($main_type === 'maintenance') {

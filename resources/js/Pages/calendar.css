@@ -442,51 +442,27 @@ input:checked + .slider:before {
   background: #0ea5e9;
 }
 
-/* Nhãn loại lịch cân phía trên bên trái thanh lịch cân (weighKindClass trong Plugins/WeighAssist):
-   NL PC / NL THT (Cân NL), Nang rỗng / NL BP / NL ĐG (Cân NL khác). Dùng ::before như huy hiệu ⚖
-   (huy hiệu ⚖ chỉ gắn vào lô công đoạn sau, không bao giờ vào lịch cân nên không đụng nhau). */
+/* Hàng nhãn treo phía trên bên trái khối (div .fc-hang-badges gắn ở eventDidMount, FullCalender.jsx),
+   các nhãn xếp nối nhau nên không đè:
+   - loại lịch cân (weighKindClass, Plugins/WeighAssist): NL PC / NL THT, Nang rỗng / NL BP / NL ĐG
+   - thị trường của khối Đóng gói (CĐ 7)
+   - "Thu hồi dư phẩm" (plan_master.excess_pro_return_lot) ở mọi công đoạn.
+   Không dùng ::before / ::after vì đã dành cho huy hiệu ⚖ và tick Lead. */
+.fc-event.fc-hang-kind,
 .fc-event.fc-weigh-kind {
   overflow: visible;
 }
 
-.fc-event.fc-weigh-kind::before {
+.fc-event .fc-hang-badges {
   position: absolute;
   top: -11px;
   left: 2px;
-  height: 14px;
-  padding: 0 4px;
   display: flex;
-  align-items: center;
-  gap: 2px;
-  box-sizing: border-box;
-  border-radius: 7px;
-  border: 1px solid #ffffff;
-  color: #ffffff;
-  font-size: 9.5px;
-  font-weight: 700;
-  line-height: 1;
-  white-space: nowrap;
-  box-shadow: 0 0 2px rgba(0, 0, 0, .5);
-  pointer-events: none;
+  gap: 3px;
   z-index: 29;
 }
 
-.fc-event.fc-weigh-kind-pc::before { content: "🧪 NL PC"; background: #1d4ed8; }
-.fc-event.fc-weigh-kind-tht::before { content: "🧪 NL THT"; background: #1d4ed8; }
-.fc-event.fc-weigh-kind-nang::before { content: "💊 Nang rỗng"; background: #7e22ce; }
-.fc-event.fc-weigh-kind-bp::before { content: "🖌️ NL BP"; background: #be185d; }
-.fc-event.fc-weigh-kind-dg::before { content: "📦 NL ĐG"; background: #475569; }
-
-/* Nhãn thị trường của khối Đóng gói (CĐ 7): cùng vị trí / kiểu với nhãn loại NL của lịch cân ở trên.
-   Phần tử .fc-market-badge gắn vào khung sự kiện ở eventDidMount (FullCalender.jsx). */
-.fc-event.fc-market-kind {
-  overflow: visible;
-}
-
-.fc-event .fc-market-badge {
-  position: absolute;
-  top: -11px;
-  left: 2px;
+.fc-event .fc-hang-badge {
   height: 14px;
   padding: 0 4px;
   display: flex;
@@ -495,15 +471,21 @@ input:checked + .slider:before {
   box-sizing: border-box;
   border-radius: 7px;
   border: 1px solid #ffffff;
-  background: #059669;
   color: #ffffff;
   font-size: 9.5px;
   font-weight: 700;
   line-height: 1;
   white-space: nowrap;
   box-shadow: 0 0 2px rgba(0, 0, 0, .5);
-  z-index: 29;
 }
+
+.fc-hang-badge.fc-weigh-kind-pc,
+.fc-hang-badge.fc-weigh-kind-tht { background: #1d4ed8; }
+.fc-hang-badge.fc-weigh-kind-nang { background: #7e22ce; }
+.fc-hang-badge.fc-weigh-kind-bp { background: #be185d; }
+.fc-hang-badge.fc-weigh-kind-dg { background: #475569; }
+.fc-hang-badge.fc-market-badge { background: #059669; }
+.fc-hang-badge.fc-return-badge { background: #dc2626; }
 
 /* Cờ quốc gia trong nhãn thị trường (gói flag-icons, tỉ lệ 4:3) */
 .fc-market-badge .fc-market-flag {
@@ -513,10 +495,10 @@ input:checked + .slider:before {
   box-shadow: 0 0 0 0.5px rgba(0, 0, 0, .35);
 }
 
-/* Bật "⚖ Lô cần cân": huy hiệu ⚖ vắt góc trên trái, đẩy nhãn thị trường sang phải cho khỏi đè */
-.fc-event.fc-weigh-need .fc-market-badge,
-.fc-event.fc-weigh-planned .fc-market-badge,
-.fc-event.fc-weigh-drafted .fc-market-badge {
+/* Bật "⚖ Lô cần cân": huy hiệu ⚖ vắt góc trên trái, đẩy hàng nhãn treo sang phải cho khỏi đè */
+.fc-event.fc-weigh-need .fc-hang-badges,
+.fc-event.fc-weigh-planned .fc-hang-badges,
+.fc-event.fc-weigh-drafted .fc-hang-badges {
   left: 8px;
 }
 

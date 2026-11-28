@@ -753,6 +753,7 @@ class SchedualController extends Controller
                 'plan_master.percent_parkaging',
 
                 'plan_master.is_val',
+                'plan_master.excess_pro_return_lot',
                 'plan_master.level',
                 'intermediate_category.quarantine_total',
 
@@ -1320,6 +1321,24 @@ class SchedualController extends Controller
         $events = $otherStages->concat($groupedWeighing)->values();
 
         $percentMap = $event_plans->pluck('percent_parkaging', 'id')->toArray();
+        // Lô thu hồi dư phẩm (plan_master.excess_pro_return_lot): badge treo "Thu hồi" trên mọi công đoạn.
+        // Khối cân gộp nhiều lô có id "12,13,14-main..." → là lô thu hồi khi có ít nhất 1 lô thu hồi.
+        $returnPlanIds = $event_plans->filter(fn($p) => (int) ($p->excess_pro_return_lot ?? 0) === 1)
+            ->pluck('id')->flip()->all();
+        $events = $events->map(function ($event) use ($returnPlanIds) {
+            $isObj = is_object($event);
+            $cleaning = $isObj ? ($event->is_clearning ?? false) : ($event['is_clearning'] ?? false);
+            $id = (string) ($isObj ? $event->id : $event['id']);
+            $ids = explode(',', strstr($id, '-', true) ?: $id);
+            $isReturn = !$cleaning && !empty($returnPlanIds)
+                && collect($ids)->contains(fn($i) => isset($returnPlanIds[(int) $i]));
+            if ($isObj) {
+                $event->is_return_lot = $isReturn;
+            } else {
+                $event['is_return_lot'] = $isReturn;
+            }
+            return $event;
+        });
         $events = $events->map(function ($event) use ($percentMap) {
             $plan_id = is_object($event) ? ($event->plan_id ?? null) : ($event['plan_id'] ?? null);
             if ($plan_id && isset($percentMap[$plan_id])) {
@@ -2007,6 +2026,7 @@ class SchedualController extends Controller
                 'plan_master.expected_date',
                 'plan_master.responsed_date',
                 'plan_master.is_val',
+                'plan_master.excess_pro_return_lot',
                 'plan_master.note',
                 'plan_master.level',
                 'plan_master.after_weigth_date',
@@ -2359,6 +2379,8 @@ class SchedualController extends Controller
                     // Badge thị trường trên thanh Đóng gói (CĐ 7)
                     'market_code' => $first->stage_code == 7 ? ($runPlans->pluck('market')->filter()->unique()->implode(', ') ?: null) : null,
                     'market_flags' => $first->stage_code == 7 ? MarketFlag::urls($runPlans->pluck('market')->filter()->unique()->implode(', ')) : [],
+                    // Badge "Thu hồi" (lô thu hồi dư phẩm), không gắn cho thanh vệ sinh sau BT
+                    'is_return_lot' => !$cleaningAfter && $runPlans->contains(fn($p) => !empty($p->excess_pro_return_lot)),
                     'received_at' => $received->format('H:i d/m'),
                     'display' => 'block',
                 ];
@@ -2393,6 +2415,7 @@ class SchedualController extends Controller
                     'nextcessor_code' => $first->nextcessor_code,
                     'market_code' => $first->stage_code == 7 ? ($group->pluck('market')->filter()->unique()->implode(', ') ?: null) : null,
                     'market_flags' => $first->stage_code == 7 ? MarketFlag::urls($group->pluck('market')->filter()->unique()->implode(', ')) : [],
+                    'is_return_lot' => $group->contains(fn($p) => !empty($p->excess_pro_return_lot)),
                     'received_at' => Carbon::parse($first->actual_start)->format('H:i d/m'),
                     'released_at' => Carbon::parse($first->released_at)->format('H:i d/m'),
                     'display' => 'block',

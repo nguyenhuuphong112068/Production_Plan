@@ -1,7 +1,16 @@
 <p>
-    Tra cứu các lô <b>đã hoàn thành</b>. Chọn khoảng ngày (<b>From / To</b>) và <b>Công đoạn</b>. Bảng: Mã / Tên sản phẩm, Cỡ lô, Ngày
-    dự kiến KCS, Lô thẩm định, Phòng, Thời gian sản xuất, Thời gian vệ sinh, Sản lượng TT, Phòng BT (biệt trữ), Ghi chú.
+    Tra cứu các lô <b>đã hoàn thành</b>. Chọn khoảng ngày (<b>From / To</b>) và <b>Công đoạn</b>. Bảng: Mã / Tên sản phẩm (kèm mã thị trường), Số lô
+    (ưu tiên số lô thực tế, tô xanh), Cỡ lô, Lô thẩm định / thu hồi (badge <b>Thẩm định</b> / <b>Thu hồi dư phẩm</b>), Phòng, Thời gian sản xuất, Thời gian vệ sinh, Sản lượng TT, Phòng BT (biệt trữ), Ghi chú.
 </p>
+<p>Các mốc thời gian hiển thị bằng nhãn màu giống trang <b>Xác Nhận Hoàn Thành</b> (chỉ xem, không sửa):</p>
+<ul>
+    <li><b>Thời gian sản xuất</b>: <b>Nhận phòng</b> (lúc nhận phòng sản xuất), <b>BĐCM</b> (bắt đầu tạo ra sản lượng = lần xác
+        nhận sản lượng đầu tiên), <b>Kết thúc lô</b>.</li>
+    <li><b>Thời gian vệ sinh</b>: <b>BĐVS</b> (bắt đầu vệ sinh), <b>Trả phòng</b> (kết thúc vệ sinh).</li>
+    <li><b>Sản lượng TT</b>: liệt kê sản lượng của từng lần xác nhận theo khoảng thời gian, ví dụ
+        <code>(1) 06:00 18/11 - 13:20 18/11 = 450</code>, và dòng <b>Tổng</b>.</li>
+</ul>
+<p>Mốc nào chưa có dữ liệu hiển thị <i>Chưa ghi nhận</i>.</p>
 @include('pages.userGuide.shared.shot', ['src' => 'img/userGuide/lichSu/lich-su-san-xuat.png', 'caption' => 'Màn hình Lịch Sử › Lịch Sử Sản Xuất'])
 
 <h3>Trả về (Return)</h3>

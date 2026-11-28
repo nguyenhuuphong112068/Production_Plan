@@ -117,7 +117,10 @@
                         @endif
                         {{ $title }}
                         @if ($plan->is_val)
-                            <span class="exec-live-tag" title="Lô thẩm định"><i class="fas fa-check-circle"></i> TĐ</span>
+                            <span class="exec-live-tag" title="Lô thẩm định">Thẩm định</span>
+                        @endif
+                        @if (!empty($plan->excess_pro_return_lot))
+                            <span class="exec-live-tag" title="Lô thu hồi dư phẩm">Thu hồi dư phẩm</span>
                         @endif
                     </div>
                     @if ($maint)

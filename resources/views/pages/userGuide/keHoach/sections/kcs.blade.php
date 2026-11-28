@@ -31,7 +31,7 @@
 
 <h3>Cột phần mềm tính</h3>
 <ul>
-    <li><b>Ngày Dự Kiến KCS</b> (sau cột Lô TĐ): lấy từ Ngày dự kiến KCS của lô trên Kế Hoạch Sản Xuất, chỉ xem, không sửa ở đây.</li>
+    <li><b>Ngày Dự Kiến KCS</b> (sau cột <i>Lô Thẩm Định / Thu Hồi</i> - badge <b>Thẩm định</b> / <b>Thu hồi dư phẩm</b>): lấy từ Ngày dự kiến KCS của lô trên Kế Hoạch Sản Xuất, chỉ xem, không sửa ở đây.</li>
     <li><b>Ngày Nhập Kho</b> (trước cột Ngày KCS): lấy từ MMS - ngày kho tạo phiếu nhập kho thành phẩm, tra theo Mã TP + Số lô
         thực tế; có cả lô đã nhập kho nhưng chưa KCS. Lô nhập kho nhiều đợt lấy phiếu đầu tiên; lô chia thì mỗi phần lấy phiếu
         có số lượng gần nhất (cùng quy tắc với Ngày KCS). Rê chuột vào ô để xem số phiếu và số lượng nhập kho. Chỉ xem, không sửa.</li>
