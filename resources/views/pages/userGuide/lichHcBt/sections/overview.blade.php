@@ -17,7 +17,6 @@
         <tbody>
             <tr><td>Người sắp lịch bảo trì</td><td>Sắp lịch, kéo thả, lưu 💾, xoá 🗑️, xác nhận hoàn thành ✅, Submit 📤.</td></tr>
             <tr><td>Người duyệt bảo trì</td><td>Duyệt 👌 các lịch bảo trì đã chọn.</td></tr>
-            <tr><td>Người tạo đánh giá</td><td>Tạo đánh giá ⭐ cho công việc BT-HC không có trên lịch.</td></tr>
             <tr><td>Tài khoản khác</td><td>Chỉ xem.</td></tr>
         </tbody>
     </table>

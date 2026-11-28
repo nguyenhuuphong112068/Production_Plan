@@ -224,8 +224,19 @@ class SchedualFinisedController extends Controller
         {
                 $start = $request->start ? Carbon::parse($request->start) : null;
                 $end   = $request->end ? Carbon::parse($request->end) : null;
+                $resourceId = $request->resourceId;
 
-                $conflict = $this->overlapConflict($request->resourceId, $request->id, $start, $end);
+                // Giống store(): lô đã Nhận phòng thì BĐSX + phòng lấy từ CSDL (có giây). Ô datetime-local chỉ tới phút,
+                // lô nhận phòng ngay sau khi lô trước trả (10:52:14 vs trả 10:52:02) sẽ bị cắt thành 10:52:00 → báo trùng giả.
+                if ($request->id && $start && $request->pairStart !== 'start_clearning') {
+                        $current = DB::table('stage_plan')->where('id', $request->id)->first(['resourceId', 'actual_start']);
+                        if ($current && $current->actual_start) {
+                                $start = Carbon::parse($current->actual_start);
+                                $resourceId = $current->resourceId ?: $resourceId;
+                        }
+                }
+
+                $conflict = $this->overlapConflict($resourceId, $request->id, $start, $end);
 
                 return response()->json([
                         'overlap'  => (bool) $conflict,

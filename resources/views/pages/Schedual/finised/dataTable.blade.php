@@ -678,6 +678,7 @@
                 _token: "{{ csrf_token() }}",
                 id: id,
                 resourceId: resourceId,
+                pairStart: inputEl.dataset.pairStart,
                 start: start,
                 end: end
             },

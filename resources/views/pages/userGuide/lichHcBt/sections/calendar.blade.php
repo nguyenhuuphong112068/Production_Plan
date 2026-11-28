@@ -13,7 +13,6 @@
             <tr><td>ℹ️</td><td>Ẩn / hiện chú thích màu.</td></tr>
             <tr><td>🏭</td><td>Ẩn / hiện lịch sản xuất (để thấy khoảng trống của phòng).</td></tr>
             <tr><td>👥</td><td>Ẩn / hiện phân công nhân sự tại từng phòng.</td></tr>
-            <tr><td>⭐</td><td>Tạo đánh giá cho công việc bảo trì - hiệu chuẩn không có trên lịch. Bấm vào một lịch để đánh giá lịch đó.</td></tr>
             <tr><td>💾</td><td>Lưu thay đổi kéo thả (hoặc <span class="ug-key">Ctrl</span> + <span class="ug-key">S</span>).</td></tr>
             <tr><td>🗑️</td><td>Xoá các lịch đang chọn.</td></tr>
             <tr><td>✅</td><td>Xác nhận hoàn thành (tạm thời) các lịch đang chọn.</td></tr>

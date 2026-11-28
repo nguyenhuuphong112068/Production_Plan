@@ -160,7 +160,7 @@ class GuidePermissions
             ['Lịch HC-BT Chart', 'Xem biểu đồ', ['rule' => self::ALL]],
             ['Lịch HC-BT Chart', 'Tải danh sách chờ, sắp lịch (tay và tự động)', ['perm' => 'plan_maintenance_scheduler']],
             ['Lịch HC-BT Chart', 'Duyệt lịch', ['perm' => 'plan_maintenance_accept']],
-            ['Lịch HC-BT Chart', 'Đánh giá công tác HC-BT', ['perm' => 'maintenance_assessment_create']],
+            ['Lịch HC-BT Chart', 'Mở trang Đánh giá công tác HC-BT (đã bỏ nút tạo đánh giá ⭐ trên lịch)', ['perm' => 'maintenance_assessment_create']],
             ['Lịch HC-BT Chart', 'Xem đánh giá', ['perm' => 'maintenance_assessment_view']],
             ['Lịch HC-BT Chart', 'Cập nhật nhân sự đánh giá', ['perm' => 'maintenance_assessment_update_employees']],
             ['Lịch HC-BT Chart', 'Nút Xong trên danh sách chờ', ['rule' => 'Nhóm quyền chính Admin.', 'roles' => ['Admin']]],
