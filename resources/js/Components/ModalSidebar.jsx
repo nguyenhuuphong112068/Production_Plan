@@ -29,6 +29,10 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
   const [tableData, setTableData] = useState([]);
   // Tooltip phòng đã định mức khi rê chuột vào 1 dòng lịch chờ sắp
   const [roomHover, setRoomHover] = useState(null);
+  // DataTable có onPage → PrimeReact không tự giữ first/rows, phải tự quản lý.
+  const [pageFirst, setPageFirst] = useState(0);
+  const [pageRows, setPageRows] = useState(25);
+  useEffect(() => { setPageFirst(0); }, [stageFilter, percentShow, searchTerm]);
   const [showModalCreate, setShowModalCreate] = useState(false);
   const [showModalQuota, setShowModalQuota] = useState(false);
   const [orderPlan, setOrderPlan] = useState({ checkedClearning: false, title: null, batch: "NA", level: 1 });
@@ -199,12 +203,26 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
         style: { ...col.style, width: columnWidths100[col.field] || 'auto', maxWidth: columnWidths100[col.field] || 'auto' }
       }));
 
+    } else if (percentShow === "30%" && stageFilter === 9) {
+      visibleCols = allColumns.filter(col => ["name", "batch", "note"].includes(col.field));
     } else if (percentShow === "30%") {
       visibleCols = allColumns.filter(col => ["name", "batch", "is_val", "expected_date", "market", "level"].includes(col.field))
         .map(col => ({
           ...col,
           style: { ...col.style, width: columnWidths30[col.field] || 'auto', maxWidth: columnWidths30[col.field] || 'auto' }
         }));
+    }
+
+    // 9. Sự kiện khác chỉ có 3 cột: Tên sự kiện rộng, Số lô hẹp, Ghi chú lấp phần còn lại.
+    if (stageFilter === 9) {
+      const w9 = percentShow === "100%"
+        ? { name: '28rem', batch: '10rem', note: 'auto' }
+        : { name: '220px', batch: '90px', note: '220px' };
+      visibleCols = visibleCols.map(col => ({
+        ...col,
+        header: col.field === 'name' ? 'Sự kiện' : col.header,
+        style: { ...col.style, width: w9[col.field], minWidth: w9[col.field] === 'auto' ? '15rem' : w9[col.field], maxWidth: w9[col.field] === 'auto' ? 'none' : w9[col.field] }
+      }));
     }
 
     setVisibleColumns(visibleCols);
@@ -1988,13 +2006,13 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
               setRoomHover({ row: e.data, x: e.originalEvent.clientX, top: rect.top, bottom: rect.bottom });
             }}
             onRowMouseLeave={() => setRoomHover(null)}
-            onPage={() => setRoomHover(null)}
+            onPage={(e) => { setRoomHover(null); setPageFirst(e.first); setPageRows(e.rows); }}
 
 
             size="medium"
-            paginator paginatorPosition="bottom" rows={20} rowsPerPageOptions={[5, 10, 25, 50, 100, 500, 1000]}
+            paginator paginatorPosition="bottom" first={pageFirst} rows={pageRows} rowsPerPageOptions={[5, 10, 25, 50, 100, 500, 1000]}
             scrollable scrollHeight="calc(100vh - 200px)"
-            tableStyle={{ minWidth: percentShow === '100%' ? '160rem' : '1000px' }}
+            tableStyle={{ minWidth: stageFilter === 9 ? (percentShow === '100%' ? '60rem' : '560px') : (percentShow === '100%' ? '160rem' : '1000px') }}
 
             columnResizeMode="expand" resizableColumns
 
@@ -2028,15 +2046,15 @@ const ModalSidebar = ({ visible, onClose, waitPlan, setPlan, percentShow,
                     <div>{rowData.id}</div>
                   </div>
                 )}
-                style={{ width: "60px", textAlign: "center" }}
-              />) : ""}
+                style={{ width: "70px", minWidth: "70px", textAlign: "center" }}
+              />) : null}
 
 
 
-            <Column selectionMode="multiple" headerStyle={{ width: '3em' }} />
+            <Column selectionMode="multiple" headerStyle={{ width: '3em' }} style={{ width: '3rem', minWidth: '3rem' }} />
 
             {percentShow === "100%" ? (
-              <Column rowReorder style={{ width: '3rem' }} />) : (
+              <Column rowReorder style={{ width: '3rem', minWidth: '3rem' }} />) : (
 
               /* Cột Kéo thả */
               <Column

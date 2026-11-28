@@ -104,7 +104,12 @@
                         showConfirmButton: false
                     });
                 }
-                const what = receive ?
+                const what = r.maintenance ? (receive ?
+                        `Đã đẩy <b>${r.count}</b> lô ra sau giờ dự kiến trả phòng bảo trì (thời lượng lý thuyết); khi Trả phòng lịch được chỉnh lại theo giờ thực tế.<br>` :
+                        `Bảo trì trả phòng ${r.delta < 0 ? 'sớm' : 'trễ'} <b>${Math.abs(r.delta)} phút</b> so với lịch lý thuyết.<br>Đã tịnh tuyến <b>${r.count}</b> lô liên quan.<br>`) :
+                    receive && !r.delta ?
+                    `Đã đẩy <b>${r.count}</b> lô đang đè lên giờ giữ phòng ra sau giờ dự kiến trả phòng (thời lượng lý thuyết); khi Trả phòng lịch được chỉnh lại theo giờ thực tế.<br>` :
+                    receive ?
                     `Lô bắt đầu trễ <b>${Math.abs(r.delta)} phút</b> so với lịch lý thuyết.<br>Đã đẩy lịch <b>${r.count}</b> lô liên quan theo giờ kết thúc dự kiến (thời lượng lý thuyết); khi Trả phòng lịch được chỉnh lại theo giờ thực tế.<br>` :
                     `Lô hoàn thành ${r.delta < 0 ? 'sớm' : 'trễ'} <b>${Math.abs(r.delta)} phút</b> so với lịch lý thuyết.<br>Đã tịnh tuyến <b>${r.count}</b> lô liên quan.<br>`;
                 Swal.fire({

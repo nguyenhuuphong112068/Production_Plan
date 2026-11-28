@@ -22,7 +22,8 @@
         Gantt, xem <a href="#sap-lich-can">Sắp lịch cân bán tự động</a>). Ở phòng Đóng gói, sau mã thị trường có cờ quốc gia
         (thị trường không phải quốc gia như Tender, ALDE... không có cờ).</li>
     <li>Chọn lô / lịch rồi bấm <b>Nhận phòng</b>. Phòng chuyển sang Bận. Nhận phòng trễ so với lịch thì các lô sau được đẩy trễ
-        theo (xem <a href="#tinh-tuyen-lich">Tịnh tuyến lịch</a>).</li>
+        theo; Nhận phòng BT thì lô sản xuất đang đè lên khoảng bảo trì dự kiến được đẩy ra sau (xem
+        <a href="#tinh-tuyen-lich">Tịnh tuyến lịch</a>).</li>
 </ol>
 
 <h3>Trả phòng</h3>

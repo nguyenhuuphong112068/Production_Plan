@@ -814,7 +814,7 @@ class RoomOccupancyService
             throw new ProductionExecutionException('❌ Chọn lô / lịch cần nhận phòng');
         }
 
-        [$message, $deparmentCode, $productionIds] = DB::transaction(function () use ($roomId, $stagePlanIds, $mode) {
+        [$message, $deparmentCode, $productionIds, $receivedMaintenance] = DB::transaction(function () use ($roomId, $stagePlanIds, $mode) {
             [$room, $state, $held] = $this->lockState($roomId, [self::READY, self::BUSY]);
             // Phòng Đóng Gói Bận với lô chia thị trường: nhận thêm (1 hay nhiều) lô cùng nhóm main_parkaging_id
             $split = false;
@@ -888,15 +888,24 @@ class RoomOccupancyService
                     . (in_array($id, $assigned) ? self::ASSIGNED_MARK : ''));
             }
 
+            // Lịch bảo trì (28/11/2026): tịnh tuyến 1 lần theo dòng có giờ dự kiến trả phòng muộn nhất (cùng giờ nhận phòng)
+            $maintenanceSource = $maintenance
+                ? DB::table('stage_plan')->whereIn('id', $stagePlanIds)->get()
+                    ->sortByDesc(fn($p) => ScheduleRerouteService::maintenanceProjectedFinish($p))->take(1)->pluck('id')->all()
+                : [];
+
             return [
                 '✅ Đã nhận phòng ' . $room->code . ($overlap ? ' (gói đầu)' : '') . ($split ? ' (thêm lô chia thị trường)' : '') . ' lúc ' . $now->format('H:i') . ' cho ' . $labels->implode(', '),
                 $room->deparment_code,
-                $maintenance ? [] : $plans->pluck('id')->all(),
+                $maintenance ? $maintenanceSource : $plans->pluck('id')->all(),
+                $maintenance,
             ];
         });
 
-        // Bắt đầu trễ từ 30 phút: đẩy lịch các lô sau theo giờ kết thúc dự kiến (công tắc tịnh tuyến phải bật)
-        $reroute = $this->rerouteAfter($productionIds, $deparmentCode, 'rerouteOnReceive', self::REROUTE_RECEIVE_AUDIT);
+        // Lô sản xuất bắt đầu trễ từ 30 phút: đẩy lịch các lô sau theo giờ kết thúc dự kiến; lịch bảo trì: đẩy lô đè lên
+        // khoảng Nhận phòng → dự kiến trả phòng của bảo trì ra sau (công tắc tịnh tuyến phải bật)
+        $reroute = $this->rerouteAfter($productionIds, $deparmentCode,
+            $receivedMaintenance ? 'rerouteOnMaintenanceReceive' : 'rerouteOnReceive', self::REROUTE_RECEIVE_AUDIT);
 
         return ['message' => $message, 'reroute' => $reroute && ($reroute['count'] || $reroute['error']) ? $reroute : null];
     }
@@ -1037,11 +1046,14 @@ class RoomOccupancyService
                 $this->openPlans([$room->id], $this->releasedAt([$room->id]))->get($room->id, collect())->pluck('id')->all()
             )->values());
 
-            // Tịnh tuyến: Trả phòng lô sản xuất; Trả phòng VS sau BT thì lấy 1 dòng bảo trì (thiết bị có giờ kết thúc vệ sinh lý
-            // thuyết muộn nhất) làm lô gốc. Trả phòng phần bảo trì (actual_end) không tịnh tuyến.
-            $rerouteIds = $state === self::BUSY
-                ? $plans->where('maintenance', false)->pluck('id')->all()
-                : $plans->sortByDesc(fn($p) => $p->end_clearning ?? $p->end)->take(1)->pluck('id')->all();
+            // Tịnh tuyến: Trả phòng lô sản xuất; Trả phòng lần cuối của lịch bảo trì (VS sau BT, hoặc HC không vệ sinh) thì
+            // lấy 1 dòng bảo trì (giờ kết thúc lý thuyết muộn nhất) làm lô gốc. Trả phòng phần bảo trì còn chờ vệ sinh không
+            // tịnh tuyến (lô sau đã được đẩy lúc Nhận phòng bảo trì / quét quá giờ, 28/11/2026).
+            $maintenanceFinal = $plans->isNotEmpty() && $plans->every(fn($p) => $p->maintenance)
+                && ($state === self::CLEANING || (!$cleanAfterHc && $plans->every(fn($p) => !$p->title_clearning)));
+            $rerouteIds = $maintenanceFinal
+                ? $plans->sortByDesc(fn($p) => $p->end_clearning ?? $p->end)->take(1)->pluck('id')->all()
+                : $plans->where('maintenance', false)->pluck('id')->all();
 
             return [
                 '✅ Đã trả phòng ' . $room->code . ' lúc ' . $now->format('H:i')
@@ -1050,7 +1062,7 @@ class RoomOccupancyService
                     . ($after === self::CLEAN_WAIT ? ' · phòng chuyển sang ' . self::STATE_LABELS[self::CLEAN_WAIT] : '')
                     . ($after === self::BUSY ? ' · phòng vẫn Bận với lô gói đầu' : ''),
                 $room->deparment_code,
-                [$rerouteIds, $state === self::BUSY ? 'rerouteOnRelease' : 'rerouteOnMaintenanceRelease'],
+                [$rerouteIds, $maintenanceFinal ? 'rerouteOnMaintenanceRelease' : 'rerouteOnRelease'],
             ];
         });
 
@@ -1070,8 +1082,9 @@ class RoomOccupancyService
             return null;
         }
 
-        $result = ['trigger' => $method === 'rerouteOnReceive' ? 'receive' : 'release', 'count' => 0, 'delta' => 0, 'cleaning_moved' => false, 'error' => false,
-            'maintenance' => $method === 'rerouteOnMaintenanceRelease'];
+        $result = ['trigger' => in_array($method, ['rerouteOnReceive', 'rerouteOnMaintenanceReceive'], true) ? 'receive' : 'release',
+            'count' => 0, 'delta' => 0, 'cleaning_moved' => false, 'error' => false,
+            'maintenance' => in_array($method, ['rerouteOnMaintenanceRelease', 'rerouteOnMaintenanceReceive'], true)];
         foreach ($stagePlanIds as $id) {
             try {
                 $r = $method === 'rerouteOnRelease'

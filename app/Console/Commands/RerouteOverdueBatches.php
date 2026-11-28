@@ -205,6 +205,8 @@ class RerouteOverdueBatches extends Command
     /**
      * Bước 1: phòng đang mở bởi lô sản xuất đã quá giờ dự kiến trả phòng từ 30 phút (ScheduleRerouteService::overrunHolds) →
      * coi lô xong lúc giờ quét, chỉ đẩy lui các lô sau trên phòng và công đoạn sau (rerouteOverrun). Lô đang chạy giữ nguyên.
+     * Phòng đang mở bởi lịch BT/HC/TI (28/11/2026): đẩy lô đè lên khoảng Nhận phòng → dự kiến trả phòng của bảo trì (quá giờ
+     * thì tới giờ quét), kể cả khi chưa quá giờ.
      *
      * @return array{aborted: bool, completed: bool, rooms: string[], shifted: int}
      */
@@ -261,7 +263,7 @@ class RerouteOverdueBatches extends Command
                 $stamp,
                 $department,
                 $rooms[$roomId],
-                $this->label($hold['id']),
+                ($hold['maintenance'] ? '[BT] ' : '') . $this->label($hold['id']),
                 $hold['id'],
                 Carbon::createFromTimestamp($hold['projected'], date_default_timezone_get())->format('H:i d/m'),
                 $r['delta_minutes'],

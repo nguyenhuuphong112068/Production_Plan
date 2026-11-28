@@ -122,6 +122,26 @@ class ScheduleRerouteService
 
     public const OVERRUN_REASON_PREFIX = 'Tịnh tuyến tự động: chưa Trả phòng quá giờ dự kiến';
 
+    /** Lần quét đẩy lô nhận lệch thứ tự đè lên khoảng giữ phòng của lô đang chạy (chưa quá giờ, 28/11/2026) */
+    public const HELD_REASON_PREFIX = 'Tịnh tuyến tự động: lô đè lên lô đang giữ phòng';
+
+    /**
+     * [Nhận phòng] lịch BT / HC / TI (user duyệt 28/11/2026, thay quy tắc 07/10/2026 "nhận phòng bảo trì không tịnh tuyến"):
+     * phòng bị lịch bảo trì giữ từ Nhận phòng tới giờ dự kiến trả phòng (maintenanceProjectedFinish). Lô sản xuất chưa Nhận
+     * phòng nằm đè lên khoảng đó (kể cả chồng giờ có sẵn trên lịch lý thuyết) bị đẩy ra sau, các lô sau đẩy theo. Chỉ đẩy lui.
+     */
+    public const TRIGGER_MAINTENANCE_RECEIVE = 'maintenance_receive';
+
+    /**
+     * Lệnh quét mỗi giờ với phòng đang mở bởi lịch bảo trì: quá giờ dự kiến trả phòng từ RECEIVE_MIN_LATE_SECONDS thì coi
+     * bảo trì xong lúc giờ quét; chưa quá giờ thì vẫn đẩy lô đang đè lên khoảng bảo trì dự kiến. Chỉ đẩy lui.
+     */
+    public const TRIGGER_MAINTENANCE_OVERRUN = 'maintenance_overrun';
+
+    public const MAINTENANCE_RECEIVE_REASON_PREFIX = 'Tịnh tuyến theo Nhận phòng bảo trì';
+
+    public const MAINTENANCE_OVERRUN_REASON_PREFIX = 'Tịnh tuyến tự động: bảo trì chưa Trả phòng';
+
     public const SOURCE_CLEANING_REASON = 'Dời vệ sinh của chính lô ra sau giờ kết thúc sản xuất thực tế';
 
     /**
@@ -225,33 +245,126 @@ class ScheduleRerouteService
         }
 
         $late = Carbon::parse($source->actual_start)->getTimestamp() - Carbon::parse($source->start)->getTimestamp();
-        if ($late < self::RECEIVE_MIN_LATE_SECONDS) {
-            return $this->emptyResult();
-        }
-
         $theoryFinish = Carbon::parse($source->end_clearning ?? $source->end)->getTimestamp();
 
-        return $this->run($source, self::TRIGGER_RECEIVE, $theoryFinish + $late);
+        // Trễ dưới 30 phút (kể cả nhận sớm / lệch thứ tự): không đẩy lô sau theo lịch, nhưng lô chưa Nhận phòng đứng TRƯỚC
+        // lô này trên lịch lý thuyết mà đè lên khoảng giữ phòng vẫn bị đẩy ra sau (placeHeldOverlaps, 28/11/2026)
+        return $this->run($source, self::TRIGGER_RECEIVE, $late >= self::RECEIVE_MIN_LATE_SECONDS ? $theoryFinish + $late : $theoryFinish);
     }
 
     /**
-     * [Trả phòng] vệ sinh sau bảo trì (lịch stage_code 8 có vệ sinh): tịnh tuyến 2 chiều các lô sau trên phòng theo giờ
-     * trả phòng (actual_end_clearning) so với giờ kết thúc vệ sinh lý thuyết của lịch bảo trì. Nhận phòng / Trả phòng phần
-     * bảo trì (actual_start / actual_end) không tịnh tuyến (user chọn, 07/10/2026). Lịch bảo trì vẫn là khối cố định.
+     * [Trả phòng] lần cuối của lịch bảo trì (stage_code 8): Trả phòng vệ sinh sau BT (actual_end_clearning), hoặc Trả phòng
+     * lịch không có vệ sinh (HC, đã xác nhận hoàn thành → actual_end). Tịnh tuyến 2 chiều các lô sau trên phòng theo giờ trả
+     * phòng, so với giờ kết thúc mà các lô đã được đẩy theo lúc Nhận phòng / quét quá giờ (maintenanceBaseline, 28/11/2026);
+     * chưa từng đẩy thì so với giờ kết thúc lý thuyết. Trả phòng phần bảo trì còn chờ vệ sinh thì không tịnh tuyến.
      *
      * @return array{run_code: ?string, delta_minutes: int, changes: array, source_cleaning_moved: bool}
      */
     public function rerouteOnMaintenanceRelease(int $stagePlanId): array
     {
         $source = DB::table('stage_plan')->where('id', $stagePlanId)->first();
-        if (! $source || (int) $source->stage_code !== self::MAINTENANCE_STAGE || ! $source->start || ! $source->end
-            || ! $source->actual_end_clearning) {
+        if (! $source || (int) $source->stage_code !== self::MAINTENANCE_STAGE || ! $source->start || ! $source->end) {
+            return $this->emptyResult();
+        }
+        $released = $source->actual_end_clearning ?? ((int) $source->finished === 1 ? $source->actual_end : null);
+        if (! $released) {
             return $this->emptyResult();
         }
 
-        return $this->run($source, self::TRIGGER_RELEASE, Carbon::parse($source->actual_end_clearning)->getTimestamp());
+        return $this->run($source, self::TRIGGER_RELEASE, Carbon::parse($released)->getTimestamp(), $this->maintenanceBaseline($source));
     }
 
+    /**
+     * [Nhận phòng] lịch bảo trì: đẩy lô chưa Nhận phòng đè lên khoảng Nhận phòng → dự kiến trả phòng của lịch bảo trì.
+     * Nhiều dòng bảo trì nhận cùng lúc: RoomOccupancyService gọi với dòng có giờ dự kiến trả phòng muộn nhất.
+     *
+     * @return array{run_code: ?string, delta_minutes: int, changes: array, source_cleaning_moved: bool}
+     */
+    public function rerouteOnMaintenanceReceive(int $stagePlanId): array
+    {
+        $source = DB::table('stage_plan')->where('id', $stagePlanId)->first();
+        if (! self::isHeldMaintenance($source)) {
+            return $this->emptyResult();
+        }
+
+        return RerouteLock::run($source->deparment_code, function () use ($source) {
+            $fresh = DB::table('stage_plan')->where('id', $source->id)->first();
+            if (! self::isHeldMaintenance($fresh)) {
+                return $this->emptyResult();
+            }
+            $theory = Carbon::parse($fresh->end_clearning ?? $fresh->end)->getTimestamp();
+            $projected = self::maintenanceProjectedFinish($fresh);
+
+            return $this->runMaintenanceUnlocked($fresh, self::TRIGGER_MAINTENANCE_RECEIVE, $theory, $projected);
+        });
+    }
+
+    /** Lịch bảo trì đã Nhận phòng, chưa Trả phòng lần cuối, có phòng và giờ lý thuyết */
+    private static function isHeldMaintenance(?object $row): bool
+    {
+        return $row && (int) $row->stage_code === self::MAINTENANCE_STAGE && (int) $row->active === 1
+            && (int) $row->finished === 0 && $row->actual_start && ! $row->actual_end_clearning
+            && $row->resourceId && $row->start && $row->end;
+    }
+
+    /**
+     * Lô sản xuất (Cân → Đóng gói) đang giữ phòng: đã Nhận phòng (từ mốc RoomOccupancyService::TRACK_FROM), chưa Trả phòng,
+     * chưa hoàn thành, phòng không phải phòng đôi gói đầu ($row->max_parallel nếu có).
+     */
+    public static function isHeldProduction(?object $row): bool
+    {
+        return $row && in_array((int) $row->stage_code, self::OVERDUE_STAGES, true) && (int) $row->active === 1
+            && (int) $row->finished === 0 && $row->actual_start && ! $row->actual_end_clearning
+            && $row->actual_start >= RoomOccupancyService::TRACK_FROM
+            && $row->resourceId && $row->start && $row->end
+            && (int) ($row->max_parallel ?? 1) <= 1;
+    }
+
+    /**
+     * Giờ dự kiến trả phòng (lần cuối) của lịch bảo trì / lô sản xuất đang giữ phòng, theo thời lượng lý thuyết:
+     * - đang vệ sinh sau BT: Nhận phòng vệ sinh + thời lượng vệ sinh;
+     * - đã Trả phòng phần bảo trì, chờ vệ sinh: giờ trả + (KT vệ sinh − KT bảo trì) lý thuyết;
+     * - đang bảo trì: Nhận phòng + (KT vệ sinh (hoặc KT bảo trì) − BĐ) lý thuyết — cùng cách tính thanh "Đang bảo trì" trên Gantt.
+     */
+    public static function maintenanceProjectedFinish(object $row): int
+    {
+        $ts = fn($v) => Carbon::parse($v)->getTimestamp();
+
+        if ($row->actual_start_clearning && $row->start_clearning && $row->end_clearning) {
+            return $ts($row->actual_start_clearning) + max(0, $ts($row->end_clearning) - $ts($row->start_clearning));
+        }
+        if ($row->actual_end) {
+            return $ts($row->actual_end) + ($row->end_clearning ? max(0, $ts($row->end_clearning) - $ts($row->end)) : 0);
+        }
+
+        return $ts($row->actual_start) + max(0, $ts($row->end_clearning ?? $row->end) - $ts($row->start));
+    }
+
+    /**
+     * Giờ kết thúc mà lịch đã được đẩy theo cho lịch bảo trì $source (lần Nhận phòng / quét quá giờ gần nhất chưa hoàn tác,
+     * của chính dòng này hoặc các dòng bảo trì nhận phòng cùng lúc trên cùng phòng). null = chưa đẩy lần nào.
+     */
+    private function maintenanceBaseline(object $source): ?int
+    {
+        $siblings = DB::table('stage_plan')
+            ->where('resourceId', $source->resourceId)
+            ->where('stage_code', self::MAINTENANCE_STAGE)
+            ->where('actual_start', $source->actual_start)
+            ->pluck('id')
+            ->push($source->id)
+            ->unique()
+            ->all();
+
+        $log = DB::table('stage_plan_reroute_log as l')
+            ->join('stage_plan as sp', 'sp.id', '=', 'l.source_stage_plan_id')
+            ->whereIn('l.source_stage_plan_id', $siblings)
+            ->whereNull('l.undone_at')
+            ->where('l.created_at', '>=', $source->actual_start)
+            ->orderByDesc('l.id')
+            ->first(['l.source_delta_minutes', 'sp.end', 'sp.end_clearning']);
+
+        return $log ? Carbon::parse($log->end_clearning ?? $log->end)->getTimestamp() + (int) $log->source_delta_minutes * 60 : null;
+    }
     /**
      * Quét lô quá giờ (lệnh reroute:overdue): lô chưa Nhận phòng mà giờ bắt đầu lý thuyết đã qua từ RECEIVE_MIN_LATE_SECONDS
      * (và không quá OVERDUE_LOOKBACK_SECONDS), ở phòng đang KHÔNG mở (openRoomIds), thì dời CHÍNH lô đó tới giờ quét (mốc 15
@@ -296,13 +409,15 @@ class ScheduleRerouteService
      */
     public function rerouteOverrun(int $stagePlanId): array
     {
-        $source = $this->loadSource($stagePlanId, false);
+        $row = DB::table('stage_plan')->where('id', $stagePlanId)->first();
+        $maintenance = $row && (int) $row->stage_code === self::MAINTENANCE_STAGE;
+        $source = $maintenance ? (self::isHeldMaintenance($row) ? $row : null) : $this->loadSource($stagePlanId, false);
         if (! $source || ! $source->resourceId) {
             return $this->emptyResult();
         }
 
         // Không chờ khóa, như rerouteOverdue
-        return RerouteLock::run($source->deparment_code, function () use ($source) {
+        return RerouteLock::run($source->deparment_code, function () use ($source, $maintenance) {
             // Đọc lại sau khi có khóa: phòng có thể vừa được Trả phòng
             $fresh = DB::table('stage_plan')->where('id', $source->id)->first();
             $now = now()->getTimestamp();
@@ -311,7 +426,15 @@ class ScheduleRerouteService
                 return $this->emptyResult();
             }
 
-            return $this->runUnlocked($fresh, self::TRIGGER_OVERRUN, self::scanSlot($now), $hold['projected']);
+            if ($maintenance) {
+                // Quá giờ dự kiến trả phòng: coi bảo trì xong lúc giờ quét; chưa quá giờ: vẫn đẩy lô đang đè lên khoảng bảo trì
+                $finish = $hold['overrun'] ? max($hold['projected'], self::scanSlot($now)) : $hold['projected'];
+
+                return $this->runMaintenanceUnlocked($fresh, self::TRIGGER_MAINTENANCE_OVERRUN, $hold['projected'], $finish);
+            }
+
+            // Chưa quá giờ: chỉ đẩy lô nhận lệch thứ tự đè lên khoảng giữ phòng (độ lệch 0, không đẩy lô sau)
+            return $this->runUnlocked($fresh, self::TRIGGER_OVERRUN, $hold['overrun'] ? self::scanSlot($now) : $hold['projected'], $hold['projected']);
         }, 0);
     }
 
@@ -319,10 +442,14 @@ class ScheduleRerouteService
      * Phòng đang mở bởi lô sản xuất (Cân → Đóng gói) đã quá giờ dự kiến trả phòng từ RECEIVE_MIN_LATE_SECONDS. Giờ dự kiến trả
      * phòng = Nhận phòng + thời lượng theo lịch (KT vệ sinh − BĐ), cùng cách tính với thanh "đang diễn ra" trên Gantt
      * (RoomOccupancyService::heldUntil) và tịnh tuyến khi Nhận phòng. Phòng đôi / phòng cân giữ nhiều lô: lấy lô trả phòng muộn
-     * nhất. Phòng đang mở bởi lịch BT/HC/TI: bỏ qua.
+     * nhất.
+     *
+     * Phòng đang mở bởi lịch BT/HC/TI (từ 28/11/2026): luôn trả về (maintenance = true), giờ dự kiến trả phòng theo
+     * maintenanceProjectedFinish, overrun = đã quá giờ đó từ RECEIVE_MIN_LATE_SECONDS. rerouteOverrun đẩy lô đang đè lên
+     * khoảng bảo trì kể cả khi chưa quá giờ (không có lô đè thì không ghi gì).
      *
      * @param  int[]  $roomIds
-     * @return array<int, array{id: int, projected: int}> room id => lô đang giữ phòng, giờ dự kiến trả phòng
+     * @return array<int, array{id: int, projected: int, maintenance: bool, overrun: bool}> room id => lô đang giữ phòng, giờ dự kiến trả phòng
      */
     public static function overrunHolds(array $roomIds, int $now): array
     {
@@ -333,20 +460,33 @@ class ScheduleRerouteService
 
         $plans = DB::table('stage_plan')
             ->whereIn('id', $open->flatten()->pluck('id')->all())
-            ->get(['id', 'stage_code', 'start', 'end', 'end_clearning', 'actual_start'])
+            ->get(['id', 'stage_code', 'active', 'finished', 'resourceId', 'start', 'end', 'start_clearning', 'end_clearning',
+                'actual_start', 'actual_end', 'actual_start_clearning', 'actual_end_clearning'])
             ->keyBy('id');
 
         $result = [];
         foreach ($open as $roomId => $rows) {
             $hold = null;
+            $maintenance = false;
             foreach ($rows as $r) {
                 $p = $plans->get($r->id);
-                if (! $p || ! in_array((int) $p->stage_code, self::OVERDUE_STAGES, true)) {
-                    $hold = null; // có lịch BT/HC/TI đang giữ phòng
-
-                    break;
+                if (! $p) {
+                    continue;
                 }
-                if (! $p->start || ! ($p->end_clearning ?? $p->end)) {
+                if ((int) $p->stage_code === self::MAINTENANCE_STAGE) {
+                    if (! self::isHeldMaintenance($p)) {
+                        continue;
+                    }
+                    $projected = self::maintenanceProjectedFinish($p);
+                    if (! $maintenance || $projected > $hold['projected']) {
+                        $hold = ['id' => (int) $p->id, 'projected' => $projected];
+                    }
+                    $maintenance = true;
+
+                    continue;
+                }
+                if ($maintenance || ! in_array((int) $p->stage_code, self::OVERDUE_STAGES, true)
+                    || ! $p->start || ! ($p->end_clearning ?? $p->end)) {
                     continue;
                 }
                 $duration = max(0, Carbon::parse($p->end_clearning ?? $p->end)->getTimestamp() - Carbon::parse($p->start)->getTimestamp());
@@ -355,9 +495,13 @@ class ScheduleRerouteService
                     $hold = ['id' => (int) $p->id, 'projected' => $projected];
                 }
             }
-            if ($hold && $hold['projected'] <= $now - self::RECEIVE_MIN_LATE_SECONDS) {
-                $result[(int) $roomId] = $hold;
+            if (! $hold) {
+                continue;
             }
+            // Chưa quá giờ vẫn trả về: rerouteOverrun đẩy lô đè lên khoảng giữ phòng (BT: mọi lô; lô sản xuất: lô nhận lệch
+            // thứ tự), không có lô đè thì không ghi gì (28/11/2026)
+            $overrun = $hold['projected'] <= $now - self::RECEIVE_MIN_LATE_SECONDS;
+            $result[(int) $roomId] = $hold + ['maintenance' => $maintenance, 'overrun' => $overrun];
         }
 
         return $result;
@@ -518,19 +662,24 @@ class ScheduleRerouteService
         // Vệ sinh của lô gốc vẫn dời dù phần trễ đã được hấp thụ hết (vệ sinh vốn dừng qua ngày nghỉ)
         $sourceChange = $this->sourceCleaningChange($source, $sourceCleaning);
 
-        if (! $propagate && ! $sourceChange) {
-            return $this->emptyResult();
-        }
-
-        $changes = [];
         if ($propagate) {
             // Lô gốc: thời điểm kết thúc lý thuyết -> thực tế (✓: dự kiến, gồm cả vệ sinh đã dời)
             $this->nodes[$source->id]['origStart'] = Carbon::parse($source->start)->getTimestamp();
             $this->nodes[$source->id]['origFinish'] = $theoryFinish;
             $this->nodes[$source->id]['curFinish'] = $actualFinish;
-
-            $changes = $this->propagate($source->id);
         }
+
+        // Lô gốc đang giữ phòng (Nhận phòng, ✓, quét quá giờ): lô chưa Nhận phòng đứng TRƯỚC nó trên lịch lý thuyết mà đè
+        // lên khoảng giữ phòng (lô nhận lệch thứ tự) bị đẩy ra sau giờ dự kiến trả phòng (28/11/2026)
+        $seeds = $this->nodes[$source->id]['held'] ? $this->placeHeldOverlaps((int) $source->id, true) : [];
+
+        if (! $propagate && ! $sourceChange && ! $seeds) {
+            return $this->emptyResult();
+        }
+
+        $changes = ($propagate || $seeds)
+            ? $this->propagate(array_merge($propagate ? [(int) $source->id] : [], array_keys($seeds)), $seeds)
+            : [];
 
         $result = ['run_code' => null, 'delta_minutes' => intdiv($reportDelta, 60), 'changes' => [], 'source_cleaning_moved' => false];
 
@@ -603,6 +752,99 @@ class ScheduleRerouteService
         $this->apply($runCode, $source, intdiv($delta, 60), $changes, null, $this->runReason($source, self::TRIGGER_OVERDUE, $delta));
 
         return ['run_code' => $runCode, 'delta_minutes' => intdiv($delta, 60), 'changes' => array_values($changes), 'source_cleaning_moved' => false];
+    }
+
+    /**
+     * Lịch bảo trì $source đang giữ phòng từ Nhận phòng tới $finish: lô chưa Nhận phòng trên cùng phòng đè lên khoảng này
+     * (kể cả chồng giờ có sẵn trên lịch lý thuyết) được đặt nối tiếp nhau từ $finish, rồi lan truyền như tịnh tuyến đẩy trễ
+     * (giãn lô trùng giờ, chỉ đẩy lui). $baseline: giờ kết thúc mà lịch đã được đẩy theo (lý thuyết / lần quét trước), chỉ
+     * dùng cho độ lệch báo cáo và giữ khoảng trống của các lô sau. Lịch bảo trì không bị dịch.
+     *
+     * source_delta_minutes ghi = $finish − giờ kết thúc lý thuyết của $source: maintenanceBaseline đọc lại lúc Trả phòng.
+     */
+    private function runMaintenanceUnlocked(object $source, string $trigger, int $baseline, int $finish): array
+    {
+        $id = (int) $source->id;
+        $room = (int) $source->resourceId;
+        $blockStart = Carbon::parse($source->actual_start)->getTimestamp();
+        $theory = Carbon::parse($source->end_clearning ?? $source->end)->getTimestamp();
+
+        $windowStart = $this->at(min(Carbon::parse($source->start)->getTimestamp(), $blockStart))->subDay();
+        $windowEnd = $this->at(max($baseline, $finish, $theory))->addDays(self::WINDOW_DAYS);
+
+        // Bảo trì ở phòng cân: chỉ các lịch của phòng đó (như lô gốc là lô cân)
+        $roomStage = (int) DB::table('room')->where('id', $room)->value('stage_code');
+        $this->roomOnly = in_array($roomStage, self::SKIP_STAGES, true) ? $room : null;
+        $this->loadGraph($windowStart, $windowEnd);
+        $this->loadOffRanges($windowStart, $windowEnd->copy()->addDays(self::WINDOW_DAYS));
+
+        if (! isset($this->nodes[$id])) {
+            return $this->emptyResult();
+        }
+
+        $this->spreadOverlaps = true;
+        $this->pushOnly = true;
+
+        // Khối bảo trì: từ Nhận phòng tới $finish (loadGraph đã đánh dấu held, khối này không được chồng lấn)
+        $this->nodes[$id]['origFinish'] = $baseline;
+        $this->nodes[$id]['curStart'] = $blockStart;
+        $this->nodes[$id]['curFinish'] = $finish;
+
+        // Lô đè lên khối bảo trì: đặt nối tiếp nhau sau $finish theo thứ tự trên phòng
+        $seeds = $this->placeHeldOverlaps($id, false);
+
+        $changes = $this->propagate(array_merge([$id], array_keys($seeds)), $seeds);
+        if (empty($changes) || $this->movesEarlier($changes, $id)) {
+            return $this->emptyResult();
+        }
+
+        $deltaMinutes = intdiv($finish - $theory, 60);
+        $runCode = (string) Str::uuid();
+        $this->apply($runCode, $source, $deltaMinutes, $changes, null, $this->runReason($source, $trigger, $finish - $theory));
+
+        return ['run_code' => $runCode, 'delta_minutes' => $deltaMinutes, 'changes' => array_values($changes), 'source_cleaning_moved' => false];
+    }
+
+    /**
+     * Lô chưa Nhận phòng trên cùng phòng đè lên khoảng giữ phòng [curStart, curFinish) của lô / lịch BT $id (held): đặt nối
+     * tiếp nhau từ curFinish theo thứ tự trên phòng (tránh khối cố định). $onlyPlannedBefore: chỉ xét lô có giờ bắt đầu lý
+     * thuyết TRƯỚC giờ bắt đầu lý thuyết của $id (lô sản xuất nhận lệch thứ tự); lô đứng sau theo dõi quy tắc trễ 30 phút /
+     * quét quá giờ như cũ. Lịch bảo trì: mọi lô đè lên.
+     *
+     * @return array<int, array{0: int, 1: string}> id lô đã đặt => [id lô ràng buộc, loại ràng buộc] (cho propagate)
+     */
+    private function placeHeldOverlaps(int $id, bool $onlyPlannedBefore): array
+    {
+        $h = $this->nodes[$id];
+        if ($h['room'] === null) {
+            return [];
+        }
+        $type = $h['stage'] === self::MAINTENANCE_STAGE ? 'maintenance' : 'held';
+
+        $cursor = $h['curFinish'];
+        $seeds = [];
+        foreach ($this->roomOrder[$h['room']] ?? [] as $other) {
+            $o = $this->nodes[$other];
+            if ($other === $id || ! $o['movable'] || $o['curStart'] >= $h['curFinish'] || $o['curFinish'] <= $h['curStart']
+                || $this->samePackGroup($h, $o)
+                || ($onlyPlannedBefore && $o['origStart'] >= $h['planStart'])) {
+                continue;
+            }
+            $placed = $this->avoidFixedBlocks($other, $this->place($other, max($cursor, $o['curStart'])));
+            foreach (['start' => 'curStart', 'end' => 'curEnd', 'cleanStart' => 'curCleanStart', 'cleanEnd' => 'curCleanEnd', 'finish' => 'curFinish'] as $k => $f) {
+                $this->nodes[$other][$f] = $placed[$k];
+            }
+            $cursor = $placed['finish'];
+            $seeds[$other] = [$id, $type];
+        }
+
+        return $seeds;
+    }
+
+    /** Hai lô cùng nhóm chia thị trường (plan_master.main_parkaging_id) trên Đóng gói: chạy chung phòng, không đẩy nhau */
+    private function samePackGroup(array $a, array $b): bool
+    {
+        return $a['packGroup'] !== null && $a['packGroup'] === $b['packGroup'];
     }
 
     /** $requireFinished = false: Trả phòng, lô có thể chưa xác nhận ✓ */
@@ -772,6 +1014,7 @@ class ScheduleRerouteService
 
         $rows = DB::table('stage_plan as sp')
             ->leftJoin('plan_master as pm', 'pm.id', '=', 'sp.plan_master_id')
+            ->leftJoin('room as r', 'r.id', '=', 'sp.resourceId')
             ->where('sp.active', 1)
             // Phòng cân: mọi lịch của phòng (lô cân, BT-HC-TI cố định); tịnh tuyến thường: bỏ qua lịch cân
             ->when($this->roomOnly !== null,
@@ -797,9 +1040,12 @@ class ScheduleRerouteService
                 'sp.actual_end',
                 'sp.actual_start_clearning',
                 'sp.actual_end_clearning',
+                'sp.active',
+                'r.max_parallel',
                 'pm.after_weigth_date',
                 'pm.allow_weight_before_date',
-                'pm.after_parkaging_date'
+                'pm.after_parkaging_date',
+                'pm.main_parkaging_id'
             )
             ->get();
 
@@ -829,6 +1075,23 @@ class ScheduleRerouteService
                 $finish = $ts($r->actual_end_clearning) ?? (max($end ?? 0, $cEnd ?? 0) ?: null);
             }
 
+            // Lịch bảo trì đang giữ phòng (đã Nhận phòng, chưa Trả phòng lần cuối): phòng bận tới giờ dự kiến trả phòng,
+            // và không lô nào được chồng lên khối này, kể cả chồng giờ có sẵn trên lịch lý thuyết (28/11/2026)
+            $held = $stage === self::MAINTENANCE_STAGE && self::isHeldMaintenance($r);
+            if ($held && $finish !== null) {
+                $finish = max($finish, self::maintenanceProjectedFinish($r));
+            }
+
+            // Lô sản xuất đang giữ phòng (28/11/2026): khối = Nhận phòng → giờ dự kiến trả phòng (theo thời lượng lý thuyết,
+            // ✓ rồi thì KT sản xuất thực tế + vệ sinh), KHÔNG theo giờ kết thúc lý thuyết (lô nhận sớm / lệch thứ tự có giờ
+            // lý thuyết cách xa). Giữ nguyên lượng chồng lấn gốc với lô sau nên ràng buộc thường không tự đẩy thêm lô nào.
+            // Phòng đôi gói đầu (max_parallel > 1) chạy song song có chủ đích: không áp.
+            if (! $held && self::isHeldProduction($r)) {
+                $held = true;
+                $finish = self::maintenanceProjectedFinish($r);
+                $end = $ts($r->actual_end) ?? ($ts($r->actual_start) + max(0, $ts($r->end) - $ts($r->start)));
+            }
+
             if ($start === null || $finish === null) {
                 continue;
             }
@@ -854,11 +1117,16 @@ class ScheduleRerouteService
                 'room' => $r->resourceId ? (int) $r->resourceId : null,
                 'title' => $r->title,
                 'movable' => $movable,
+                'held' => $held,
+                // Nhóm chia thị trường (Đóng gói): các lô cùng nhóm chạy chung phòng, không đẩy nhau
+                'packGroup' => $r->main_parkaging_id ? (int) $r->main_parkaging_id : null,
                 'material' => $material,
 
-                // Thứ tự trên phòng luôn theo giờ LÝ THUYẾT (thứ tự đã sắp lịch),
-                // kể cả với lô đã chạy: lô bắt đầu thực tế trễ vẫn đứng trước các lô sau nó.
-                'orderStart' => $ts($r->start) ?? $start,
+                // Thứ tự trên phòng theo giờ LÝ THUYẾT (thứ tự đã sắp lịch), kể cả với lô đã chạy: lô bắt đầu thực tế trễ
+                // vẫn đứng trước các lô sau nó. Lô đã Nhận phòng SỚM hơn lịch (lệch thứ tự) đứng theo giờ Nhận phòng: các lô
+                // bị đẩy ra sau nó (placeHeldOverlaps) là lô sau, Trả phòng thì được kéo về (28/11/2026).
+                'orderStart' => $r->actual_start && $ts($r->start) ? min($ts($r->start), $ts($r->actual_start)) : ($ts($r->start) ?? $start),
+                'planStart' => $ts($r->start) ?? $start,
 
                 'origStart' => $start,
                 'origEnd' => $end,
@@ -993,15 +1261,20 @@ class ScheduleRerouteService
     /**
      * @return array<int, array> id => thông tin thay đổi
      */
-    private function propagate(int $sourceId): array
+    /**
+     * @param  int|int[]  $sourceIds  lô gốc (nhiều lô: lịch bảo trì + các lô đã đặt sẵn ra sau khối bảo trì)
+     * @param  array<int, array{0: ?int, 1: ?string}>  $cause  lý do dịch của các lô đã đặt sẵn
+     */
+    private function propagate(int|array $sourceIds, array $cause = []): array
     {
         // Mốc "không kéo sớm hơn hiện tại": làm tròn lên theo lưới 15 phút của lịch
         $now = (int) ceil(now()->getTimestamp() / 900) * 900;
         $queue = [];
-        $cause = [];
 
-        foreach ($this->successorsOf($sourceId) as $succ) {
-            $queue[$succ] = true;
+        foreach ((array) $sourceIds as $sourceId) {
+            foreach ($this->successorsOf($sourceId) as $succ) {
+                $queue[$succ] = true;
+            }
         }
 
         $guard = 0;
@@ -1109,11 +1382,17 @@ class ScheduleRerouteService
                 if ($spread) {
                     $c = max($c, $p['curFinish']);
                 }
+                // Lịch bảo trì đang giữ phòng: bắt đầu sau giờ dự kiến trả phòng, không giữ chồng lấn gốc
+                $heldBlock = $p['held'] && $p['curFinish'] > $c && ! $this->samePackGroup($p, $n);
+                if ($heldBlock) {
+                    $c = $p['curFinish'];
+                }
 
                 if ($c > $earliest) {
                     $earliest = $c;
                     $earliestId = $p['id'];
-                    $earliestType = $spread && $c > $this->constraintFrom($p, $origStart) ? 'spread' : 'room';
+                    $earliestType = $heldBlock ? ($p['stage'] === self::MAINTENANCE_STAGE ? 'maintenance' : 'held')
+                        : ($spread && $c > $this->constraintFrom($p, $origStart) ? 'spread' : 'room');
                 }
             }
 
@@ -1313,7 +1592,8 @@ class ScheduleRerouteService
                     continue;
                 }
                 // Chồng lấn đã có sẵn trong lịch gốc thì bỏ qua, không phải do tịnh tuyến gây ra
-                if ($o['origStart'] < $n['origFinish'] && $o['origFinish'] > $n['origStart']) {
+                // (trừ lịch bảo trì đang giữ phòng: phòng thật sự bận, 28/11/2026)
+                if ((! $o['held'] || $this->samePackGroup($o, $n)) && $o['origStart'] < $n['origFinish'] && $o['origFinish'] > $n['origStart']) {
                     continue;
                 }
                 if ($o['curStart'] < $placed['finish'] && $o['curFinish'] > $placed['start']) {
@@ -1546,18 +1826,32 @@ class ScheduleRerouteService
 
         // Lịch bảo trì: product_caterogy_id là thiết bị (quota_maintenance), không phải thành phẩm → dùng tiêu đề lịch
         $maintenance = (int) $source->stage_code === self::MAINTENANCE_STAGE;
+        // Tiêu đề nhóm "<thiết bị> : - <từng thiết bị> ... Ngày tới hạn ..." → chỉ lấy phần trước dấu ':'
+        $device = trim(Str::before(strip_tags(str_replace(['<br/>', '<br>'], ' ', (string) $source->title)), ':'));
         $batch = $maintenance
-            // Tiêu đề nhóm "<thiết bị> : - <từng thiết bị> ... Ngày tới hạn ..." → chỉ lấy phần trước dấu ':'
-            ? 'VS sau ' . trim(Str::before(strip_tags(str_replace(['<br/>', '<br>'], ' ', (string) $source->title)), ':'))
+            ? (in_array($trigger, [self::TRIGGER_MAINTENANCE_RECEIVE, self::TRIGGER_MAINTENANCE_OVERRUN], true) || ! $source->actual_end_clearning
+                ? 'BT ' : 'VS sau ') . $device
             : ($info->product_name ?? $source->title) . ($info && $info->batch ? ' - lô ' . $info->batch : '');
         $where = implode(', ', array_filter([$info->stage_name ?? null, ($info->room_code ?? null) ? 'phòng ' . $info->room_code : null]));
         $confirmedAt = Carbon::parse($source->finished_date ?? now())->format('H:i d/m/Y');
         $lag = ($deltaSeconds < 0 ? 'sớm ' : 'trễ ') . $this->durationText($deltaSeconds);
 
+        if ($trigger === self::TRIGGER_MAINTENANCE_RECEIVE || $trigger === self::TRIGGER_MAINTENANCE_OVERRUN) {
+            $received = Carbon::parse($source->actual_start)->format('H:i d/m/Y');
+            $until = $this->at(Carbon::parse($source->end_clearning ?? $source->end)->getTimestamp() + $deltaSeconds)->format('H:i d/m/Y');
+            $text = ($trigger === self::TRIGGER_MAINTENANCE_RECEIVE ? self::MAINTENANCE_RECEIVE_REASON_PREFIX : self::MAINTENANCE_OVERRUN_REASON_PREFIX)
+                . ": {$batch}" . ($where !== '' ? " ({$where})" : '') . ", nhận phòng lúc {$received}, phòng bận tới {$until}"
+                . ($trigger === self::TRIGGER_MAINTENANCE_OVERRUN ? ', quét lúc ' . now()->format('H:i d/m/Y') : '');
+
+            return Str::limit($text, 250, '...');
+        }
+
         if ($trigger === self::TRIGGER_RECEIVE) {
             $received = Carbon::parse($source->actual_start)->format('H:i d/m/Y');
+            $startLag = Carbon::parse($source->actual_start)->getTimestamp() - Carbon::parse($source->start)->getTimestamp();
             $text = self::RECEIVE_REASON_PREFIX . ": {$batch}" . ($where !== '' ? " ({$where})" : '')
-                . ", nhận phòng lúc {$received}, bắt đầu {$lag}, dự kiến theo thời lượng lý thuyết";
+                . ", nhận phòng lúc {$received}, bắt đầu " . ($startLag < 0 ? 'sớm ' : 'trễ ') . $this->durationText($startLag)
+                . ', dự kiến theo thời lượng lý thuyết';
 
             return Str::limit($text, 250, '...');
         }
@@ -1565,10 +1859,12 @@ class ScheduleRerouteService
         if ($trigger === self::TRIGGER_OVERRUN) {
             $received = Carbon::parse($source->actual_start);
             $duration = max(0, Carbon::parse($source->end_clearning ?? $source->end)->getTimestamp() - Carbon::parse($source->start)->getTimestamp());
-            $text = self::OVERRUN_REASON_PREFIX . ": {$batch}" . ($where !== '' ? " ({$where})" : '')
+            $text = (abs($deltaSeconds) < self::MIN_SHIFT_SECONDS ? self::HELD_REASON_PREFIX : self::OVERRUN_REASON_PREFIX)
+                . ": {$batch}" . ($where !== '' ? " ({$where})" : '')
                 . ', nhận phòng lúc ' . $received->format('H:i d/m/Y')
                 . ', dự kiến trả phòng ' . $received->copy()->addSeconds($duration)->format('H:i d/m/Y')
-                . ', quét lúc ' . now()->format('H:i d/m/Y') . ", đẩy lô sau {$lag}";
+                . ', quét lúc ' . now()->format('H:i d/m/Y')
+                . (abs($deltaSeconds) < self::MIN_SHIFT_SECONDS ? ', đẩy lô đè lên khoảng giữ phòng' : ", đẩy lô sau {$lag}");
 
             return Str::limit($text, 250, '...');
         }
@@ -1582,7 +1878,7 @@ class ScheduleRerouteService
         }
 
         if ($trigger === self::TRIGGER_RELEASE) {
-            $released = Carbon::parse($source->actual_end_clearning)->format('H:i d/m/Y');
+            $released = Carbon::parse($source->actual_end_clearning ?? $source->actual_end)->format('H:i d/m/Y');
             $text = "Tịnh tuyến theo Trả phòng: {$batch}" . ($where !== '' ? " ({$where})" : '') . ", trả phòng lúc {$released}, {$lag}";
 
             return Str::limit($text, 250, '...');
@@ -1623,9 +1919,15 @@ class ScheduleRerouteService
         }
 
         $title = $this->nodes[$reasonId]['title'] ?? ('#' . $reasonId);
+        if ($this->nodes[$reasonId]['stage'] === self::MAINTENANCE_STAGE) {
+            // Tiêu đề lịch bảo trì nhóm nhiều thiết bị: chỉ lấy phần trước dấu ':'
+            $title = 'BT ' . trim(Str::before(strip_tags(str_replace(['<br/>', '<br>'], ' ', (string) $title)), ':'));
+        }
         $label = match ($reasonType) {
             'stage' => 'công đoạn trước',
             'spread' => 'cùng phòng, giãn lô trùng giờ',
+            'maintenance' => 'phòng đang bảo trì, đẩy ra sau giờ dự kiến trả phòng',
+            'held' => 'lô đang giữ phòng, đẩy ra sau giờ dự kiến trả phòng',
             default => 'cùng phòng',
         };
 

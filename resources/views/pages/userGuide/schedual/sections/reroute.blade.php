@@ -10,6 +10,11 @@
         <thead><tr><th style="width: 220px">Thao tác</th><th>Cách dịch</th></tr></thead>
         <tbody>
             <tr><td>Bấm <b>Nhận phòng</b> trễ từ <b>30 phút</b> so với giờ bắt đầu lý thuyết</td><td><b>Chỉ đẩy trễ</b>: giờ kết thúc dự kiến = giờ kết thúc lý thuyết + độ trễ bắt đầu.</td></tr>
+            <tr><td>Bấm <b>Nhận phòng</b> lô sản xuất <b>lệch thứ tự</b> (nhận sớm một lô xếp sau)</td>
+                <td>Phòng coi như bận từ lúc nhận phòng tới <b>giờ dự kiến trả phòng</b> (giờ nhận + thời lượng lý thuyết). Lô chưa Nhận
+                    phòng đứng <b>trước</b> lô này trên lịch lý thuyết mà đè lên khoảng đó được đẩy ra sau giờ dự kiến trả phòng, các lô
+                    sau dịch theo; khi Trả phòng được kéo về theo giờ trả thực tế. Lô chia thị trường cùng nhóm (Đóng gói) và phòng
+                    đôi gói đầu không bị đẩy.</td></tr>
             <tr><td>Bấm <b>Trả phòng</b> (công tắc đang bật)</td><td>Dịch <b>2 chiều</b> theo giờ trả phòng, chỉ bù phần chênh còn lại so với giờ dự kiến.</td></tr>
             <tr><td><b>Tự động mỗi giờ</b> (đầu giờ): lô đã quá giờ bắt đầu lý thuyết từ <b>30 phút</b> mà <b>chưa Nhận phòng</b>,
                     giờ bắt đầu nằm trong <b>2 ngày</b> gần nhất, ở phòng <b>đang không mở</b> (Sẵn Sàng)</td>
@@ -23,8 +28,19 @@
                     phòng</b> (Nhận phòng + thời lượng theo lịch) từ <b>30 phút</b> mà chưa Trả phòng</td>
                 <td><b>Chỉ đẩy lui</b>: coi lô đang chạy xong lúc giờ quét, đẩy các lô sau trên phòng và công đoạn sau của chúng tới giờ
                     quét (khoảng trống trên lịch hấp thụ trước). Lô đang chạy giữ nguyên. Giờ sau vẫn chưa Trả phòng thì đẩy tiếp, không
-                    giới hạn thời gian. Phòng đang mở bởi lịch BT / HC / TI thì không áp dụng. Trả phòng sớm hơn mốc đã đẩy thì lô sau
-                    vẫn giữ mốc đó (chênh dưới 1 giờ).</td></tr>
+                    giới hạn thời gian. Trả phòng sớm hơn mốc đã đẩy thì lô sau
+                    vẫn giữ mốc đó (chênh dưới 1 giờ). Chưa quá giờ thì vẫn đẩy lô nhận lệch thứ tự đang đè lên khoảng giữ phòng
+                    (như dòng Nhận phòng lệch thứ tự).</td></tr>
+            <tr><td>Bấm <b>Nhận phòng BT</b> (lịch Bảo trì / Hiệu chuẩn / Tiện ích)</td>
+                <td><b>Chỉ đẩy lui</b>: phòng coi như bận từ lúc nhận phòng tới <b>giờ dự kiến trả phòng</b> = giờ nhận phòng +
+                    thời lượng lịch BT theo lý thuyết (gồm vệ sinh sau BT). Lô sản xuất chưa Nhận phòng nằm đè lên khoảng này (kể cả
+                    lô vốn đã chồng giờ với lịch BT trên lịch lý thuyết) được đẩy ra sau giờ đó, các lô sau và công đoạn sau dịch theo.</td></tr>
+            <tr><td><b>Tự động mỗi giờ</b> (cùng lần quét trên): phòng <b>đang mở</b> bởi lịch BT / HC / TI</td>
+                <td><b>Chỉ đẩy lui</b>: còn lô đè lên khoảng bảo trì dự kiến thì đẩy ra sau; quá giờ dự kiến trả phòng từ
+                    <b>30 phút</b> mà chưa Trả phòng thì coi bảo trì xong lúc giờ quét và đẩy các lô sau tới giờ quét, giờ sau đẩy tiếp.</td></tr>
+            <tr><td>Bấm <b>Trả phòng</b> lần cuối của lịch BT (Trả phòng vệ sinh sau BT, hoặc Trả phòng HC không vệ sinh)</td>
+                <td>Dịch <b>2 chiều</b> theo giờ trả phòng, so với mốc các lô đã được đẩy theo lúc Nhận phòng BT / quét quá giờ.
+                    Trả phòng phần bảo trì còn chờ vệ sinh thì chưa dịch.</td></tr>
             <tr><td>Bấm ✓ / ✓✓ ở Xác Nhận Hoàn Thành</td><td>Không dịch lịch.</td></tr>
         </tbody>
     </table>
